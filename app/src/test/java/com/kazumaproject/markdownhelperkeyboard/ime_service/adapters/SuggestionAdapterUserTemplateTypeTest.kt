@@ -226,10 +226,12 @@ class SuggestionAdapterUserTemplateTypeTest {
         adapter.setShowCharacterIndicators(true)
         adapter.onBindViewHolder(holder, 0)
         assertEquals("カナ１２ABC", holder.text.text.toString().trim())
-        org.junit.Assert.assertTrue(holder.typeText.text.toString().contains("["))
+        assertEquals("", holder.typeText.text.toString())
+        org.junit.Assert.assertNotNull(holder.text.contentDescription)
         adapter.setShowCharacterIndicators(false)
         adapter.onBindViewHolder(holder, 0)
         assertEquals("", holder.typeText.text.toString())
+        org.junit.Assert.assertNull(holder.text.contentDescription)
         assertEquals("カナ１２ABC", adapter.suggestions.single().commitText)
         adapter.release()
     }

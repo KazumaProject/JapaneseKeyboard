@@ -32,6 +32,14 @@ class FloatingCandidateListAdapter(
     private var candidateTextSizeSp: Float = 14f
     private var candidateTextColor: Int? = null
     private var showCharacterIndicators = false
+    private var characterStyles = CandidateIndicatorStyles()
+
+    fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
+        if (characterStyles == styles) return
+        characterStyles = styles
+        notifyDataSetChanged()
+    }
+
 
     fun setShowCharacterIndicators(enabled: Boolean) {
         if (showCharacterIndicators == enabled) return
@@ -123,7 +131,7 @@ class FloatingCandidateListAdapter(
             textView.textSize = candidateTextSizeSp
             if (candidateTextColor != null) textView.setTextColor(requireNotNull(candidateTextColor))
             else textView.setTextColor(defaultTextColors)
-            (textView as CandidateCharacterTextView).setCharacterIndicators(item.word, showCharacterIndicators, selected = selected)
+            (textView as CandidateCharacterTextView).setCharacterIndicators(item.word, showCharacterIndicators, selected = selected, styles = characterStyles)
             val label = if (showCharacterIndicators) item.characterLabel else item.label
             labelView.text = label
             labelView.visibility = if (label.isEmpty()) View.GONE else View.VISIBLE

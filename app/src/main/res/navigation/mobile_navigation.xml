@@ -154,6 +154,11 @@
         android:label="@string/setting_category_voice_input_title" />
 
     <fragment
+        android:id="@+id/candidateIndicatorPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CandidateIndicatorPreferenceFragment"
+        android:label="@string/candidate_indicator_settings" />
+
+    <fragment
         android:id="@+id/candidateConversionPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CandidateConversionPreferenceFragment"
         android:label="@string/setting_category_candidate_conversion_title" />

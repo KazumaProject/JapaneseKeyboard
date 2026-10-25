@@ -6,7 +6,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.DashPathEffect
 import android.util.AttributeSet
-import androidx.core.content.ContextCompat
+import android.content.res.Configuration
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 
@@ -85,14 +85,46 @@ class CandidateCharacterTextView @JvmOverloads constructor(context: Context, att
     private var bodyOffset = 0
     private var indicatorSelected = false
     private val indicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private data class ResolvedStyle(val line: CandidateIndicatorLineStyle, val color: Int)
+    private var resolvedStyles = emptyMap<CandidateCharacterKind, ResolvedStyle>()
+    private var resolvedFor: Pair<CandidateIndicatorStyles, Boolean>? = null
+    private var indicatorBody = ""
+    private var indicatorsEnabled = false
+    private var indicatorStyles = CandidateIndicatorStyles()
+    private var darkOverride: Boolean? = null
 
-    internal fun setCharacterIndicators(body: String, enabled: Boolean, offset: Int = 0, selected: Boolean = false) {
+    internal fun setCharacterIndicators(
+        body: String, enabled: Boolean, offset: Int = 0, selected: Boolean = false,
+        styles: CandidateIndicatorStyles = CandidateIndicatorStyles(), dark: Boolean? = null,
+    ) {
+        indicatorBody = body
+        indicatorsEnabled = enabled
+        indicatorStyles = styles
+        darkOverride = dark
+        val night = dark ?: (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES)
+        if (resolvedFor != (styles to night)) {
+            resolvedStyles = CandidateCharacterKind.entries.mapNotNull { kind ->
+                val group = kind.indicatorGroup() ?: return@mapNotNull null
+                val style = styles[group]
+                kind to ResolvedStyle(style.line, style.color(context, group, night))
+            }.toMap()
+            resolvedFor = styles to night
+        }
         characterRanges = if (enabled) candidateCharacterRanges(body).filter {
-            it.kind != CandidateCharacterKind.HIRAGANA
+            resolvedStyles[it.kind]?.line?.let { line -> line != CandidateIndicatorLineStyle.NONE } == true
         } else emptyList()
         bodyOffset = offset
         indicatorSelected = selected
+        val descriptions = characterRanges.mapNotNull { it.kind.indicatorGroup() }.distinct()
+            .joinToString("、") { context.getString(it.titleRes) }
+        contentDescription = if (descriptions.isEmpty()) null else "$body、$descriptions"
         invalidate()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        resolvedFor = null
+        setCharacterIndicators(indicatorBody, indicatorsEnabled, bodyOffset, indicatorSelected, indicatorStyles, darkOverride)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -105,6 +137,7 @@ class CandidateCharacterTextView @JvmOverloads constructor(context: Context, att
         canvas.clipRect(compoundPaddingLeft, 0, width - compoundPaddingRight, height)
         canvas.translate((compoundPaddingLeft - scrollX).toFloat(), (extendedPaddingTop - scrollY).toFloat())
         for (range in characterRanges) {
+            val style = resolvedStyles[range.kind] ?: continue
             val start = range.start + bodyOffset
             val end = range.end + bodyOffset
             if (start < 0 || end > text.length || start >= end) continue
@@ -117,21 +150,28 @@ class CandidateCharacterTextView @JvmOverloads constructor(context: Context, att
                 val bottom = textLayout.getLineBottom(line) - indicatorPaint.strokeWidth / 2f
                 val doubleSpacing = minOf(2f * density, ((bottom - baseline) / 2f).coerceAtLeast(indicatorPaint.strokeWidth))
                 val y = minOf(baseline + density * 1.5f,
-                    bottom - if (range.kind == CandidateCharacterKind.FULL_WIDTH) doubleSpacing else 0f)
-                indicatorPaint.color = if (indicatorSelected) currentTextColor else ContextCompat.getColor(context, when (range.kind) {
-                    CandidateCharacterKind.KATAKANA -> R.color.candidate_character_katakana
-                    CandidateCharacterKind.FULL_WIDTH -> R.color.candidate_character_full_width
-                    else -> R.color.candidate_character_half_width
-                })
-                indicatorPaint.pathEffect = if (range.kind == CandidateCharacterKind.HALF_WIDTH ||
-                    range.kind == CandidateCharacterKind.HALF_KATAKANA) DashPathEffect(floatArrayOf(density * 1.5f, density * 1.5f), 0f) else null
+                    bottom - if (style.line == CandidateIndicatorLineStyle.DOUBLE) doubleSpacing else 0f)
+                indicatorPaint.color = if (indicatorSelected) currentTextColor else style.color
+                indicatorPaint.pathEffect = when (style.line) {
+                    CandidateIndicatorLineStyle.DOTTED -> DashPathEffect(floatArrayOf(density * 1.5f, density * 1.5f), 0f)
+                    CandidateIndicatorLineStyle.DASHED -> DashPathEffect(floatArrayOf(density * 5f, density * 3f), 0f)
+                    else -> null
+                }
                 val path = Path().apply { moveTo(minOf(x1, x2), y); lineTo(maxOf(x1, x2), y) }
                 canvas.drawPath(path, indicatorPaint)
-                if (range.kind == CandidateCharacterKind.FULL_WIDTH) {
+                if (style.line == CandidateIndicatorLineStyle.DOUBLE) {
                     canvas.drawLine(minOf(x1, x2), y + doubleSpacing, maxOf(x1, x2), y + doubleSpacing, indicatorPaint)
                 }
             }
         }
         canvas.restore()
     }
+}
+
+private fun CandidateCharacterKind.indicatorGroup(): CandidateIndicatorGroup? = when (this) {
+    CandidateCharacterKind.HIRAGANA -> null
+    CandidateCharacterKind.KATAKANA -> CandidateIndicatorGroup.KATAKANA
+    CandidateCharacterKind.FULL_WIDTH -> CandidateIndicatorGroup.FULL_WIDTH
+    CandidateCharacterKind.HALF_WIDTH -> CandidateIndicatorGroup.HALF_WIDTH
+    CandidateCharacterKind.HALF_KATAKANA -> CandidateIndicatorGroup.HALF_KATAKANA
 }

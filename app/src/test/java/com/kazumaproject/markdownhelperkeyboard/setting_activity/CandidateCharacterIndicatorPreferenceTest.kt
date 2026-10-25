@@ -44,4 +44,23 @@ class CandidateCharacterIndicatorPreferenceTest {
             assertTrue(SettingSearchIndex.searchable(context, scope).any { it.key == AppPreference.CANDIDATE_CHARACTER_INDICATORS_KEY })
         }
     }
+    @Test fun styleControlsAreAvailableFromBothScreensAndSearchScopes() {
+        val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
+        val manager = PreferenceManager(context)
+        for (xml in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
+            val screen = manager.inflateFromResource(context, xml, null)
+            assertNotNull(screen.findPreference<androidx.preference.Preference>("candidate_indicator_style_settings"))
+        }
+        val screen = manager.inflateFromResource(context, R.xml.pref_candidate_indicator_styles, null)
+        for (group in com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorGroup.entries) {
+            val key = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorSettings.lineKey(group)
+            assertEquals(5, screen.findPreference<androidx.preference.ListPreference>(key)!!.entryValues.size)
+            for (scope in SettingSearchScope.entries) {
+                val result = SettingSearchIndex.searchable(context, scope).first { it.key == key }
+                assertEquals(R.id.candidateIndicatorPreferenceFragment,
+                    com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingDestinations.destinationId(result.destination))
+            }
+        }
+    }
+
 }

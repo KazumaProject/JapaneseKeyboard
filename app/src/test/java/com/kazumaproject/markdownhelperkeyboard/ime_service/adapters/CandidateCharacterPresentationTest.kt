@@ -31,7 +31,7 @@ class CandidateCharacterPresentationTest {
         assertEquals("カナ・全・半", characterKindLabels(context, text))
         for (type in listOf(1, 4, 28, 31, 34)) {
             val candidate = Candidate(text, type.toByte(), 10u, 0)
-            assertTrue(candidateLabelPresentation(context, candidate, false, true).toString().contains("[カナ・全・半]"))
+            assertFalse(candidateLabelPresentation(context, candidate, false, true).toString().contains("カナ・全・半"))
         }
     }
 
@@ -48,7 +48,7 @@ class CandidateCharacterPresentationTest {
         val candidate = Candidate("ＡＢＣ", CANDIDATE_TYPE_HALF_WIDTH, 3u, 0,
             dictionaryOrigins = setOf(CandidateDictionaryOrigin.LEARNED_DICTIONARY),
             dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PLACE))
-        assertEquals("[学習] [全] [地名]", candidateLabelPresentation(context, candidate, true, true).toString())
+        assertEquals("[学習] [地名]", candidateLabelPresentation(context, candidate, true, true).toString())
         assertEquals("[半] [学習] [地名]", candidateLabelPresentation(context, candidate, true, false).toString())
         assertEquals("[全]", candidateLabelPresentation(context, Candidate("１２３４", 13, 4u, 0), false, false).toString())
         assertEquals("[日付]", candidateLabelPresentation(context, Candidate("12月31日", CANDIDATE_TYPE_DIGIT_DATE, 4u, 0), false, false).toString())
@@ -101,7 +101,7 @@ class CandidateCharacterPresentationTest {
     @Test fun floatingRowsCanToggleLabelsWithoutRequeryingCandidates() {
         val adapter = FloatingCandidateListAdapter(5)
         adapter.submitList(listOf(com.kazumaproject.core.data.floating_candidate.CandidateItem(
-            "カナ１２ABC", 3u, label = "source", characterLabel = "source [カナ・全・半]"
+            "カナ１２ABC", 3u, label = "source", characterLabel = "source"
         )))
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         val holder = adapter.onCreateViewHolder(android.widget.FrameLayout(context), adapter.getItemViewType(0))
@@ -109,7 +109,9 @@ class CandidateCharacterPresentationTest {
         for (enabled in listOf(false, true, false)) {
             adapter.setShowCharacterIndicators(enabled)
             adapter.onBindViewHolder(holder, 0)
-            assertEquals(if (enabled) "source [カナ・全・半]" else "source", label.text.toString())
+            assertEquals("source", label.text.toString())
+            val body = holder.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.text_view_item)
+            assertEquals(enabled, body.contentDescription != null)
         }
     }
 }

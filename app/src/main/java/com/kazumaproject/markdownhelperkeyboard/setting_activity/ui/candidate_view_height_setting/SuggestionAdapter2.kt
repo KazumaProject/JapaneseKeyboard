@@ -4,6 +4,8 @@ import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingViewport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateReadingSizeLimits
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorStyles
+
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -194,6 +196,14 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showCharacterIndicators: Boolean = false
+    private var characterStyles = CandidateIndicatorStyles()
+
+    fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
+        if (characterStyles == styles) return
+        characterStyles = styles
+        notifyDataSetChanged()
+    }
+
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = PreviewCandidateItemColorState()
 
@@ -1020,7 +1030,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         val displayedBody = if (suggestion.type == 15.toByte()) readingCorrectionString.first else suggestion.string
         (holder.text as CandidateCharacterTextView).setCharacterIndicators(
-            displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition
+            displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition, styles = characterStyles
         )
         holder.typeText.text = candidateLabelPresentation(
             holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterIndicators, displayedBody

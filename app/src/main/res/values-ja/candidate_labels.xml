@@ -1,6 +1,6 @@
 <resources>
     <string name="candidate_character_indicators_title">候補の文字種を見分けやすく表示</string>
-    <string name="candidate_character_indicators_summary">カタカナ・全角・半角の部分に下線と小さなラベルを表示します。ひらがなは装飾しません。ライブ変換に関係なく、すべての候補で使えます。</string>
+    <string name="candidate_character_indicators_summary">カタカナ・全角・半角の部分に下線を表示します。文字種ラベルは追加しません。ひらがなは装飾しません。ライブ変換のON/OFFにかかわらず使えます。</string>
     <string name="candidate_character_hiragana">ひら</string>
     <string name="candidate_character_katakana">カナ</string>
     <string name="candidate_character_full_width">全</string>
@@ -18,4 +18,23 @@
     <string name="candidate_label_correction">[修正]</string>
     <string name="candidate_label_ai">[AI]</string>
     <string name="candidate_label_translation">[訳]</string>
+    <string name="candidate_indicator_settings">文字種の線と色</string>
+    <string name="candidate_indicator_settings_summary">カタカナ・全角・半角・半角カタカナを個別に設定します。</string>
+    <string name="candidate_indicator_katakana">カタカナ</string>
+    <string name="candidate_indicator_full_width">全角英数・記号</string>
+    <string name="candidate_indicator_half_width">半角英数・記号</string>
+    <string name="candidate_indicator_half_katakana">半角カタカナ</string>
+    <string name="candidate_indicator_line">線の種類</string>
+    <string name="candidate_indicator_solid">実線</string>
+    <string name="candidate_indicator_double">二重線</string>
+    <string name="candidate_indicator_dotted">点線</string>
+    <string name="candidate_indicator_dashed">破線</string>
+    <string name="candidate_indicator_none">非表示</string>
+    <string name="candidate_indicator_color_light">ライトテーマの色</string>
+    <string name="candidate_indicator_color_dark">ダークテーマの色</string>
+    <string name="candidate_indicator_standard">標準に戻す</string>
+    <string name="candidate_indicator_standard_color">標準（%1$s）</string>
+    <string name="candidate_indicator_reset">線と色をすべて標準に戻す</string>
+    <string name="candidate_indicator_preview">プレビュー</string>
+    <string name="candidate_indicator_example">かな カナ ＡＢＣ ABC ｶﾅ</string>
 </resources>

@@ -1023,6 +1023,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { preferences, key ->
+            if (key == null || key.startsWith("candidate_character_")) {
+                runOnMainThread {
+                    val styles = appPreference.candidateIndicatorStyles
+                    val enabled = appPreference.candidate_character_type_indicators_preference
+                    listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach {
+                        it.setShowCharacterIndicators(enabled)
+                        it.setCharacterIndicatorStyles(styles)
+                    }
+                    if (this::listAdapter.isInitialized) {
+                        listAdapter.setShowCharacterIndicators(enabled)
+                        listAdapter.setCharacterIndicatorStyles(styles)
+                    }
+                }
+            }
             if (key == null || key == "zenz_debounce_time_preference") {
                 runOnMainThread {
                     zenzDebounceTimePreference = preferences.getInt(
@@ -3236,7 +3250,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingCandidateView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
         listAdapter = FloatingCandidateListAdapter(
             pageSize = PAGE_SIZE,
-        ).apply { setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference) }
+        ).apply {
+            setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference)
+            setCharacterIndicatorStyles(appPreference.candidateIndicatorStyles)
+        }
         listAdapter.onSuggestionClicked = suggestionClick@ { suggestion: CandidateItem ->
             if (suggestion.candidateType == CANDIDATE_TYPE_TEXT_MACRO) {
                 suggestion.sourceId?.let(::executeTextMacro)
@@ -4202,9 +4219,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ngramRuleScorerManager.setEnabled(preferences.customNgramDictionaryEnabled)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setShowCharacterIndicators(preferences.showCharacterIndicators)
+            adapter.setCharacterIndicatorStyles(preferences.appearance.candidateIndicatorStyles)
             adapter.setShowDictionaryCandidateLabels(preferences.showDictionaryCandidateLabels)
         }
-        if (this::listAdapter.isInitialized) listAdapter.setShowCharacterIndicators(preferences.showCharacterIndicators)
+        if (this::listAdapter.isInitialized) {
+            listAdapter.setShowCharacterIndicators(preferences.showCharacterIndicators)
+            listAdapter.setCharacterIndicatorStyles(preferences.appearance.candidateIndicatorStyles)
+        }
         suppressHentaiganaCandidates = preferences.suppressHentaiganaCandidates
         zeroQuerySuggestionPreference = preferences.zeroQuerySuggestionPreference
         if (!zeroQuerySuggestionPreference) {

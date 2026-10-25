@@ -65,10 +65,6 @@ internal fun candidateLabelPresentation(
         }
         originLabel?.let { append(label(it)) }
     }
-    if (showCharacterIndicators && candidate.presentation == null) {
-        val forms = characterKindLabels(context, displayText)
-        if (forms.isNotEmpty()) append("[$forms]")
-    }
     append(classifiedCandidateLabel(context, candidate.dictionaryCategories))
     return result
 }

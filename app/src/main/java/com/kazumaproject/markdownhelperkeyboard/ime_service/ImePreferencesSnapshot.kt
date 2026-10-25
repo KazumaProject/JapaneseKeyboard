@@ -62,6 +62,8 @@ data class ImeKeyboardAppearance(
     val inputCompositionTextColor: Int,
     val inputConversionBackgroundColor: Int,
     val inputConversionTextColor: Int,
+    val candidateIndicatorStyles: com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorStyles =
+        com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorStyles(),
 )
 
 data class ImePreferencesSnapshot(
@@ -680,6 +682,7 @@ data class ImePreferencesSnapshot(
                 qwertySpecialKeyIconSize = appPreference.qwerty_special_key_icon_size ?: 18.0f,
                 keyboardSkin = appPreference.keyboardSkin,
                 appearance = ImeKeyboardAppearance(
+                    candidateIndicatorStyles = appPreference.candidateIndicatorStyles,
                     keyboardThemeMode = appPreference.theme_mode,
                     customThemeBgColor = appPreference.custom_theme_bg_color,
                     customThemeKeyColor = appPreference.custom_theme_key_color,

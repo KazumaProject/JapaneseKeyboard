@@ -8,6 +8,11 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inspector.WindowInspector
 import android.widget.TextView
+import com.afollestad.materialdialogs.MaterialDialog
+import com.afollestad.materialdialogs.WhichButton
+import com.afollestad.materialdialogs.actions.getActionButton
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.*
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CandidateIndicatorPreferenceFragment
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
@@ -110,6 +115,47 @@ class CandidateLabelPresentationDeviceTest {
         android.util.Log.i("CandidateLabelDeviceQA", "Captured ${destination.name}")
     }
 
+    private fun mixedRow(): View = WindowInspector.getGlobalWindowViews().firstNotNullOf { root ->
+        root.findViewById<androidx.recyclerview.widget.RecyclerView>(id("suggestion_recycler_view"))?.let { list ->
+            (0 until list.childCount).map(list::getChildAt).firstOrNull {
+                list.isShown && it.findViewById<TextView>(id("suggestion_item_text_view"))?.text?.toString()?.trim() == "東京でカフェ１２３ABC"
+            }
+        }
+    }
+
+    private fun bodyHasColor(color: Int): Boolean {
+        val view = mixedRow().findViewById<TextView>(id("suggestion_item_text_view"))
+        if (view.width <= 0 || view.height <= 0) return false
+        val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+        view.draw(android.graphics.Canvas(bitmap))
+        val pixels = IntArray(view.width * view.height)
+        bitmap.getPixels(pixels, 0, view.width, 0, 0, view.width, view.height)
+        bitmap.recycle()
+        return color in pixels
+    }
+
+    private fun selectColor(fragment: CandidateIndicatorPreferenceFragment, dark: Boolean, index: Int) {
+        main {
+            val preference = requireNotNull(fragment.findPreference<androidx.preference.Preference>(
+                CandidateIndicatorSettings.colorKey(CandidateIndicatorGroup.KATAKANA, dark)))
+            check(requireNotNull(preference.onPreferenceClickListener).onPreferenceClick(preference))
+        }
+        var dialog: MaterialDialog? = null
+        await("Color chooser did not appear") {
+            dialog = CandidateIndicatorPreferenceFragment::class.java.getDeclaredField("colorDialog")
+                .apply { isAccessible = true }.get(fragment) as? MaterialDialog
+            dialog?.findViewById<androidx.recyclerview.widget.RecyclerView>(id("colorPresetGrid"))
+                ?.findViewHolderForAdapterPosition(index) != null
+        }
+        main {
+            val grid = requireNotNull(dialog).findViewById<androidx.recyclerview.widget.RecyclerView>(id("colorPresetGrid"))
+            check(requireNotNull(grid.findViewHolderForAdapterPosition(index)).itemView.performClick())
+        }
+        if (!dark) capture("style-color-picker")
+        main { check(requireNotNull(dialog).getActionButton(WhichButton.POSITIVE).performClick()) }
+        await("Color chooser did not save selection") { dialog?.isShowing == false }
+    }
+
     @Test fun realImeCandidateFormsAndCommitMatch() = runBlocking {
         assumeTrue(InstrumentationRegistry.getArguments().getString("candidate_label_device_test") == "true")
         val baseline = InstrumentationRegistry.getArguments().getString("candidate_label_baseline") == "true"
@@ -143,6 +189,8 @@ class CandidateLabelPresentationDeviceTest {
         val host = main { requireNotNull(CandidateHeightTestHostActivity.current.get()) }
         val ime = main { requireNotNull(service()) }
         ime.userDictionaryRepository.insert(UserWord(word = "東京でカフェ１２３ABC", reading = "てすと", posIndex = 0, posScore = -10_000))
+        var sourceLabel: String? = null
+        var rowWidth: Int? = null
         for (enabled in if (baseline) listOf(false) else listOf(false, true, false)) {
             prefs.edit().putBoolean("candidate_character_type_indicators_preference", enabled).commit()
             main { host.restartEditor() }
@@ -161,20 +209,25 @@ class CandidateLabelPresentationDeviceTest {
             } }
             capture(if (baseline) "baseline-mixed" else if (enabled) "mixed-on" else "mixed-off")
             main {
-                val recycler = WindowInspector.getGlobalWindowViews().firstNotNullOf { root ->
-                    root.findViewById<androidx.recyclerview.widget.RecyclerView>(id("suggestion_recycler_view"))
-                        ?.takeIf { list -> list.isShown && (0 until list.childCount).any {
-                            list.getChildAt(it).findViewById<TextView>(id("suggestion_item_text_view"))
-                                ?.text?.toString()?.trim() == "東京でカフェ１２３ABC"
-                        } }
-                }
-                val target = (0 until recycler.childCount).map(recycler::getChildAt).first {
-                    it.findViewById<TextView>(id("suggestion_item_text_view"))?.text?.toString()?.trim() == "東京でカフェ１２３ABC"
-                }
-                assertEquals("Mixed-form badges did not follow the switch", enabled,
-                    target.findViewById<TextView>(id("suggestion_item_type_text_view")).text.contains("・"))
-                check(target.performClick())
+                val target = mixedRow()
+                val label = target.findViewById<TextView>(id("suggestion_item_type_text_view")).text.toString()
+                assertFalse("Character names must not extend the row", label.contains("・"))
+                if (sourceLabel == null) { sourceLabel = label; rowWidth = target.width }
+                assertEquals(sourceLabel, label)
+                assertEquals("Indicators changed the candidate width", rowWidth, target.width)
             }
+            if (enabled && !baseline) {
+                val group = CandidateIndicatorGroup.KATAKANA
+                val color = if (dark) 0xffff80ab.toInt() else 0xffc2185b.toInt()
+                prefs.edit().putString(CandidateIndicatorSettings.lineKey(group), "dashed")
+                    .putInt(CandidateIndicatorSettings.colorKey(group, dark), color).commit()
+                await("Custom style was not rebound on the existing candidate") { bodyHasColor(color) }
+                assertEquals("Composition changed while changing styles", "てすと", main { host.editor.text.toString() })
+                capture("mixed-custom")
+                CandidateIndicatorSettings.reset(prefs)
+                await("Default style did not return") { !bodyHasColor(color) }
+            }
+            main { check(mixedRow().performClick()) }
             await("Displayed text was not committed") { host.editor.text.toString() == "東京でカフェ１２３ABC" }
         }
         main { host.restartEditor() }
@@ -274,6 +327,43 @@ class CandidateLabelPresentationDeviceTest {
                         list?.let(::containsTitle) == true
                     }
                     capture(name)
+                    main {
+                        val fragment = navHost?.childFragmentManager?.primaryNavigationFragment as PreferenceFragmentCompat
+                        val route = requireNotNull(fragment.findPreference<androidx.preference.Preference>("candidate_indicator_style_settings"))
+                        check(requireNotNull(route.onPreferenceClickListener).onPreferenceClick(route))
+                    }
+                    var stylesFragment: CandidateIndicatorPreferenceFragment? = null
+                    await("Style settings did not open from $name") {
+                        stylesFragment = navHost?.childFragmentManager?.primaryNavigationFragment as? CandidateIndicatorPreferenceFragment
+                        stylesFragment?.findPreference<androidx.preference.Preference>("candidate_indicator_preview") != null &&
+                            WindowInspector.getGlobalWindowViews().any { it.findViewById<View>(id("candidate_indicator_preview_light"))?.isShown == true }
+                    }
+                    capture(if (name == "settings-new") "style-settings-default" else "style-settings-legacy")
+                    if (name == "settings-new") {
+                        val fragment = requireNotNull(stylesFragment)
+                        main { fragment.onDisplayPreferenceDialog(requireNotNull(fragment.findPreference<androidx.preference.ListPreference>(
+                            CandidateIndicatorSettings.lineKey(CandidateIndicatorGroup.KATAKANA)))) }
+                        var choices: android.widget.ListView? = null
+                        await("Line style choices did not open") {
+                            fun find(view: View): android.widget.ListView? = if (view is android.widget.ListView && view.adapter?.count == 5) view
+                                else (view as? android.view.ViewGroup)?.let { group -> (0 until group.childCount).firstNotNullOfOrNull { find(group.getChildAt(it)) } }
+                            choices = WindowInspector.getGlobalWindowViews().firstNotNullOfOrNull(::find)
+                            choices?.isShown == true
+                        }
+                        main { requireNotNull(choices).let { list -> check(list.performItemClick(list.getChildAt(3), 3, list.adapter.getItemId(3))) } }
+                        await("Line style was not saved") { CandidateIndicatorSettings.read(prefs).katakana.line == CandidateIndicatorLineStyle.DASHED }
+                        selectColor(fragment, dark = false, index = 7)
+                        selectColor(fragment, dark = true, index = 8)
+                        assertEquals(0xff2196f3.toInt(), CandidateIndicatorSettings.read(prefs).katakana.lightColor)
+                        assertEquals(0xffe91e63.toInt(), CandidateIndicatorSettings.read(prefs).katakana.darkColor)
+                        capture("style-settings-custom")
+                        main {
+                            val reset = requireNotNull(fragment.findPreference<androidx.preference.Preference>("candidate_indicator_reset"))
+                            check(requireNotNull(reset.onPreferenceClickListener).onPreferenceClick(reset))
+                        }
+                        await("Reset did not restore defaults") { CandidateIndicatorSettings.read(prefs) == CandidateIndicatorStyles() }
+                        assertTrue(prefs.getBoolean("candidate_character_type_indicators_preference", false))
+                    }
                 }
             } finally {
                 main { navHost?.activity?.finish() }

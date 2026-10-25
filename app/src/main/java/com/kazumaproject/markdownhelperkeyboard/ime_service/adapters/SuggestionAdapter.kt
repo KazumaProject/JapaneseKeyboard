@@ -402,6 +402,14 @@ class SuggestionAdapter internal constructor(
     private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showCharacterIndicators: Boolean = false
+    private var characterStyles = CandidateIndicatorStyles()
+
+    fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
+        if (characterStyles == styles) return
+        characterStyles = styles
+        notifyDataSetChanged()
+    }
+
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
 
@@ -441,6 +449,7 @@ class SuggestionAdapter internal constructor(
         showCandidateYomiForLiveConversion = source.showCandidateYomiForLiveConversion
         setShowDictionaryCandidateLabels(source.showDictionaryCandidateLabels)
         setShowCharacterIndicators(source.showCharacterIndicators)
+        setCharacterIndicatorStyles(source.characterStyles)
         candidateEmptyDrawableColor = source.candidateEmptyDrawableColor
         candidateEmptyDrawableTextColor = source.candidateEmptyDrawableTextColor
         showCustomTab = false
@@ -1537,7 +1546,7 @@ class SuggestionAdapter internal constructor(
                 holder.formulaView.setFormulaTextColor(if (selected) colors.selectionText else ink)
                 (holder.text as CandidateCharacterTextView).setCharacterIndicators(
                     candidateText.text.toString(), showCharacterIndicators && !holder.formulaView.isVisible,
-                    selected = selected
+                    selected = selected, styles = characterStyles
                 )
             }
             root.findViewById<View>(R.id.candidate_divider)?.apply {
@@ -2189,7 +2198,7 @@ class SuggestionAdapter internal constructor(
 
         val displayedBody = if (suggestion.type == 15.toByte()) readingCorrectionString.first else suggestion.string
         (holder.text as CandidateCharacterTextView).setCharacterIndicators(
-            displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition
+            displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition, styles = characterStyles
         )
         holder.typeText.text = candidateLabelPresentation(
             holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterIndicators, displayedBody
