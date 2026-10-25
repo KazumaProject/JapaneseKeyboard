@@ -9,4 +9,8 @@ data class CandidateItem(
     val formulaSource: String? = null,
     /** Commit/display fallback kept so a renderer failure never loses the candidate text. */
     val formulaFallbackText: String? = null,
+    /** Localized supplementary labels, prepared by the app renderer. */
+    val label: String = "",
+    /** Alternate label when character indicators are enabled; allows rebinding existing rows. */
+    val characterLabel: String = label,
 )

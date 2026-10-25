@@ -1,0 +1,54 @@
+<resources>
+    <string name="candidate_character_indicators_title">Distinguish candidate character forms</string>
+    <string name="candidate_character_indicators_summary">Underline katakana, full-width and half-width characters without adding labels. Hiragana stays undecorated. Works independently of live conversion.</string>
+    <string name="candidate_character_hiragana">Hira</string>
+    <string name="candidate_character_katakana">Kana</string>
+    <string name="candidate_character_full_width">Full</string>
+    <string name="candidate_character_half_width">Half</string>
+    <string name="candidate_character_half_katakana">Half kana</string>
+    <string name="candidate_label_partial">[Part]</string>
+    <string name="candidate_label_half_width">[Half]</string>
+    <string name="candidate_label_full_width">[Full]</string>
+    <string name="candidate_label_date">[Date]</string>
+    <string name="candidate_label_reading">[Read]</string>
+    <string name="candidate_label_user">[User]</string>
+    <string name="candidate_label_learned">[Learned]</string>
+    <string name="candidate_label_template">[Template]</string>
+    <string name="candidate_label_macro">[Macro]</string>
+    <string name="candidate_label_correction">[Corrected]</string>
+    <string name="candidate_label_ai">[AI]</string>
+    <string name="candidate_label_translation">[Translated]</string>
+    <string name="candidate_indicator_settings">Character underline styles and colors</string>
+    <string name="candidate_indicator_settings_summary">Customize katakana, full-width, half-width and half-width katakana.</string>
+    <string name="candidate_indicator_katakana">Katakana</string>
+    <string name="candidate_indicator_full_width">Full-width letters, numbers and symbols</string>
+    <string name="candidate_indicator_half_width">Half-width letters, numbers and symbols</string>
+    <string name="candidate_indicator_half_katakana">Half-width katakana</string>
+    <string name="candidate_indicator_line">Line style</string>
+    <string name="candidate_indicator_solid">Solid</string>
+    <string name="candidate_indicator_double">Double</string>
+    <string name="candidate_indicator_dotted">Dotted</string>
+    <string name="candidate_indicator_dashed">Dashed</string>
+    <string name="candidate_indicator_none">Hidden</string>
+    <string name="candidate_indicator_color_light">Light theme color</string>
+    <string name="candidate_indicator_color_dark">Dark theme color</string>
+    <string name="candidate_indicator_standard">Use default</string>
+    <string name="candidate_indicator_standard_color">Default (%1$s)</string>
+    <string name="candidate_indicator_reset">Reset all underline styles and colors</string>
+    <string name="candidate_indicator_preview">Preview</string>
+    <string name="candidate_indicator_example">かな カナ ＡＢＣ ABC ｶﾅ</string>
+    <string-array name="candidate_indicator_line_titles">
+        <item>@string/candidate_indicator_solid</item>
+        <item>@string/candidate_indicator_double</item>
+        <item>@string/candidate_indicator_dotted</item>
+        <item>@string/candidate_indicator_dashed</item>
+        <item>@string/candidate_indicator_none</item>
+    </string-array>
+    <string-array name="candidate_indicator_line_values">
+        <item>solid</item>
+        <item>double</item>
+        <item>dotted</item>
+        <item>dashed</item>
+        <item>none</item>
+    </string-array>
+</resources>
