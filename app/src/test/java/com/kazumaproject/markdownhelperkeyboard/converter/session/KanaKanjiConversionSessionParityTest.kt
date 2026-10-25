@@ -6,6 +6,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunset
 import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
@@ -100,7 +101,10 @@ class KanaKanjiConversionSessionParityTest {
                         }
                         assertTrue("Missing $correctedReading: $backend/$bunsetsu/$mode/both=$both: " +
                             result.candidates.map { it.string to it.yomi }, candidate != null)
-                        val path = result.candidateSegmentsByString[candidate!!.string].orEmpty()
+                        val expectedMask = if (omission) ConversionCorrection.OMISSION else ConversionCorrection.JAPANESE_FLICK
+                        assertTrue("Missing correction provenance: $candidate", candidate!!.correctionMask and expectedMask != 0)
+                        assertTrue("N-best metadata must be captured", result.bestNBestCandidate != null)
+                        val path = result.candidateSegmentsByString[candidate.string].orEmpty()
                         assertTrue("Corrected candidate needs a full input path", path.isNotEmpty())
                         assertEquals(0, path.first().inputStart)
                         assertEquals(input.length, path.last().inputEnd)
