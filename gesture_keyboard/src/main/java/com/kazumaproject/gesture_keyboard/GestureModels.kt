@@ -1,15 +1,16 @@
 package com.kazumaproject.gesture_keyboard
 
+import android.content.Context
+import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+
 data class GesturePoint(val x: Float, val y: Float)
 enum class GestureSide { LEFT, RIGHT }
-enum class GestureCommand {
-    DELETE, SPACE, CONVERT, COMMIT, ENTER, CURSOR_LEFT, CURSOR_RIGHT,
-    DAKUTEN, HANDAKUTEN, SMALL_KANA, NEXT_KEYBOARD
-}
 sealed class GestureOutput {
     data class Reading(val text: String) : GestureOutput()
     data class LiteralText(val text: String) : GestureOutput()
-    data class Command(val action: GestureCommand) : GestureOutput()
+    data class Romaji(val text: String) : GestureOutput()
+    data class Command(val action: KeyAction) : GestureOutput()
 }
 data class GestureEntry(val id: String, val output: GestureOutput, val samples: List<List<GesturePoint>>) {
     fun validate() {
@@ -19,7 +20,8 @@ data class GestureEntry(val id: String, val output: GestureOutput, val samples: 
                 output.text.singleOrNull()?.let { it in '\u3041'..'\u3096' || it in "ー、。" } == true)
             is GestureOutput.LiteralText -> require(output.text.codePointCount(0, output.text.length) == 1 &&
                 output.text.none { it.isISOControl() })
-            is GestureOutput.Command -> Unit
+            is GestureOutput.Romaji -> require(output.text.isNotEmpty() && output.text.all { it in 'a'..'z' || it in 'A'..'Z' })
+            is GestureOutput.Command -> require(KeyActionMapper.fromKeyAction(output.action) != null)
         }
         samples.forEach { points ->
             require(points.size in 2..512 && points.all { it.x.isFinite() && it.y.isFinite() && kotlin.math.abs(it.x) <= 100000 && kotlin.math.abs(it.y) <= 100000 })
@@ -27,25 +29,67 @@ data class GestureEntry(val id: String, val output: GestureOutput, val samples: 
         }
     }
 }
-data class GestureSet(val id: String, val name: String, val entries: List<GestureEntry>, val builtIn: Boolean = false) {
+data class GestureSet(val id: String, val name: String, val entries: List<GestureEntry>, val builtIn: Boolean = false, val isRomaji: Boolean = false) {
     fun validate() {
         require(id.isNotBlank() && name.isNotBlank() && name.length <= 100 && entries.size <= 256)
         require(entries.map { it.id }.distinct().size == entries.size)
         entries.forEach { it.validate() }
     }
 }
-data class GestureSessionState(
-    val leftSetId: String = GesturePresets.KANA,
-    val rightSetId: String = GesturePresets.DIGITS,
-    val leftUppercase: Boolean = false,
-    val rightUppercase: Boolean = false
-) {
-    fun setId(side: GestureSide) = if (side == GestureSide.LEFT) leftSetId else rightSetId
-    fun uppercase(side: GestureSide) = if (side == GestureSide.LEFT) leftUppercase else rightUppercase
-    fun withSet(side: GestureSide, id: String) = if (side == GestureSide.LEFT) copy(leftSetId = id) else copy(rightSetId = id)
-    fun toggleCase(side: GestureSide) = if (side == GestureSide.LEFT) copy(leftUppercase = !leftUppercase) else copy(rightUppercase = !rightUppercase)
+/** Bounds are relative to the drawing canvas, excluding the special-key columns. */
+data class GestureBounds(val x: Float, val y: Float, val width: Float, val height: Float) {
+    fun valid() = listOf(x, y, width, height).all { it.isFinite() } &&
+        x >= 0f && y >= 0f && width >= .2f && height >= .25f &&
+        x + width <= 1.00001f && y + height <= 1.00001f
+    fun overlaps(other: GestureBounds) = x < other.x + other.width - .00001f &&
+        x + width > other.x + .00001f && y < other.y + other.height - .00001f &&
+        y + height > other.y + .00001f
 }
-data class GestureControlKey(val id: String, val action: GestureCommand, val labelOverride: String? = null)
+data class GesturePadState(
+    val id: String,
+    val setId: String,
+    val bounds: GestureBounds,
+    val uppercase: Boolean = false,
+    val shift: Boolean = false,
+    val direct: Boolean = false,
+    val romajiOverride: Boolean? = null
+)
+data class GestureSessionState(
+    val pads: List<GesturePadState> = defaults(2),
+    val activePadId: String = pads.first().id
+) {
+    fun validate() {
+        require(pads.size in 1..4 && pads.map { it.id }.distinct().size == pads.size)
+        require(pads.all { it.id.isNotBlank() && it.setId.isNotBlank() && it.bounds.valid() })
+        require(pads.indices.all { i -> (i + 1 until pads.size).none { pads[i].bounds.overlaps(pads[it].bounds) } })
+        require(pads.any { it.id == activePadId })
+    }
+    fun activePad() = pads.firstOrNull { it.id == activePadId } ?: pads.first()
+    fun update(id: String, transform: (GesturePadState) -> GesturePadState) =
+        copy(pads = pads.map { if (it.id == id) transform(it) else it })
+    fun withSet(id: String, set: String) = update(id) { it.copy(setId = set, shift = false, romajiOverride = null) }
+    fun withCount(count: Int): GestureSessionState {
+        require(count in 1..4)
+        val next = defaults(count).mapIndexed { index, default ->
+            pads.getOrNull(index)?.copy(bounds = default.bounds) ?: default
+        }
+        return copy(pads = next, activePadId = activePadId.takeIf { id -> next.any { it.id == id } } ?: next.first().id)
+    }
+    companion object {
+        fun defaults(count: Int): List<GesturePadState> {
+            require(count in 1..4)
+            val bounds = when (count) {
+                1 -> listOf(GestureBounds(0f, 0f, 1f, 1f))
+                2 -> listOf(GestureBounds(0f, 0f, .5f, 1f), GestureBounds(.5f, 0f, .5f, 1f))
+                3 -> listOf(GestureBounds(0f, 0f, .5f, .5f), GestureBounds(.5f, 0f, .5f, .5f), GestureBounds(0f, .5f, 1f, .5f))
+                else -> listOf(GestureBounds(0f, 0f, .5f, .5f), GestureBounds(.5f, 0f, .5f, .5f), GestureBounds(0f, .5f, .5f, .5f), GestureBounds(.5f, .5f, .5f, .5f))
+            }
+            val sets = listOf(GesturePresets.KANA, GesturePresets.DIGITS, GesturePresets.LATIN, GesturePresets.ROMAJI)
+            return bounds.mapIndexed { index, rect -> GesturePadState("pad_${index + 1}", sets[index], rect) }
+        }
+    }
+}
+data class GestureControlKey(val id: String, val action: KeyAction, val labelOverride: String? = null)
 data class GestureControlLayout(
     val leftKeys: List<GestureControlKey> = defaults(GestureSide.LEFT),
     val rightKeys: List<GestureControlKey> = defaults(GestureSide.RIGHT)
@@ -72,41 +116,25 @@ data class GestureControlLayout(
     companion object {
         private fun defaults(side: GestureSide): List<GestureControlKey> {
             val commands = if (side == GestureSide.LEFT)
-                listOf(GestureCommand.DAKUTEN, GestureCommand.HANDAKUTEN, GestureCommand.SMALL_KANA, GestureCommand.NEXT_KEYBOARD)
-            else listOf(GestureCommand.DELETE, GestureCommand.SPACE, GestureCommand.CONVERT, GestureCommand.ENTER)
-            return commands.map { GestureControlKey("default_" + it.name, it) }
+                listOf(KeyAction.ToggleDakutenOnly, KeyAction.ToggleHandakutenOnly, KeyAction.ToggleDakuten, KeyAction.SwitchToNextIme)
+            else listOf(KeyAction.Delete, KeyAction.Space, KeyAction.Convert, KeyAction.Enter)
+            return commands.map { GestureControlKey("default_" + KeyActionMapper.fromKeyAction(it), it) }
         }
     }
 }
 
 object GestureLabels {
-    fun japanese(language: String) = language == "ja"
-    fun command(command: GestureCommand, ja: Boolean): String = when (command) {
-        GestureCommand.DELETE -> if (ja) "削除" else "Delete"
-        GestureCommand.SPACE -> if (ja) "空白" else "Space"
-        GestureCommand.CONVERT -> if (ja) "変換" else "Convert"
-        GestureCommand.COMMIT -> if (ja) "確定" else "Commit"
-        GestureCommand.ENTER -> "Enter"
-        GestureCommand.CURSOR_LEFT -> "←"
-        GestureCommand.CURSOR_RIGHT -> "→"
-        GestureCommand.DAKUTEN -> "゛"
-        GestureCommand.HANDAKUTEN -> "゜"
-        GestureCommand.SMALL_KANA -> if (ja) "小書き" else "Small"
-        GestureCommand.NEXT_KEYBOARD -> if (ja) "次KB" else "Next KB"
-    }
-    fun glyph(command: GestureCommand): String = when (command) {
-        GestureCommand.DELETE -> "⌫"
-        GestureCommand.SPACE -> "␣"
-        GestureCommand.CONVERT -> "変"
-        GestureCommand.COMMIT -> "✓"
-        GestureCommand.ENTER -> "↵"
-        GestureCommand.NEXT_KEYBOARD -> "⌨"
-        GestureCommand.SMALL_KANA -> "小"
-        else -> command(command, true)
-    }
-    fun output(output: GestureOutput, ja: Boolean) = when (output) {
+    fun command(action: KeyAction, context: Context): String =
+        KeyActionMapper.getDisplayActions(context).firstOrNull { it.action == action || (it.action is KeyAction.MoveToCustomKeyboard && action is KeyAction.MoveToCustomKeyboard) }?.displayName
+            ?: when (action) {
+                is KeyAction.InputText -> action.text
+                is KeyAction.Text -> action.text
+                else -> KeyActionMapper.fromKeyAction(action).orEmpty()
+            }
+    fun output(output: GestureOutput, context: Context) = when (output) {
         is GestureOutput.Reading -> output.text
         is GestureOutput.LiteralText -> output.text
-        is GestureOutput.Command -> command(output.action, ja)
+        is GestureOutput.Romaji -> output.text
+        is GestureOutput.Command -> command(output.action, context)
     }
 }

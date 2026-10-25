@@ -11762,6 +11762,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val gestureCandidateResults = MutableStateFlow<Pair<String, List<Candidate>>?>(null)
 
     private fun cancelGestureInputs() {
+        gestureRomajiComposition = false
         gestureInputQueue.cancel()
         mainLayoutBinding?.gestureView?.cancelInput()
         floatingKeyboardBinding?.gestureViewFloating?.cancelInput()
@@ -11770,6 +11771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun configureGestureView(view: GestureKeyboardView) {
         val preferences = GesturePreferences(this)
         view.dialogToken = { mainLayoutBinding?.root?.windowToken }
+        view.menuAnchor = { mainLayoutBinding?.root ?: view }
         view.configure(preferences.sets(), preferences.session(), preferences.layout(), preferences.showGuide(), preferences.maxDistance())
         val dark = currentNightMode == Configuration.UI_MODE_NIGHT_YES
         val custom = keyboardThemeMode == "custom"
@@ -11787,9 +11789,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         view.onOutput = { output ->
-            enqueueGestureAction(view) { dispatchGestureOutput(output) }
+            enqueueGestureAction(view) { dispatchGestureOutput(view, output) }
         }
-        view.onCommand = { command -> enqueueGestureAction(view) { dispatchGestureCommand(command) } }
+        view.onCommand = { command -> enqueueGestureAction(view) { dispatchGestureCommand(view, command) } }
+        view.onBeforeStateChange = { enqueueGestureAction(view) { flushGestureRomaji() } }
         view.onOpenSettings = { cancelGestureInputs(); launchSettingsActivity("gesture") }
     }
 
@@ -11802,21 +11805,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
-    private suspend fun dispatchGestureOutput(output: GestureOutput): Boolean {
+    private var gestureRomajiComposition = false
+
+    private fun flushGestureRomaji() {
+        if (!gestureRomajiComposition || isHenkan.get()) return
+        val before = inputString.value
+        val after = if (isDefaultRomajiHenkanMap) romajiConverter?.flush(before)?.first ?: before
+            else customRomajiScreenConverter?.flush(before) ?: before
+        if (before != after) {
+            gestureCandidateResults.value = null
+            _inputString.value = after
+            setComposingText(after + stringInTail.get(), 1)
+        }
+        gestureRomajiComposition = false
+    }
+
+    private suspend fun dispatchGestureOutput(view: GestureKeyboardView, output: GestureOutput): Boolean {
         if (mainLayoutBinding == null) return false
-        if (output is GestureOutput.Command) { dispatchGestureCommand(output.action); return true }
+        if (output is GestureOutput.Command) { dispatchGestureCommand(view, output.action); return true }
         endCursorSelectionForInput()
-        if (isHenkan.get()) dispatchGestureCommand(GestureCommand.COMMIT)
+        if (isHenkan.get()) dispatchGestureCommand(view, KeyAction.Confirm)
         when (output) {
             is GestureOutput.Reading -> {
+                flushGestureRomaji()
                 setCurrentInputModeForSession(InputMode.ModeJapanese)
                 if (!dispatchDirectTextIfNeeded(output.text)) {
                     gestureCandidateResults.value = null
                     _inputString.value += output.text
                 }
             }
+            is GestureOutput.Romaji -> {
+                if (dispatchDirectTextIfNeeded(output.text)) return true
+                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                gestureRomajiComposition = true
+                gestureCandidateResults.value = null
+                val next = inputString.value + output.text
+                _inputString.value = if (isDefaultRomajiHenkanMap) romajiConverter?.convertCustomLayout(next) ?: next
+                    else customRomajiScreenConverter?.convert(next) ?: next
+            }
             is GestureOutput.LiteralText -> {
-                if (inputString.value.isNotEmpty()) dispatchGestureCommand(GestureCommand.COMMIT)
+                flushGestureRomaji()
+                if (inputString.value.isNotEmpty()) dispatchGestureCommand(view, KeyAction.Confirm)
                 setCurrentInputModeForSession(InputMode.ModeEnglish)
                 if (!dispatchDirectTextIfNeeded(output.text)) commitText(output.text, 1)
             }
@@ -11825,50 +11854,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
-    private suspend fun dispatchGestureCommand(command: GestureCommand) {
+    private suspend fun dispatchGestureCommand(view: GestureKeyboardView, action: KeyAction) {
         val main = mainLayoutBinding ?: return
+        if (action !in setOf(KeyAction.Delete, KeyAction.DoNothing, KeyAction.ShiftKey, KeyAction.CapLockKey)) flushGestureRomaji()
         val text = inputString.value
-        val candidates = suggestionAdapter?.suggestions ?: emptyList()
-        when (command) {
-            GestureCommand.DELETE -> handleDeleteKeyTap(text, candidates)
-            GestureCommand.CONVERT -> {
-                fun convert(reading: String, matching: List<Candidate>) {
-                    val floating = floatingKeyboardBinding
-                    if (isKeyboardFloatingMode == true && floating != null)
-                        handleSpaceKeyClickFloating(false, reading, matching, floating)
-                    else handleSpaceKeyClick(false, reading, matching, main)
-                }
-                if (text.isBlank() || isHenkan.get() || suppressSuggestions || currentInputModeForSession != InputMode.ModeJapanese) {
-                    convert(text, candidates)
-                } else {
-                    val connection = currentInputConnection
-                    val matching = awaitGestureCandidates(text, inputString, gestureCandidateResults)
-                    if (currentInputConnection !== connection || inputString.value != text ||
-                        qwertyMode.value != TenKeyQWERTYMode.Gesture || isHenkan.get()) return
-                    if (!matching.isNullOrEmpty()) convert(text, matching)
-                }
-            }
-            GestureCommand.COMMIT -> if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, main, text)
-            GestureCommand.ENTER -> if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, main, text) else handleEmptyInputEnterKey(main)
-            GestureCommand.SPACE -> {
-                if (text.isNotEmpty()) handleNonEmptyInputEnterKey(candidates, main, text)
-                if (!dispatchDirectSpaceIfNeeded()) commitText(" ", 1)
-            }
-            GestureCommand.CURSOR_LEFT -> handleLeftCursor(GestureType.Tap, text)
-            GestureCommand.CURSOR_RIGHT -> actionInRightKeyPressed(GestureType.Tap, text)
-            GestureCommand.NEXT_KEYBOARD -> switchNextKeyboard()
-            GestureCommand.DAKUTEN, GestureCommand.HANDAKUTEN, GestureCommand.SMALL_KANA -> {
-                val edit = when (command) {
-                    GestureCommand.DAKUTEN -> KanaEdit.DAKUTEN
-                    GestureCommand.HANDAKUTEN -> KanaEdit.HANDAKUTEN
-                    else -> KanaEdit.SMALL_KANA
-                }
-                KanaModifier.apply(text, edit)?.let {
-                    gestureCandidateResults.value = null
-                    _inputString.value = it
-                }
-            }
+        if (action in setOf(KeyAction.Convert, KeyAction.Space, KeyAction.ForceHalfWidthSpace, KeyAction.ForceFullWidthSpace) &&
+            text.isNotBlank() && !isHenkan.get() && !suppressSuggestions && currentInputModeForSession == InputMode.ModeJapanese) {
+            val connection = currentInputConnection
+            val matching = awaitGestureCandidates(text, inputString, gestureCandidateResults)
+            if (currentInputConnection !== connection || inputString.value != text ||
+                qwertyMode.value != TenKeyQWERTYMode.Gesture || isHenkan.get() || matching.isNullOrEmpty()) return
         }
+        dispatchSharedKeyboardAction(action, false, main,
+            isKeyboardFloatingMode == true && floatingKeyboardBinding != null, gestureView = view)
     }
 
     private var morseRomajiComposition = false
@@ -16219,490 +16217,503 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
-                if (deferCursorInput { onAction(action, isFlick) }) return
-                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
-                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
-                activateSplitView(flickView)
-                if (isKeyboardLayoutEditModeActive()) return
-                finishCustomToggleForAction()
-                if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
+                dispatchSharedKeyboardAction(action, isFlick, mainView, isFloatingView, flickView)
+            }
+        })
+    }
 
-                Timber.d("onAction: $action $isFlick")
-                if (!shouldPreserveDeleteHistoryForAction(action)) {
-                    clearDeleteBufferWithView()
-                }
-                when (action) {
-                    KeyAction.DoNothing -> Unit
-                    is KeyAction.Text -> {
-                        val text = action.text
-                        Timber.d("onAction Text: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
-                        when (qwertyMode.value) {
-                            TenKeyQWERTYMode.Custom -> {
-                                if (text.isEmpty()) return
-                                val shiftedText = applyCustomLayoutShiftAndCapLock(text)
-                                if (dispatchDirectTextIfNeeded(shiftedText)) {
-                                    consumeCustomKeyboardOneShotShift()
-                                    return
-                                }
-                                if (isCustomLayoutDirectMode) {
-                                    finishComposingText()
-                                    setComposingText("", 0)
-                                    commitText(shiftedText, 1)
-                                    consumeCustomKeyboardOneShotShift()
-                                    return
-                                }
-                                if (text.length == 1) {
-                                    if (isCustomLayoutRomajiMode) {
-                                        val insertString = inputString.value
-                                        val sb = StringBuilder()
-                                        sb.append(insertString).append(text)
-                                        romajiConverter?.let { converter ->
-                                            if (isDefaultRomajiHenkanMap) {
-                                                if (!isCustomLayoutShiftPressed && !isCustomLayoutCapLock) {
-                                                    _inputString.update {
-                                                        converter.convertCustomLayout(
-                                                            sb.toString()
-                                                        )
-                                                    }
-                                                } else {
-                                                    _inputString.update {
-                                                        applyCustomLayoutShiftAndCapLock(
-                                                            sb.toString()
-                                                        )
-                                                    }
-                                                }
+    /** Shared tap action path for Sumire, custom layouts and gesture controls. */
+    private fun dispatchSharedKeyboardAction(
+        action: KeyAction,
+        isFlick: Boolean,
+        mainView: MainLayoutBinding,
+        isFloatingView: Boolean,
+        flickView: FlickKeyboardView? = null,
+        gestureView: GestureKeyboardView? = null
+    ) {
+        if (deferCursorInput { dispatchSharedKeyboardAction(action, isFlick, mainView, isFloatingView, flickView, gestureView) }) return
+        if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
+        flickView?.let(::activateSplitView)
+        if (isKeyboardLayoutEditModeActive()) return
+        finishCustomToggleForAction()
+        if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
-                                            } else {
-                                                _inputString.update {
-                                                    applyCustomLayoutShiftAndCapLock(
-                                                        customRomajiScreenConverter?.convert(sb.toString())
-                                                            ?: sb.toString()
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        handleCustomKeyboardText(
-                                            shiftedText,
-                                            mainView,
-                                            isFlick
-                                        )
-                                    }
-
-                                } else {
-                                    if (isCustomKeyboardTwoWordsOutputEnable == true) {
-                                        finishComposingText()
-                                        setComposingText("", 0)
-                                        commitText(shiftedText, 1)
-                                    } else {
-                                        if (isCustomLayoutRomajiMode) {
-                                            val insertString = inputString.value
-                                            val sb = StringBuilder()
-                                            sb.append(insertString).append(shiftedText)
-                                            romajiConverter?.let { converter ->
-                                                if (isDefaultRomajiHenkanMap) {
-                                                    _inputString.update {
-                                                        converter.convertCustomLayout(sb.toString())
-                                                    }
-                                                } else {
-                                                    _inputString.update {
-                                                        customRomajiScreenConverter?.convert(sb.toString())
-                                                            ?: sb.toString()
-                                                    }
-                                                }
+        Timber.d("onAction: $action $isFlick")
+        if (!shouldPreserveDeleteHistoryForAction(action)) {
+            clearDeleteBufferWithView()
+        }
+        if (gestureView?.handlePadAction(action) == true) return
+        when (action) {
+            KeyAction.DoNothing -> Unit
+            is KeyAction.Text -> {
+                val text = action.text
+                Timber.d("onAction Text: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
+                when (qwertyMode.value) {
+                    TenKeyQWERTYMode.Custom -> {
+                        if (text.isEmpty()) return
+                        val shiftedText = applyCustomLayoutShiftAndCapLock(text)
+                        if (dispatchDirectTextIfNeeded(shiftedText)) {
+                            consumeCustomKeyboardOneShotShift()
+                            return
+                        }
+                        if (isCustomLayoutDirectMode) {
+                            finishComposingText()
+                            setComposingText("", 0)
+                            commitText(shiftedText, 1)
+                            consumeCustomKeyboardOneShotShift()
+                            return
+                        }
+                        if (text.length == 1) {
+                            if (isCustomLayoutRomajiMode) {
+                                val insertString = inputString.value
+                                val sb = StringBuilder()
+                                sb.append(insertString).append(text)
+                                romajiConverter?.let { converter ->
+                                    if (isDefaultRomajiHenkanMap) {
+                                        if (!isCustomLayoutShiftPressed && !isCustomLayoutCapLock) {
+                                            _inputString.update {
+                                                converter.convertCustomLayout(
+                                                    sb.toString()
+                                                )
                                             }
                                         } else {
-                                            val insertString = inputString.value
-                                            val sb = StringBuilder()
-                                            sb.append(insertString).append(shiftedText)
-                                            _inputString.update { sb.toString() }
+                                            _inputString.update {
+                                                applyCustomLayoutShiftAndCapLock(
+                                                    sb.toString()
+                                                )
+                                            }
+                                        }
+
+                                    } else {
+                                        _inputString.update {
+                                            applyCustomLayoutShiftAndCapLock(
+                                                customRomajiScreenConverter?.convert(sb.toString())
+                                                    ?: sb.toString()
+                                            )
                                         }
                                     }
                                 }
-                                consumeCustomKeyboardOneShotShift()
+                            } else {
+                                handleCustomKeyboardText(
+                                    shiftedText,
+                                    mainView,
+                                    isFlick
+                                )
                             }
 
-                            TenKeyQWERTYMode.Sumire -> {
-                                Timber.d("TenKeyQWERTYMode.Sumire: $text $isFlick")
-                                handleOnKeyForSumire(text, mainView, isFlick)
-                                updateSumireDakutenKeyForCurrentInput()
-                            }
-
-                            TenKeyQWERTYMode.Number -> {
-                                handleOnKeyForSumire(text, mainView, isFlick)
-                            }
-
-                            else -> {}
-                        }
-                    }
-
-                    is KeyAction.InputText -> {
-                        when (action.text) {
-                            "^_^" -> {
-                                val insertString = inputString.value
-                                Timber.d("InputText: emoji: $insertString")
-                                if (insertString.isNotEmpty()) {
+                        } else {
+                            if (isCustomKeyboardTwoWordsOutputEnable == true) {
+                                finishComposingText()
+                                setComposingText("", 0)
+                                commitText(shiftedText, 1)
+                            } else {
+                                if (isCustomLayoutRomajiMode) {
+                                    val insertString = inputString.value
                                     val sb = StringBuilder()
-                                    val c = insertString.last()
-                                    c.getDakutenFlickTop()?.let { dakutenChar ->
-                                        setStringBuilderForConvertStringInHiragana(
-                                            dakutenChar, sb, insertString
-                                        )
+                                    sb.append(insertString).append(shiftedText)
+                                    romajiConverter?.let { converter ->
+                                        if (isDefaultRomajiHenkanMap) {
+                                            _inputString.update {
+                                                converter.convertCustomLayout(sb.toString())
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                customRomajiScreenConverter?.convert(sb.toString())
+                                                    ?: sb.toString()
+                                            }
+                                        }
                                     }
                                 } else {
-                                    _keyboardSymbolViewState.value = SymbolKeyboardState(
-                                        isShown = !_keyboardSymbolViewState.value.isShown
-                                    )
-                                    stringInTail.set("")
-                                    finishComposingText()
-                                    setComposingText("", 0)
+                                    val insertString = inputString.value
+                                    val sb = StringBuilder()
+                                    sb.append(insertString).append(shiftedText)
+                                    _inputString.update { sb.toString() }
                                 }
                             }
-
-                            ":", "-" -> {
-                                if (dispatchDirectTextIfNeeded(action.text)) return
-                                val insertString = inputString.value
-                                val sb = StringBuilder()
-                                sb.append(insertString).append(action.text)
-                                _inputString.update {
-                                    sb.toString()
-                                }
-                            }
-
-                            "ひらがな小文字" -> {
-                                val insertString = inputString.value
-                                if (insertString.isEmpty()) return
-                                val sb = StringBuilder()
-                                val c = insertString.last()
-                                c.getDakutenFlickTop()?.let { dakutenChar ->
-                                    setStringBuilderForConvertStringInHiragana(
-                                        dakutenChar, sb, insertString
-                                    )
-                                }
-                            }
-
-                            "濁点" -> {
-                                val insertString = inputString.value
-                                if (insertString.isEmpty()) return
-                                val sb = StringBuilder()
-                                val c = insertString.last()
-                                c.getDakutenFlickLeft()?.let { dakutenChar ->
-                                    setStringBuilderForConvertStringInHiragana(
-                                        dakutenChar, sb, insertString
-                                    )
-                                }
-                            }
-
-                            "半濁点" -> {
-                                val insertString = inputString.value
-                                if (insertString.isEmpty()) return
-                                val sb = StringBuilder()
-                                val c = insertString.last()
-                                c.getDakutenFlickRight()?.let { dakutenChar ->
-                                    setStringBuilderForConvertStringInHiragana(
-                                        dakutenChar, sb, insertString
-                                    )
-                                }
-                            }
-
                         }
+                        consumeCustomKeyboardOneShotShift()
                     }
 
-                    KeyAction.SwitchToNextIme -> {
-                        if (!onKeyboardSwitchLongPressUp) {
-                            switchNextKeyboard()
-                            _inputString.update { "" }
+                    TenKeyQWERTYMode.Sumire -> {
+                        Timber.d("TenKeyQWERTYMode.Sumire: $text $isFlick")
+                        handleOnKeyForSumire(text, mainView, isFlick)
+                        updateSumireDakutenKeyForCurrentInput()
+                    }
+
+                    TenKeyQWERTYMode.Number -> {
+                        handleOnKeyForSumire(text, mainView, isFlick)
+                    }
+
+                    else -> {}
+                }
+            }
+
+            is KeyAction.InputText -> {
+                when (action.text) {
+                    "^_^" -> {
+                        val insertString = inputString.value
+                        Timber.d("InputText: emoji: $insertString")
+                        if (insertString.isNotEmpty()) {
+                            val sb = StringBuilder()
+                            val c = insertString.last()
+                            c.getDakutenFlickTop()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        } else {
+                            _keyboardSymbolViewState.value = SymbolKeyboardState(
+                                isShown = !_keyboardSymbolViewState.value.isShown
+                            )
+                            stringInTail.set("")
                             finishComposingText()
                             setComposingText("", 0)
                         }
                     }
 
-                    KeyAction.ChangeInputMode -> cycleFlickKeyboardInputMode()
-
-                    KeyAction.Delete -> {
+                    ":", "-" -> {
+                        if (dispatchDirectTextIfNeeded(action.text)) return
                         val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        handleDeleteKeyTap(insertString, suggestions)
-                        stopDeleteLongPress()
-                    }
-
-                    KeyAction.CommitAndInsertSpace -> {
-                        handleCommitAndInsertSpace()
-                    }
-
-                    KeyAction.ForceNewLine -> {
-                        val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (insertString.isEmpty()) {
-                            forceNewLine(mainView)
-                        } else {
-                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        val sb = StringBuilder()
+                        sb.append(insertString).append(action.text)
+                        _inputString.update {
+                            sb.toString()
                         }
                     }
 
-                    KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
+                    "ひらがな小文字" -> {
                         val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (insertString.isNotEmpty()) {
-                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
-                        } else {
-                            handleEmptyInputEnterKey(mainView)
-                        }
-                    }
-
-                    KeyAction.Convert, KeyAction.Space -> {
-                        if (shouldSuppressSpaceConvertTapAfterLongPress()) {
-                            return
-                        }
-                        val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (cursorMoveMode.value) {
-                            _cursorMoveMode.update { false }
-                        } else {
-                            if (!isSpaceKeyLongPressed) {
-                                if (isFlick && cycleFocusedBunsetsuCandidate(delta = -1)) {
-                                } else {
-                                    val isHankaku = hankakuPreference == true
-                                    if (isHankaku) {
-                                        if (isFlick) {
-                                            handleSpaceKeyClick(
-                                                false, insertString, suggestions, mainView
-                                            )
-                                        } else {
-                                            handleSpaceKeyClick(
-                                                true, insertString, suggestions, mainView
-                                            )
-                                        }
-                                    } else {
-                                        if (isFlick) {
-                                            handleSpaceKeyClick(
-                                                true, insertString, suggestions, mainView
-                                            )
-                                        } else {
-                                            handleSpaceKeyClick(
-                                                false, insertString, suggestions, mainView
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        isSpaceKeyLongPressed = false
-                    }
-
-                    KeyAction.MoveCursorLeft -> {
-                        val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (!leftCursorKeyLongKeyPressed.get()) {
-                            if (moveFocusedBunsetsuSegment(delta = -1)) {
-                            } else if (isHenkan.get()) {
-                                handleDeleteKeyInHenkan(suggestions, insertString)
-                            } else {
-                                handleLeftCursor(GestureType.Tap, insertString)
-                            }
-                        }
-                        cancelRightLongPress()
-                        cancelLeftLongPress()
-                    }
-
-                    KeyAction.MoveCursorRight -> {
-                        val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (!rightCursorKeyLongKeyPressed.get()) {
-                            if (moveFocusedBunsetsuSegment(delta = 1)) {
-                            } else if (isHenkan.get()) {
-                                handleJapaneseModeSpaceKey(
-                                    mainView, suggestions, insertString
-                                )
-                            } else {
-                                actionInRightKeyPressed(GestureType.Tap, insertString)
-                            }
-                        }
-                        cancelRightLongPress()
-                        cancelLeftLongPress()
-                    }
-
-                    KeyAction.Backspace -> {}
-                    KeyAction.Cut -> {
-                        cutAction()
-                    }
-                    KeyAction.Copy -> {
-                        copyAction()
-                    }
-
-                    KeyAction.Paste -> {
-                        pasteAction()
-                    }
-
-                    KeyAction.SelectAll -> {
-                        selectAllText()
-                    }
-
-                    KeyAction.SelectLeft -> {}
-                    KeyAction.SelectRight -> {}
-                    KeyAction.ShowEmojiKeyboard -> {
-                        toggleEmojiKeyboard()
-                    }
-
-                    KeyAction.ToggleCase -> {
-                        dakutenSmallActionForSumire()
-                    }
-
-                    KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire()
-                    }
-
-                    KeyAction.ToggleDakutenOnly -> {
-                        toggleDakutenOnlyForCustomKeyboard()
-                    }
-
-                    KeyAction.ToggleHandakutenOnly -> {
-                        toggleHandakutenOnlyForCustomKeyboard()
-                    }
-
-                    KeyAction.SwitchToEnglishLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.ENGLISH)
-
-                    KeyAction.SwitchToKanaLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.HIRAGANA)
-
-                    KeyAction.SwitchToNumberLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.SYMBOLS)
-
-                    KeyAction.ShiftKey -> {
-                        handleCustomKeyboardShiftTap()
-                    }
-
-                    KeyAction.SwitchDirectMode -> {
-                        isCustomLayoutDirectMode = !isCustomLayoutDirectMode
-                        persistCurrentCustomKeyboardInputModeIfEnabled()
-                        shortcutInputBehaviorOverride = null
-                        baselineInputBehavior = resolveBaselineInputBehavior()
-                        applyEffectiveInputBehavior("custom direct mode key")
-
-                        if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
-                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                                KeyAction.SwitchDirectMode,
-                                if (isCustomLayoutDirectMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
-                                else com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+                        if (insertString.isEmpty()) return
+                        val sb = StringBuilder()
+                        val c = insertString.last()
+                        c.getDakutenFlickTop()?.let { dakutenChar ->
+                            setStringBuilderForConvertStringInHiragana(
+                                dakutenChar, sb, insertString
                             )
                         }
                     }
 
-                    KeyAction.CapLockKey -> {
-                        handleCustomKeyboardCapsLockTap()
-                    }
-
-                    KeyAction.SwitchRomajiEnglish -> {
-                        isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
-                        persistCurrentCustomKeyboardInputModeIfEnabled()
-                        if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
-                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                                KeyAction.SwitchRomajiEnglish,
-                                if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
-                                else com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+                    "濁点" -> {
+                        val insertString = inputString.value
+                        if (insertString.isEmpty()) return
+                        val sb = StringBuilder()
+                        val c = insertString.last()
+                        c.getDakutenFlickLeft()?.let { dakutenChar ->
+                            setStringBuilderForConvertStringInHiragana(
+                                dakutenChar, sb, insertString
                             )
                         }
                     }
 
-                    KeyAction.MoveCustomKeyboardTab -> {
-                        scope.launch {
-                            if (customLayouts.isNotEmpty()) {
-                                val position =
-                                    (currentCustomKeyboardPosition + 1) % customLayouts.size
-                                selectCustomKeyboardTab(
-                                    index = position,
-                                    reason = CustomKeyboardSelectionReason.UserNextTab
-                                )
-                            }
-                        }
-                    }
-
-                    is KeyAction.MoveToCustomKeyboard -> {
-                        moveToCustomKeyboardByStableId(action.stableId)
-                    }
-
-                    KeyAction.ToggleKatakana -> {
-                        when (countToggleKatakana) {
-                            0 -> {
-                                _inputString.update {
-                                    it.hiraganaToKatakana()
-                                }
-                                countToggleKatakana++
-                            }
-
-                            1 -> {
-                                _inputString.update {
-                                    it.toHankakuKatakana()
-                                }
-                                countToggleKatakana++
-                            }
-
-                            2 -> {
-                                _inputString.update {
-                                    it.toHiragana()
-                                }
-                                countToggleKatakana = 0
-                            }
-                        }
-                    }
-
-                    KeyAction.DeleteUntilSymbol -> {
-                        if (isDeleteLeftFlickPreference == true) {
-                            val insertString = inputString.value
-                            deleteWordOrSymbolsBeforeCursor(insertString)
-                        }
-                    }
-
-                    KeyAction.DeleteAfterCursorUntilSymbol -> {
+                    "半濁点" -> {
                         val insertString = inputString.value
-                        deleteWordOrSymbolsAfterCursor(insertString)
-                    }
-
-                    KeyAction.DeleteAfterCursor -> {
-                        handleDeleteAfterCursor()
-                    }
-
-                    KeyAction.UndoLastDelete -> {
-                        if (isDeleteDownFlickPreference == true) {
-                            undoLastHistoryEntry()
+                        if (insertString.isEmpty()) return
+                        val sb = StringBuilder()
+                        val c = insertString.last()
+                        c.getDakutenFlickRight()?.let { dakutenChar ->
+                            setStringBuilderForConvertStringInHiragana(
+                                dakutenChar, sb, insertString
+                            )
                         }
                     }
 
-                    KeyAction.MoveCursorDown -> {
-                        val insertString = inputString.value
-                        if (cycleFocusedBunsetsuCandidate(delta = 1)) {
-                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                            moveCursorVertically(CursorDirection.DOWN)
-                        }
-                    }
-
-                    KeyAction.MoveCursorUp -> {
-                        val insertString = inputString.value
-                        if (cycleFocusedBunsetsuCandidate(delta = -1)) {
-                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                            moveCursorVertically(CursorDirection.UP)
-                        }
-                    }
-
-                    KeyAction.Cancel -> {}
-                    KeyAction.VoiceInput -> {
-                        startVoiceInput(mainView)
-                    }
-
-                    KeyAction.ForceHalfWidthSpace -> {
-                        handleForceHalfWidthSpaceOrConvert(
-                            mainView,
-                            floatingKeyboardBinding.takeIf { isFloatingView })
-                    }
-
-                    KeyAction.ForceFullWidthSpace -> {
-                        handleForceFullWidthSpaceOrConvert(
-                            mainView,
-                            floatingKeyboardBinding.takeIf { isFloatingView })
-                    }
-
-                    KeyAction.CommitAndInsertSpace -> {}
                 }
             }
-        })
+
+            KeyAction.SwitchToNextIme -> {
+                if (!onKeyboardSwitchLongPressUp) {
+                    switchNextKeyboard()
+                    _inputString.update { "" }
+                    finishComposingText()
+                    setComposingText("", 0)
+                }
+            }
+
+            KeyAction.ChangeInputMode -> cycleFlickKeyboardInputMode()
+
+            KeyAction.Delete -> {
+                val insertString = inputString.value
+                val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                handleDeleteKeyTap(insertString, suggestions)
+                stopDeleteLongPress()
+            }
+
+            KeyAction.CommitAndInsertSpace -> {
+                handleCommitAndInsertSpace()
+            }
+
+            KeyAction.ForceNewLine -> {
+                val insertString = inputString.value
+                val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                if (insertString.isEmpty()) {
+                    forceNewLine(mainView)
+                } else {
+                    handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                }
+            }
+
+            KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
+                val insertString = inputString.value
+                val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                if (insertString.isNotEmpty()) {
+                    handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                } else {
+                    handleEmptyInputEnterKey(mainView)
+                }
+            }
+
+            KeyAction.Convert, KeyAction.Space -> {
+                if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                    return
+                }
+                val insertString = inputString.value
+                val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                if (cursorMoveMode.value) {
+                    _cursorMoveMode.update { false }
+                } else {
+                    if (!isSpaceKeyLongPressed) {
+                        if (isFlick && cycleFocusedBunsetsuCandidate(delta = -1)) {
+                        } else {
+                            val isHankaku = hankakuPreference == true
+                            if (isHankaku) {
+                                if (isFlick) {
+                                    handleSpaceKeyClick(
+                                        false, insertString, suggestions, mainView
+                                    )
+                                } else {
+                                    handleSpaceKeyClick(
+                                        true, insertString, suggestions, mainView
+                                    )
+                                }
+                            } else {
+                                if (isFlick) {
+                                    handleSpaceKeyClick(
+                                        true, insertString, suggestions, mainView
+                                    )
+                                } else {
+                                    handleSpaceKeyClick(
+                                        false, insertString, suggestions, mainView
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                isSpaceKeyLongPressed = false
+            }
+
+            KeyAction.MoveCursorLeft -> {
+                val insertString = inputString.value
+                val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                if (!leftCursorKeyLongKeyPressed.get()) {
+                    if (moveFocusedBunsetsuSegment(delta = -1)) {
+                    } else if (isHenkan.get()) {
+                        handleDeleteKeyInHenkan(suggestions, insertString)
+                    } else {
+                        handleLeftCursor(GestureType.Tap, insertString)
+                    }
+                }
+                cancelRightLongPress()
+                cancelLeftLongPress()
+            }
+
+            KeyAction.MoveCursorRight -> {
+                val insertString = inputString.value
+                val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                if (!rightCursorKeyLongKeyPressed.get()) {
+                    if (moveFocusedBunsetsuSegment(delta = 1)) {
+                    } else if (isHenkan.get()) {
+                        handleJapaneseModeSpaceKey(
+                            mainView, suggestions, insertString
+                        )
+                    } else {
+                        actionInRightKeyPressed(GestureType.Tap, insertString)
+                    }
+                }
+                cancelRightLongPress()
+                cancelLeftLongPress()
+            }
+
+            KeyAction.Backspace -> {}
+            KeyAction.Cut -> {
+                cutAction()
+            }
+            KeyAction.Copy -> {
+                copyAction()
+            }
+
+            KeyAction.Paste -> {
+                pasteAction()
+            }
+
+            KeyAction.SelectAll -> {
+                selectAllText()
+            }
+
+            KeyAction.SelectLeft -> {}
+            KeyAction.SelectRight -> {}
+            KeyAction.ShowEmojiKeyboard -> {
+                toggleEmojiKeyboard()
+            }
+
+            KeyAction.ToggleCase -> {
+                dakutenSmallActionForSumire()
+            }
+
+            KeyAction.ToggleDakuten -> {
+                dakutenSmallActionForSumire()
+            }
+
+            KeyAction.ToggleDakutenOnly -> {
+                toggleDakutenOnlyForCustomKeyboard()
+            }
+
+            KeyAction.ToggleHandakutenOnly -> {
+                toggleHandakutenOnlyForCustomKeyboard()
+            }
+
+            KeyAction.SwitchToEnglishLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.ENGLISH)
+
+            KeyAction.SwitchToKanaLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.HIRAGANA)
+
+            KeyAction.SwitchToNumberLayout -> switchFlickKeyboardInputMode(KeyboardInputMode.SYMBOLS)
+
+            KeyAction.ShiftKey -> {
+                handleCustomKeyboardShiftTap()
+            }
+
+            KeyAction.SwitchDirectMode -> {
+                isCustomLayoutDirectMode = !isCustomLayoutDirectMode
+                persistCurrentCustomKeyboardInputModeIfEnabled()
+                shortcutInputBehaviorOverride = null
+                baselineInputBehavior = resolveBaselineInputBehavior()
+                applyEffectiveInputBehavior("custom direct mode key")
+
+                if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
+                    getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                        KeyAction.SwitchDirectMode,
+                        if (isCustomLayoutDirectMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
+                        else com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+                    )
+                }
+            }
+
+            KeyAction.CapLockKey -> {
+                handleCustomKeyboardCapsLockTap()
+            }
+
+            KeyAction.SwitchRomajiEnglish -> {
+                isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
+                persistCurrentCustomKeyboardInputModeIfEnabled()
+                if (splitController != null) scheduleSplitPresentation() else Handler(mainLooper).post {
+                    getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                        KeyAction.SwitchRomajiEnglish,
+                        if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
+                        else com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+                    )
+                }
+            }
+
+            KeyAction.MoveCustomKeyboardTab -> {
+                scope.launch {
+                    if (customLayouts.isNotEmpty()) {
+                        val position =
+                            (currentCustomKeyboardPosition + 1) % customLayouts.size
+                        selectCustomKeyboardTab(
+                            index = position,
+                            reason = CustomKeyboardSelectionReason.UserNextTab
+                        )
+                    }
+                }
+            }
+
+            is KeyAction.MoveToCustomKeyboard -> {
+                moveToCustomKeyboardByStableId(action.stableId)
+            }
+
+            KeyAction.ToggleKatakana -> {
+                when (countToggleKatakana) {
+                    0 -> {
+                        _inputString.update {
+                            it.hiraganaToKatakana()
+                        }
+                        countToggleKatakana++
+                    }
+
+                    1 -> {
+                        _inputString.update {
+                            it.toHankakuKatakana()
+                        }
+                        countToggleKatakana++
+                    }
+
+                    2 -> {
+                        _inputString.update {
+                            it.toHiragana()
+                        }
+                        countToggleKatakana = 0
+                    }
+                }
+            }
+
+            KeyAction.DeleteUntilSymbol -> {
+                if (isDeleteLeftFlickPreference == true) {
+                    val insertString = inputString.value
+                    deleteWordOrSymbolsBeforeCursor(insertString)
+                }
+            }
+
+            KeyAction.DeleteAfterCursorUntilSymbol -> {
+                val insertString = inputString.value
+                deleteWordOrSymbolsAfterCursor(insertString)
+            }
+
+            KeyAction.DeleteAfterCursor -> {
+                handleDeleteAfterCursor()
+            }
+
+            KeyAction.UndoLastDelete -> {
+                if (isDeleteDownFlickPreference == true) {
+                    undoLastHistoryEntry()
+                }
+            }
+
+            KeyAction.MoveCursorDown -> {
+                val insertString = inputString.value
+                if (cycleFocusedBunsetsuCandidate(delta = 1)) {
+                } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                    moveCursorVertically(CursorDirection.DOWN)
+                }
+            }
+
+            KeyAction.MoveCursorUp -> {
+                val insertString = inputString.value
+                if (cycleFocusedBunsetsuCandidate(delta = -1)) {
+                } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                    moveCursorVertically(CursorDirection.UP)
+                }
+            }
+
+            KeyAction.Cancel -> {}
+            KeyAction.VoiceInput -> {
+                startVoiceInput(mainView)
+            }
+
+            KeyAction.ForceHalfWidthSpace -> {
+                handleForceHalfWidthSpaceOrConvert(
+                    mainView,
+                    floatingKeyboardBinding.takeIf { isFloatingView })
+            }
+
+            KeyAction.ForceFullWidthSpace -> {
+                handleForceFullWidthSpaceOrConvert(
+                    mainView,
+                    floatingKeyboardBinding.takeIf { isFloatingView })
+            }
+
+            KeyAction.CommitAndInsertSpace -> {}
+        }
     }
 
     private fun handleCustomKeyboardShiftTap() {

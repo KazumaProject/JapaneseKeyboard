@@ -15,8 +15,9 @@ class GesturePreferences(context: Context) {
     fun session(): GestureSessionState {
         val state = read(SESSION, GestureSessionState(), GestureCodec::decodeSession)
         val ids = sets().map { it.id }
-        return state.copy(leftSetId = state.leftSetId.takeIf { it in ids } ?: GesturePresets.KANA,
-            rightSetId = state.rightSetId.takeIf { it in ids } ?: GesturePresets.DIGITS)
+        return state.copy(pads = state.pads.map { pad ->
+            if (pad.setId in ids) pad else pad.copy(setId = GesturePresets.KANA, romajiOverride = null)
+        })
     }
     fun showGuide() = runCatching { prefs.getBoolean("gesture_show_guide", true) }.getOrDefault(true)
     fun maxDistance() = runCatching { prefs.getInt("gesture_recognition_tolerance", 14) }.getOrDefault(14).coerceIn(6, 25) / 100f
@@ -37,17 +38,29 @@ class GesturePreferences(context: Context) {
     }
     fun deleteSet(id: String) {
         ensureReadable(SETS, GestureCodec::decodeSets)
+        ensureReadable(SESSION, GestureCodec::decodeSession)
         require(!id.startsWith("builtin_"))
         val state = session()
         prefs.edit().putString(SETS, GestureCodec.encodeSets(customSets().filterNot { it.id == id }))
-            .putString(SESSION, GestureCodec.encodeSession(state.copy(
-                leftSetId = if (state.leftSetId == id) GesturePresets.KANA else state.leftSetId,
-                rightSetId = if (state.rightSetId == id) GesturePresets.DIGITS else state.rightSetId))).apply()
+            .putString(SESSION, GestureCodec.encodeSession(state.copy(pads = state.pads.map { pad ->
+                if (pad.setId == id) pad.copy(setId = GesturePresets.KANA, romajiOverride = null) else pad
+            }))).apply()
     }
+
     fun saveSession(state: GestureSessionState) {
         ensureReadable(SESSION, GestureCodec::decodeSession)
-        require(listOf(state.leftSetId, state.rightSetId).all { id -> sets().any { it.id == id } })
+        state.validate()
+        require(state.pads.all { pad -> sets().any { it.id == pad.setId } })
         prefs.edit().putString(SESSION, GestureCodec.encodeSession(state)).apply()
+    }
+    fun saveConfiguration(layout: GestureControlLayout, state: GestureSessionState) {
+        ensureReadable(LAYOUT, GestureCodec::decodeLayout)
+        ensureReadable(SESSION, GestureCodec::decodeSession)
+        state.validate()
+        require(state.pads.all { pad -> sets().any { it.id == pad.setId } })
+        val layoutJson = GestureCodec.encodeLayout(layout)
+        val sessionJson = GestureCodec.encodeSession(state)
+        prefs.edit().putString(LAYOUT, layoutJson).putString(SESSION, sessionJson).apply()
     }
     fun saveLayout(layout: GestureControlLayout) {
         ensureReadable(LAYOUT, GestureCodec::decodeLayout)

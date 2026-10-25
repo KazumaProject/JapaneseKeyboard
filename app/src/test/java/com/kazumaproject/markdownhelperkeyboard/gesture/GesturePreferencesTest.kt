@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.gesture
 
+import com.kazumaproject.custom_keyboard.data.KeyAction
+
 import android.content.Context
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
@@ -26,30 +28,30 @@ class GesturePreferencesTest {
     @Before fun setup() { preferences.edit().clear().commit(); AppPreference.init(context); store = GesturePreferences(context) }
     @Test fun allSettingsBackupRestoresSamplesAssignmentsEmptySidesDuplicateActionsAndSelection() {
         store.saveSet(custom)
-        val left = listOf(GestureControlKey("one", GestureCommand.DELETE, "A"), GestureControlKey("two", GestureCommand.DELETE, "B"))
+        val left = listOf(GestureControlKey("one", KeyAction.Delete, "A"), GestureControlKey("two", KeyAction.Delete, "B"))
         store.saveLayout(GestureControlLayout(left, emptyList()))
-        store.saveSession(GestureSessionState("custom", GesturePresets.LATIN, rightUppercase = true))
+        store.saveSession(GestureSessionState().withSet("pad_1", "custom").withSet("pad_2", GesturePresets.LATIN).update("pad_2") { it.copy(uppercase = true) })
         val backup = AppPreference.exportAllToJson()
         preferences.edit().clear().commit()
         AppPreference.importAllFromJson(backup)
         val restored = GesturePreferences(context)
         assertEquals(listOf(custom), restored.customSets())
         assertEquals(GestureControlLayout(left, emptyList()), restored.layout())
-        assertEquals(GestureSessionState("custom", GesturePresets.LATIN, rightUppercase = true), restored.session())
+        assertEquals(GestureSessionState().withSet("pad_1", "custom").withSet("pad_2", GesturePresets.LATIN).update("pad_2") { it.copy(uppercase = true) }, restored.session())
     }
     @Test fun deletingSelectedCustomSetRepairsOnlyItsReferences() {
         store.saveSet(custom)
-        store.saveSession(GestureSessionState("custom", GesturePresets.LATIN))
+        store.saveSession(GestureSessionState().withSet("pad_1", "custom").withSet("pad_2", GesturePresets.LATIN))
         store.deleteSet("custom")
-        assertEquals(GesturePresets.KANA, store.session().leftSetId)
-        assertEquals(GesturePresets.LATIN, store.session().rightSetId)
+        assertEquals(GesturePresets.KANA, store.session().pads[0].setId)
+        assertEquals(GesturePresets.LATIN, store.session().pads[1].setId)
         assertTrue(store.customSets().isEmpty())
     }
     @Test fun corruptAndUnknownVersionsAreRetainedAndNotOverwritten() {
         val invalid = """{"version":99,"sets":[]}"""
         preferences.edit().putString(GesturePreferences.SETS, invalid).commit()
         assertTrue(store.invalidData())
-        assertEquals(3, store.sets().size)
+        assertEquals(4, store.sets().size)
         assertThrows(IllegalArgumentException::class.java) { store.saveSet(custom) }
         assertEquals(invalid, preferences.getString(GesturePreferences.SETS, null))
         val corrupt = """{"version":1,"left":[{"id":"same","action":"DELETE"}],"right":[{"id":"same","action":"SPACE"}]}"""

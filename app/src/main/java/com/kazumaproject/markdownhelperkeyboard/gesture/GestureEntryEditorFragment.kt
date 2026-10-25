@@ -10,13 +10,15 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.widget.doAfterTextChanged
 import androidx.navigation.fragment.findNavController
 import com.kazumaproject.gesture_keyboard.*
+import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import java.util.UUID
 
 class GestureEntryEditorFragment : GestureScreenFragment() {
     private val samples = mutableListOf<List<GesturePoint>>()
     private var outputType = 0
     private var outputText = ""
-    private var command = GestureCommand.DELETE
+    private var command: KeyAction = KeyAction.Delete
     private var replaceNext = false
     private var entryId = ""
     private lateinit var pad: GesturePadView
@@ -28,7 +30,7 @@ class GestureEntryEditorFragment : GestureScreenFragment() {
         entryId = state?.getString("entryId") ?: original?.id ?: UUID.randomUUID().toString()
         if (state != null) {
             outputType = state.getInt("type"); outputText = state.getString("text").orEmpty()
-            command = GestureCommand.valueOf(state.getString("command", GestureCommand.DELETE.name))
+            command = requireNotNull(KeyActionMapper.toKeyAction(state.getString("command", "Delete")))
             replaceNext = state.getBoolean("replace")
             repeat(state.getInt("samples")) { i -> state.getFloatArray("sample_" + i)?.let { values ->
                 samples.add(values.toList().chunked(2).map { GesturePoint(it[0], it[1]) })
@@ -38,6 +40,7 @@ class GestureEntryEditorFragment : GestureScreenFragment() {
             when (val output = original.output) {
                 is GestureOutput.Reading -> { outputType = 0; outputText = output.text }
                 is GestureOutput.LiteralText -> { outputType = 1; outputText = output.text }
+                is GestureOutput.Romaji -> error("Unexpected runtime output")
                 is GestureOutput.Command -> { outputType = 2; command = output.action }
             }
         }
@@ -51,10 +54,10 @@ class GestureEntryEditorFragment : GestureScreenFragment() {
             doAfterTextChanged { outputText = it.toString() }
         }
         content.addView(output)
-        val commands = Spinner(requireContext()).apply {
-            adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, GestureCommand.entries.map { GestureLabels.command(it, ja) })
-            setSelection(command.ordinal)
-            onItemSelectedListener = selected { command = GestureCommand.entries[it] }
+        val commands = android.widget.Button(requireContext()).apply {
+            isAllCaps = false
+            text = GestureLabels.command(command, requireContext())
+            setOnClickListener { showGestureActionPicker { action -> command = action; text = GestureLabels.command(action, requireContext()) } }
         }
         content.addView(commands)
         types.onItemSelectedListener = selected {
@@ -87,7 +90,7 @@ class GestureEntryEditorFragment : GestureScreenFragment() {
             fun save() { if (attempt { store.saveSet(current.copy(entries = other + entry)) }) findNavController().popBackStack() }
             if (collisions.isEmpty()) save()
             else AlertDialog.Builder(requireContext()).setTitle(t("似たジェスチャーがあります", "Similar gesture"))
-                .setMessage(collisions.map { GestureLabels.output(it.entry.output, ja) }.distinct().joinToString(", ") +
+                .setMessage(collisions.map { GestureLabels.output(it.entry.output, requireContext()) }.distinct().joinToString(", ") +
                     t("\n曖昧な線は入力されません。保存しますか？", "\nAmbiguous strokes will not be entered. Save anyway?"))
                 .setNegativeButton(android.R.string.cancel, null).setPositiveButton(android.R.string.ok) { _, _ -> save() }.show()
         }
@@ -104,7 +107,7 @@ class GestureEntryEditorFragment : GestureScreenFragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString("entryId", entryId); outState.putInt("type", outputType); outState.putString("text", outputText)
-        outState.putString("command", command.name); outState.putBoolean("replace", replaceNext); outState.putInt("samples", samples.size)
+        outState.putString("command", KeyActionMapper.fromKeyAction(command)); outState.putBoolean("replace", replaceNext); outState.putInt("samples", samples.size)
         samples.forEachIndexed { i, points -> outState.putFloatArray("sample_" + i, points.flatMap { listOf(it.x, it.y) }.toFloatArray()) }
     }
     override fun onDestroyView() { if (::pad.isInitialized) pad.cancelStroke(); samples.clear(); super.onDestroyView() }
