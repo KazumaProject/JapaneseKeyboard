@@ -2,7 +2,7 @@
 <resources>
     <string name="zenz_floating_category">候補の表示</string>
     <string name="zenz_floating_title">zenz の変換候補をフローティングで表示</string>
-    <string name="zenz_floating_summary">通常の候補一覧の上に生成候補を表示します。設定した生成待ち時間が経過し、生成が始まるとパネルを表示します。</string>
+    <string name="zenz_floating_summary">zenz の生成結果が通常の第一候補と異なる場合のみ表示します。ライブ変換には通常の候補を使い、フローティング候補をタップすると切り替えて確定します。</string>
     <string name="zenz_floating_loading">生成中…</string>
     <string name="zenz_generation_category">モデルと生成</string>
 </resources>

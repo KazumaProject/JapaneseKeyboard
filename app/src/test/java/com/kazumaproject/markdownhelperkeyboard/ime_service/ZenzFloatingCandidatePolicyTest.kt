@@ -5,29 +5,36 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ZenzFloatingCandidatePolicyTest {
-    @Test fun loadingAndAcceptedResultAreVisible() {
-        assertTrue(show(loading = true, candidate = false))
-        assertTrue(show(loading = false, candidate = true))
+    @Test fun onlyAResultDifferentFromTheFirstLocalCandidateIsVisible() {
+        assertTrue(show())
+        assertFalse(show(candidate = "垢"))
     }
-    @Test fun debounceWaitingNeverShowsTheLoadingPanel() {
-        assertFalse(show(loading = true, candidate = false, started = false))
-        assertTrue(show(loading = true, candidate = false, started = true))
+
+    @Test fun generationNeverShowsThePanel() {
+        assertFalse(show(loading = true, candidate = null))
+        assertFalse(show(loading = true))
     }
-    @Test fun emptyOrFailedResultDoesNotLeaveAnEmptyPanel() {
-        assertFalse(show(loading = false, candidate = false))
+
+    @Test fun missingResultOrLocalCandidatesKeepThePanelHidden() {
+        assertFalse(show(candidate = null))
+        assertFalse(show(candidate = ""))
+        assertFalse(show(firstLocal = null))
     }
+
     @Test fun staleRequestAndChangedInputOrFocusedSegmentAreHidden() {
         assertFalse(show(request = false))
         assertFalse(show(target = false))
     }
-    @Test fun disabledAndSuppressedCandidatesAreHiddenEvenWhileLoading() {
-        assertFalse(show(enabled = false, loading = true))
-        assertFalse(show(suppressed = true, loading = true))
+
+    @Test fun disabledAndSuppressedCandidatesAreHidden() {
+        assertFalse(show(enabled = false))
+        assertFalse(show(suppressed = true))
     }
+
     private fun show(
         enabled: Boolean = true, suppressed: Boolean = false,
         request: Boolean = true, target: Boolean = true,
-        loading: Boolean = false, candidate: Boolean = true, started: Boolean = true,
+        loading: Boolean = false, candidate: String? = "赤", firstLocal: String? = "垢",
     ) = ZenzFloatingCandidatePolicy.shouldShow(
-        enabled, suppressed, request, target, loading, started, candidate)
+        enabled, suppressed, request, target, loading, candidate, firstLocal)
 }
