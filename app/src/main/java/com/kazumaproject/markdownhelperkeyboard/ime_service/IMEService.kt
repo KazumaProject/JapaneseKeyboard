@@ -23984,7 +23984,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private var mushroomEditor: MushroomEditor? = null
     private fun currentMushroomEditor(): MushroomEditor? = currentInputEditorInfo?.let {
-        MushroomEditor(inputBinding?.connectionToken, it.packageName, it.fieldId, it.fieldName, it.inputType)
+        MushroomEditor(currentInputBinding?.connectionToken, it.packageName, it.fieldId, it.fieldName, it.inputType)
     }
 
     private fun launchMushroom() {
