@@ -100,6 +100,11 @@ enum class ShortcutType(
         com.kazumaproject.core.R.drawable.content_paste_24px,
         description = "貼り付け"
     ),
+    MUSHROOM(
+        "mushroom",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.mushroom_24,
+        description = "マッシュルーム / Mushroom"
+    ),
     DATE_PICKER(
         "select_date",
         com.kazumaproject.core.R.drawable.calendar_today_24px,

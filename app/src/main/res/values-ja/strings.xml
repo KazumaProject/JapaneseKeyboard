@@ -1945,4 +1945,10 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">カーソル、削除、IME切替、小文字、シフト、元に戻す、全角切替などのキーです。アイコンと文字のサイズを個別に調整できます。</string>
     <string name="gojuon_sizing_icon">特殊キーのアイコン</string>
     <string name="gojuon_sizing_special_text">特殊キーの文字</string>
+    <string name="mushroom_shortcut_summary">マッシュルーム対応アプリで文字を変換・入力します</string>
+    <string name="mushroom_choose_app">マッシュルーム対応アプリを選択</string>
+    <string name="mushroom_unavailable">マッシュルーム対応アプリがインストールされていません</string>
+    <string name="mushroom_failed">マッシュルーム対応アプリを起動できませんでした</string>
+    <string name="mushroom_target_changed">入力先を確認できないため、マッシュルームの結果を入力しませんでした</string>
+    <string name="mushroom_unsupported">この入力欄ではマッシュルームを使用できません</string>
 </resources>
