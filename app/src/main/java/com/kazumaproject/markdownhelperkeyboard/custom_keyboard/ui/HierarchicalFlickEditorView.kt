@@ -1,6 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.Typeface
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.util.AttributeSet
 import android.view.View
 import android.widget.AdapterView
@@ -10,6 +17,9 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.shape.CornerFamily
+import com.google.android.material.shape.ShapeAppearanceModel
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.kazumaproject.custom_keyboard.data.KeyMode
@@ -36,6 +46,7 @@ class HierarchicalFlickEditorView @JvmOverloads constructor(
 
     private fun render() {
         removeAllViews()
+        setPadding(dp(4), dp(4), dp(4), dp(4))
         val modes = state.availableModes
         if (modes.size > 1) {
             addView(Spinner(context).apply {
@@ -61,13 +72,20 @@ class HierarchicalFlickEditorView @JvmOverloads constructor(
         addView(TextView(context).apply {
             text = context.getString(R.string.three_stage_path, state.path.size + 1,
                 state.path.joinToString(" → ") { FlickDirectionMapper.toDisplayName(it, context) })
-            setPadding(0, dp(8), 0, dp(8))
+            textSize = 14f
+            setTextColor(MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant))
+            setPadding(dp(4), dp(10), dp(4), dp(12))
         })
         if (state.path.isNotEmpty()) {
             addView(MaterialButton(context).apply {
                 text = context.getString(R.string.three_stage_back)
+                isAllCaps = false
+                cornerRadius = dp(10)
+                insetTop = 0
+                insetBottom = dp(4)
+                setPadding(dp(12), 0, dp(12), 0)
                 setOnClickListener { state.back(); render() }
-            })
+            }, LayoutParams(LayoutParams.WRAP_CONTENT, dp(44)))
         }
         val directions = listOf(
             TfbiFlickDirection.UP_LEFT, TfbiFlickDirection.UP, TfbiFlickDirection.UP_RIGHT,
@@ -82,17 +100,41 @@ class HierarchicalFlickEditorView @JvmOverloads constructor(
                     val node = map[direction]
                     val output = when (node) {
                         is TfbiFlickNode.Input -> node.char
-                        is TfbiFlickNode.SubMenu -> (node.label ?: "") + " ›"
+                        is TfbiFlickNode.SubMenu -> (node.label ?: "") + "  ›"
                         else -> context.getString(R.string.three_stage_unassigned)
                     }
                     addView(MaterialButton(context).apply {
-                        text = FlickDirectionMapper.toDisplayName(direction, context) + "\n" + output
+                        val directionLabel = FlickDirectionMapper.toDisplayName(direction, context)
+                        val directionColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant)
+                        text = SpannableString("$directionLabel\n$output").apply {
+                            setSpan(RelativeSizeSpan(.72f), 0, directionLabel.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                            setSpan(ForegroundColorSpan(directionColor), 0, directionLabel.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                            if (node != null) setSpan(StyleSpan(Typeface.BOLD), directionLabel.length + 1, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        }
                         isAllCaps = false
                         minWidth = 0
                         maxLines = 3
+                        textSize = 14f
+                        insetTop = dp(3)
+                        insetBottom = dp(3)
+                        cornerRadius = dp(12)
+                        strokeWidth = dp(1)
+                        shapeAppearanceModel = ShapeAppearanceModel.builder()
+                            .setAllCorners(CornerFamily.ROUNDED, dp(12).toFloat()).build()
+                        val assigned = node != null
+                        val surface = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface)
+                        val outline = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOutline)
+                        val primaryContainer = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSecondaryContainer)
+                        val onPrimaryContainer = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSecondaryContainer)
+                        backgroundTintList = ColorStateList.valueOf(if (assigned) primaryContainer else surface)
+                        setTextColor(if (assigned) onPrimaryContainer else outline)
+                        strokeColor = ColorStateList.valueOf(if (assigned) primaryContainer else outline)
+                        elevation = 0f
                         contentDescription = text
                         setOnClickListener { editSlot(direction) }
-                    }, LayoutParams(0, dp(88), 1f))
+                    }, LayoutParams(0, dp(76), 1f).apply {
+                        setMargins(dp(3), dp(3), dp(3), dp(3))
+                    })
                 }
             }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         }
