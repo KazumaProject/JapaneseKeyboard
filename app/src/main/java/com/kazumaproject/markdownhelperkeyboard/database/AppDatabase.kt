@@ -84,7 +84,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         CustomZeroQueryEntry::class,
         TextMacro::class,
     ],
-    version = 48,
+    version = 49,
     exportSchema = false
 )
 @TypeConverters(
@@ -1200,6 +1200,12 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE `key_definitions` ADD COLUMN `textInputBehavior` TEXT NOT NULL DEFAULT 'NORMAL'"
                 )
+            }
+        }
+
+        val MIGRATION_48_49 = object : Migration(48, 49) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `hierarchicalFlickJson` TEXT")
             }
         }
 

@@ -20,6 +20,15 @@ import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
+    fun createThreeStageFlickKanaTemplateLayout(): KeyboardLayout = createFinalLayout(
+        mode = KeyboardInputMode.HIRAGANA,
+        dynamicKeyStates = emptyMap(),
+        inputLayoutType = "flick",
+        inputStyle = "third-flick",
+        tfbiFlickRotation = TfbiFlickRotation.DEFAULT,
+        sumireFlickInputMode = SumireFlickInputMode.ALL
+    )
+
     fun createToggleKanaTemplateLayout(): KeyboardLayout {
         val layout = createFlickKanaTemplateLayout(isDefaultKey = true)
         return layout.copyWithKeys(layout.keys.map { key ->
