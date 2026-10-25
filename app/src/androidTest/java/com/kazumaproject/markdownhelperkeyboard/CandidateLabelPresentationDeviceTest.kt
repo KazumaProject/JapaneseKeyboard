@@ -66,7 +66,11 @@ class CandidateLabelPresentationDeviceTest {
     private fun tapKey(id: Int, dx: Int = 0, dy: Int = 0) {
         val view = main { WindowInspector.getGlobalWindowViews().asReversed()
             .firstNotNullOf { it.findViewById<View>(id)?.takeIf(View::isShown) } }
-        val bounds = main { android.graphics.Rect().also { check(view.getGlobalVisibleRect(it)) } }
+        val bounds = main {
+            val position = IntArray(2)
+            view.getLocationOnScreen(position)
+            android.graphics.Rect(position[0], position[1], position[0] + view.width, position[1] + view.height)
+        }
         val time = SystemClock.uptimeMillis()
         val distance = context.resources.displayMetrics.density * 45
         for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP)) {
@@ -83,7 +87,9 @@ class CandidateLabelPresentationDeviceTest {
     private fun capture(name: String) {
         ins.waitForIdleSync()
         SystemClock.sleep(400)
-        val prefix = if (InstrumentationRegistry.getArguments().getString("candidate_label_dark") == "true") "dark-" else ""
+        val args = InstrumentationRegistry.getArguments()
+        val prefix = listOf("dark", "floating", "landscape")
+            .filter { args.getString("candidate_label_$it") == "true" }.joinToString("") { "$it-" }
         val destination = File(context.getExternalFilesDir("candidate-label-qa"), "$prefix$name.png")
         destination.parentFile!!.mkdirs()
         val bitmap = requireNotNull(ins.uiAutomation.takeScreenshot())
@@ -95,6 +101,8 @@ class CandidateLabelPresentationDeviceTest {
         assumeTrue(InstrumentationRegistry.getArguments().getString("candidate_label_device_test") == "true")
         val baseline = InstrumentationRegistry.getArguments().getString("candidate_label_baseline") == "true"
         val dark = InstrumentationRegistry.getArguments().getString("candidate_label_dark") == "true"
+        val floating = InstrumentationRegistry.getArguments().getString("candidate_label_floating") == "true"
+        val landscape = InstrumentationRegistry.getArguments().getString("candidate_label_landscape") == "true"
         android.os.ParcelFileDescriptor.AutoCloseInputStream(ins.uiAutomation.executeShellCommand(
             "cmd uimode night ${if (dark) "yes" else "no"}"
         )).use { it.readBytes() }
@@ -103,13 +111,18 @@ class CandidateLabelPresentationDeviceTest {
             .putString("keyboard_order_preference", "[\"TENKEY\"]")
             .putBoolean("save_last_used_keyboard", false)
             .putBoolean("live_conversion_preference", false)
+            .putBoolean("keyboard_floating_preference", floating)
             .putBoolean("show_dictionary_candidate_labels_preference", true)
             .putBoolean("user_dictionary_preference", true)
+            .putBoolean("learn_dictionary_preference", false)
+            .putBoolean("enable_prediction_search_learn_dictionary_preference", false)
+            .putBoolean("ng_word_enable_preference", false)
             .putBoolean("allow_fullscreen_mode_preference", false)
             .putBoolean("clipboard_preview_enable_preference", false)
             .putBoolean("inline_suggestion_enabled_preference", false)
             .putBoolean("candidate_character_type_indicators_preference", false).commit()
-        context.startActivity(Intent(context, CandidateHeightTestHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(Intent(context, CandidateHeightTestHostActivity::class.java)
+            .putExtra("landscape", landscape).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         await("Editor/IME did not start") { service() != null && CandidateHeightTestHostActivity.current.get()?.hasWindowFocus() == true }
         val host = main { requireNotNull(CandidateHeightTestHostActivity.current.get()) }
         val ime = main { requireNotNull(service()) }
@@ -175,7 +188,6 @@ class CandidateLabelPresentationDeviceTest {
         capture(if (baseline) "baseline-date" else "date-fixed")
         tapKey(id("suggestion_visibility"))
         if (!baseline) {
-            ime.userDictionaryRepository.insert(UserWord(word = "東京でカフェ", reading = "とうきょうでかふぇ", posIndex = 0, posScore = -10_000))
             prefs.edit().putBoolean("candidate_character_type_indicators_preference", true)
                 .putBoolean("live_conversion_preference", true)
                 .putBoolean("live_conversion_candidate_yomi_preference", true)
@@ -187,7 +199,14 @@ class CandidateLabelPresentationDeviceTest {
                 val input = field("_inputString") as MutableStateFlow<String>
                 input.value = "とうきょうでかふぇ"
             }
-            await("Ruby candidate missing") { candidates().firstOrNull()?.string == "東京でカフェ" }
+            await("Converted reading candidate missing") { candidates().firstOrNull()?.let {
+                !it.yomi.isNullOrBlank() && it.yomi != it.string
+            } == true }
+            await("Reading was not drawn alongside indicators") { WindowInspector.getGlobalWindowViews().any {
+                it.findViewById<TextView>(id("suggestion_item_yomi_text_view"))?.let { reading ->
+                    reading.isShown && reading.text.isNotEmpty()
+                } == true
+            } }
             capture("ruby-on")
             ActivityScenario.launch(com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity::class.java).use { scenario ->
                 var navHost: NavHostFragment? = null

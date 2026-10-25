@@ -93,4 +93,19 @@ class CandidateCharacterPresentationTest {
             colors.forEach { assertFalse(it in disabled) }
         }
     }
+
+    @Test fun floatingRowsCanToggleLabelsWithoutRequeryingCandidates() {
+        val adapter = FloatingCandidateListAdapter(5)
+        adapter.submitList(listOf(com.kazumaproject.core.data.floating_candidate.CandidateItem(
+            "カナ１２ABC", 3u, label = "source", characterLabel = "source [カナ・全・半]"
+        )))
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        val holder = adapter.onCreateViewHolder(android.widget.FrameLayout(context), adapter.getItemViewType(0))
+        val label = holder.itemView.findViewById<android.widget.TextView>(com.kazumaproject.markdownhelperkeyboard.R.id.floating_candidate_label)
+        for (enabled in listOf(false, true, false)) {
+            adapter.setShowCharacterIndicators(enabled)
+            adapter.onBindViewHolder(holder, 0)
+            assertEquals(if (enabled) "source [カナ・全・半]" else "source", label.text.toString())
+        }
+    }
 }
