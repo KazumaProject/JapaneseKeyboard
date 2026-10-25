@@ -82,9 +82,15 @@ jobs:
           heap-size: 512M
           cores: 2
           disable-animations: true
+          enable-hw-keyboard: false
+          pre-emulator-launch-script: >-
+            avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini" &&
+            sed -i '/^[[:space:]]*hw\.keyboard[[:space:]]*=/d' "$avd_config" &&
+            printf '%s\n' 'hw.keyboard=no' >> "$avd_config" &&
+            grep '^hw.keyboard=no$' "$avd_config"
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           script: |
-            adb shell settings put secure show_ime_with_hard_keyboard 1
+            bash -c 'set -euo pipefail; export IME_EMULATOR_LOG_DIR="$RUNNER_TEMP/mushroom-emulator"; source .github/scripts/ime-emulator-common.sh; ime_emulator_prepare'
             ./gradlew -I "$RUNNER_TEMP/mushroom.init.gradle" -x :app:generateMozcSegmenterData :app:connectedLiteStandardDebugAndroidTest --max-workers=2 -Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8' -Pkotlin.compiler.execution.strategy=in-process -Pandroid.testInstrumentationRunnerArguments.class=com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomImeInstrumentedTest
       - name: Upload test reports and test APKs
         if: always()
