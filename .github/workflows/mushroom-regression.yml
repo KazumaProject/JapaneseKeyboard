@@ -101,7 +101,7 @@ jobs:
           script: |
             bash -c 'set -euo pipefail; export IME_EMULATOR_LOG_DIR="$RUNNER_TEMP/mushroom-emulator"; source .github/scripts/ime-emulator-common.sh; ime_emulator_prepare'
             ./gradlew -I "$RUNNER_TEMP/mushroom.init.gradle" -x :app:generateMozcSegmenterData :app:connectedLiteStandardDebugAndroidTest --max-workers=2 -Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8' -Pkotlin.compiler.execution.strategy=in-process -Pandroid.testInstrumentationRunnerArguments.class=com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomImeInstrumentedTest
-      - name: Upload test reports and test APKs
+      - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -110,7 +110,5 @@ jobs:
             app/build/reports/tests/
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
-            app/build/outputs/apk/liteStandard/debug/
-            app/build/outputs/apk/androidTest/liteStandard/debug/
           if-no-files-found: warn
           retention-days: 7
