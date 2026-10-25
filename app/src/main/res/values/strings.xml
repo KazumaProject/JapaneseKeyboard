@@ -1945,4 +1945,10 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">Cursor, delete, IME switch, small letters, Shift, undo and full-width toggle keys. Icon and text sizes can be adjusted separately.</string>
     <string name="gojuon_sizing_icon">Utility key icons</string>
     <string name="gojuon_sizing_special_text">Utility key text</string>
+    <string name="mushroom_shortcut_summary">Use a Mushroom app to transform or insert text</string>
+    <string name="mushroom_choose_app">Choose a Mushroom app</string>
+    <string name="mushroom_unavailable">No Mushroom apps are installed</string>
+    <string name="mushroom_failed">Could not open the Mushroom app</string>
+    <string name="mushroom_target_changed">The input field could not be verified. Mushroom result was not inserted.</string>
+    <string name="mushroom_unsupported">Mushroom is unavailable in this input field</string>
 </resources>

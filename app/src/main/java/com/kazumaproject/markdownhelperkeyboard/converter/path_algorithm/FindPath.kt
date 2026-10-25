@@ -12,6 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateDictionaryOrigin
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.IncrementalGraphMetadata
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryCheckResult
@@ -1222,6 +1223,7 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
+                        dictionaryOrigins = resolveDictionaryOrigins(candidateSourcesFromMask(element.sourceMask)),
                         dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
                         correctionMask = correctionMaskFromPath(element),
@@ -1619,6 +1621,15 @@ class FindPath(
         }
     }
 
+    private fun resolveDictionaryOrigins(sources: Sequence<CandidateSource>): Set<CandidateDictionaryOrigin> =
+        sources.mapNotNull { source ->
+            when (source) {
+                CandidateSource.LEARNED_DICTIONARY -> CandidateDictionaryOrigin.LEARNED_DICTIONARY
+                CandidateSource.USER_DICTIONARY -> CandidateDictionaryOrigin.USER_DICTIONARY
+                else -> null
+            }
+        }.toSet()
+
     private fun resolveCandidateType(
         string: String,
         sources: Sequence<CandidateSource>,
@@ -1952,6 +1963,7 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromMask(element.sourceMask),
                         ),
+                        dictionaryOrigins = resolveDictionaryOrigins(candidateSourcesFromMask(element.sourceMask)),
                         length = length.toUByte(),
                         dictionaryCategories = categoriesFromPath(element),
                         yomi = yomiUsedFromNode,
@@ -2158,6 +2170,7 @@ class FindPath(
                             string = stringFromNode,
                             sources = candidateSourcesFromNode(node.first),
                         ),
+                        dictionaryOrigins = resolveDictionaryOrigins(candidateSourcesFromNode(node.first)),
                         dictionaryCategories = categoriesFromNode(node.first),
                         yomi = yomiUsedFromNode,
                         correctionMask = correctionMaskFromNode(node.first),
