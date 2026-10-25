@@ -85,7 +85,8 @@ class CandidateLabelPresentationDeviceTest {
     }
 
     private fun capture(name: String) {
-        ins.waitForIdleSync()
+        // Each call site awaits its visible state. The IME can keep scheduling work,
+        // so waiting for the entire main queue to become idle can block indefinitely.
         SystemClock.sleep(400)
         val args = InstrumentationRegistry.getArguments()
         val prefix = listOf("dark", "floating", "landscape")
@@ -95,6 +96,7 @@ class CandidateLabelPresentationDeviceTest {
         val bitmap = requireNotNull(ins.uiAutomation.takeScreenshot())
         destination.outputStream().use { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
         bitmap.recycle()
+        android.util.Log.i("CandidateLabelDeviceQA", "Captured ${destination.name}")
     }
 
     @Test fun realImeCandidateFormsAndCommitMatch() = runBlocking {
@@ -224,7 +226,19 @@ class CandidateLabelPresentationDeviceTest {
                     }
                     main { (navHost?.childFragmentManager?.primaryNavigationFragment as PreferenceFragmentCompat)
                         .scrollToPreference("candidate_character_type_indicators_preference") }
-                    SystemClock.sleep(800)
+                    val title = main { requireNotNull(navHost).requireContext().getString(
+                        context.resources.getIdentifier("candidate_character_indicators_title", "string", context.packageName)
+                    ) }
+                    await("Settings row was not drawn: $name") {
+                        val list = (navHost?.childFragmentManager?.primaryNavigationFragment as? PreferenceFragmentCompat)?.listView
+                        fun containsTitle(view: View): Boolean = (view as? TextView)?.let {
+                            it.text.toString() == title &&
+                                it.isShown && it.getGlobalVisibleRect(android.graphics.Rect())
+                        } == true || (view as? android.view.ViewGroup)?.let { group ->
+                            (0 until group.childCount).any { containsTitle(group.getChildAt(it)) }
+                        } == true
+                        list?.let(::containsTitle) == true
+                    }
                     capture(name)
                 }
             }
