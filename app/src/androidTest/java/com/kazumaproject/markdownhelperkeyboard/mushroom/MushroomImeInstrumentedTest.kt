@@ -33,7 +33,24 @@ class MushroomImeInstrumentedTest {
         }
         val focus = shell("dumpsys window").lineSequence()
             .filter { "mCurrentFocus" in it || "mFocusedApp" in it }.take(2).joinToString()
-        fail("$message; defaultIme=${shell("settings get secure default_input_method").trim()}; $focus; visible=${visibleText()}")
+        fail("$message; defaultIme=${shell("settings get secure default_input_method").trim()}; $focus; visible=${visibleText()}; ime=${imeState()}")
+    }
+    private fun imeState(): String {
+        var state = "not found"
+        ins.runOnMainSync {
+            service()?.let { ime ->
+                val target = IMEService::class.java.getDeclaredField("mushroomTarget")
+                    .apply { isAccessible = true }.get(ime)
+                val originalEditor = IMEService::class.java.getDeclaredField("mushroomEditor")
+                    .apply { isAccessible = true }.get(ime)
+                val currentEditor = IMEService::class.java.getDeclaredMethod("currentMushroomEditor")
+                    .apply { isAccessible = true }.invoke(ime)
+                val text = ime.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                state = "pending=${target != null}, original=$originalEditor, current=$currentEditor, " +
+                    "text=${text?.text}, selection=${text?.selectionStart}:${text?.selectionEnd}"
+            }
+        }
+        return state
     }
     private fun prepareIme(target: String) {
         ins.uiAutomation.serviceInfo = ins.uiAutomation.serviceInfo.apply {
@@ -211,6 +228,14 @@ class MushroomImeInstrumentedTest {
 
                 editor("recreate", 0, 8)
                 launch()
+                await("Bridge stopped behind the plugin") {
+                    var stopped = false
+                    ins.runOnMainSync {
+                        stopped = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.STOPPED)
+                            .filterIsInstance<MushroomActivity>().size == 1
+                    }
+                    stopped
+                }
                 ins.runOnMainSync {
                     val bridges = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
                         .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.STOPPED)
