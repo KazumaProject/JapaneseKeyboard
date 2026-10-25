@@ -356,6 +356,7 @@ class ZenzFloatingCandidateInstrumentedTest {
         val ime = "${ctx.packageName}/.ime_service.IMEService"
         val report = StringBuilder()
         var sawCorrectedMinimum = false
+        var sawFlickCorrectedMinimum = false
         try {
             shell("input keyevent WAKEUP"); shell("wm dismiss-keyguard")
             prefs.edit().clear().putString("keyboard_order_preference", "[\"TENKEY\"]")
@@ -376,7 +377,7 @@ class ZenzFloatingCandidateInstrumentedTest {
                 prefs.edit().putBoolean("enable_ai_conversion_zenzai_preference", oldValue)
                     .putBoolean("omission_search_preference", enabled)
                     .putBoolean("enable_typo_correction_japanese_flick_keyboard_preference", enabled).commit()
-                for (reading in listOf("かつこう", "とえけい")) {
+                for (reading in listOf("かつこう", "とえけい", "あらがとう")) {
                     withEditor { it.restartEditorInput(true) }
                     id("key_1")
                     SystemClock.sleep(400)
@@ -404,6 +405,10 @@ class ZenzFloatingCandidateInstrumentedTest {
                     val best = field(snapshot, "bestCandidate") as com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
                     val expected = if (enabled && best.correctionMask != 0) best.yomi ?: reading else reading
                     if (enabled && best.correctionMask != 0) sawCorrectedMinimum = true
+                    if (enabled && (best.correctionMask and
+                            com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection.JAPANESE_FLICK) != 0) {
+                        sawFlickCorrectedMinimum = true
+                    }
                     assertEquals(expected, field(service, "zenzLiveSnapshotRequestInput"))
                     assertEquals(1, nodes().count { it.viewIdResourceName == labelId })
                     report.appendLine("old=$oldValue,enabled=$enabled,input=$reading,score=${best.score},mask=${best.correctionMask},zenzInput=$expected,result=${generated.text}")
@@ -414,6 +419,7 @@ class ZenzFloatingCandidateInstrumentedTest {
                 }
             }
             assertTrue("The fixture must exercise an actually corrected minimum", sawCorrectedMinimum)
+            assertTrue("The fixture must exercise a selected Japanese flick correction", sawFlickCorrectedMinimum)
         } finally {
             ins.runOnMainSync {
                 androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
