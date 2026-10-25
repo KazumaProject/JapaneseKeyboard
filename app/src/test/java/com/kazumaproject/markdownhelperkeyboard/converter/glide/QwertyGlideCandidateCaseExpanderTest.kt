@@ -16,6 +16,7 @@ class QwertyGlideCandidateCaseExpanderTest {
             listOf("hello" to 1000, "Hello" to 2500, "HELLO" to 4000),
             result.map { it.string to it.score }
         )
+        result.forEach { assertEquals(it.string, it.commitText) }
         assertEquals("Hello".length.toUByte(), result.first { it.string == "Hello" }.length)
         assertEquals("HELLO".length.toUByte(), result.first { it.string == "HELLO" }.length)
     }
