@@ -1,6 +1,10 @@
 name: Mushroom Regression
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/mushroom-regression.yml'
+      - 'app/src/**/mushroom/**'
   workflow_dispatch:
 
 permissions:
