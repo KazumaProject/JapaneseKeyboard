@@ -42,7 +42,7 @@ class MushroomImeInstrumentedTest {
         }
         shell("input keyevent KEYCODE_WAKEUP")
         shell("wm dismiss-keyguard")
-        await("IME registered") { shell("ime list -s").lineSequence().any { it.trim() == target } }
+        await("IME registered") { shell("ime list -a -s").lineSequence().any { it.trim() == target } }
         shell("ime enable $target")
         shell("ime set $target")
         await("IME selected") { shell("settings get secure default_input_method").trim() == target }

@@ -25,7 +25,8 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Install compile SDK
         run: sdkmanager "platforms;android-37.0"
-      - uses: actions/cache@v5
+      - uses: actions/cache/restore@v5
+        id: gradle_cache
         with:
           path: |
             ~/.gradle/caches
@@ -64,6 +65,14 @@ jobs:
           --max-workers=2
           -Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8'
           -Pkotlin.compiler.execution.strategy=in-process
+      - name: Save successful compilation before device tests
+        if: steps.gradle_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ steps.gradle_cache.outputs.cache-primary-key }}
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
