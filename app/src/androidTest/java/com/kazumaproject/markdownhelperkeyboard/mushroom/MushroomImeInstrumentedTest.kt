@@ -1,14 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.mushroom
 
 import android.content.ContextWrapper
-import android.content.Intent
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inspector.WindowInspector
 import android.view.inputmethod.InputMethodManager
-import androidx.test.core.app.ActivityScenario
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
@@ -31,7 +31,7 @@ class MushroomImeInstrumentedTest {
             if (condition()) return
             SystemClock.sleep(100)
         }
-        val focus = shell("dumpsys window windows").lineSequence()
+        val focus = shell("dumpsys window").lineSequence()
             .filter { "mCurrentFocus" in it || "mFocusedApp" in it }.take(2).joinToString()
         fail("$message; defaultIme=${shell("settings get secure default_input_method").trim()}; $focus")
     }
@@ -64,19 +64,35 @@ class MushroomImeInstrumentedTest {
             ?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
     }
 
+    private fun onHost(host: FastInputHostActivity, action: (FastInputHostActivity) -> Unit) {
+        ins.runOnMainSync { action(host) }
+    }
+    private fun withHost(action: (FastInputHostActivity) -> Unit) {
+        shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name}")
+        var host: FastInputHostActivity? = null
+        await("Host window focused") {
+            ins.runOnMainSync {
+                host = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<FastInputHostActivity>()
+                    .firstOrNull { it.hasWindowFocus() && !it.isFinishing }
+            }
+            host != null
+        }
+        val activity = requireNotNull(host)
+        try {
+            action(activity)
+        } finally {
+            onHost(activity) { it.finish() }
+        }
+    }
+
     @Test(timeout = 180_000) fun returnsToExternalEditorWhenKeyboardAppAlreadyHasATask() {
         assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
         val targetIme = "${context.packageName}/${IMEService::class.java.name}"
         val oldIme = shell("settings get secure default_input_method").trim()
         try {
             prepareIme(targetIme)
-            val hostIntent = Intent(context, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            ActivityScenario.launch<FastInputHostActivity>(hostIntent).use { host ->
-                await("Keyboard app task focused") {
-                    var focused = false
-                    host.onActivity { focused = it.hasWindowFocus() }
-                    focused
-                }
+            withHost {
                 shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true")
                 await("External editor connected") {
                     var ready = false
@@ -118,15 +134,9 @@ class MushroomImeInstrumentedTest {
         val oldIme = shell("settings get secure default_input_method").trim()
         try {
             prepareIme(targetIme)
-            val intent = Intent(context, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            ActivityScenario.launch<FastInputHostActivity>(intent).use { scenario ->
-                await("Host window focused") {
-                    var focused = false
-                    scenario.onActivity { focused = it.hasWindowFocus() }
-                    focused
-                }
+            withHost { host ->
                 fun editor(text: String, start: Int, end: Int = start) {
-                    scenario.onActivity {
+                    onHost(host) {
                         it.editText.setText(text)
                         it.editText.setSelection(start, end)
                         it.getSystemService(InputMethodManager::class.java).restartInput(it.editText)
@@ -173,14 +183,16 @@ class MushroomImeInstrumentedTest {
                 }
                 fun textIs(expected: String) = await("Editor should contain $expected") {
                     var matches = false
-                    scenario.onActivity { matches = it.editText.text.toString() == expected }
+                    onHost(host) { matches = it.editText.text.toString() == expected }
                     var completed = false
                     ins.runOnMainSync {
                         val ime = service()
                         completed = ime != null && IMEService::class.java.getDeclaredField("mushroomTarget")
                             .apply { isAccessible = true }.get(ime) == null
                     }
-                    matches && completed && scenario.state == androidx.lifecycle.Lifecycle.State.RESUMED
+                    var focused = false
+                    onHost(host) { focused = it.hasWindowFocus() }
+                    matches && completed && focused
                 }
                 editor("abc", 1, 2)
                 launch()
@@ -222,12 +234,12 @@ class MushroomImeInstrumentedTest {
                 editor("abc", 1, 2)
                 launch()
                 // Change the original editor while the plugin is active.
-                scenario.onActivity { it.editText.setText("changed") }
+                onHost(host) { it.editText.setText("changed") }
                 assertTrue(click("Return result"))
                 textIs("changed")
 
                 editor("secret", 0, 6)
-                scenario.onActivity {
+                onHost(host) {
                     it.editText.inputType = android.text.InputType.TYPE_CLASS_TEXT or
                         android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
                     it.getSystemService(InputMethodManager::class.java).restartInput(it.editText)
@@ -238,7 +250,7 @@ class MushroomImeInstrumentedTest {
                         .invoke(service()!!)
                 }
                 textIs("secret")
-                scenario.onActivity { it.editText.inputType = android.text.InputType.TYPE_CLASS_TEXT }
+                onHost(host) { it.editText.inputType = android.text.InputType.TYPE_CLASS_TEXT }
 
                 // A missing plugin must return control without touching the original text.
                 val plugin = "${ins.context.packageName}/${MushroomPluginActivity::class.java.name}"
