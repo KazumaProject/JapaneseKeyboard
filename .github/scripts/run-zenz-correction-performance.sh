@@ -232,6 +232,19 @@ case "$phase" in
                 -e zenzCorrectionPerf true -e sets 1 -e iterations 100 -e warmups 20
         done
         ;;
+    hello)
+        # Recheck the noisy short-input result after a longer warm-up.
+        for set in 0 1 2; do
+            order=(before after)
+            if ((set % 2)); then order=(after before); fi
+            for label in "${order[@]}"; do
+                install_build "$label"
+                run_probe "$label" "hello-set$set" "$core" zenz-correction-perf.txt false \
+                    -e zenzCorrectionPerf true -e sets 1 -e iterations 1000 -e warmups 1000 \
+                    -e conditions qwerty -e backends LEGACY -e inputs hello -e operations single
+            done
+        done
+        ;;
     memory)
         for label in before after; do
             install_build "$label"
