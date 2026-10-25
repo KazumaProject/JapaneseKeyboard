@@ -236,7 +236,6 @@ data class ImePreferencesSnapshot(
     val qwertyLandscapePositionPreferenceValue: Boolean,
     val qwertyLandscapeBottomMarginPreferenceValue: Int,
     val zenzEnableStatePreference: Boolean,
-    val zenzaiEnableStatePreference: Boolean,
     val zenzProfilePreference: String,
     val zenzEnableLongPressConversionPreference: Boolean,
     val zenzRerankPreference: Boolean,
@@ -663,8 +662,6 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_keyboard_vertical_margin_bottom_landscape ?: 0,
                 zenzEnableStatePreference =
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_preference,
-                zenzaiEnableStatePreference =
-                    AppVariantConfig.hasZenz && appPreference.enable_zenzai_preference,
                 zenzProfilePreference = appPreference.zenz_profile_preference,
                 zenzEnableLongPressConversionPreference =
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_long_press_preference,

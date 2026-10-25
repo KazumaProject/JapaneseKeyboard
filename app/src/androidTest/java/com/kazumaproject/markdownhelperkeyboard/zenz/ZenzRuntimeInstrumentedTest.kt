@@ -155,6 +155,54 @@ class ZenzRuntimeInstrumentedTest {
         assertSafeCandidate("まつ with marked context", candidateWithMarkerInContext)
     }
 
+    @Test(timeout = 900_000)
+    fun measureGenerationPerformance() {
+        val args = InstrumentationRegistry.getArguments()
+        assumeTrue(args.getString("zenzGenerationPerf") == "true")
+        val ins = InstrumentationRegistry.getInstrumentation()
+        val report = StringBuilder()
+        fun memory(pid: Int, label: String) {
+            val descriptor = ins.uiAutomation.executeShellCommand("dumpsys meminfo $pid")
+            val result = android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor)
+                .bufferedReader().use { it.readText() }
+            report.appendLine("memory/$label/pid=$pid\n$result")
+        }
+        memory(Process.myPid(), "imeBeforeLoad")
+        val bindStart = android.os.SystemClock.elapsedRealtimeNanos()
+        val service = bindRuntime()
+        report.appendLine("serviceBindNs=${android.os.SystemClock.elapsedRealtimeNanos()-bindStart}")
+        val copyStart = android.os.SystemClock.elapsedRealtimeNanos()
+        val model = copyBundledModel()
+        report.appendLine("modelAssetCopyNs=${android.os.SystemClock.elapsedRealtimeNanos()-copyStart}")
+        val start = android.os.SystemClock.elapsedRealtimeNanos()
+        val pid = initialize(service, model, nThreads = 4)
+        report.appendLine("modelLoadNs=${android.os.SystemClock.elapsedRealtimeNanos()-start},pid=$pid,nCtx=512,nThreads=4,maxTokens=32")
+        memory(pid, "zenzLoaded")
+        memory(Process.myPid(), "imeLoaded")
+        if (args.getString("coldOnly") != "true") {
+            val readings = listOf("キョウ", "ガッコウ", "センセイ", "コウエンニイキマス")
+            var requestId = 10L
+            for (reading in readings) {
+                repeat(3) { generate(service, requestId++, reading) }
+                val samples = ArrayList<Long>()
+                repeat(20) {
+                    val generatedAt = android.os.SystemClock.elapsedRealtimeNanos()
+                    val result = generate(service, requestId++, reading)
+                    samples += android.os.SystemClock.elapsedRealtimeNanos()-generatedAt
+                    assertTrue("Empty conversion for $reading", result.isNotBlank())
+                    assertSafeCandidate(reading, result)
+                    report.appendLine("generation,$reading,ns=${samples.last()},result=$result")
+                    File(context.filesDir, "zenz-generation-perf.txt").writeText(report.toString())
+                }
+                val sorted = samples.sorted()
+                report.appendLine("summary,$reading,meanMs=${samples.average()/1e6},p50Ms=${sorted[9]/1e6},p95Ms=${sorted[18]/1e6}")
+                memory(pid, "zenzAfter/$reading")
+                memory(Process.myPid(), "imeAfter/$reading")
+            }
+        }
+        File(context.filesDir, "zenz-generation-perf.txt").writeText(report.toString())
+    }
+
     private fun bindRuntime(): IZenzRuntime {
         val connected = CountDownLatch(1)
         val connection = object : ServiceConnection {
@@ -188,7 +236,7 @@ class ZenzRuntimeInstrumentedTest {
         return target
     }
 
-    private fun initialize(service: IZenzRuntime, model: File): Int {
+    private fun initialize(service: IZenzRuntime, model: File, nThreads: Int = 2): Int {
         val completed = CountDownLatch(1)
         val processPid = AtomicInteger(-1)
         val error = AtomicReference<String?>(null)
@@ -197,7 +245,7 @@ class ZenzRuntimeInstrumentedTest {
             requestId,
             model.absolutePath,
             512,
-            2,
+            nThreads,
             object : IZenzRuntimeCallback.Stub() {
                 override fun onReady(callbackRequestId: Long, pid: Int) {
                     if (callbackRequestId == requestId) {

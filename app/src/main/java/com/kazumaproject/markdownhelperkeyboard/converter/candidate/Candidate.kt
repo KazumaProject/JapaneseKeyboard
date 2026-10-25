@@ -30,4 +30,5 @@ data class Candidate(
     val standaloneUnigramMatched: Boolean = false,
     val dictionaryCategories: Set<DictionaryCategory> = emptySet(),
     val dictionaryOrigins: Set<CandidateDictionaryOrigin> = dictionaryOriginsForType(type),
+    val correctionMask: Int = 0,
 )
