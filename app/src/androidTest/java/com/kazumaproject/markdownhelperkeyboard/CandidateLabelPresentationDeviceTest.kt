@@ -163,7 +163,10 @@ class CandidateLabelPresentationDeviceTest {
             main {
                 val recycler = WindowInspector.getGlobalWindowViews().firstNotNullOf { root ->
                     root.findViewById<androidx.recyclerview.widget.RecyclerView>(id("suggestion_recycler_view"))
-                        ?.takeIf { it.isShown }
+                        ?.takeIf { list -> list.isShown && (0 until list.childCount).any {
+                            list.getChildAt(it).findViewById<TextView>(id("suggestion_item_text_view"))
+                                ?.text?.toString()?.trim() == "東京でカフェ１２３ABC"
+                        } }
                 }
                 val target = (0 until recycler.childCount).map(recycler::getChildAt).first {
                     it.findViewById<TextView>(id("suggestion_item_text_view"))?.text?.toString()?.trim() == "東京でカフェ１２３ABC"
@@ -196,7 +199,12 @@ class CandidateLabelPresentationDeviceTest {
         }
         main {
             val rows = WindowInspector.getGlobalWindowViews().firstNotNullOf {
-                it.findViewById<androidx.recyclerview.widget.RecyclerView>(id("candidates_row_view"))?.takeIf(View::isShown)
+                it.findViewById<androidx.recyclerview.widget.RecyclerView>(id("candidates_row_view"))?.takeIf { list ->
+                    list.isShown && (0 until list.childCount).any { index ->
+                        list.getChildAt(index).findViewById<TextView>(id("suggestion_item_text_view"))
+                            ?.text?.toString()?.trim() == "12月31日"
+                    }
+                }
             }
             val row = (0 until rows.childCount).map(rows::getChildAt).first {
                 it.findViewById<TextView>(id("suggestion_item_text_view"))?.text?.toString()?.trim() == "12月31日"
