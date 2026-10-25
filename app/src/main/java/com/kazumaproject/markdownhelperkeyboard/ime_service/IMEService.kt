@@ -18708,6 +18708,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (session.generation != requestedSession.generation ||
                 session.conversionInput != requestedSession.conversionInput ||
                 session.focusedIndex != requestedSession.focusedIndex ||
+                session.segments.getOrNull(session.focusedIndex)?.reading !=
+                    requestedSession.segments.getOrNull(requestedSession.focusedIndex)?.reading ||
                 context != currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
             ) return@withLock null
             if (bunsetsuSeparation != true || !isBunsetsuCursorMoveSessionActive()) return@withLock null
