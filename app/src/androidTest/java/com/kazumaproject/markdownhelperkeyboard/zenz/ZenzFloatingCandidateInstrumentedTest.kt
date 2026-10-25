@@ -353,7 +353,7 @@ class ZenzFloatingCandidateInstrumentedTest {
         ui.serviceInfo = ui.serviceInfo.apply {
             flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         }
-        val ime = "${ctx.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val ime = "${ctx.packageName}/.ime_service.IMEService"
         val report = StringBuilder()
         var sawCorrectedMinimum = false
         try {
@@ -366,7 +366,10 @@ class ZenzFloatingCandidateInstrumentedTest {
                 .putBoolean("enable_ai_conversion_zenz_preference", true)
                 .putInt("zenz_debounce_time_preference", 0)
                 .putBoolean(ComposingGuideSettings.ZENZ_ENABLED, true).commit()
-            shell("ime enable $ime"); shell("ime set $ime")
+            val enableResult = shell("ime enable $ime")
+            assertTrue(enableResult, enableResult.contains("enabled"))
+            val selectResult = shell("ime set $ime")
+            assertTrue(selectResult, selectResult.contains("selected"))
             ctx.startActivity(Intent(ctx, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             fun field(owner: Any, name: String): Any? = owner.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(owner)
             for (oldValue in listOf(false, true)) for (enabled in listOf(false, true)) {
@@ -430,7 +433,7 @@ class ZenzFloatingCandidateInstrumentedTest {
         val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
         val original = prefs.all.toMap()
         val oldIme = shell("settings get secure default_input_method")
-        val ime = "${ctx.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val ime = "${ctx.packageName}/.ime_service.IMEService"
         val report = StringBuilder()
         val oldFlags = ui.serviceInfo.flags
         ui.serviceInfo = ui.serviceInfo.apply {
@@ -453,8 +456,10 @@ class ZenzFloatingCandidateInstrumentedTest {
                 .putBoolean("keyboard_floating_preference", false)
                 .putBoolean("live_conversion_preference", false)
                 .putBoolean(ComposingGuideSettings.ZENZ_ENABLED, true).commit()
-            shell("ime enable $ime")
-            shell("ime set $ime")
+            val enableResult = shell("ime enable $ime")
+            assertTrue(enableResult, enableResult.contains("enabled"))
+            val selectResult = shell("ime set $ime")
+            assertTrue(selectResult, selectResult.contains("selected"))
             ctx.startActivity(Intent(ctx, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             for (debounce in listOf(0, 300)) {
                 prefs.edit().putInt("zenz_debounce_time_preference", debounce).commit()

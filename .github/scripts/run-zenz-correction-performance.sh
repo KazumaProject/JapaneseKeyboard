@@ -209,6 +209,9 @@ run_probe() {
     adb -s "$serial" exec-out run-as "$package" cat "files/$output" \
         > "$directory/$name-report.txt" 2> "$directory/$name-pull-errors.txt" || true
     if ((result != 0)) || ! grep -q 'OK (' "$directory/$name-instrumentation.txt"; then
+        adb -s "$serial" logcat -d > "$directory/$name-logcat.txt" || true
+        adb -s "$serial" shell dumpsys input_method > "$directory/$name-input-method.txt" || true
+        adb -s "$serial" shell dumpsys window windows > "$directory/$name-windows.txt" || true
         cat "$directory/$name-instrumentation.txt"
         return 1
     fi
@@ -249,10 +252,12 @@ case "$phase" in
             run_probe "$label" floating-memory "$floating" zenz-floating-perf.txt true -e zenzFloatingPerf true
         done
         ;;
-    feature)
+    feature|qa)
         install_build after
+        if [[ "$phase" == feature ]]; then
         run_probe after selection "$core" zenz-correction-perf.txt false \
             -e zenzCorrectionPerf true -e selectionOnly true -e sets 1 -e iterations 100 -e warmups 20
+        fi
         run_probe after correction-ime "$package.zenz.ZenzFloatingCandidateInstrumentedTest#correctionSettingsAutomaticallySelectTheMinimumNBestReading" \
             zenz-correction-ime.txt false -e zenzCorrectionImeProbe true
         ;;

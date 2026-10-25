@@ -8,6 +8,11 @@ on:
         default: dev
         required: true
         type: string
+      phases:
+        description: JSON array of measurement phases to run
+        default: '["time0","time1","time2","memory","runtime","feature"]'
+        required: true
+        type: string
   pull_request:
     branches: [dev]
     paths:
@@ -89,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        phase: [time0, time1, time2, memory, runtime, feature]
+        phase: ${{ fromJSON(inputs.phases || '["time0","time1","time2","memory","runtime","feature"]') }}
     env:
       ZENZ_PERF_PHASE: ${{ matrix.phase }}
     steps:
