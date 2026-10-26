@@ -1,14 +1,14 @@
 # 辞書のライセンス一覧 / Dictionary licenses
 
-本書はv1.7.276で採用した全143カテゴリ、その他の同梱辞書、共通資源、保持した通知全文への対応表です。辞書名の意味から適用条件を推測せず、固定入力と採用レコード・分類結果の対応を根拠にしています。
+本書はv1.7.277で採用した全143カテゴリ、その他の同梱辞書、共通資源、保持した通知全文への対応表です。辞書名の意味から適用条件を推測せず、固定入力と採用レコード・分類結果の対応を根拠にしています。
 
-配布: [`v1.7.276`](https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/v1.7.276)、配布コミット `6927d27d73fa568d8147f837bdd31fa9493b1875`。全463配布ファイル・865,668カテゴリレコードの対象は [配布マニフェスト](../../tools/classified-dictionaries/distribution-manifest.json) を参照してください。
+配布: [`v1.7.277`](https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/v1.7.277)、配布コミット `13e391bc7a4a245f63aa0091c1e9c11db3dbd759`。全463配布ファイル・866,217カテゴリレコードの対象は [配布マニフェスト](../../tools/classified-dictionaries/distribution-manifest.json) を参照してください。
 
 [出典・固定入力・採用行対応](../../tools/classified-dictionaries/category-provenance.json) にハッシュと出典別件数を記録しています。専門辞書は固定元データの行・元読み・元表記と採用来歴を照合しています。各カテゴリの3ファイルは `app/src/main/assets/categories/<ID>/{tango,yomi,token}.dat.zip` です。分類・正規化・重複処理・品詞/コスト割当・バイナリ変換を行っています。人名のかな番兵で失われる3表記は、固定入力から導出したサイドカーで復元します。
 
 ## 全143カテゴリ
 
-W/N/P/J/K/Mは次節の出典を指します。WとNには共通Web入力の該当分を含み、併記は単独著作権者の断定や同じ語の二重計上を意味しません。共通品詞・接続情報にはMozcの通知も適用されます。
+W/N/P/J/K/M/Lは次節の出典を指します。WとNには共通Web入力の該当分を含み、併記は単独著作権者の断定や同じ語の二重計上を意味しません。共通品詞・接続情報にはMozcの通知も適用されます。
 
 | ID | 辞書名 | レコード数 | 出典・適用条件の参照 | アプリで表示する詳細（同梱HTML） |
 | --- | --- | ---: | --- | --- |
@@ -90,21 +90,21 @@ W/N/P/J/K/Mは次節の出典を指します。WとNには共通Web入力の該�
 | `award` | 賞 | 1,163 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/award.html) |
 | `agreement` | 条約・協定 | 424 | [W](#w) / [N](#n) | [詳細](../../app/src/main/assets/licenses/classified/agreement.html) |
 | `initiative` | 事業・キャンペーン | 1,061 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/initiative.html) |
-| `term/general/products_daily_goods` | 商品・日用品（一般名称） | 1,159 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/general/products_daily_goods.html) |
+| `term/general/products_daily_goods` | 商品・日用品（一般名称） | 1,157 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/general/products_daily_goods.html) |
 | `term/general/food_drink_cooking` | 食品・飲料・料理 | 4,077 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/general/food_drink_cooking.html) |
 | `term/general/internet_slang_culture` | ネットスラング・ネット文化 | 574 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/general/internet_slang_culture.html) |
 | `term/general/neologisms_trends_youth_language` | 新語・流行語・若者言葉 | 485 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/general/neologisms_trends_youth_language.html) |
-| `term/general/other_general` | その他の一般語 | 20,502 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/general/other_general.html) |
-| `term/specialist/information_communications` | 情報・通信 | 6,083 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/information_communications.html) |
+| `term/general/other_general` | その他の一般語 | 20,494 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/general/other_general.html) |
+| `term/specialist/information_communications` | 情報・通信 | 6,087 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/information_communications.html) |
 | `term/specialist/mathematics_physics` | 数学・物理 | 4,171 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/mathematics_physics.html) |
 | `term/specialist/chemistry_life_sciences` | 化学・生命科学 | 27,567 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/chemistry_life_sciences.html) |
-| `term/specialist/engineering_technology` | 工学・技術 | 3,509 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/engineering_technology.html) |
+| `term/specialist/engineering_technology` | 工学・技術 | 3,524 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/engineering_technology.html) |
 | `term/specialist/earth_environment_resources` | 地球・環境・資源 | 2,110 | [W](#w) / [N](#n) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/earth_environment_resources.html) |
-| `term/specialist/economics_management` | 経済・経営 | 5,780 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/economics_management.html) |
-| `term/specialist/law_politics` | 法律・政治 | 5,274 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/law_politics.html) |
+| `term/specialist/economics_management` | 経済・経営 | 5,888 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/economics_management.html) |
+| `term/specialist/law_politics` | 法律・政治 | 5,695 | [W](#w) / [N](#n) / [P](#p) / [J](#j) / [L](#l) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/law_politics.html) |
 | `term/specialist/humanities_social_sciences` | 人文・社会科学 | 17,877 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/humanities_social_sciences.html) |
 | `term/specialist/culture_arts_sports` | 文化・芸術・スポーツ | 5,360 | [W](#w) / [N](#n) / [P](#p) / [J](#j) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/culture_arts_sports.html) |
-| `term/specialist/transport_safety_defense` | 交通・安全・防衛 | 4,037 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/transport_safety_defense.html) |
+| `term/specialist/transport_safety_defense` | 交通・安全・防衛 | 4,048 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/term/specialist/transport_safety_defense.html) |
 | `work_franchise` | 作品シリーズ | 850 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/work_franchise.html) |
 | `work_manga` | 漫画作品 | 5,084 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/work_manga.html) |
 | `work_anime` | アニメ作品 | 1,090 | [W](#w) / [N](#n) / [P](#p) | [詳細](../../app/src/main/assets/licenses/classified/work_anime.html) |
@@ -149,12 +149,12 @@ W/N/P/J/K/Mは次節の出典を指します。WとNには共通Web入力の該�
 | `person/royalty_nobility` | 皇室・王室・貴族 | 288 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/royalty_nobility.html) |
 | `person/other_identified` | その他の特定人物 | 5,011 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/other_identified.html) |
 | `person/thought` | 哲学者・思想家 | 267 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/thought.html) |
-| `person/surname_origin_japanese` | 姓・名字（日本由来） | 25,011 | [W](#w) / [N](#n) / [P](#p) / [J](#j) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/surname_origin_japanese.html) |
-| `person/surname_origin_foreign` | 姓・名字（海外由来） | 57 | [W](#w) / [N](#n) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/surname_origin_foreign.html) |
+| `person/surname_origin_japanese` | 姓・名字（日本由来） | 24,980 | [W](#w) / [N](#n) / [P](#p) / [J](#j) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/surname_origin_japanese.html) |
+| `person/surname_origin_foreign` | 姓・名字（海外由来） | 88 | [W](#w) / [N](#n) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/surname_origin_foreign.html) |
 | `person/given_name_origin_japanese` | 名・下の名前（日本由来） | 2,286 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/given_name_origin_japanese.html) |
 | `person/given_name_origin_foreign` | 名・下の名前（海外由来） | 47 | [W](#w) / [N](#n) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/given_name_origin_foreign.html) |
-| `person/personal_name_origin_japanese` | 人名・姓名（日本由来） | 75,943 | [W](#w) / [N](#n) / [P](#p) / [J](#j) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/personal_name_origin_japanese.html) |
-| `person/personal_name_origin_foreign` | 人名・姓名（海外由来） | 1,046 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/personal_name_origin_foreign.html) |
+| `person/personal_name_origin_japanese` | 人名・姓名（日本由来） | 74,601 | [W](#w) / [N](#n) / [P](#p) / [J](#j) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/personal_name_origin_japanese.html) |
+| `person/personal_name_origin_foreign` | 人名・姓名（海外由来） | 2,388 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/personal_name_origin_foreign.html) |
 
 ## 元データ・帰属・条件
 
@@ -202,6 +202,15 @@ KNApSAcK KAMPOの処方名・生薬名。KNApSAcK Family © 金谷 重彦（奈�
 
 [CC BY 4.0全文](../../app/src/main/assets/licenses/sources/cc-by-4.0.txt)。空欄2,003件にはGeminiによる推定読みの補完があり、自動読み・推定読みの全件の正確性は未確認です。品詞・コストは配布元の割当です。
 
+<a id="l"></a>
+### L: 人事・労務の専門用語 / MHLW employment terms
+
+v1.7.277には、厚生労働省の[雇用管理に役立つ多言語用語集](https://www.mhlw.go.jp/yougosyu/index.html)に基づく373件を `term/specialist/law_politics` に収録しています。用語の表記と明記された日本語読みを選び、正規化・分類・品詞とコストの割当を行って辞書化しています。定義、翻訳、例文、資料本文は複製していません。上流の確認記録では6件を再分類しています。
+
+配布元の [LICENSE-DATA.md](../../app/src/main/assets/licenses/sources/release-data.txt) はこの出典に[公共データ利用規約（第1.0版）（PDL1.0）](https://www.digital.go.jp/resources/open_data/public_data_license_v1.0)を適用し、出典と加工内容を表示しています。厚生労働省の[利用規約](https://www.mhlw.go.jp/chosakuken/)も出典および編集・加工の表示を求めています。入力レビューのSHA-256と分類先は [出典・固定入力・採用行対応](../../tools/classified-dictionaries/category-provenance.json) に記録し、[固定した上流レビュー](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/classification/reviews/2026-10-26-business-mhlw.jsonl)から確認できます。
+
+同リリースに含まれるMozc由来レコードは、Mozcおよび各辞書入力の既存条件を維持します。これらへ一律にPDL1.0を適用したり、元の条件を再ライセンスしたりしません。新しい [DICTIONARY-LICENSES.txt](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) と `LICENSE-DATA.md` はアプリ内の該当カテゴリ詳細にも保持しています。
+
 ### 人物追加の出典
 
 人物の追加出典は、[出典・採用行対応](../../tools/classified-dictionaries/category-provenance.json) の `personAdditions` と各人物カテゴリの同梱HTMLに保持しています。採用された読み・表記に対応するURLを掲載し、原資料本文は転載しません。氏名・読みの選定・正規化・バイナリ化を行い、各語の著作権条件は未確認です。
@@ -228,31 +237,31 @@ KNApSAcK KAMPOの処方名・生薬名。KNApSAcK Family © 金谷 重彦（奈�
 
 | 資料 | リポジトリ内原文 | 取得元 |
 | --- | --- | --- |
-| `mozc` | [mozc.txt](../../app/src/main/assets/licenses/sources/mozc.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/third-party/MOZC-LICENSE) |
-| `cmudict` | [cmudict.txt](../../app/src/main/assets/licenses/sources/cmudict.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/third-party/CMUDICT-LICENSE) |
-| `ipadic-copying` | [ipadic-copying.txt](../../app/src/main/assets/licenses/sources/ipadic-copying.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/third-party/IPADIC-COPYING) |
-| `release-data` | [release-data.txt](../../app/src/main/assets/licenses/sources/release-data.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/LICENSE-DATA.md) |
-| `ipadic` | [ipadic.txt](../../app/src/main/assets/licenses/sources/ipadic.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/third-party/IPADIC-NOTICE) |
-| `jmdict` | [jmdict.txt](../../app/src/main/assets/licenses/sources/jmdict.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/third-party/JMDICT-LICENSE.html) |
-| `data` | [data.txt](../../app/src/main/assets/licenses/sources/data.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/third-party/LICENSE-DATA.md) |
-| `corpus` | [corpus.txt](../../app/src/main/assets/licenses/sources/corpus.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/third-party/NOTICE.md) |
-| `converter` | [converter.txt](../../app/src/main/assets/licenses/sources/converter.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/resources/THIRD-PARTY-NOTICES.md) |
+| `mozc` | [mozc.txt](../../app/src/main/assets/licenses/sources/mozc.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/third-party/MOZC-LICENSE) |
+| `cmudict` | [cmudict.txt](../../app/src/main/assets/licenses/sources/cmudict.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/third-party/CMUDICT-LICENSE) |
+| `ipadic-copying` | [ipadic-copying.txt](../../app/src/main/assets/licenses/sources/ipadic-copying.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/third-party/IPADIC-COPYING) |
+| `release-data` | [release-data.txt](../../app/src/main/assets/licenses/sources/release-data.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/LICENSE-DATA.md) |
+| `ipadic` | [ipadic.txt](../../app/src/main/assets/licenses/sources/ipadic.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/third-party/IPADIC-NOTICE) |
+| `jmdict` | [jmdict.txt](../../app/src/main/assets/licenses/sources/jmdict.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/third-party/JMDICT-LICENSE.html) |
+| `data` | [data.txt](../../app/src/main/assets/licenses/sources/data.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/third-party/LICENSE-DATA.md) |
+| `corpus` | [corpus.txt](../../app/src/main/assets/licenses/sources/corpus.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/third-party/NOTICE.md) |
+| `converter` | [converter.txt](../../app/src/main/assets/licenses/sources/converter.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/resources/THIRD-PARTY-NOTICES.md) |
 | `cc-by-sa-4` | [cc-by-sa-4.txt](../../app/src/main/assets/licenses/sources/cc-by-sa-4.txt) | [固定URL](https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt) |
 | `apache-2` | [apache-2.txt](../../app/src/main/assets/licenses/sources/apache-2.txt) | [固定URL](https://www.apache.org/licenses/LICENSE-2.0.txt) |
 | `person` | [person.txt](../../app/src/main/assets/licenses/sources/person.txt) | [固定URL](https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-personal-names/b557dd4c1548cc7c2164d5f8b14170c40cbb6f81/LICENSE) |
-| `place` | [place.txt](../../app/src/main/assets/licenses/sources/place.txt) | [固定URL](https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-place-names/98cf8e9d7731695a52e5bc72ed633933c71d1913/LICENSE) |
+| `place` | [place.txt](../../app/src/main/assets/licenses/sources/place.txt) | 45,090
 | `wiki` | [wiki.txt](../../app/src/main/assets/licenses/sources/wiki.txt) | [固定URL](https://raw.githubusercontent.com/utuhiro78/mozcdic-ut-jawiki/57af6adefedab262c295c4bfff71a89902cbe05c/LICENSE) |
 | `neologd` | [neologd.txt](../../app/src/main/assets/licenses/sources/neologd.txt) | [固定URL](https://raw.githubusercontent.com/neologd/mecab-ipadic-neologd/abc61e33d8be3d0ead202e6b1df064c72d5ccf11/COPYING) |
 | `merge-ut` | [merge-ut.txt](../../app/src/main/assets/licenses/sources/merge-ut.txt) | [固定URL](https://raw.githubusercontent.com/utuhiro78/merge-ut-dictionaries/6239884099ddc0c4d5bb1453b20441121d20593e/LICENSE) |
-| `cc-by-4.0` | [cc-by-4.0.txt](../../app/src/main/assets/licenses/sources/cc-by-4.0.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/specialist/notices/CC-BY-4.0.txt) |
-| `cc-by-sa-2.1-jp` | [cc-by-sa-2.1-jp.txt](../../app/src/main/assets/licenses/sources/cc-by-sa-2.1-jp.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/specialist/notices/CC-BY-SA-2.1-JP.txt) |
-| `hyakuyaku` | [hyakuyaku.txt](../../app/src/main/assets/licenses/sources/hyakuyaku.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/specialist/notices/hyakuyaku.txt) |
-| `kampo_core` | [kampo_core.txt](../../app/src/main/assets/licenses/sources/kampo_core.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/specialist/notices/kampo_core.txt) |
-| `kampo_herb` | [kampo_herb.txt](../../app/src/main/assets/licenses/sources/kampo_herb.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/specialist/notices/kampo_herb.txt) |
-| `manbyo` | [manbyo.txt](../../app/src/main/assets/licenses/sources/manbyo.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/6927d27d73fa568d8147f837bdd31fa9493b1875/src/main/specialist/notices/manbyo.txt) |
-| `distribution-licenses` | [distribution-licenses.txt](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) | [固定URL](https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/v1.7.276/DICTIONARY-LICENSES.txt) |
+| `cc-by-4.0` | [cc-by-4.0.txt](../../app/src/main/assets/licenses/sources/cc-by-4.0.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/specialist/notices/CC-BY-4.0.txt) |
+| `cc-by-sa-2.1-jp` | [cc-by-sa-2.1-jp.txt](../../app/src/main/assets/licenses/sources/cc-by-sa-2.1-jp.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/specialist/notices/CC-BY-SA-2.1-JP.txt) |
+| `hyakuyaku` | [hyakuyaku.txt](../../app/src/main/assets/licenses/sources/hyakuyaku.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/specialist/notices/hyakuyaku.txt) |
+| `kampo_core` | [kampo_core.txt](../../app/src/main/assets/licenses/sources/kampo_core.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/specialist/notices/kampo_core.txt) |
+| `kampo_herb` | [kampo_herb.txt](../../app/src/main/assets/licenses/sources/kampo_herb.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/specialist/notices/kampo_herb.txt) |
+| `manbyo` | [manbyo.txt](../../app/src/main/assets/licenses/sources/manbyo.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/13e391bc7a4a245f63aa0091c1e9c11db3dbd759/src/main/specialist/notices/manbyo.txt) |
+| `distribution-licenses` | [distribution-licenses.txt](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) | [固定URL](https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/v1.7.277/DICTIONARY-LICENSES.txt) |
 
-配布の全ライセンス文書 [DICTIONARY-LICENSES.txtの保持原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) は公開添付と同じバイト列です。SHA-256は `7dababd4e8f080dd133216e64c7f64bca3052287dc0e47155067ee0732962a6a`。アプリのMITと第三者データの条件は区別してください。
+配布の全ライセンス文書 [DICTIONARY-LICENSES.txtの保持原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) は公開添付と同じバイト列です。SHA-256は `1002230bbdf760c6a00a81b6dd19d93299b9bba3a3e31815d2eff16bd1bd2ff2`。アプリのMITと第三者データの条件は区別してください。
 
 ## 再配布・更新時の表示
 
