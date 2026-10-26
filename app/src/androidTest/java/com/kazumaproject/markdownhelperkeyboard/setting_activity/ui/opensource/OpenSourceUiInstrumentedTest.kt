@@ -115,6 +115,31 @@ class OpenSourceUiInstrumentedTest {
                         assertFalse(web.settings.javaScriptEnabled)
                         assertFalse(web.settings.allowFileAccess)
                     }
+                    var painted = false
+                    main { web.postVisualStateCallback(0, object : WebView.VisualStateCallback() {
+                        override fun onComplete(requestId: Long) { painted = true }
+                    }) }
+                    await("Notice visual state was not committed") { painted }
+                    val bounds = android.graphics.Rect()
+                    main { assertTrue(web.getGlobalVisibleRect(bounds)) }
+                    // Loading progress and contentHeight can both succeed while the page is blank.
+                    val deadline = SystemClock.uptimeMillis() + 10000
+                    var readablePixels = 0
+                    do {
+                        SystemClock.sleep(200)
+                        val screen = ins.uiAutomation.takeScreenshot() ?: error("Screenshot unavailable")
+                        val background = screen.getPixel(bounds.centerX(), bounds.bottom - 8)
+                        readablePixels = 0
+                        for (y in bounds.top + 12 until minOf(bounds.top + 500, bounds.bottom - 12) step 2)
+                            for (x in bounds.left + 24 until bounds.right - 24 step 2) {
+                                val pixel = screen.getPixel(x, y)
+                                if (kotlin.math.abs(android.graphics.Color.red(pixel) - android.graphics.Color.red(background)) > 60 &&
+                                    kotlin.math.abs(android.graphics.Color.green(pixel) - android.graphics.Color.green(background)) > 60)
+                                    readablePixels++
+                            }
+                        screen.recycle()
+                    } while (readablePixels < 300 && SystemClock.uptimeMillis() < deadline)
+                    assertTrue("Notice body is blank or has insufficient contrast ($readablePixels pixels)", readablePixels >= 300)
                     return web
                 }
                 val dictionary = open(0, 0)
@@ -123,6 +148,10 @@ class OpenSourceUiInstrumentedTest {
                 await("Long notice cannot scroll") { dictionary.scrollY > 0 }
                 shell("input keyevent KEYCODE_BACK")
                 await("Back did not dismiss notice") { WindowInspector.getGlobalWindowViews().none { view -> descendants(view).any { it is WebView } } }
+                open(0, 6)
+                capture("$prefix-classified-dictionary")
+                shell("input keyevent KEYCODE_BACK")
+                await("Classified dictionary dialog did not close") { WindowInspector.getGlobalWindowViews().none { view -> descendants(view).any { it is WebView } } }
                 open(1, 0)
                 capture("$prefix-library")
                 shell("input keyevent KEYCODE_BACK")

@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.view.*
 import android.webkit.WebResourceRequest
@@ -95,22 +94,22 @@ class OpenSourceFragment : Fragment() {
                     return true
                 }
             }
-            setBackgroundColor(Color.TRANSPARENT)
+            setBackgroundColor(MaterialColors.getColor(requireView(), com.google.android.material.R.attr.colorSurface))
         }
         val ink = MaterialColors.getColor(requireView(), com.google.android.material.R.attr.colorOnSurface)
         val link = MaterialColors.getColor(requireView(), androidx.appcompat.R.attr.colorPrimary)
+        val surface = MaterialColors.getColor(requireView(), com.google.android.material.R.attr.colorSurface)
         val style = """
             <style>
-            body{font:16px sans-serif;line-height:1.6;padding:8px 16px;overflow-wrap:anywhere;color:#%06x}
+            body{font:16px sans-serif;line-height:1.6;padding:8px 16px;overflow-wrap:anywhere;color:#%06x;background-color:#%06x}
             h1{font-size:20px;line-height:1.4}h2{font-size:17px;margin-top:24px}h3{font-size:15px}
             html[lang=ja] .translation[lang=en],html:not([lang=ja]) .translation[lang=ja]{display:none}
             a{color:#%06x}pre{white-space:pre-wrap;font:13px monospace;line-height:1.5}
             </style>
-        """.trimIndent().format(ink and 0xffffff, link and 0xffffff)
+        """.trimIndent().format(ink and 0xffffff, surface and 0xffffff, link and 0xffffff)
         val content = "<!doctype html><html lang=\"${resources.configuration.locales[0].language}\"><head>" +
             "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">$style</head><body>" +
             item.document().replace(Regex("<style>.*?</style>|<!doctype[^>]*>|<meta[^>]*>|<title>.*?</title>|<h1>.*?</h1>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), "") + "</body></html>"
-        webView.loadDataWithBaseURL("https://licenses.invalid/", content, "text/html", "UTF-8", null)
         val viewportHeight = (resources.displayMetrics.heightPixels * 0.60f).toInt()
         val viewport = FrameLayout(requireContext()).apply {
             addView(webView, FrameLayout.LayoutParams(-1, viewportHeight))
@@ -127,6 +126,7 @@ class OpenSourceFragment : Fragment() {
             .create()
         licenseDialog = dialog
         dialog.show()
+        webView.loadDataWithBaseURL("https://licenses.invalid/", content, "text/html", "UTF-8", null)
     }
 
     override fun onDestroyView() {
