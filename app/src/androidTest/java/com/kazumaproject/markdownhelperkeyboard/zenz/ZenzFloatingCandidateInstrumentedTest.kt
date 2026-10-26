@@ -593,9 +593,17 @@ class ZenzFloatingCandidateInstrumentedTest {
                             report.appendLine("floating,debounceMs=$debounce,warmup=${iteration<3},ns=$elapsed")
                         }
                         File(ctx.filesDir, "zenz-floating-perf.txt").writeText(report.toString())
-                        val candidate = candidateToCommit(result)
-                        touch(bounds(candidate))
-                        withEditor { assertEquals(result.text, it.editText.text.toString()) }
+                        if (result.duplicate) {
+                            assertFalse(
+                                "Duplicate result must not create a floating window",
+                                shell("dumpsys window windows").contains("Zenz floating result"),
+                            )
+                            withEditor { it.editText.text.clear() }
+                        } else {
+                            val candidate = candidateToCommit(result)
+                            touch(bounds(candidate))
+                            withEditor { assertEquals(result.text, it.editText.text.toString()) }
+                        }
                     } finally {
                         ins.runOnMainSync {
                             choreographer[0]!!.removeFrameCallback(frame)
