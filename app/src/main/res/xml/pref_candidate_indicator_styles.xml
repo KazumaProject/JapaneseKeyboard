@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CandidateIndicatorPreviewPreference
+        android:key="candidate_indicator_preview" android:title="@string/candidate_indicator_preview" />
+    <PreferenceCategory android:title="@string/candidate_indicator_katakana">
+        <ListPreference android:key="candidate_character_katakana_line_style"
+            android:title="@string/candidate_indicator_line" android:defaultValue="solid"
+            android:entries="@array/candidate_indicator_line_titles" android:entryValues="@array/candidate_indicator_line_values" />
+        <Preference android:key="candidate_character_katakana_color_light" android:title="@string/candidate_indicator_color_light" />
+        <Preference android:key="candidate_character_katakana_color_dark" android:title="@string/candidate_indicator_color_dark" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/candidate_indicator_full_width">
+        <ListPreference android:key="candidate_character_full_width_line_style"
+            android:title="@string/candidate_indicator_line" android:defaultValue="double"
+            android:entries="@array/candidate_indicator_line_titles" android:entryValues="@array/candidate_indicator_line_values" />
+        <Preference android:key="candidate_character_full_width_color_light" android:title="@string/candidate_indicator_color_light" />
+        <Preference android:key="candidate_character_full_width_color_dark" android:title="@string/candidate_indicator_color_dark" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/candidate_indicator_half_width">
+        <ListPreference android:key="candidate_character_half_width_line_style"
+            android:title="@string/candidate_indicator_line" android:defaultValue="dotted"
+            android:entries="@array/candidate_indicator_line_titles" android:entryValues="@array/candidate_indicator_line_values" />
+        <Preference android:key="candidate_character_half_width_color_light" android:title="@string/candidate_indicator_color_light" />
+        <Preference android:key="candidate_character_half_width_color_dark" android:title="@string/candidate_indicator_color_dark" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/candidate_indicator_half_katakana">
+        <ListPreference android:key="candidate_character_half_katakana_line_style"
+            android:title="@string/candidate_indicator_line" android:defaultValue="dashed"
+            android:entries="@array/candidate_indicator_line_titles" android:entryValues="@array/candidate_indicator_line_values" />
+        <Preference android:key="candidate_character_half_katakana_color_light" android:title="@string/candidate_indicator_color_light" />
+        <Preference android:key="candidate_character_half_katakana_color_dark" android:title="@string/candidate_indicator_color_dark" />
+    </PreferenceCategory>
+    <Preference android:key="candidate_indicator_reset" android:title="@string/candidate_indicator_reset" />
+</PreferenceScreen>

@@ -129,6 +129,7 @@ class DictionaryBrowserRepository @Inject constructor(
         val tokens = reader.loadTokenIndex(tokenKey, token)
         val data = TripleDictionaryData(
             tango, yomi, token, lbs, leaves, tokens, reader.loadTangoLbsIndex(tangoKey, tango),
+            reader.loadLiteralSurfaces(category),
         )
         return sequence {
             val readings = yomi.termIterator(lbs, leaves)

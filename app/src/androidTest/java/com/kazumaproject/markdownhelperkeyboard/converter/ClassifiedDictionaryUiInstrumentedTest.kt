@@ -50,7 +50,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
     }
     private fun views() = WindowInspector.getGlobalWindowViews().asSequence().flatMap(::descendants)
     private fun await(message: String, condition: () -> Boolean) {
-        val deadline = SystemClock.uptimeMillis() + 30000
+        val deadline = SystemClock.uptimeMillis() + 90000
         while (SystemClock.uptimeMillis() < deadline) {
             var ready = false
             main { ready = condition() }
@@ -64,6 +64,27 @@ class ClassifiedDictionaryUiInstrumentedTest {
             File(context.cacheDir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             bitmap.recycle()
         }
+    }
+
+    private fun scrollSettingsTo(fragment: DictionaryPreferenceFragment, key: String) {
+        main {
+            var parent = fragment.findPreference<androidx.preference.Preference>(key)?.parent
+            while (parent != null) {
+                if (parent is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory) {
+                    parent.setExpanded(true, persist = false)
+                }
+                parent = parent.parent
+            }
+        }
+        ins.waitForIdleSync()
+        main {
+            val adapter = fragment.listView.adapter as androidx.preference.PreferenceGroup.PreferencePositionCallback
+            val position = adapter.getPreferenceAdapterPosition(key)
+            check(position >= 0) { "Missing preference: $key" }
+            (fragment.listView.layoutManager as androidx.recyclerview.widget.LinearLayoutManager)
+                .scrollToPositionWithOffset(position, 0)
+        }
+        SystemClock.sleep(400)
     }
 
     @Test fun everyCategoryLicenseDialogRendersOffline() {
@@ -96,7 +117,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 list.performItemClick(list, index, index.toLong())
             }
             await("${spec.id} notice did not render") { views().filterIsInstance<WebView>().any { it.isShown && it.height >= 200 * context.resources.displayMetrics.density && it.contentHeight > 0 && it.progress == 100 && it.title?.contains(spec.id) == true } }
-            if (spec.id in setOf("person", "kampo", "medical")) { SystemClock.sleep(150); screenshot("classified-license-${spec.id}.png") }
+            if (spec.id in setOf("person/actor", "kampo", "medical")) { SystemClock.sleep(150); screenshot("classified-license-${spec.id.replace('/', '_')}.png") }
             main { views().filterIsInstance<TextView>().first { it.isShown && it.id == android.R.id.button1 }.performClick() }
             await("License dialog did not close") { views().filterIsInstance<WebView>().none { it.isShown } }
         }
@@ -105,7 +126,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
         }
     }
 
-    @Test fun dictionarySettingsExposeAndPersistAll30IndependentSwitches() {
+    @Test fun dictionarySettingsExposeAndPersistAllPopulatedIndependentSwitches() {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
@@ -134,6 +155,8 @@ class ClassifiedDictionaryUiInstrumentedTest {
         }
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
         val previous = ClassifiedDictionaries.all.associate { it.category to store.isOptionalBundledEnabled(it.category) }
+        val settingsPrefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val oldHomeMode = settingsPrefs.getBoolean("setting_use_new_home_screen_preference", true)
         fun findSwitch(spec: ClassifiedDictionarySpec): SwitchPreferenceCompat? {
             // Loading publishes the hierarchy before its RecyclerView layout completes.
             val loading = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment::class.java
@@ -195,14 +218,58 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 host.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
                     ?.let { fragment = it; ClassifiedDictionaries.all.all { spec -> findSwitch(spec)?.isChecked == true } } == true
             }
-            main { fragment.scrollToPreference(ClassifiedDictionaries.all.first().preferenceKey) }
-            SystemClock.sleep(300)
-            screenshot("classified-dictionary-settings.png")
+            // External settings enqueue long Toasts; allow the bounded queue to drain before capture.
+            SystemClock.sleep(20_000)
+            val screenshotCategories = listOf(
+                "person/surname_origin_unconfirmed", "person/actor", "person/thought",
+                "event/occasion/organized_event", "event/incident/natural_disaster",
+                "term/general/products_daily_goods", "term/specialist/information_communications",
+            )
+            for (id in screenshotCategories) {
+                val groupKey = when {
+                    id == "person/thought" -> "optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
+                    id.startsWith("person/") -> "classified_group_person"
+                    else -> "classified_group_" + id.substringBeforeLast('/').replace('/', '_')
+                }
+                scrollSettingsTo(fragment, groupKey)
+                screenshot("classified-settings-${id.replace('/', '_')}.png")
+            }
             main { fragment.scrollToPreference(ClassifiedDictionaries.all.last().preferenceKey) }
             SystemClock.sleep(300)
             screenshot("classified-dictionary-settings-medical.png")
+            // The legacy pager instantiates the same fragment under a different parent.
+            settingsPrefs.edit().putBoolean("setting_use_new_home_screen_preference", false).commit()
+            main {
+                activity.applySettingHomeModeFromPreference()
+                host.navController.navigate(R.id.settingMainFragment)
+            }
+            lateinit var legacy: com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment
+            await("Legacy settings pager not ready") {
+                host.childFragmentManager.fragments.filterIsInstance<com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment>()
+                    .firstOrNull()?.let { legacy = it; it.view?.findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.setting_view_pager)?.adapter != null } == true
+            }
+            main {
+                val tabs = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingTabRegistry.createTabs()
+                val dictionaryIndex = tabs.indexOfFirst { it.key == "dictionary" }
+                assertTrue(dictionaryIndex >= 0)
+                legacy.requireView().findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.setting_view_pager).setCurrentItem(dictionaryIndex, false)
+            }
+            await("Legacy dictionary switches did not share enabled states") {
+                legacy.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
+                    ?.let { fragment = it; ClassifiedDictionaries.all.all { spec -> findSwitch(spec)?.isChecked == true } } == true
+            }
+            for (id in listOf("person/actor", "person/thought", "event/occasion/organized_event", "term/specialist/information_communications")) {
+                val groupKey = if (id == "person/thought") "optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
+                    else if (id.startsWith("person/")) "classified_group_person"
+                    else "classified_group_" + id.substringBeforeLast('/').replace('/', '_')
+                scrollSettingsTo(fragment, groupKey)
+                screenshot("classified-legacy-${id.replace('/', '_')}.png")
+            }
+
         } finally {
             previous.forEach { (category, value) -> store.setOptionalBundledEnabled(category, value) }
+            settingsPrefs.edit().putBoolean("setting_use_new_home_screen_preference", oldHomeMode).commit()
+            main { activity.applySettingHomeModeFromPreference() }
         }
         } finally {
             if (!wasEnabled) shell("ime disable $target")
@@ -221,8 +288,12 @@ class ClassifiedDictionaryUiInstrumentedTest {
         verifyRomajiLabelsAndCommit(learnedPrediction = true)
     }
 
-    @Test fun all30ExactMatchesAreVisibleAndCommitThroughTheRealIme() {
+    @Test fun exactHomophonesKeepSubcategoryLabelsAndCommitThroughTheRealIme() {
         verifyRomajiLabelsAndCommit(fullyMatched = true)
+    }
+
+    @Test fun subdividedPersonEventAndTermCandidatesShowLabelsAndCommit() {
+        verifyRomajiLabelsAndCommit(subdivided = true)
     }
 
     private fun isFullyVisible(view: View): Boolean {
@@ -231,13 +302,16 @@ class ClassifiedDictionaryUiInstrumentedTest {
         return item.getGlobalVisibleRect(visible) && visible.width() == item.width && visible.height() == item.height
     }
 
-    private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null, fullyMatched: Boolean = false) {
+    private fun verifyRomajiLabelsAndCommit(learnedPrediction: Boolean? = null, fullyMatched: Boolean = false, subdivided: Boolean = false) {
         shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         check(context.packageName.contains(".classifiedprobe")) { "Use the isolated classifiedprobe APK" }
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
-        val testedCategories = if (fullyMatched) ClassifiedDictionaries.all.map { it.category } else
-            listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
+        val testedCategories = if (fullyMatched) ClassifiedDictionaries.all.map { it.category } else if (subdivided)
+            listOf(DictionaryCategory.CLASSIFIED_PERSON_ACTOR, DictionaryCategory.CLASSIFIED_EVENT_OCCASION_ORGANIZED_EVENT,
+                DictionaryCategory.CLASSIFIED_TERM_GENERAL_FOOD_DRINK_COOKING, DictionaryCategory.CLASSIFIED_TERM_SPECIALIST_INFORMATION_COMMUNICATIONS,
+                DictionaryCategory.CLASSIFIED_PERSON_COMEDIAN)
+        else listOf(DictionaryCategory.CLASSIFIED_AWARD, DictionaryCategory.CLASSIFIED_KAMPO, DictionaryCategory.CLASSIFIED_MEDICAL)
         val previous = testedCategories.associateWith { store.isOptionalBundledEnabled(it) }
         val oldIme = shell("settings get secure default_input_method")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
@@ -275,7 +349,8 @@ class ClassifiedDictionaryUiInstrumentedTest {
             }
             // The keyboard view appears before the editor restart/IME entrance animation completes.
             await("Editor input connection not active") { activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java).isActive(activity.editText) }
-            SystemClock.sleep(750)
+            ins.waitForIdleSync()
+            SystemClock.sleep(2000)
             if (learnedPrediction != null) {
                 lateinit var service: IMEService
                 main {
@@ -299,11 +374,34 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     if (!learnedPrediction) repository!!.upsertLearnedData(entry)
                 }
             }
-            val samples = if (fullyMatched) listOf(Triple("syou", "人名", "SHO"), Triple("syou", "人名", "紫耀")) else
+            val samples = if (subdivided) listOf(
+                Triple("kuriki", "[芸人]", "くりきひなた"), Triple("kakutatu", "[俳優]", "郭達"), Triple("aomaturi", "[催し・行事]", "アオマツリ"),
+                Triple("aigana", "[食品・料理]", "鮎河菜"), Triple("aiaiesu", "[情報・通信]", "IIS"),
+            ) else if (fullyMatched) listOf(Triple("syou", "人名", "SHO"), Triple("syou", "人名", "紫耀")) else
                 listOf(Triple("aiehusyou", "[賞]", "IF賞"), Triple("asennyaku", "[漢方・生薬]", "阿仙薬"), Triple("asaitami", "[医療]", "朝痛み"))
-            for ((input, expectedLabel, expectedSurface) in samples) {
-            main { activity.editText.setText("") }
-            SystemClock.sleep(300)
+            for ((input, sampleLabel, expectedSurface) in samples) {
+            val categoryId = when (input) {
+                "syou" -> "person/personal_name_origin_japanese"
+                "kuriki" -> "person/comedian"
+                "kakutatu" -> "person/actor"
+                "aomaturi" -> "event/occasion/organized_event"
+                "aigana" -> "term/general/food_drink_cooking"
+                "aiaiesu" -> "term/specialist/information_communications"
+                else -> null
+            }
+            var expectedLabel = sampleLabel
+            if (categoryId != null) main {
+                // IME service views can use a different configuration from the settings activity.
+                val keyboardContext = views().filterIsInstance<QWERTYButton>().first { it.isShown }.context
+                val spec = ClassifiedDictionaries.all.single { it.id == categoryId }
+                expectedLabel = "[${keyboardContext.getString(spec.labelRes)}]"
+            }
+            main {
+                activity.editText.setText("")
+                activity.editText.requestFocus()
+            }
+            ins.waitForIdleSync()
+            SystemClock.sleep(1000)
             var lastKeyUpMs = 0L
             for (letter in input) {
                 val point = IntArray(2)

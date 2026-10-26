@@ -12,6 +12,7 @@ class ZenzRequestTimingPolicyTest {
     @Test
     fun configuredDelayIsPreserved() {
         assertEquals(300L, resolveZenzDebounceMillis(300))
+        assertEquals(500L, resolveZenzDebounceMillis(500))
     }
 
     @Test

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="24dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/license_overview" android:textAppearance="?attr/textAppearanceTitleMedium"
+        android:textColor="?android:attr/textColorPrimary" android:accessibilityHeading="true" />
+    <TextView android:id="@+id/license_intro" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginTop="12dp"
+        android:textAppearance="?attr/textAppearanceBodyMedium" android:lineSpacingExtra="3dp"
+        android:textColor="?android:attr/textColorSecondary" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="12dp" android:text="@string/license_terms_note"
+        android:textAppearance="?attr/textAppearanceBodyMedium" android:lineSpacingExtra="3dp"
+        android:textColor="?android:attr/textColorSecondary" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/license_app"
+        style="?attr/borderlessButtonStyle" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_marginTop="8dp"
+        android:text="@string/license_app" android:textAllCaps="false" />
+</LinearLayout>

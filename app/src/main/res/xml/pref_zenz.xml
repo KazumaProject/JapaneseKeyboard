@@ -11,13 +11,6 @@
 
         <SwitchPreferenceCompat
             android:dependency="enable_ai_conversion_zenz_preference"
-            android:key="enable_ai_conversion_zenzai_preference"
-            android:summary="@string/enable_ai_conversion_zenz_preference_summary"
-            android:title="@string/enable_zenzai_preference_title"
-            app:defaultValue="false" />
-
-        <SwitchPreferenceCompat
-            android:dependency="enable_ai_conversion_zenz_preference"
             android:key="enable_zenz_rerank_preference"
             android:title="@string/enable_zenz_rerank_preference_title"
             app:defaultValue="false"
@@ -31,10 +24,6 @@
             android:defaultValue="false"
             android:title="@string/zenz_floating_title"
             android:summary="@string/zenz_floating_summary" />
-        <Preference
-            android:key="zenz_floating_candidates_reset"
-            android:dependency="zenz_floating_candidates_enabled"
-            android:title="@string/zenz_floating_reset" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/zenz_generation_category">
         <Preference
