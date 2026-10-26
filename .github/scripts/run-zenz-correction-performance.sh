@@ -38,11 +38,19 @@ for relative in ['converter/ZenzCorrectionPerformanceInstrumentedTest.kt', 'zenz
     (baseline/prefix/relative).write_text((head/prefix/relative).read_text())
 relative = prefix/'zenz/ZenzFloatingCandidateInstrumentedTest.kt'
 source = (head/relative).read_text()
-start = source.index('    @Test(timeout = 900_000)\n    fun measureFloatingResultLatency()')
+start = source.index('    // Keep these probe helpers with measureFloatingResultLatency')
 end = source.index('    private fun restore(', start)
 original = (baseline/relative).read_text()
 position = original.index('    private fun restore(')
-(baseline/relative).write_text(original[:position]+source[start:end]+original[position:])
+# The baseline may already contain this benchmark (for example after a merge).
+# Replace it instead of appending a second method with the same name.
+helper_marker = '    // Keep these probe helpers with measureFloatingResultLatency'
+benchmark_marker = '    @Test(timeout = 900_000)\n    fun measureFloatingResultLatency()'
+for marker in (helper_marker, benchmark_marker):
+    if marker in original:
+        position = original.index(marker)
+        break
+(baseline/relative).write_text(original[:position]+source[start:end]+original[original.index('    private fun restore('):])
 PY
 
 build() {
