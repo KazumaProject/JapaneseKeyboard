@@ -1,7 +1,7 @@
 {
-  "personSourceSha256": "deb0a610d8cd4f87aba86da786ed3ef76f15744b5cd2e4ae2b79911400880b92",
-  "revision": "ac6ce20e2f43b56f8bbed240008a8e88f1f30091",
-  "version": "v1.7.275",
+  "personSourceSha256": "e79047fb49ec54a0d418010a9602b8d433743d44805468394dd2ac77abb9225f",
+  "revision": "6927d27d73fa568d8147f837bdd31fa9493b1875",
+  "version": "v1.7.276",
   "inputSha256": {
     "src/main/bin/names.txt": "d108a5a15030b573e0e0b3d05c927cc6c752ff8fc25a19dca062a5b99ffbf25c",
     "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
@@ -636,7 +636,7 @@
       "neologd": 259,
       "wiki": 1206,
       "person": 185,
-      "web": 3525
+      "web": 3516
     },
     "person/performing_arts": {
       "person": 18,
@@ -653,7 +653,7 @@
     "person/personal_name_origin_japanese": {
       "person": 8138,
       "web": 42976,
-      "neologd": 15173,
+      "neologd": 15170,
       "wiki": 15419,
       "place": 3
     },
@@ -695,7 +695,7 @@
     },
     "person/surname_origin_japanese": {
       "wiki": 4769,
-      "neologd": 5418,
+      "neologd": 5417,
       "web": 14251,
       "person": 2177,
       "place": 1
@@ -125807,7 +125807,7 @@
   "specialist": {
     "schemaVersion": 1,
     "rules": {
-      "version": 4,
+      "version": 5,
       "key": "normalized_reading+NFC_surface",
       "reading": "trim,NFKC,katakana-to-hiragana",
       "surface": "trim,NFC; internal spaces/case/width/variants preserved",
@@ -125822,7 +125822,7 @@
       "supplement": "manbyo missing readings only; source row and original surface must match",
       "readingCorrections": "source, row, original reading and surface must match; corrected readings carry evidence URLs",
       "kanaSurface": "must equal the current TokenArray sentinel reconstruction",
-      "classificationExclusions": "withhold pairs excluded by the classified dictionary review"
+      "classificationExclusions": "withhold pairs excluded by classified review or the persistent crime-offender hash list"
     },
     "inputs": {
       "src/main/specialist/notices/CC-BY-4.0.txt": "ae65546dff434288761879ba1cf7868fbaee47d62c92bdd795e31830647507f8",
@@ -125836,6 +125836,7 @@
       "src/main/specialist/reading-corrections.json": "8474db9b83c09dec59b292cf223defc3dda290a67d3bf887a7ff1abf4f5f13a5",
       "src/main/specialist/categories.json": "d03ce6563d7439cbcdcdaabf8df2529f507b2ce12abedb75e0ec1167704a0a25",
       "src/main/specialist/sources.json": "a8bbbbe3b0fce76441acc19f3d7232d6f1f53f76709ce2990c029d0bb330c9e8",
+      "src/main/classification/crime-offender-exclusion-keys.sha256": "97b467a1b4b9b482289fb8de44deb72f6c292a9880b683dc2044ac01daad4eba",
       "src/main/specialist/collected-terms/cf7e87c20f1b1c28.jsonl": "5576452ddee809c083e52b0d0d0d41aab73abdbdfab31f9a1ff0db336087f22a",
       "src/main/specialist/sources/kampo_core.jsonl.gz": "88b4487a56159df060c58e5c020c310f7d55def773f66cc384daab7146c0ff55",
       "src/main/specialist/sources/kampo_herb.jsonl.gz": "1146440a2e946ecd4b80f3792ecc75160ce342f4ad3302e4fb0fc544158927ed",
@@ -125844,7 +125845,7 @@
     },
     "classificationExclusionsSha256": "50fb918b0a0ffb823cdae3c57eff156287bcc8b0580c12001905d158fd4262a2",
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "4b960cc686581e17c7719c7e978ea586317d472c08ac9d947148de5feae4d7a6",
+    "existingInventorySha256": "2b8afa1ac7b17b421999700e442432b647771660e35bd7a838bb90e81c0c89b5",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -125966,7 +125967,7 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1864543,
+    "existingUniquePairs": 1864530,
     "sourceRows": {
       "collected/collected-terms/cf7e87c20f1b1c28.jsonl": {
         "rows": 2,
@@ -126079,8 +126080,8 @@
       "surface": "桂枝茯苓丸加薏苡仁"
     }
   ],
-  "surfaceOverridesSha256": "43a703e237e9306add44d7ebacc71a77a672039d4a8a1c4d2cee8f3566082d23",
+  "surfaceOverridesSha256": "2e2ba5b223db1e12264dc9c63359ee9954b1b2752d92224202d36fa0c22ad6b9",
   "englishCatalogSha256": "dd49edb7e2e106ad683426e3fe97f538fd4d8be5fddedbe0169e8280311c694e",
-  "englishFixtureSha256": "05e42e62d648a76431451da2ee0bc8aa11962116affe5dcc955f6fded9325f59",
-  "classifiedFixtureSha256": "66f219836b4793def5c383741674fd78229a66e4d8d084e328c2d16c0fe1c799"
+  "englishFixtureSha256": "16044f16e371b420a24a19f2a7248320141954496ceb64a0a804aa8dc6b0a9f6",
+  "classifiedFixtureSha256": "33d2d796ee341fbb2475c64c2ff0443177563419e85b3e7db66f486a072eb654"
 }
