@@ -60,6 +60,9 @@ class OpenSourceUiInstrumentedTest {
         shell("input keyevent KEYCODE_WAKEUP")
         shell("wm dismiss-keyguard")
         shell("am start -n ${context.packageName}/com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity")
+        await("Initial settings activity not ready") {
+            activity()?.isSettingsContentReady == true && activity()?.window?.decorView?.hasWindowFocus() == true
+        }
         try {
             for (language in listOf("ja", "en")) for (dark in listOf(false, true)) {
                 main {

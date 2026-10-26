@@ -22,8 +22,8 @@
     <string name="license_changes_heading">Modifications</string>
     <string name="license_terms_heading">License terms</string>
     <string name="license_original_heading">Copyright notices and original license texts</string>
-    <string name="license_library_overview">This component is part of the dependencies resolved for this edition. The license declaration below was verified against the POM or source evidence for this exact version.</string>
-    <string name="license_library_changes">Used as a dependency. No modifications to the upstream source are recorded in this app.</string>
+    <string name="license_library_overview">A dependency of this edition of the app. License terms and available copyright notices for this version are provided below.</string>
+    <string name="license_library_changes">Integrated as a dependency.</string>
     <string name="license_copyright_unknown">A separate copyright notice could not be confirmed from the distributor’s materials. The original license text and available bundled notices are provided below.</string>
     <string name="license_zenz_summary">Bundled prediction model · Apache License 2.0</string>
     <string name="license_zenz_overview">The Zenz prediction model is bundled with the Full edition. Its pinned model card declares Apache License 2.0.</string>
@@ -40,4 +40,5 @@
     <string name="license_missing">The license document could not be opened.</string>
     <string name="license_openmp_overview">OpenMP runtime used by native inference. Notices are preserved from the OpenMP section of NDK 29 NOTICE.toolchain.</string>
     <string name="license_openmp_changes">The NDK runtime library is bundled with the app.</string>
+    <string name="license_source_document">View source documentation</string>
 </resources>

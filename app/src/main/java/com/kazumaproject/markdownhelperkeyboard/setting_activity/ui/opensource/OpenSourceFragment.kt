@@ -109,7 +109,7 @@ class OpenSourceFragment : Fragment() {
         """.trimIndent().format(ink and 0xffffff, link and 0xffffff)
         val content = "<!doctype html><html lang=\"${resources.configuration.locales[0].language}\"><head>" +
             "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">$style</head><body>" +
-            item.document().replace(Regex("<style>.*?</style>|<!doctype[^>]*>|<meta[^>]*>|<title>.*?</title>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), "") + "</body></html>"
+            item.document().replace(Regex("<style>.*?</style>|<!doctype[^>]*>|<meta[^>]*>|<title>.*?</title>|<h1>.*?</h1>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), "") + "</body></html>"
         webView.loadDataWithBaseURL("https://licenses.invalid/", content, "text/html", "UTF-8", null)
         val viewportHeight = (resources.displayMetrics.heightPixels * 0.60f).toInt()
         val viewport = FrameLayout(requireContext()).apply {

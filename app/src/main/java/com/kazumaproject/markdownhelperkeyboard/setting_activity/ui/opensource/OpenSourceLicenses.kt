@@ -23,7 +23,7 @@ internal class OpenSourceLicenses(private val context: Context) {
     private fun escape(value: String) = TextUtils.htmlEncode(value)
     private fun paragraph(value: String) = "<p>${escape(value)}</p>"
     private fun section(heading: Int, body: String) = "<h2>${escape(text(heading))}</h2>$body"
-    private fun link(url: String) = "<p><a href=\"${escape(url)}\">${escape(url)}</a></p>"
+    private fun link(url: String) = "<p><a href=\"${escape(url)}\">${escape(text(R.string.license_source_document))}</a></p>"
     private fun original(path: String) = "<pre>${escape(asset(path))}</pre>"
 
     private fun document(title: String, overview: String, source: String, version: String,

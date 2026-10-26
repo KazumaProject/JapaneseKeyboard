@@ -22,8 +22,8 @@
     <string name="license_changes_heading">加工内容</string>
     <string name="license_terms_heading">利用条件</string>
     <string name="license_original_heading">著作権表示・ライセンス原文</string>
-    <string name="license_library_overview">この版のアプリの依存関係に含まれるコンポーネントです。以下の利用条件は、対象版の POM またはソース資料で確認したライセンス宣言です。</string>
-    <string name="license_library_changes">依存ライブラリとして使用しています。本アプリによる上流ソースの変更は記録されていません。</string>
+    <string name="license_library_overview">本アプリの依存コンポーネントです。対象版の利用条件と付属する通知を以下に掲載しています。</string>
+    <string name="license_library_changes">依存コンポーネントとして組み込んでいます。</string>
     <string name="license_copyright_unknown">個別の著作権表示は、配布元の資料からは確認できていません。以下にライセンス原文と、取得できた同梱通知を掲載しています。</string>
     <string name="license_zenz_summary">同梱の予測モデル · Apache License 2.0</string>
     <string name="license_zenz_overview">Full 版に同梱する Zenz 予測モデルです。固定版のモデルカードでは Apache License 2.0 が宣言されています。</string>
@@ -40,4 +40,5 @@
     <string name="license_missing">ライセンス文書を開けませんでした。</string>
     <string name="license_openmp_overview">ネイティブ推論で使用する OpenMP 実行ライブラリです。NDK 29 の NOTICE.toolchain にある OpenMP の通知を収録しています。</string>
     <string name="license_openmp_changes">NDK の実行ライブラリをアプリに同梱しています。</string>
+    <string name="license_source_document">配布元の資料を確認</string>
 </resources>
