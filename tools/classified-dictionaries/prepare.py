@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = '6927d27d73fa568d8147f837bdd31fa9493b1875'
-VERSION = 'v1.7.276'
+REVISION = '13e391bc7a4a245f63aa0091c1e9c11db3dbd759'
+VERSION = 'v1.7.277'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,9 +46,9 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = '16da86f03a8f2b4d09cac270be4f1b9a71beaca9ee8c06ffbe16d9b138084ffd'
+    archive_sha = 'f2b1c1521a2dacd8fdfdf40a06cf9b7566db60a2592c14be78ea9ce7d5e26d63'
     assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
-    licenses_sha = '053f81437611b301b16e6583d4916be5249982734b7ae9ed246a0f2f8c6354c3'
+    licenses_sha = '1002230bbdf760c6a00a81b6dd19d93299b9bba3a3e31815d2eff16bd1bd2ff2'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == archive_sha
@@ -159,6 +159,31 @@ def provenance():
             assert (row['reading'], row['surface']) in admitted[row['category']]
             counts[row['category']][row['source']] += 1
     assert {k: sum(v.values()) for k, v in counts.items() if k in admitted} == specialist['categoryRows']
+    # Keep the new public-data-license attribution tied to its reviewed additions.
+    mhlw_path = 'src/main/classification/reviews/2026-10-26-business-mhlw.jsonl'
+    mhlw_data = fetch(RAW + mhlw_path)
+    assert sha(mhlw_data) == manifest['inputs'][mhlw_path]
+    mhlw_rows = [json.loads(line) for line in mhlw_data.decode().splitlines()]
+    mhlw_additions = [row for row in mhlw_rows if row['action'] == 'add']
+    mhlw_reclassifications = [row for row in mhlw_rows if row['action'] == 'reclassify']
+    assert all(row['evidence']['sourceName'] == 'MHLW Multilingual Glossary for Employment Management'
+               and row['evidence']['sourceLicense'] == '公共データ利用規約（第1.0版） (PDL1.0)'
+               for row in mhlw_additions + mhlw_reclassifications)
+    mhlw_counts = collections.Counter(category for row in mhlw_additions for category in row['categories'])
+    for category, count in mhlw_counts.items():
+        counts[category]['mhlw'] += count
+    result['mhlwReview'] = {
+        'path': mhlw_path,
+        'sha256': sha(mhlw_data),
+        'sourceUrl': 'https://www.mhlw.go.jp/yougosyu/index.html',
+        'termsUrl': 'https://www.mhlw.go.jp/chosakuken/',
+        'licenseUrl': 'https://www.digital.go.jp/resources/open_data/public_data_license_v1.0',
+        'sourceSha256': sorted({row['evidence']['sourceSha256'] for row in mhlw_additions + mhlw_reclassifications}),
+        'license': '公共データ利用規約（第1.0版） (PDL1.0)',
+        'addedRecords': len(mhlw_additions),
+        'reclassifiedRecords': len(mhlw_reclassifications),
+        'categoryCounts': dict(sorted(mhlw_counts.items())),
+    }
     # Record each reviewed person's source URL without copying the source page.
     person_additions = []
     for addition in manifest['provenance']['personAdditions']:
@@ -275,6 +300,8 @@ def notices(counts):
     write(assets / 'notice-snapshots.json', json.dumps(snapshots, indent=2) + '\n')
     categories = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())['categories']
     categories = [dict(c, name=c['label']) for c in categories if c['id'] not in ('kampo', 'medical')]
+    provenance = json.loads((ROOT / 'tools/classified-dictionaries/category-provenance.json').read_text())
+    mhlw_review = provenance.get('mhlwReview', {})
     style = '<style>body{font:16px sans-serif;line-height:1.6;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:13px monospace;line-height:1.5}h1{font-size:20px}h2{font-size:17px;margin-top:24px}</style>'
     def translated(japanese, english):
         return '<span class="translation" lang="ja">' + japanese + '</span><span class="translation" lang="en">' + english + '</span>'
@@ -303,9 +330,20 @@ def notices(counts):
         keys += [source for source in SOURCES if source in ids and source != 'web']
         if 'web' in ids:
             keys += [key for key in ('wiki', 'neologd') if key not in keys]
+        if 'mhlw' in ids:
+            keys += ['release-data']
         keys += ['cc-by-sa-4', 'apache-2']
-        details = common + '<p>採用出典 / Contributing sources: ' + ', '.join(html.escape({'person': 'Personal names', 'place': 'Japan Post place data', 'wiki': 'Wikipedia', 'neologd': 'mecab-ipadic-neologd', 'web': 'Wikipedia / Neologd common data'}[source]) for source in SOURCES if source in ids) + '</p>'
+        source_labels = [html.escape({'person': 'Personal names', 'place': 'Japan Post place data', 'wiki': 'Wikipedia', 'neologd': 'mecab-ipadic-neologd', 'web': 'Wikipedia / Neologd common data'}[source]) for source in SOURCES if source in ids]
+        if 'mhlw' in ids:
+            source_labels.append('MHLW employment terms / 厚生労働省の人事・労務用語')
+        details = common + '<p>採用出典 / Contributing sources: ' + ', '.join(source_labels) + '</p>'
         details += '<p>Wikipedia: attribution and ShareAlike / 表示・継承。Neologd: Apache 2.0 with its source-data notices / 出典データの通知を含むApache 2.0。Personal-names upstream notice: Apache 2.0. Japan Post place-data notice: no copyright claim for postcode data. 各入力と通知の取得版が同一であることは、配布元の資料からは確認できていません。</p>'
+        if 'mhlw' in ids:
+            additions = mhlw_review['categoryCounts'][category['id']]
+            details += '<h2>MHLW employment terms / 厚生労働省の人事・労務用語</h2>'
+            details += '<p>Source / 出典: <a href="' + html.escape(mhlw_review['sourceUrl']) + '">MHLW Multilingual Glossary for Employment Management / 雇用管理に役立つ多言語用語集</a>. License / 条件: <a href="' + html.escape(mhlw_review['licenseUrl']) + '">Public Data License (Version 1.0) / 公共データ利用規約（第1.0版） (PDL1.0)</a>.</p>'
+            details += '<p>' + str(additions) + ' terms were selected from the source, including explicitly provided Japanese readings, then categorized and converted to IME dictionary data. Definitions, translations and examples were not copied. / 出典の用語と明記された日本語読みを選定し、分類してIME辞書データに変換しています。定義・翻訳・例文は転載していません。</p>'
+            details += '<p>Source terms and processing notice / 出典と加工内容: <a href="' + html.escape(mhlw_review['termsUrl']) + '">MHLW usage terms / 厚生労働省の利用規約</a>. Upstream reviewed additions and reclassifications / 上流の確認記録: <a href="' + html.escape(RAW + mhlw_review['path']) + '">' + html.escape(mhlw_review['path']) + '</a> (SHA-256: ' + mhlw_review['sha256'] + ').</p>'
         if category['id'].startswith('person/'):
             additions = json.loads((ROOT/'tools/classified-dictionaries/category-provenance.json').read_text())['personAdditions']
             additions = [row for row in additions if (row['reading'], row['surface']) in person_pairs[category['id']]]
@@ -348,6 +386,9 @@ def check():
     for key, value in json.loads((ROOT/'app/src/main/assets/licenses/notice-snapshots.json').read_text()).items():
         assert sha((ROOT/'app/src/main/assets/licenses/sources'/(key+'.txt')).read_bytes()) == value['sha256'], key
     provenance_manifest = json.loads((ROOT / 'tools/classified-dictionaries/category-provenance.json').read_text())
+    mhlw_review = provenance_manifest['mhlwReview']
+    assert mhlw_review['sha256'] == provenance_manifest['inputSha256'][mhlw_review['path']]
+    assert sum(mhlw_review['categoryCounts'].values()) == mhlw_review['addedRecords']
     for metadata in (m, provenance_manifest):
         assert metadata['version'] == VERSION, 'Dictionary version does not match the importer'
         assert metadata['revision'] == REVISION, 'Dictionary revision does not match the importer'
@@ -357,6 +398,11 @@ def check():
     for key, snapshot in json.loads((ROOT/'app/src/main/assets/licenses/notice-snapshots.json').read_text()).items():
         if 'KazumaProject/kotlin-kana-kanji-converter' in snapshot['url']:
             assert REVISION in snapshot['url'] or f'/{VERSION}/' in snapshot['url'], key
+    for category in mhlw_review['categoryCounts']:
+        page = ROOT / 'app/src/main/assets/licenses/classified' / (category + '.html')
+        text = page.read_text()
+        assert mhlw_review['sourceUrl'] in text
+        assert mhlw_review['licenseUrl'] in text
 
     assert sha((ROOT/'app/src/androidTest/assets/english-reading-expected.json').read_bytes()) == provenance_manifest['englishFixtureSha256']
     assert sha((ROOT/'app/src/androidTest/assets/classified-expected-records.json').read_bytes()) == provenance_manifest['classifiedFixtureSha256']

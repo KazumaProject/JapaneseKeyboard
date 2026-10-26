@@ -49,6 +49,12 @@ JapaneseCorpus由来データの原本表記は
 その他の辞書入力も、それぞれの出典・ライセンス条件に従います。この文書は、未確認の
 入力データに一律のライセンスを与えるものではありません。
 
+## 追加した専門用語
+
+人事・労務の追加用語には、厚生労働省の[雇用管理に役立つ多言語用語集](https://www.mhlw.go.jp/yougosyu/index.html)から用語の表記と、資料中に明示された読みを採録しています。本リポジトリで用語を選定し、読みを対応づけ、既存の専門用語カテゴリへ整理しています。取得元の行、読みの根拠、元データの SHA-256 は `src/main/classification/reviews/2026-10-26-business-mhlw.jsonl` に記録しています。定義、翻訳、例文、資料本文は複製していません。同省の[利用規約](https://www.mhlw.go.jp/chosakuken/)に基づき、厚生労働省用語集由来のデータには公共データ利用規約（第1.0版）（PDL1.0）を適用し、出典と条件を表示します。
+
+Mozc 由来の追加レコードは、[Google Mozc の固定コミット](https://github.com/google/mozc/tree/c4b2aef7c65e61be394bacadaec200eb5b97f91c/src/data/dictionary_oss)に照合し、読み・品詞・コストを元レコードのまま収録しています。これらのレコードは再ライセンスせず、既存の Mozc および同梱辞書データに記載した出典別条件を維持します。
+
 ## アニメ・漫画・架空キャラクターの対象層レビュー
 
 `src/main/classification/reviews/2026-10-23-media-demographics-complete.jsonl` の完了レビューは、
