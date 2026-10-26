@@ -680,16 +680,16 @@
     }
   },
   "term/general/other_general": {
-    "count": 20502,
-    "digestSum": "e125b39c55ccb40fa53546fe98b67fd80e3734f50ad9d88485ed0dbf102d7d15",
+    "count": 20494,
+    "digestSum": "f785b6d59d5d553a58561da1cc1192ab34decc7b7bbf9c72e63e4dab7064e4c5",
     "sample": {
       "reading": "ああしまーる",
       "surface": "アアシマール"
     }
   },
   "term/general/products_daily_goods": {
-    "count": 1159,
-    "digestSum": "f2fe2530a0c0f5e84b07cb1a2ec8597c627368c2faa6701ca692bdd2fb855b85",
+    "count": 1157,
+    "digestSum": "ae6d20f640dee5c4ff2114bb322c20ed3fa1e485044b644672ae6349b82a9792",
     "sample": {
       "reading": "あいおいのまつ",
       "surface": "相生の松"
@@ -720,16 +720,16 @@
     }
   },
   "term/specialist/economics_management": {
-    "count": 5780,
-    "digestSum": "e1f4bd70c4e32ea28b924f2a59851c37702fa770235526be563ebd9c268306d4",
+    "count": 5888,
+    "digestSum": "f883a3fcb70a52e0fb4d06d86e635df815651da470118098bf9684eb5ec54bfd",
     "sample": {
       "reading": "あいおーぴーえす",
       "surface": "IOPS"
     }
   },
   "term/specialist/engineering_technology": {
-    "count": 3509,
-    "digestSum": "4d5d585ee136af9b210ca058df36cb705a8fbef8804f5b89491dcf2033d9e1d2",
+    "count": 3524,
+    "digestSum": "e938598cabbe06f7706e8fbeb3bb4a1fa7e9627ecfe31d94bfc0b253340ae052",
     "sample": {
       "reading": "あいあんかーてん",
       "surface": "アイアンカーテン"
@@ -744,16 +744,16 @@
     }
   },
   "term/specialist/information_communications": {
-    "count": 6083,
-    "digestSum": "f72906cea1e04a9bd56cbdfe2c32a572e383ad05512901797708a0377f204519",
+    "count": 6087,
+    "digestSum": "190e861e55e84028f8d485fcdb710b2d43e83cc1540ff66ff5a0ffdd6acc025a",
     "sample": {
       "reading": "あいあいえす",
       "surface": "IIS"
     }
   },
   "term/specialist/law_politics": {
-    "count": 5274,
-    "digestSum": "a7f1e7c620cfb66ed90824336896e95b031a0e8cfc224a93a3625adb32f6a8a3",
+    "count": 5695,
+    "digestSum": "f7b67b1d4f9825f5a79feca03892962112a09601d5f575ff069a94b36d08349c",
     "sample": {
       "reading": "あいゆうせいど",
       "surface": "隘勇制度"
@@ -768,8 +768,8 @@
     }
   },
   "term/specialist/transport_safety_defense": {
-    "count": 4037,
-    "digestSum": "92d0313244f47e04d0305a52776cf1449b8537cafa4007d4dbadb5daae0294b7",
+    "count": 4048,
+    "digestSum": "261dab427c16ade03a839c0ece0b7265467932660c3ceff4a477d0d3a0e34201",
     "sample": {
       "reading": "あいすよっと",
       "surface": "アイスヨット"
@@ -1024,16 +1024,16 @@
     }
   },
   "person/personal_name_origin_foreign": {
-    "count": 1046,
-    "digestSum": "781d2fc3f083c3f01a747ca60c88ca4f06dae8efd228fc4d7b5bddaf4209b37c",
+    "count": 2388,
+    "digestSum": "2dfe30bbca46b8b3de279b2db369c57786e17752a525c0b036aa55fa2a4c965a",
     "sample": {
-      "reading": "あんきょく",
-      "surface": "安旭"
+      "reading": "あいばあき",
+      "surface": "愛葉亜希"
     }
   },
   "person/personal_name_origin_japanese": {
-    "count": 75943,
-    "digestSum": "7291837e1f40fba187f5ab7631b7ae827b75e747112973381763b602122bf081",
+    "count": 74601,
+    "digestSum": "bcb08286457e06ddc4428cee8ad6b359fb6f58e43e2caed55c153db729e90da3",
     "sample": {
       "reading": "あいうちかほ",
       "surface": "相内香穂"
@@ -1080,16 +1080,16 @@
     }
   },
   "person/surname_origin_foreign": {
-    "count": 57,
-    "digestSum": "f9655e7ec9c508761460cf4098770e54442302a3bcde3dcc7914ce3746375466",
+    "count": 88,
+    "digestSum": "dfc3b2b6e099e7a985f551f09cce2d092ecbddb7af88bec10d8cf6ade6973643",
     "sample": {
-      "reading": "あるてみえふ",
-      "surface": "アルテミエフ"
+      "reading": "あふたる",
+      "surface": "アフタル"
     }
   },
   "person/surname_origin_japanese": {
-    "count": 25011,
-    "digestSum": "2360ae2a256662282585667752cfe479ce743f5861db9b27745d41b203beec87",
+    "count": 24980,
+    "digestSum": "3d0259f20e9182f4b3f0e3c74e78c5c4e3cb64446f311a32dfe5193b635f0aaa",
     "sample": {
       "reading": "ああふめす",
       "surface": "アアフメス"
