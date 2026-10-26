@@ -1,0 +1,17 @@
+{
+  "revision": "13e391bc7a4a245f63aa0091c1e9c11db3dbd759",
+  "categories": {
+    "person/comedian": {
+      "assets": {
+        "categories/person/comedian/yomi.dat.zip": "2ea30fe8e246e1738098e8574b8f79fe75de4cf49f51b7c16e2937509c425c1f",
+        "categories/person/comedian/tango.dat.zip": "5716fab68ed57330812af6560bac2b9da1f6304e8a8a2fa2f44881765225141e",
+        "categories/person/comedian/token.dat.zip": "a2bab851858ffdb1a334ad1b7ea94508edfa336c2645d05b4fbdcb04acc98781"
+      },
+      "surfaces": {
+        "-2\tくりき": "くりきひなた",
+        "-1\tしゅうじ": "シュージ",
+        "-1\tまつだ": "ﾏﾂﾀﾞ"
+      }
+    }
+  }
+}

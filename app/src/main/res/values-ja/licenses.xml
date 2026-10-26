@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="license_overview">ライセンスについて</string>
+    <string name="license_intro">本アプリには、第三者が提供するソフトウェア、辞書データおよび機械学習モデルが含まれています。各コンポーネントの著作権表示、利用条件および出典は、以下の項目からご確認いただけます。</string>
+    <string name="license_intro_lite">本アプリには、第三者が提供するソフトウェアおよび辞書データが含まれています。各コンポーネントの著作権表示、利用条件および出典は、以下の項目からご確認いただけます。</string>
+    <string name="license_terms_note">各コンポーネントには、それぞれのライセンスが適用されます。本画面の説明は、ライセンス原文を補足するものです。</string>
+    <string name="license_app">アプリ本体 · MIT License</string>
+    <string name="license_dictionaries">辞書・データ</string>
+    <string name="license_libraries">ライブラリ</string>
+    <string name="license_models">AIモデル・ネイティブコード</string>
+    <string name="license_section_count">%1$d 件 · タップして一覧を表示</string>
+    <string name="license_dictionary_summary">出典ごとの利用条件・ライセンス原文</string>
+    <string name="license_core">Mozc 基本・単漢字・記号辞書</string>
+    <string name="license_english_reading">英語読み辞書</string>
+    <string name="license_english">英単語辞書</string>
+    <string name="license_ngram">N-gram・Unigram 辞書</string>
+    <string name="license_auxiliary">読み修正・ことわざ辞書</string>
+    <string name="license_wikipedia">Wikipedia 由来の辞書データ</string>
+    <string name="license_overview_heading">概要</string>
+    <string name="license_source_heading">出典</string>
+    <string name="license_version_heading">対象版</string>
+    <string name="license_changes_heading">加工内容</string>
+    <string name="license_terms_heading">利用条件</string>
+    <string name="license_original_heading">著作権表示・ライセンス原文</string>
+    <string name="license_library_overview">本アプリの依存コンポーネントです。対象版の利用条件と付属する通知を以下に掲載しています。</string>
+    <string name="license_library_changes">依存コンポーネントとして組み込んでいます。</string>
+    <string name="license_copyright_unknown">個別の著作権表示は、配布元の資料からは確認できていません。以下にライセンス原文と、取得できた同梱通知を掲載しています。</string>
+    <string name="license_zenz_summary">同梱の予測モデル · Apache License 2.0</string>
+    <string name="license_zenz_overview">Full 版に同梱する Zenz 予測モデルです。固定版のモデルカードでは Apache License 2.0 が宣言されています。</string>
+    <string name="license_zenz_changes">端末内での推論に使用するため、GGUF 形式への変換と Q5_K_M による量子化が行われています。</string>
+    <string name="license_llama_overview">Zenz の推論に使用するネイティブコードです。</string>
+    <string name="license_llama_changes">Android 向けにビルドし、Zenz の JNI ライブラリにリンクしています。</string>
+    <string name="license_external_models">ユーザーが追加するモデル</string>
+    <string name="license_external_summary">モデルの提供元が定める利用条件</string>
+    <string name="license_external_overview">ユーザーが追加するモデルには、提供元が定める利用条件が適用されます。使用するモデルの名称・版・付属ライセンスをご確認ください。実行ライブラリのライセンスによって、モデルの利用条件が決まるものではありません。</string>
+    <string name="license_flexbox_overview">Google FlexboxLayout に由来するレイアウト用コードです。</string>
+    <string name="license_flexbox_changes">本アプリの flexbox モジュールで改変・保守しています。</string>
+    <string name="license_version_unconfirmed">上流コード全体の取得版は、配布元の資料からは確認できていません。</string>
+    <string name="license_app_overview">アプリ本体のコードは MIT License で公開しています。第三者のソフトウェア・データ・モデルには、それぞれの利用条件が適用されます。</string>
+    <string name="license_missing">ライセンス文書を開けませんでした。</string>
+    <string name="license_openmp_overview">ネイティブ推論で使用する OpenMP 実行ライブラリです。NDK 29 の NOTICE.toolchain にある OpenMP の通知を収録しています。</string>
+    <string name="license_openmp_changes">NDK の実行ライブラリをアプリに同梱しています。</string>
+    <string name="license_source_document">配布元の資料を確認</string>
+</resources>

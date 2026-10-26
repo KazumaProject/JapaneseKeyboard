@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.NBestCandidateCollector
 import android.content.Context
 import android.os.Build
 import androidx.core.text.isDigitsOnly
@@ -23,6 +24,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_DIGIT_DATE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KANJI_NUMBER
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.transformLiteralText
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withLiteralText
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
@@ -529,6 +534,7 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafYomi = reader.loadYomiLeafIndex(yomiKey, yomiTrie),
             succinctBitVectorTokenArray = reader.loadTokenIndex(tokenKey, tokenArray),
             succinctBitVectorTangoLBS = reader.loadTangoLbsIndex(tangoKey, tangoTrie),
+            literalSurfaces = reader.loadLiteralSurfaces(category),
         )
     }
 
@@ -867,6 +873,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -915,6 +922,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -946,7 +954,7 @@ class KanaKanjiEngine {
                     add(
                         Candidate(
                             string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
+                            type = CANDIDATE_TYPE_KANJI_NUMBER,
                             score = 2000,
                             length = input.length.toUByte(),
                             leftId = 2040,
@@ -1360,6 +1368,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1410,6 +1419,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred.candidates)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -1441,7 +1451,7 @@ class KanaKanjiEngine {
                     add(
                         Candidate(
                             string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
+                            type = CANDIDATE_TYPE_KANJI_NUMBER,
                             score = 2000,
                             length = input.length.toUByte(),
                             leftId = 2040,
@@ -1882,6 +1892,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1932,6 +1943,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred.candidates)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -1963,7 +1975,7 @@ class KanaKanjiEngine {
                     add(
                         Candidate(
                             string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
+                            type = CANDIDATE_TYPE_KANJI_NUMBER,
                             score = 2000,
                             length = input.length.toUByte(),
                             leftId = 2040,
@@ -2387,6 +2399,7 @@ class KanaKanjiEngine {
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2435,6 +2448,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -2466,7 +2480,7 @@ class KanaKanjiEngine {
                     add(
                         Candidate(
                             string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
+                            type = CANDIDATE_TYPE_KANJI_NUMBER,
                             score = 2000,
                             length = input.length.toUByte(),
                             leftId = 2040,
@@ -2876,6 +2890,7 @@ class KanaKanjiEngine {
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         isOmissionSearchEnable: Boolean = false,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2924,6 +2939,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -2955,7 +2971,7 @@ class KanaKanjiEngine {
                     add(
                         Candidate(
                             string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
+                            type = CANDIDATE_TYPE_KANJI_NUMBER,
                             score = 2000,
                             length = input.length.toUByte(),
                             leftId = 2040,
@@ -3359,6 +3375,7 @@ class KanaKanjiEngine {
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         isOmissionSearchEnable: Boolean = false,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
+        nBestCandidateCollector: NBestCandidateCollector? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -3409,6 +3426,7 @@ class KanaKanjiEngine {
                 candidateSegmentCollector = candidateSegmentCollector,
             )
         }
+        nBestCandidateCollector?.collect(resultNBestFinalDeferred.candidates)
         conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
@@ -3440,7 +3458,7 @@ class KanaKanjiEngine {
                     add(
                         Candidate(
                             string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
+                            type = CANDIDATE_TYPE_KANJI_NUMBER,
                             score = 2000,
                             length = input.length.toUByte(),
                             leftId = 2040,
@@ -4137,7 +4155,7 @@ class KanaKanjiEngine {
                 add(
                     Candidate(
                         string = numberValue.toKanji(),
-                        type = 17,
+                        type = CANDIDATE_TYPE_KANJI_NUMBER,
                         score = 2000,
                         length = inputLength,
                         leftId = POS_ID_NUMBER_KANJI,
@@ -4395,7 +4413,7 @@ class KanaKanjiEngine {
 
         // 候補を作成
         val candidate = Candidate(
-            string = dateString, type = 40,
+            string = dateString, type = CANDIDATE_TYPE_DIGIT_DATE,
             length = length, score = 8000, leftId = 1851, // 必要に応じて日付用のIDに変更
             rightId = 1851  // 必要に応じて日付用のIDに変更
         )
@@ -4656,16 +4674,14 @@ class KanaKanjiEngine {
                     char.uppercase(Locale.ROOT)
                 }
                 val uppercase = lowercase.uppercase(Locale.ROOT)
-                addCandidate(candidate.copy(string = lowercase))
+                addCandidate(candidate.withLiteralText(lowercase))
                 addCandidate(
-                    candidate.copy(
-                        string = capitalized,
+                    candidate.withLiteralText(capitalized).copy(
                         score = candidate.score + ENGLISH_READING_CAPITALIZED_SCORE_OFFSET,
                     )
                 )
                 addCandidate(
-                    candidate.copy(
-                        string = uppercase,
+                    candidate.withLiteralText(uppercase).copy(
                         score = candidate.score + ENGLISH_READING_UPPERCASE_SCORE_OFFSET,
                     )
                 )
@@ -4903,7 +4919,7 @@ class KanaKanjiEngine {
             if (numberAsLong != null) {
                 candidates.add(
                     Candidate(
-                        string = numberAsLong.toKanji(), type = 32, // 新しいタイプ
+                        string = numberAsLong.toKanji(), type = CANDIDATE_TYPE_KANJI_NUMBER,
                         length = input.length.toUByte(), score = 8000, // 優先度を調整
                         leftId = POS_ID_NUMBER_KANJI, rightId = POS_ID_NUMBER_KANJI
                     )
@@ -4996,13 +5012,9 @@ class KanaKanjiEngine {
             // 1. string に全角数字が含まれているかチェック
             if (candidate.string.containsFullWidthNumber()) {
 
-                // 2. 全角数字を半角に変換
-                val newString = candidate.string.convertFullWidthNumbersToHalfWidth()
-
-                // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
-                val newCandidate = candidate.copy(
-                    string = newString, type = 31, score = candidate.score + 6000
-                    // type, length, score など他のプロパティはそのままコピーされます
+                // 表示・確定文字列と読み対応を一緒に変換し、辞書の出自は保持する。
+                val newCandidate = candidate.transformLiteralText { it.convertFullWidthNumbersToHalfWidth() }.copy(
+                    type = 31, score = candidate.score + 6000
                 )
 
                 // 4. 元の候補 (例: １８時) と、
@@ -5047,13 +5059,9 @@ class KanaKanjiEngine {
             // 1. string に全角数字が含まれているかチェック
             if (candidate.string.containsFullWidthNumber()) {
 
-                // 2. 全角数字を半角に変換
-                val newString = candidate.string.convertFullWidthAlnumToHalfWidth()
-
-                // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
-                val newCandidate = candidate.copy(
-                    string = newString, type = 31, score = candidate.score + 6000
-                    // type, length, score など他のプロパティはそのままコピーされます
+                // 表示・確定文字列と読み対応を一緒に変換し、辞書の出自は保持する。
+                val newCandidate = candidate.transformLiteralText { it.convertFullWidthAlnumToHalfWidth() }.copy(
+                    type = 31, score = candidate.score + 6000
                 )
 
                 // 4. 元の候補 (例: １８時) と、

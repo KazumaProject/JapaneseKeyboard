@@ -160,7 +160,7 @@
     <string name="delete_keyboard">Delete Keyboard</string>
     <string name="edit_keyboard">Edit Keyboard</string>
     <string name="edit_key">Edit Key</string>
-    <string name="open_sorce_title">Open source licenses</string>
+    <string name="open_sorce_title">Licenses and sources</string>
     <string name="user_template">User Template</string>
     <string name="user_dictionary_explanation">On this screen, you can freely register words that you want to appear in the keyboard predictive conversion.\nRegistered words will appear as conversion candidates on the keyboard once you type at least the number of characters specified in their &quot;reading&quot;.</string>
     <string name="user_dictionary_about_title">What is the User Dictionary?</string>
@@ -1013,7 +1013,7 @@
     <string name="pref_qwerty_enable_flick_down_title">Enable Down Flick</string>
     <string name="pref_qwerty_enable_flick_down_summary">Input uppercase letters with downward flick.</string>
     <string name="enable_ai_preference_title">Enable AI Predictive Conversion</string>
-    <string name="enable_ai_preference_summary">Enable predictive text conversion using the neural kana-kanji model “zenz-v3.2-xsmall.”</string>
+    <string name="enable_ai_preference_summary">Enable predictive text conversion using the neural kana-kanji model “zenz-v3.2-xsmall.” Automatically uses the keyboard’s modifier omission and 12-key flick typo correction settings.</string>
     <string name="zenz_profile_preference_title">Profile Settings for zenz</string>
     <string name="zenz_profile_preference_summary">Set a profile that zenz will use for predictive conversion.\nExample: If you enter “Occupation: Doctor,” typing “chūsha” will make the candidate “injection” appear more frequently.</string>
     <string name="enable_zenz_rerank_preference_title">Rerank conversion candidates with zenz</string>
@@ -1230,8 +1230,6 @@
     <string name="enable_typo_correction_japanese_flick_keyboard_preference_sumary">If a typo is detected while using flick input, corrected conversion candidates are shown.</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_title">QWERTY（English）</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_summary">If a typo is detected while using a QWERTY keyboard, corrected candidates are shown.</string>
-    <string name="enable_zenzai_preference_title">Typo correction</string>
-    <string name="enable_ai_conversion_zenz_preference_summary">When typing correction is enabled, use the corrected input string as the input to zenz.</string>
     <string name="back_up">Backup</string>
     <string name="pref_backup_export_title">Export settings</string>
     <string name="pref_backup_export_summary">Save your current settings as a backup file.</string>
@@ -1947,4 +1945,23 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">Cursor, delete, IME switch, small letters, Shift, undo and full-width toggle keys. Icon and text sizes can be adjusted separately.</string>
     <string name="gojuon_sizing_icon">Utility key icons</string>
     <string name="gojuon_sizing_special_text">Utility key text</string>
+
+    <string name="input_style_three_stage">3-stage flick</string>
+    <string name="template_three_stage_flick">Kana (3-stage flick)</string>
+    <string name="three_stage_state">Character state</string>
+    <string name="three_stage_normal">Normal</string>
+    <string name="three_stage_dakuten">Voiced</string>
+    <string name="three_stage_handakuten">Semi-voiced</string>
+    <string name="three_stage_path">Stage %1$d / 3  %2$s</string>
+    <string name="three_stage_back">Previous stage</string>
+    <string name="three_stage_open">Open next stage</string>
+    <string name="three_stage_branch_label">Branch label</string>
+    <string name="three_stage_add_branch">Create next stage</string>
+    <string name="three_stage_clear">Remove assignment</string>
+    <string name="mushroom_shortcut_summary">Use a Mushroom app to transform or insert text</string>
+    <string name="mushroom_choose_app">Choose a Mushroom app</string>
+    <string name="mushroom_unavailable">No Mushroom apps are installed</string>
+    <string name="mushroom_failed">Could not open the Mushroom app</string>
+    <string name="mushroom_target_changed">The input field could not be verified. Mushroom result was not inserted.</string>
+    <string name="mushroom_unsupported">Mushroom is unavailable in this input field</string>
 </resources>

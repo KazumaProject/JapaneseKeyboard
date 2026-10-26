@@ -20,6 +20,7 @@ internal data class BunsetsuSegmentState(
     val overrideDisplayCandidate: Candidate? = null,
     val hasConvertedDisplay: Boolean = false,
     val candidatesLoaded: Boolean = false,
+    val bestNBestCandidate: Candidate? = null,
 )
 
 /** Project entire lattice nodes onto reading ranges; never slice the converted output by length. */

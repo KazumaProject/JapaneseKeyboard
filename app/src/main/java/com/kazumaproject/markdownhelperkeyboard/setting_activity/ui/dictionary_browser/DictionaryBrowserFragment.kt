@@ -66,7 +66,8 @@ class DictionaryBrowserFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 model.state.collect { state ->
                     if (renderedGeneration != state.generation) restoringScroll = true
-                    ui.dictionaryProgress.isVisible = state.loading
+                    ui.dictionaryLoading.isVisible = state.loading && state.rows.isEmpty()
+                    ui.dictionaryProgress.isVisible = state.loading && state.rows.isNotEmpty()
                     ui.dictionaryRetry.isVisible = state.failed
                     ui.dictionarySource.text = state.version?.let { version ->
                         getString(

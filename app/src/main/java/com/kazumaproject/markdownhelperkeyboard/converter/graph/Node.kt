@@ -38,6 +38,7 @@ data class Node(
     val mozcAttributes: Int = MozcNodeAttributes.NONE,
     val candidateSource: CandidateSource = CandidateSource.SYSTEM,
     var dictionaryCategories: Set<DictionaryCategory> = emptySet(),
+    val correctionMask: Int = 0,
 ) {
     override fun toString(): String {
         return this.tango

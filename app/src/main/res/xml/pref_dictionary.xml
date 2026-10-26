@@ -26,12 +26,184 @@
         android:title="@string/classified_dictionary_settings_title"
         app:summary="@string/classified_dictionary_settings_summary">
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_PERSON"
-            android:title="@string/classified_dictionary_person"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+            android:key="classified_group_person"
+            android:title="@string/classified_dictionary_person">
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_UNCONFIRMED"
+                android:title="@string/classified_dictionary_person_surname_origin_unconfirmed"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_surname_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SURNAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_surname_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_UNCONFIRMED"
+                android:title="@string/classified_dictionary_person_given_name_origin_unconfirmed"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_given_name_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_GIVEN_NAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_given_name_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_UNCONFIRMED"
+                android:title="@string/classified_dictionary_person_personal_name_origin_unconfirmed"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_JAPANESE"
+                android:title="@string/classified_dictionary_person_personal_name_origin_japanese"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERSONAL_NAME_ORIGIN_FOREIGN"
+                android:title="@string/classified_dictionary_person_personal_name_origin_foreign"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ACTOR"
+                android:title="@string/classified_dictionary_person_actor"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_VOICE_ACTOR"
+                android:title="@string/classified_dictionary_person_voice_actor"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_MUSICIAN"
+                android:title="@string/classified_dictionary_person_musician"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_IDOL"
+                android:title="@string/classified_dictionary_person_idol"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_COMEDIAN"
+                android:title="@string/classified_dictionary_person_comedian"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_BROADCASTER"
+                android:title="@string/classified_dictionary_person_broadcaster"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ONLINE_CREATOR"
+                android:title="@string/classified_dictionary_person_online_creator"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SPORTS"
+                android:title="@string/classified_dictionary_person_sports"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_COMPETITIVE_GAMES"
+                android:title="@string/classified_dictionary_person_competitive_games"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_WRITER"
+                android:title="@string/classified_dictionary_person_writer"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_MANGA_ILLUSTRATION"
+                android:title="@string/classified_dictionary_person_manga_illustration"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_FILM_GAME_CREATOR"
+                android:title="@string/classified_dictionary_person_film_game_creator"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ART_DESIGN"
+                android:title="@string/classified_dictionary_person_art_design"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_PERFORMING_ARTS"
+                android:title="@string/classified_dictionary_person_performing_arts"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_SCIENCE_EDUCATION"
+                android:title="@string/classified_dictionary_person_science_education"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
+                android:title="@string/classified_dictionary_person_thought"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_POLITICS_PUBLIC"
+                android:title="@string/classified_dictionary_person_politics_public"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_BUSINESS"
+                android:title="@string/classified_dictionary_person_business"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_ROYALTY_NOBILITY"
+                android:title="@string/classified_dictionary_person_royalty_nobility"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_PERSON_OTHER_IDENTIFIED"
+                android:title="@string/classified_dictionary_person_other_identified"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+        </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
         <SwitchPreferenceCompat
             android:key="optional_bundled_enabled_CLASSIFIED_CHARACTER"
@@ -68,12 +240,428 @@
             android:persistent="false"
             app:iconSpaceReserved="false" />
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_FACILITY"
-            android:title="@string/classified_dictionary_facility"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+            android:key="classified_group_facility"
+            android:title="@string/classified_group_facility">
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_religious"
+                android:title="@string/classified_group_facility_religious">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE"
+                    android:title="@string/classified_dictionary_facility_religious_shrine"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_TEMPLE"
+                    android:title="@string/classified_dictionary_facility_religious_temple"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_CHURCH"
+                    android:title="@string/classified_dictionary_facility_religious_church"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_MONASTERY"
+                    android:title="@string/classified_dictionary_facility_religious_monastery"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_education"
+                android:title="@string/classified_group_facility_education">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_EDUCATION_SCHOOL"
+                    android:title="@string/classified_dictionary_facility_education_school"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_EDUCATION_PRESCHOOL"
+                    android:title="@string/classified_dictionary_facility_education_preschool"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_EDUCATION_UNIVERSITY"
+                    android:title="@string/classified_dictionary_facility_education_university"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_EDUCATION_RESEARCH"
+                    android:title="@string/classified_dictionary_facility_education_research"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_healthcare"
+                android:title="@string/classified_group_facility_healthcare">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HEALTHCARE_HOSPITAL"
+                    android:title="@string/classified_dictionary_facility_healthcare_hospital"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HEALTHCARE_CLINIC"
+                    android:title="@string/classified_dictionary_facility_healthcare_clinic"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HEALTHCARE_CARE"
+                    android:title="@string/classified_dictionary_facility_healthcare_care"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_public"
+                android:title="@string/classified_group_facility_public">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_PUBLIC_GOVERNMENT"
+                    android:title="@string/classified_dictionary_facility_public_government"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_PUBLIC_POLICE_FIRE"
+                    android:title="@string/classified_dictionary_facility_public_police_fire"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_PUBLIC_JUDICIAL"
+                    android:title="@string/classified_dictionary_facility_public_judicial"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_PUBLIC_POSTAL"
+                    android:title="@string/classified_dictionary_facility_public_postal"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_cultural"
+                android:title="@string/classified_group_facility_cultural">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_CULTURAL_MUSEUM"
+                    android:title="@string/classified_dictionary_facility_cultural_museum"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_CULTURAL_ART_MUSEUM"
+                    android:title="@string/classified_dictionary_facility_cultural_art_museum"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_CULTURAL_LIBRARY"
+                    android:title="@string/classified_dictionary_facility_cultural_library"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_CULTURAL_MEMORIAL"
+                    android:title="@string/classified_dictionary_facility_cultural_memorial"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_entertainment"
+                android:title="@string/classified_group_facility_entertainment">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_ENTERTAINMENT_THEATER"
+                    android:title="@string/classified_dictionary_facility_entertainment_theater"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_ENTERTAINMENT_CINEMA"
+                    android:title="@string/classified_dictionary_facility_entertainment_cinema"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_ENTERTAINMENT_LIVE_VENUE"
+                    android:title="@string/classified_dictionary_facility_entertainment_live_venue"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_ENTERTAINMENT_AMUSEMENT"
+                    android:title="@string/classified_dictionary_facility_entertainment_amusement"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_sports"
+                android:title="@string/classified_group_facility_sports">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_SPORTS_STADIUM"
+                    android:title="@string/classified_dictionary_facility_sports_stadium"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_SPORTS_GYMNASIUM"
+                    android:title="@string/classified_dictionary_facility_sports_gymnasium"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_SPORTS_GOLF"
+                    android:title="@string/classified_dictionary_facility_sports_golf"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_SPORTS_SKI"
+                    android:title="@string/classified_dictionary_facility_sports_ski"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_SPORTS_AQUATIC"
+                    android:title="@string/classified_dictionary_facility_sports_aquatic"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_commercial"
+                android:title="@string/classified_group_facility_commercial">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_COMMERCIAL_SHOPPING"
+                    android:title="@string/classified_dictionary_facility_commercial_shopping"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_COMMERCIAL_RESTAURANT"
+                    android:title="@string/classified_dictionary_facility_commercial_restaurant"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_COMMERCIAL_MARKET"
+                    android:title="@string/classified_dictionary_facility_commercial_market"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_hospitality"
+                android:title="@string/classified_group_facility_hospitality">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HOSPITALITY_HOTEL"
+                    android:title="@string/classified_dictionary_facility_hospitality_hotel"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HOSPITALITY_INN"
+                    android:title="@string/classified_dictionary_facility_hospitality_inn"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HOSPITALITY_HOT_SPRING"
+                    android:title="@string/classified_dictionary_facility_hospitality_hot_spring"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_transport"
+                android:title="@string/classified_group_facility_transport">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_TRANSPORT_AIRPORT"
+                    android:title="@string/classified_dictionary_facility_transport_airport"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_TRANSPORT_HARBOR"
+                    android:title="@string/classified_dictionary_facility_transport_harbor"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_TRANSPORT_RAILWAY_FACILITY"
+                    android:title="@string/classified_dictionary_facility_transport_railway_facility"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_TRANSPORT_ROAD_FACILITY"
+                    android:title="@string/classified_dictionary_facility_transport_road_facility"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_TRANSPORT_PARKING"
+                    android:title="@string/classified_dictionary_facility_transport_parking"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_infrastructure"
+                android:title="@string/classified_group_facility_infrastructure">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INFRASTRUCTURE_BRIDGE"
+                    android:title="@string/classified_dictionary_facility_infrastructure_bridge"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INFRASTRUCTURE_TUNNEL"
+                    android:title="@string/classified_dictionary_facility_infrastructure_tunnel"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INFRASTRUCTURE_DAM"
+                    android:title="@string/classified_dictionary_facility_infrastructure_dam"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INFRASTRUCTURE_WATER_CONTROL"
+                    android:title="@string/classified_dictionary_facility_infrastructure_water_control"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_industrial"
+                android:title="@string/classified_group_facility_industrial">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INDUSTRIAL_FACTORY"
+                    android:title="@string/classified_dictionary_facility_industrial_factory"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INDUSTRIAL_POWER"
+                    android:title="@string/classified_dictionary_facility_industrial_power"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INDUSTRIAL_LOGISTICS"
+                    android:title="@string/classified_dictionary_facility_industrial_logistics"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_INDUSTRIAL_COMMUNICATIONS"
+                    android:title="@string/classified_dictionary_facility_industrial_communications"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_recreation"
+                android:title="@string/classified_group_facility_recreation">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RECREATION_PARK_GARDEN"
+                    android:title="@string/classified_dictionary_facility_recreation_park_garden"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RECREATION_ZOO_AQUARIUM"
+                    android:title="@string/classified_dictionary_facility_recreation_zoo_aquarium"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RECREATION_OUTDOOR_NATURE"
+                    android:title="@string/classified_dictionary_facility_recreation_outdoor_nature"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_heritage"
+                android:title="@string/classified_group_facility_heritage">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HERITAGE_CASTLE"
+                    android:title="@string/classified_dictionary_facility_heritage_castle"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HERITAGE_ARCHAEOLOGICAL_SITE"
+                    android:title="@string/classified_dictionary_facility_heritage_archaeological_site"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_HERITAGE_HISTORIC_RESIDENCE"
+                    android:title="@string/classified_dictionary_facility_heritage_historic_residence"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_residential"
+                android:title="@string/classified_group_facility_residential">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RESIDENTIAL_HOUSING_COMPLEX"
+                    android:title="@string/classified_dictionary_facility_residential_housing_complex"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RESIDENTIAL_CONDOMINIUM"
+                    android:title="@string/classified_dictionary_facility_residential_condominium"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_RESIDENTIAL_MIXED_USE_BUILDING"
+                    android:title="@string/classified_dictionary_facility_residential_mixed_use_building"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_facility_military"
+                android:title="@string/classified_group_facility_military">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_MILITARY_BASE"
+                    android:title="@string/classified_dictionary_facility_military_base"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_MILITARY_GARRISON"
+                    android:title="@string/classified_dictionary_facility_military_garrison"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_FACILITY_MILITARY_TRAINING_GROUND"
+                    android:title="@string/classified_dictionary_facility_military_training_ground"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+        </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
         <SwitchPreferenceCompat
             android:key="optional_bundled_enabled_CLASSIFIED_TRANSPORT_ROUTE"
@@ -110,12 +698,58 @@
             android:persistent="false"
             app:iconSpaceReserved="false" />
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_EVENT"
-            android:title="@string/classified_dictionary_event"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+            android:key="classified_group_event"
+            android:title="@string/classified_dictionary_event">
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_event_occasion"
+                android:title="@string/classified_group_event_occasion">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_OCCASION_ORGANIZED_EVENT"
+                    android:title="@string/classified_dictionary_event_occasion_organized_event"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_OCCASION_OBSERVANCE"
+                    android:title="@string/classified_dictionary_event_occasion_observance"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_OCCASION_EXAM_QUALIFICATION"
+                    android:title="@string/classified_dictionary_event_occasion_exam_qualification"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_event_incident"
+                android:title="@string/classified_group_event_incident">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_INCIDENT_NATURAL_DISASTER"
+                    android:title="@string/classified_dictionary_event_incident_natural_disaster"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_INCIDENT_SOCIAL_ISSUE_LITIGATION"
+                    android:title="@string/classified_dictionary_event_incident_social_issue_litigation"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_event_history"
+                android:title="@string/classified_group_event_history">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_EVENT_HISTORY_CONFLICT"
+                    android:title="@string/classified_dictionary_event_history_conflict"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+        </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
         <SwitchPreferenceCompat
             android:key="optional_bundled_enabled_CLASSIFIED_AWARD"
@@ -138,89 +772,224 @@
             android:persistent="false"
             app:iconSpaceReserved="false" />
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_TERM"
-            android:title="@string/classified_dictionary_term"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+            android:key="classified_group_term"
+            android:title="@string/classified_dictionary_term">
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_term_general"
+                android:title="@string/classified_group_term_general">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_PRODUCTS_DAILY_GOODS"
+                    android:title="@string/classified_dictionary_term_general_products_daily_goods"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_FOOD_DRINK_COOKING"
+                    android:title="@string/classified_dictionary_term_general_food_drink_cooking"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_INTERNET_SLANG_CULTURE"
+                    android:title="@string/classified_dictionary_term_general_internet_slang_culture"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_NEOLOGISMS_TRENDS_YOUTH_LANGUAGE"
+                    android:title="@string/classified_dictionary_term_general_neologisms_trends_youth_language"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_GENERAL_OTHER_GENERAL"
+                    android:title="@string/classified_dictionary_term_general_other_general"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_term_specialist"
+                android:title="@string/classified_group_term_specialist">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_INFORMATION_COMMUNICATIONS"
+                    android:title="@string/classified_dictionary_term_specialist_information_communications"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_MATHEMATICS_PHYSICS"
+                    android:title="@string/classified_dictionary_term_specialist_mathematics_physics"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_CHEMISTRY_LIFE_SCIENCES"
+                    android:title="@string/classified_dictionary_term_specialist_chemistry_life_sciences"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_ENGINEERING_TECHNOLOGY"
+                    android:title="@string/classified_dictionary_term_specialist_engineering_technology"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_EARTH_ENVIRONMENT_RESOURCES"
+                    android:title="@string/classified_dictionary_term_specialist_earth_environment_resources"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_ECONOMICS_MANAGEMENT"
+                    android:title="@string/classified_dictionary_term_specialist_economics_management"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_LAW_POLITICS"
+                    android:title="@string/classified_dictionary_term_specialist_law_politics"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_HUMANITIES_SOCIAL_SCIENCES"
+                    android:title="@string/classified_dictionary_term_specialist_humanities_social_sciences"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_CULTURE_ARTS_SPORTS"
+                    android:title="@string/classified_dictionary_term_specialist_culture_arts_sports"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_TERM_SPECIALIST_TRANSPORT_SAFETY_DEFENSE"
+                    android:title="@string/classified_dictionary_term_specialist_transport_safety_defense"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+        </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_FRANCHISE"
-            android:title="@string/classified_dictionary_work_franchise"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+            android:key="classified_group_work"
+            android:title="@string/classified_group_work">
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_FRANCHISE"
+                android:title="@string/classified_dictionary_work_franchise"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_MANGA"
+                android:title="@string/classified_dictionary_work_manga"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_ANIME"
+                android:title="@string/classified_dictionary_work_anime"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_FILM"
+                android:title="@string/classified_dictionary_work_film"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_PROGRAM"
+                android:title="@string/classified_dictionary_work_program"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_BOOK"
+                android:title="@string/classified_dictionary_work_book"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_GAME"
+                android:title="@string/classified_dictionary_work_game"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_MUSIC"
+                android:title="@string/classified_dictionary_work_music"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_STAGE"
+                android:title="@string/classified_dictionary_work_stage"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_PERIODICAL"
+                android:title="@string/classified_dictionary_work_periodical"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="optional_bundled_enabled_CLASSIFIED_WORK_OTHER"
+                android:title="@string/classified_dictionary_work_other"
+                android:defaultValue="false"
+                android:persistent="false"
+                app:iconSpaceReserved="false" />
+        </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_MANGA"
-            android:title="@string/classified_dictionary_work_manga"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_ANIME"
-            android:title="@string/classified_dictionary_work_anime"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_FILM"
-            android:title="@string/classified_dictionary_work_film"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_PROGRAM"
-            android:title="@string/classified_dictionary_work_program"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_BOOK"
-            android:title="@string/classified_dictionary_work_book"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_GAME"
-            android:title="@string/classified_dictionary_work_game"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_MUSIC"
-            android:title="@string/classified_dictionary_work_music"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_STAGE"
-            android:title="@string/classified_dictionary_work_stage"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_PERIODICAL"
-            android:title="@string/classified_dictionary_work_periodical"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:key="optional_bundled_enabled_CLASSIFIED_WORK_OTHER"
-            android:title="@string/classified_dictionary_work_other"
-            android:defaultValue="false"
-            android:persistent="false"
-            app:iconSpaceReserved="false" />
+        <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+            android:key="classified_group_media_demographic"
+            android:title="@string/classified_group_media_demographic">
+            <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+                android:key="classified_group_media_demographic_audience"
+                android:title="@string/classified_group_media_demographic_audience">
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_SHONEN"
+                    android:title="@string/classified_dictionary_media_demographic_audience_shonen"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_SEINEN"
+                    android:title="@string/classified_dictionary_media_demographic_audience_seinen"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_SHOJO"
+                    android:title="@string/classified_dictionary_media_demographic_audience_shojo"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_JOSEI"
+                    android:title="@string/classified_dictionary_media_demographic_audience_josei"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_KIDS"
+                    android:title="@string/classified_dictionary_media_demographic_audience_kids"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+                <SwitchPreferenceCompat
+                    android:key="optional_bundled_enabled_CLASSIFIED_MEDIA_DEMOGRAPHIC_AUDIENCE_UNSPECIFIED"
+                    android:title="@string/classified_dictionary_media_demographic_audience_unspecified"
+                    android:defaultValue="false"
+                    android:persistent="false"
+                    app:iconSpaceReserved="false" />
+            </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+        </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
         <SwitchPreferenceCompat
             android:key="optional_bundled_enabled_CLASSIFIED_KAMPO"

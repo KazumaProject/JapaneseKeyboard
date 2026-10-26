@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 
 import com.google.gson.annotations.SerializedName
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.HierarchicalFlickDefinition
 
 /**
  * External JSON schema for custom keyboard backup files.
@@ -111,7 +112,9 @@ data class KeyDefinitionDto(
     @SerializedName("specialKeyColorStyle")
     val specialKeyColorStyle: String? = null,
     @SerializedName("textInputBehavior")
-    val textInputBehavior: String? = null
+    val textInputBehavior: String? = null,
+    @SerializedName("hierarchicalFlick")
+    val hierarchicalFlick: HierarchicalFlickDefinition? = null
 )
 
 data class FlickMappingDto(

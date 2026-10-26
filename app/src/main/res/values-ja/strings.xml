@@ -160,7 +160,7 @@
     <string name="delete_keyboard">キーボードを削除</string>
     <string name="edit_keyboard">キーボードを編集</string>
     <string name="edit_key">キーを編集</string>
-    <string name="open_sorce_title">使用したライブラリ一覧</string>
+    <string name="open_sorce_title">ライセンスと出典</string>
     <string name="user_template">定型文</string>
     <string name="user_dictionary_explanation">この画面では、キーボードの予測変換に表示させたい単語を自由に登録できます。\n登録した単語は、その「読み」を設定した文字数以上入力することで、キーボードの変換候補として表示されるようになります。\n\n例：\n単語:「お疲れ様です。」 読み:「おつかれさまです」\n→「おつ」と入力すると「お疲れ様です。」が候補に表示されます。</string>
     <string name="user_dictionary_about_title">ユーザー辞書とは</string>
@@ -965,7 +965,7 @@
     <string name="pref_qwerty_enable_flick_down_title">下フリックを有効にする</string>
     <string name="pref_qwerty_enable_flick_down_summary">下方向のフリック入力で大文字を入力します。</string>
     <string name="enable_ai_preference_title">AI による予測変換を有効にする</string>
-    <string name="enable_ai_preference_summary">ニューラルかな漢字モデル「zenz-v3.2-xsmall」を使った逐次的な予測変換を有効にします。</string>
+    <string name="enable_ai_preference_summary">ニューラルかな漢字モデル「zenz-v3.2-xsmall」を使った逐次的な予測変換を有効にします。 キーボードの修飾キー省略・12キーフリックのタイピングミス補正設定に自動で連動します。</string>
     <string name="zenz_profile_preference_title">zenz で使用するプロフィールの設定</string>
     <string name="zenz_profile_preference_summary">zenz が予測変換に利用するプロフィールを設定できます。\n例：この欄に「職業：医者」と入力すると、「ちゅうしゃ」と入力したときに「注射」が候補に出やすくなります。</string>
     <string name="enable_zenz_rerank_preference_title">zenz で変換候補を並び替える</string>
@@ -1105,8 +1105,6 @@
     <string name="enable_typo_correction_japanese_flick_keyboard_preference_sumary">フリック入力でミスを検知した場合、補正した変換候補を表示します。</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_title">QWERTY（英語）</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_summary">QWERTY入力でミスを検知した場合、補正した候補を表示します。</string>
-    <string name="enable_zenzai_preference_title">タイピング修正を有効にする</string>
-    <string name="enable_ai_conversion_zenz_preference_summary">タイピング修正を有効にしている場合は、zenz に渡す入力を「タイピング修正後の文字列」にします。</string>
     <string name="back_up">設定のバックアップ</string>
     <string name="pref_backup_export_title">設定をエクスポート</string>
     <string name="pref_backup_export_summary">現在の設定をバックアップファイルとして保存します</string>
@@ -1945,4 +1943,23 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_special_help">カーソル、削除、IME切替、小文字、シフト、元に戻す、全角切替などのキーです。アイコンと文字のサイズを個別に調整できます。</string>
     <string name="gojuon_sizing_icon">特殊キーのアイコン</string>
     <string name="gojuon_sizing_special_text">特殊キーの文字</string>
+
+    <string name="input_style_three_stage">3段フリック</string>
+    <string name="template_three_stage_flick">かな（3段フリック）</string>
+    <string name="three_stage_state">文字の状態</string>
+    <string name="three_stage_normal">通常</string>
+    <string name="three_stage_dakuten">濁点</string>
+    <string name="three_stage_handakuten">半濁点</string>
+    <string name="three_stage_path">%1$d段目 / 最大3段  %2$s</string>
+    <string name="three_stage_back">前の段へ</string>
+    <string name="three_stage_open">次の段を開く</string>
+    <string name="three_stage_branch_label">分岐ラベル</string>
+    <string name="three_stage_add_branch">次の段を作成</string>
+    <string name="three_stage_clear">割り当てを削除</string>
+    <string name="mushroom_shortcut_summary">マッシュルーム対応アプリで文字を変換・入力します</string>
+    <string name="mushroom_choose_app">マッシュルーム対応アプリを選択</string>
+    <string name="mushroom_unavailable">マッシュルーム対応アプリがインストールされていません</string>
+    <string name="mushroom_failed">マッシュルーム対応アプリを起動できませんでした</string>
+    <string name="mushroom_target_changed">入力先を確認できないため、マッシュルームの結果を入力しませんでした</string>
+    <string name="mushroom_unsupported">この入力欄ではマッシュルームを使用できません</string>
 </resources>

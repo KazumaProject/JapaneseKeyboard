@@ -38,7 +38,7 @@
             android:textSize="10sp"
             android:visibility="gone" />
 
-        <com.google.android.material.textview.MaterialTextView
+        <com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateCharacterTextView
             android:id="@+id/suggestion_item_text_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

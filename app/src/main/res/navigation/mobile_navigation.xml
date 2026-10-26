@@ -154,6 +154,11 @@
         android:label="@string/setting_category_voice_input_title" />
 
     <fragment
+        android:id="@+id/candidateIndicatorPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CandidateIndicatorPreferenceFragment"
+        android:label="@string/candidate_indicator_settings" />
+
+    <fragment
         android:id="@+id/candidateConversionPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CandidateConversionPreferenceFragment"
         android:label="@string/setting_category_candidate_conversion_title" />
@@ -614,4 +619,16 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_browser.DictionaryBrowserFragment"
         android:label="@string/dictionary_browser_title"
         tools:layout="@layout/fragment_dictionary_browser" />
+    <fragment android:id="@+id/morsePreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferenceFragment"
+        android:label="@string/morse_title" />
+    <fragment android:id="@+id/morseMapListFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.morse.MorseMapListFragment"
+        android:label="@string/morse_maps_title" />
+    <fragment android:id="@+id/morseMapEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.morse.MorseMapEditorFragment"
+        android:label="@string/morse_edit" />
+    <fragment android:id="@+id/morseLayoutFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.morse.MorseLayoutFragment"
+        android:label="@string/morse_key_layout_title" />
 </navigation>

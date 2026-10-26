@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/candidate_indicator_preview" android:textStyle="bold" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/candidate_indicator_color_light" />
+    <com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateCharacterTextView
+        android:id="@+id/candidate_indicator_preview_light" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:padding="12dp" android:textSize="18sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/candidate_indicator_color_dark" android:layout_marginTop="8dp" />
+    <com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateCharacterTextView
+        android:id="@+id/candidate_indicator_preview_dark" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:padding="12dp" android:textSize="18sp" />
+</LinearLayout>

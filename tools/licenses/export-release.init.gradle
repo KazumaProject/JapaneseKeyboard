@@ -1,0 +1,21 @@
+import groovy.json.JsonOutput
+gradle.projectsEvaluated {
+    def app = rootProject.project(':app')
+    app.tasks.register('exportLicenseDependencies') {
+        doLast {
+            def result = [:]
+            ['fullStandardRelease', 'liteStandardRelease', 'liteFdroidRelease'].each { variant ->
+                def config = app.configurations.getByName("${variant}RuntimeClasspath")
+                result[variant] = config.incoming.resolutionResult.allComponents.findAll {
+                    it.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier
+                }.collect { component ->
+                    def id = component.moduleVersion
+                    [group: id.group, name: id.name, version: id.version]
+                }.sort { "${it.group}:${it.name}" }
+            }
+            def report = rootProject.layout.buildDirectory.file('reports/licenses/resolved-release.json').get().asFile
+            report.parentFile.mkdirs()
+            report.text = JsonOutput.prettyPrint(JsonOutput.toJson(result))
+        }
+    }
+}

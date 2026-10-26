@@ -48,14 +48,14 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
         }
     }
 
+    private var categoryActions: DictionaryCategoryActions? = null
+
     override fun onPreferencesResumed() {
         if (store.currentRevision != preparedRevision) {
             reloadPreferences()
             return
         }
-        ClassifiedDictionaries.all.forEach { spec ->
-            findPreference<SwitchPreferenceCompat>(spec.preferenceKey)?.isChecked = store.isOptionalBundledEnabled(spec.category)
-        }
+        refreshDictionarySelections()
     }
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
@@ -65,23 +65,17 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
                 isPersistent = false
                 isChecked = store.isOptionalBundledEnabled(spec.category)
                 setOnPreferenceChangeListener { _, value ->
-                    val enabled = value == true
-                    val problems = categoryProblems[spec.category].orEmpty()
-                    store.setDisableableCategoryEnabled(spec.category, enabled, problems.isEmpty())
-                    preparedRevision = store.currentRevision
-                    isChecked = enabled
-                    if (enabled && problems.isNotEmpty()) {
-                        MaterialAlertDialogBuilder(requireContext())
-                            .setTitle(R.string.external_dictionary_compat_dialog_title)
-                            .setMessage((listOf(getString(R.string.external_dictionary_compat_imported_but_not_usable),
-                                getString(R.string.external_dictionary_compat_import_matching_common_files)) +
-                                problems.map { getString(it.messageResId, *it.messageArgs.toTypedArray()) }).joinToString("\n"))
-                            .setPositiveButton(android.R.string.ok, null).show()
-                    }
+                    updateDictionarySelections(listOf(spec.category), value == true)
                     true
                 }
             }
         }
+
+        categoryActions = DictionaryCategoryActions(
+            preferenceScreen,
+            store::isOptionalBundledEnabled,
+            ::updateDictionarySelections,
+        ).also { it.bind() }
 
         val ngWordSwitchPreference =
             findPreference<SwitchPreferenceCompat>("ng_word_enable_preference")
@@ -175,6 +169,41 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
         }
 
         applyLegacySearchResultFilterIfNeeded()
+        val targetKey = arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
+            ?.takeIf { it.isNotBlank() }
+            ?: arguments?.getString(LegacyPreferenceResultFilter.ARG_LEGACY_SEARCH_TARGET_KEY)
+        targetKey?.let { key ->
+            var parent = findPreference<Preference>(key)?.parent
+            while (parent != null) {
+                if (parent is CollapsiblePreferenceCategory) parent.setExpanded(true, persist = false)
+                parent = parent.parent
+            }
+        }
+    }
+
+    private fun refreshDictionarySelections() {
+        ClassifiedDictionaries.all.forEach { spec ->
+            findPreference<SwitchPreferenceCompat>(spec.preferenceKey)?.isChecked =
+                store.isOptionalBundledEnabled(spec.category)
+        }
+        categoryActions?.refresh()
+    }
+
+    private fun updateDictionarySelections(categories: List<DictionaryCategory>, enabled: Boolean) {
+        categories.forEach { category ->
+            store.setDisableableCategoryEnabled(category, enabled, categoryProblems[category].isNullOrEmpty())
+        }
+        preparedRevision = store.currentRevision
+        refreshDictionarySelections()
+        val problems = categories.flatMap { categoryProblems[it].orEmpty() }.distinct()
+        if (enabled && problems.isNotEmpty()) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.external_dictionary_compat_dialog_title)
+                .setMessage((listOf(getString(R.string.external_dictionary_compat_imported_but_not_usable),
+                    getString(R.string.external_dictionary_compat_import_matching_common_files)) +
+                    problems.map { getString(it.messageResId, *it.messageArgs.toTypedArray()) }).joinToString("\n"))
+                .setPositiveButton(android.R.string.ok, null).show()
+        }
     }
 
 }
