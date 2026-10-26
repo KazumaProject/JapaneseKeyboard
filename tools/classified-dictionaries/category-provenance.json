@@ -1,7 +1,7 @@
 {
-  "personSourceSha256": "e79047fb49ec54a0d418010a9602b8d433743d44805468394dd2ac77abb9225f",
-  "revision": "6927d27d73fa568d8147f837bdd31fa9493b1875",
-  "version": "v1.7.276",
+  "personSourceSha256": "36f039c23306fb21b8589586d6b3229b7a226c472780343b6e9f50dcc8ff5295",
+  "revision": "13e391bc7a4a245f63aa0091c1e9c11db3dbd759",
+  "version": "v1.7.277",
   "inputSha256": {
     "src/main/bin/names.txt": "d108a5a15030b573e0e0b3d05c927cc6c752ff8fc25a19dca062a5b99ffbf25c",
     "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
@@ -99,9 +99,13 @@
     "src/main/classification/reviews/2026-10-25-issue-227-business-services.jsonl": "0c70b089e4c861321dd790a6729fa383a91395ad5249994e8a0ae6089ec9fe4f",
     "src/main/classification/reviews/2026-10-25-open-new-terms-issues.jsonl": "2a853f685e6d09bcda9f5aeb4a6daf52fd8e7c7de469e28e2063df9c6c71e019",
     "src/main/classification/reviews/2026-10-25-open-new-terms-issues_demographic.jsonl": "ed74359bee32753053d2370c1bddc99f343593459449436594cae4d67d511bd7",
+    "src/main/classification/reviews/2026-10-26-business-mhlw.jsonl": "ee4d8507e016d18703275221922634a36d0a68b072a56faa70da4715161e48e0",
+    "src/main/classification/reviews/2026-10-26-business-mozc-curated.jsonl": "e856090d80a053af3c5faffb866907bcfc06ecbaa43b1c5a63062f56547ba9ed",
+    "src/main/classification/reviews/2026-10-26-business-mozc-seeds.jsonl": "50019986e5e1a5a1715d496619645dbf163ce5076be79788c619a5a9712b01dd",
+    "src/main/classification/reviews/2026-10-26-business-specialist-reclassifications.jsonl": "bf143524193d0f016b3fcb7196a3b76b43739c423ea65c39f996b12f3ac3e251",
     "src/main/classification/reviews/collection-cf7e87c20f1b1c28.jsonl": "0b871422af9c55e7d172b5b0bd9efcfcbae45bdcdebce43bfece67875732addb"
   },
-  "decisionSha256": "ebf92f4227d8855ab38b47b2128ad7eca1b18db98800416f063686186e57f017",
+  "decisionSha256": "38a7ad9155f5f2d871a38d5fc68d73a2cb1b5d137be61e42b3af03e7f82df9aa",
   "categorySourcePairs": {
     "address": {
       "place": 147777,
@@ -645,16 +649,16 @@
       "neologd": 40
     },
     "person/personal_name_origin_foreign": {
-      "web": 384,
-      "neologd": 262,
-      "wiki": 398,
-      "person": 6
+      "neologd": 516,
+      "web": 1112,
+      "person": 107,
+      "wiki": 724
     },
     "person/personal_name_origin_japanese": {
-      "person": 8138,
-      "web": 42976,
-      "neologd": 15170,
-      "wiki": 15419,
+      "person": 8037,
+      "web": 42248,
+      "neologd": 14916,
+      "wiki": 15093,
       "place": 3
     },
     "person/personal_name_origin_unconfirmed": {
@@ -689,15 +693,16 @@
       "neologd": 158
     },
     "person/surname_origin_foreign": {
-      "web": 15,
-      "wiki": 29,
-      "neologd": 13
+      "web": 27,
+      "wiki": 36,
+      "person": 5,
+      "neologd": 23
     },
     "person/surname_origin_japanese": {
-      "wiki": 4769,
-      "neologd": 5417,
-      "web": 14251,
-      "person": 2177,
+      "wiki": 4762,
+      "neologd": 5407,
+      "web": 14239,
+      "person": 2172,
       "place": 1
     },
     "person/surname_origin_unconfirmed": {
@@ -764,15 +769,15 @@
       "person": 5
     },
     "term/general/other_general": {
-      "web": 4142,
-      "wiki": 1900,
-      "neologd": 14362,
+      "web": 4138,
+      "wiki": 1899,
+      "neologd": 14359,
       "place": 17,
       "person": 91
     },
     "term/general/products_daily_goods": {
       "web": 284,
-      "neologd": 728,
+      "neologd": 726,
       "wiki": 140,
       "person": 8
     },
@@ -796,8 +801,8 @@
       "web": 799
     },
     "term/specialist/economics_management": {
-      "neologd": 3461,
-      "web": 1788,
+      "neologd": 3464,
+      "web": 1789,
       "wiki": 527,
       "person": 2
     },
@@ -823,11 +828,12 @@
       "place": 1
     },
     "term/specialist/law_politics": {
-      "wiki": 397,
-      "web": 1807,
-      "neologd": 3064,
+      "wiki": 398,
+      "web": 1810,
+      "neologd": 3066,
       "place": 1,
-      "person": 3
+      "person": 3,
+      "mhlw": 373
     },
     "term/specialist/mathematics_physics": {
       "wiki": 765,
@@ -920,6 +926,22 @@
       "web": 323,
       "neologd": 136,
       "person": 2
+    }
+  },
+  "mhlwReview": {
+    "path": "src/main/classification/reviews/2026-10-26-business-mhlw.jsonl",
+    "sha256": "ee4d8507e016d18703275221922634a36d0a68b072a56faa70da4715161e48e0",
+    "sourceUrl": "https://www.mhlw.go.jp/yougosyu/index.html",
+    "termsUrl": "https://www.mhlw.go.jp/chosakuken/",
+    "licenseUrl": "https://www.digital.go.jp/resources/open_data/public_data_license_v1.0",
+    "sourceSha256": [
+      "91e34b3ca1bb7349a5754b288f0e53b201675b27921f188d3a0a5f9d9448c3d9"
+    ],
+    "license": "公共データ利用規約（第1.0版） (PDL1.0)",
+    "addedRecords": 373,
+    "reclassifiedRecords": 6,
+    "categoryCounts": {
+      "term/specialist/law_politics": 373
     }
   },
   "personAdditions": [
@@ -125845,7 +125867,7 @@
     },
     "classificationExclusionsSha256": "50fb918b0a0ffb823cdae3c57eff156287bcc8b0580c12001905d158fd4262a2",
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "2b8afa1ac7b17b421999700e442432b647771660e35bd7a838bb90e81c0c89b5",
+    "existingInventorySha256": "b6bd3ccd684c8cdfd8da746a6a86e5de80cae14b391926322857d5e4b80a8bd1",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -125967,7 +125989,7 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1864530,
+    "existingUniquePairs": 1864662,
     "sourceRows": {
       "collected/collected-terms/cf7e87c20f1b1c28.jsonl": {
         "rows": 2,
@@ -126038,7 +126060,7 @@
     },
     "files": {
       "distribution-candidates.tsv.gz": "8734dda7bd19c3a1401600a751289a3062c9a2f15c7ea64a409faf40c656e5ec",
-      "provenance.jsonl.gz": "d8c3411ae205cff7a4d9b3da244d8956d8ef37b1e0fa2a9a10ed40da496448f2"
+      "provenance.jsonl.gz": "c6f6bbcda1239546d0eabf79bc51d3bc1434c0a14bb857f612fca6627719548e"
     },
     "limitations": [
       "Upstream readings include automatic readings; Gemini supplements are inferred. Neither is independently verified.",
@@ -126080,8 +126102,8 @@
       "surface": "桂枝茯苓丸加薏苡仁"
     }
   ],
-  "surfaceOverridesSha256": "2e2ba5b223db1e12264dc9c63359ee9954b1b2752d92224202d36fa0c22ad6b9",
+  "surfaceOverridesSha256": "b7b77c6bd31ca245ae3cd3228d4e0aef5b1b7d2863401bb7514285bbbbfdfef6",
   "englishCatalogSha256": "dd49edb7e2e106ad683426e3fe97f538fd4d8be5fddedbe0169e8280311c694e",
-  "englishFixtureSha256": "16044f16e371b420a24a19f2a7248320141954496ceb64a0a804aa8dc6b0a9f6",
-  "classifiedFixtureSha256": "33d2d796ee341fbb2475c64c2ff0443177563419e85b3e7db66f486a072eb654"
+  "englishFixtureSha256": "0027d8ba3899f2cd522e2243654ac946a69e4b96df4e9c7cf1c40e6025d574b2",
+  "classifiedFixtureSha256": "5909dbae5f6a6ded75dc746b314cb98dfd6b605aba71ae9dc24df787d7e32c48"
 }
