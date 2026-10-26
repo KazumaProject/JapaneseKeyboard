@@ -62,6 +62,8 @@ data class ImeKeyboardAppearance(
     val inputCompositionTextColor: Int,
     val inputConversionBackgroundColor: Int,
     val inputConversionTextColor: Int,
+    val candidateIndicatorStyles: com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorStyles =
+        com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorStyles(),
 )
 
 data class ImePreferencesSnapshot(
@@ -81,6 +83,7 @@ data class ImePreferencesSnapshot(
     val isTextMacroCandidateEnable: Boolean,
     val systemNgramDictionaryEnabled: Boolean,
     val customNgramDictionaryEnabled: Boolean,
+    val showCharacterIndicators: Boolean,
     val showDictionaryCandidateLabels: Boolean,
     val suppressHentaiganaCandidates: Boolean,
     val zeroQuerySuggestionPreference: Boolean,
@@ -233,7 +236,6 @@ data class ImePreferencesSnapshot(
     val qwertyLandscapePositionPreferenceValue: Boolean,
     val qwertyLandscapeBottomMarginPreferenceValue: Int,
     val zenzEnableStatePreference: Boolean,
-    val zenzaiEnableStatePreference: Boolean,
     val zenzProfilePreference: String,
     val zenzEnableLongPressConversionPreference: Boolean,
     val zenzRerankPreference: Boolean,
@@ -382,6 +384,7 @@ data class ImePreferencesSnapshot(
                     appPreference.system_ngram_dictionary_enable_preference,
                 customNgramDictionaryEnabled =
                     appPreference.custom_ngram_dictionary_enable_preference,
+                showCharacterIndicators = appPreference.candidate_character_type_indicators_preference,
                 showDictionaryCandidateLabels =
                     appPreference.show_dictionary_candidate_labels_preference,
                 suppressHentaiganaCandidates =
@@ -659,8 +662,6 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_keyboard_vertical_margin_bottom_landscape ?: 0,
                 zenzEnableStatePreference =
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_preference,
-                zenzaiEnableStatePreference =
-                    AppVariantConfig.hasZenz && appPreference.enable_zenzai_preference,
                 zenzProfilePreference = appPreference.zenz_profile_preference,
                 zenzEnableLongPressConversionPreference =
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_long_press_preference,
@@ -678,6 +679,7 @@ data class ImePreferencesSnapshot(
                 qwertySpecialKeyIconSize = appPreference.qwerty_special_key_icon_size ?: 18.0f,
                 keyboardSkin = appPreference.keyboardSkin,
                 appearance = ImeKeyboardAppearance(
+                    candidateIndicatorStyles = appPreference.candidateIndicatorStyles,
                     keyboardThemeMode = appPreference.theme_mode,
                     customThemeBgColor = appPreference.custom_theme_bg_color,
                     customThemeKeyColor = appPreference.custom_theme_key_color,

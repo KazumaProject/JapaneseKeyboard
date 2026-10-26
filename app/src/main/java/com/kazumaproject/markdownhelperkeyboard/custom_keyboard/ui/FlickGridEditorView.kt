@@ -511,6 +511,7 @@ class FlickGridEditorView @JvmOverloads constructor(
                 invalidate()
                 onCellSelected?.invoke(newMode)
             }
+
             GridMode.FLICK_LONG_PRESS -> {
                 val tappedDir = tfbiDirectionGrid[pos] ?: return
                 val newMode = CellMode.FlickLongPress(tappedDir)
@@ -574,6 +575,8 @@ class FlickGridEditorView @JvmOverloads constructor(
     }
 
     // ---- 公開API ----
+
+
 
     fun setPetalContent(items: List<FlickMappingItem>, displayActions: List<DisplayActionUi>, centerLabel: String = "") {
         gridMode = GridMode.PETAL
@@ -702,6 +705,7 @@ class FlickGridEditorView @JvmOverloads constructor(
      * 初期セル（TAP）を選択してコールバックを呼ぶ
      */
     fun selectInitialCell() {
+
         val initialMode: CellMode = when (gridMode) {
             GridMode.PETAL -> CellMode.Petal(FlickDirection.TAP)
             GridMode.SPECIAL_FLICK -> CellMode.SpecialFlick(FlickDirection.TAP)

@@ -149,6 +149,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/input_style_two_step" />
 
+
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_flick_long_press"
                     style="@style/Widget.Material3.Chip.Filter"
@@ -494,6 +495,7 @@
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false" />
             </LinearLayout>
+
 
             <!-- フリックグリッドエディタ (ペタル・2段・特殊フリック共通) -->
             <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.FlickGridEditorView

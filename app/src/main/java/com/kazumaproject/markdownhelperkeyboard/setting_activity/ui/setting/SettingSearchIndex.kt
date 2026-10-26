@@ -85,6 +85,8 @@ object SettingSearchIndex {
     )
 
     private val highlightableDestinations = setOf(
+        R.id.candidateIndicatorPreferenceFragment,
+        R.id.morsePreferenceFragment,
         R.id.splitKeyboardPreferenceFragment,
         R.id.keyboardDisplayPreferenceFragment,
         R.id.inputMethodPreferenceFragment,
@@ -178,7 +180,10 @@ object SettingSearchIndex {
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
-        return (listOfNotNull(themeItem, textMacroItem) + xmlItems).distinctBy { destination ->
+        val indicatorItems = readPreferenceXml(context, PreferenceXmlSource(
+            R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
+        )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
+        return (listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { destination ->
             val legacyTarget = destination.legacyTarget
             "${legacyTarget?.tabKey}:${destination.key}:${legacyTarget?.destinationId}"
         }
@@ -357,6 +362,7 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_split_keyboard, R.id.splitKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_voice_input, R.id.voiceInputPreferenceFragment, SettingCategory.VOICE_INPUT))
+        add(PreferenceXmlSource(R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_utility_candidate, R.id.utilityCandidatePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
@@ -373,6 +379,7 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_general_info, R.id.generalInfoPreferenceFragment, SettingCategory.APP_INFO))
         add(PreferenceXmlSource(R.xml.pref_advanced, R.id.advancedPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_kana, R.id.kanaPreferenceFragment, SettingCategory.INPUT_METHOD))
+        add(PreferenceXmlSource(R.xml.pref_morse, R.id.morsePreferenceFragment, SettingCategory.MORSE))
         add(PreferenceXmlSource(R.xml.pref_gojuon, R.id.gojuonPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty, R.id.qwertyPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty_english, R.id.qwertyEnglishPreferenceFragment, SettingCategory.INPUT_METHOD))
@@ -400,6 +407,7 @@ object SettingSearchIndex {
             SettingTabRegistry.TAB_CONVERSION_ENGINE -> SettingCategory.CONVERSION_ENGINE
             SettingTabRegistry.TAB_DICTIONARY -> SettingCategory.DICTIONARY
             SettingTabRegistry.TAB_TEXT_MACRO -> SettingCategory.TEXT_MACRO
+            SettingTabRegistry.TAB_MORSE -> SettingCategory.MORSE
             SettingTabRegistry.TAB_VOICE_INPUT -> SettingCategory.VOICE_INPUT
             SettingTabRegistry.TAB_ZENZ,
             SettingTabRegistry.TAB_GEMMA -> SettingCategory.AI_CONVERSION
@@ -771,6 +779,7 @@ object SettingSearchIndex {
     private fun XmlResourceParser.isPreferenceCategoryOrScreen(): Boolean =
         when (name.substringAfterLast('.')) {
             "PreferenceCategory",
+            "CollapsiblePreferenceCategory",
             "PreferenceScreen" -> true
             else -> false
         }

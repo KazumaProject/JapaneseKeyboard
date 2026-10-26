@@ -18,6 +18,37 @@ class DictionaryBrowserViewModelTest {
     private val version = DictionaryBrowserVersion(1, true, false)
     private val rows = (0 until 251).map { DictionaryBrowserRow("reading$it", "word$it") }
 
+    @Test fun switchingDictionaryShowsLoadingUntilTheNewRowsArrive() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repo = mock<DictionaryBrowserRepository>()
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        whenever(repo.version(any())).thenReturn(version)
+        whenever(repo.open(DictionaryCategory.SYSTEM, ""))
+            .thenReturn(DictionaryBrowserCursor(version, rows.iterator()))
+        // Suspend the replacement load so its intermediate state is observable.
+        whenever(repo.open(DictionaryCategory.ENGLISH, "")).doSuspendableAnswer {
+            gate.await()
+            DictionaryBrowserCursor(version, rows.take(1).iterator())
+        }
+        val model = DictionaryBrowserViewModel(repo, SavedStateHandle())
+        try {
+            runCurrent()
+            withContext(Dispatchers.Default) { withTimeout(10000) { model.state.first { !it.loading } } }
+            model.select(DictionaryCategory.ENGLISH)
+            runCurrent()
+            assertTrue(model.state.value.loading)
+            assertTrue(model.state.value.rows.isEmpty())
+            assertEquals(DictionaryCategory.ENGLISH, model.state.value.category)
+            gate.complete(Unit)
+            runCurrent()
+            withContext(Dispatchers.Default) { withTimeout(10000) { model.state.first { !it.loading } } }
+            assertEquals(rows.take(1), model.state.value.rows)
+        } finally {
+            model.viewModelScope.cancel()
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun rapidQueriesPublishOnlyTheLatestRequestAndPaginationIsNotDuplicated() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val repo = mock<DictionaryBrowserRepository>()
