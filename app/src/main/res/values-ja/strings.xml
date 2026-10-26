@@ -160,7 +160,7 @@
     <string name="delete_keyboard">キーボードを削除</string>
     <string name="edit_keyboard">キーボードを編集</string>
     <string name="edit_key">キーを編集</string>
-    <string name="open_sorce_title">使用したライブラリ一覧</string>
+    <string name="open_sorce_title">ライセンスと出典</string>
     <string name="user_template">定型文</string>
     <string name="user_dictionary_explanation">この画面では、キーボードの予測変換に表示させたい単語を自由に登録できます。\n登録した単語は、その「読み」を設定した文字数以上入力することで、キーボードの変換候補として表示されるようになります。\n\n例：\n単語:「お疲れ様です。」 読み:「おつかれさまです」\n→「おつ」と入力すると「お疲れ様です。」が候補に表示されます。</string>
     <string name="user_dictionary_about_title">ユーザー辞書とは</string>

@@ -160,7 +160,7 @@
     <string name="delete_keyboard">Delete Keyboard</string>
     <string name="edit_keyboard">Edit Keyboard</string>
     <string name="edit_key">Edit Key</string>
-    <string name="open_sorce_title">Open source licenses</string>
+    <string name="open_sorce_title">Licenses and sources</string>
     <string name="user_template">User Template</string>
     <string name="user_dictionary_explanation">On this screen, you can freely register words that you want to appear in the keyboard predictive conversion.\nRegistered words will appear as conversion candidates on the keyboard once you type at least the number of characters specified in their &quot;reading&quot;.</string>
     <string name="user_dictionary_about_title">What is the User Dictionary?</string>
