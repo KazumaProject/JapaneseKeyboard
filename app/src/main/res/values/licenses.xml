@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="license_overview">About these licenses</string>
+    <string name="license_intro">This app includes third-party software, dictionary data, and machine learning models. Copyright notices, license terms, and sources for each component are available below.</string>
+    <string name="license_intro_lite">This app includes third-party software and dictionary data. Copyright notices, license terms, and sources for each component are available below.</string>
+    <string name="license_terms_note">Each component is subject to its respective license. The descriptions on this screen supplement the original license texts.</string>
+    <string name="license_app">Application code · MIT License</string>
+    <string name="license_dictionaries">Dictionaries and data</string>
+    <string name="license_libraries">Libraries</string>
+    <string name="license_models">AI models and native code</string>
+    <string name="license_section_count">%1$d components · Tap to view</string>
+    <string name="license_dictionary_summary">Source-specific terms · Offline notices</string>
+    <string name="license_core">Mozc dictionaries</string>
+    <string name="license_english_reading">English reading dictionary</string>
+    <string name="license_english">English word dictionary</string>
+    <string name="license_ngram">N-gram and unigram dictionaries</string>
+    <string name="license_auxiliary">Reading correction and proverbs</string>
+    <string name="license_wikipedia">Wikipedia-derived dictionary data</string>
+    <string name="license_overview_heading">Overview</string>
+    <string name="license_source_heading">Source</string>
+    <string name="license_version_heading">Version</string>
+    <string name="license_changes_heading">Modifications</string>
+    <string name="license_terms_heading">License terms</string>
+    <string name="license_original_heading">Copyright notices and original license texts</string>
+    <string name="license_library_overview">This component is part of the dependencies resolved for this edition. The license declaration below was verified against the POM or source evidence for this exact version.</string>
+    <string name="license_library_changes">Used as a dependency. No modifications to the upstream source are recorded in this app.</string>
+    <string name="license_copyright_unknown">A separate copyright notice could not be confirmed from the distributor’s materials. The original license text and available bundled notices are provided below.</string>
+    <string name="license_zenz_summary">Bundled prediction model · Apache License 2.0</string>
+    <string name="license_zenz_overview">The Zenz prediction model is bundled with the Full edition. Its pinned model card declares Apache License 2.0.</string>
+    <string name="license_zenz_changes">Converted to GGUF and quantized as Q5_K_M for on-device inference.</string>
+    <string name="license_llama_overview">Native inference code used by Zenz.</string>
+    <string name="license_llama_changes">Built for Android and linked into the Zenz JNI library.</string>
+    <string name="license_external_models">User-provided models</string>
+    <string name="license_external_summary">Terms supplied with each model</string>
+    <string name="license_external_overview">Models added by the user are subject to the terms supplied by their distributors. Check the model’s name, version, and accompanying license before use. The runtime’s license does not determine the model’s terms.</string>
+    <string name="license_flexbox_overview">Layout code derived from Google FlexboxLayout.</string>
+    <string name="license_flexbox_changes">Adapted and maintained in this app’s flexbox module.</string>
+    <string name="license_version_unconfirmed">The complete upstream acquisition revision could not be confirmed from the distributor’s materials.</string>
+    <string name="license_app_overview">The application code is distributed under the MIT License. Third-party software, data, and models retain their respective terms.</string>
+    <string name="license_missing">The license document could not be opened.</string>
+    <string name="license_openmp_overview">OpenMP runtime used by native inference. Notices are preserved from the OpenMP section of NDK 29 NOTICE.toolchain.</string>
+    <string name="license_openmp_changes">The NDK runtime library is bundled with the app.</string>
+</resources>

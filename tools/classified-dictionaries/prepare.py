@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = 'ac6ce20e2f43b56f8bbed240008a8e88f1f30091'
-VERSION = 'v1.7.275'
+REVISION = '6927d27d73fa568d8147f837bdd31fa9493b1875'
+VERSION = 'v1.7.276'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,7 +46,7 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = '416659d97907cf4bf48acfcc3b7c72447f752bf874290521c837b24a9c0c0d60'
+    archive_sha = '16da86f03a8f2b4d09cac270be4f1b9a71beaca9ee8c06ffbe16d9b138084ffd'
     assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
     licenses_sha = '053f81437611b301b16e6583d4916be5249982734b7ae9ed246a0f2f8c6354c3'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
@@ -275,15 +275,22 @@ def notices(counts):
     write(assets / 'notice-snapshots.json', json.dumps(snapshots, indent=2) + '\n')
     categories = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())['categories']
     categories = [dict(c, name=c['label']) for c in categories if c['id'] not in ('kampo', 'medical')]
-    style = '<style>body{font:16px sans-serif;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:14px monospace}h2{margin-top:28px}</style>'
+    style = '<style>body{font:16px sans-serif;line-height:1.6;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:13px monospace;line-height:1.5}h1{font-size:20px}h2{font-size:17px;margin-top:24px}</style>'
+    def translated(japanese, english):
+        return '<span class="translation" lang="ja">' + japanese + '</span><span class="translation" lang="en">' + english + '</span>'
+    def heading(japanese, english):
+        return '<h2>' + translated(japanese, english) + '</h2>'
     def page(title, details, keys):
         body = '<!doctype html><meta charset="utf-8">' + style + '<title>' + html.escape(title) + '</title><h1>' + html.escape(title) + '</h1>' + details
+        body += heading('著作権表示・ライセンス原文', 'Copyright notices and original license texts')
         for key in keys:
             body += '<h2>' + html.escape(key) + '</h2><p><a href="' + html.escape(upstream[key]) + '">Source / 出典</a></p><pre>' + html.escape((assets/'sources'/(key+'.txt')).read_text()) + '</pre>'
         return body
-    common = '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
-    common += '<p>Classified and converted to IME binaries / 分類・IME辞書バイナリへの変換を行っています。</p>'
-    common += '<p>Input acquisition revision and per-entry copyright attribution: unconfirmed. 元辞書の取得版・各語の著作権者への対応: 未確認。Below are preserved upstream notices; source-code licenses do not replace data terms. 以下は保持した出典の通知です。プログラムのライセンスはデータの条件を置き換えません。</p>'
+    common = heading('概要', 'Overview') + '<p>' + translated('本アプリに同梱する辞書データです。出典ごとの利用条件と通知原文を以下に掲載しています。', 'Dictionary data bundled with this app. Source-specific terms and original notices are provided below.') + '</p>'
+    common += heading('出典', 'Source') + '<p><a href="https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/' + VERSION + '">' + translated('辞書データの配布元', 'Dictionary distribution') + '</a></p>'
+    common += heading('対象版', 'Version') + '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
+    common += heading('加工内容', 'Modifications') + '<p>' + translated('分類・正規化・重複処理・品詞とコストの割当を行い、IME 用の辞書バイナリに変換しています。', 'Categorized, normalized, deduplicated, assigned parts of speech and costs, and converted to IME dictionary binaries.') + '</p>'
+    common += heading('利用条件', 'License terms') + '<p>' + translated('各出典には、それぞれの利用条件が適用されます。元データの取得版および各語の著作権者との対応は、配布元の資料からは確認できていません。', 'Each source retains its respective terms. The original acquisition revision and per-entry copyright attribution could not be confirmed from the distributor’s materials.') + '</p>'
     person_pairs = collections.defaultdict(set)
     for line in gzip.decompress(fetch(RAW + 'src/main/classification/person-dictionary-candidates.tsv.gz')).decode().splitlines():
         category, reading, left, right, cost, surface, *tags = line.split('\t')
@@ -297,8 +304,8 @@ def notices(counts):
         if 'web' in ids:
             keys += [key for key in ('wiki', 'neologd') if key not in keys]
         keys += ['cc-by-sa-4', 'apache-2']
-        details = common + '<p>Frozen source inputs / 固定入力: ' + ', '.join(f'{html.escape(SOURCES[source][0])}: {counts[category["id"]][source]} pairs / 組' for source in SOURCES if source in ids) + '</p>'
-        details += '<p>Wikipedia: attribution and ShareAlike / 表示・継承。Neologd: Apache 2.0 with its source-data notices / 出典データの通知を含むApache 2.0。Personal-names upstream notice: Apache 2.0. Japan Post place-data notice: no copyright claim for postcode data. 各入力と通知の取得版の同一性は未確認です。</p>'
+        details = common + '<p>採用出典 / Contributing sources: ' + ', '.join(html.escape({'person': 'Personal names', 'place': 'Japan Post place data', 'wiki': 'Wikipedia', 'neologd': 'mecab-ipadic-neologd', 'web': 'Wikipedia / Neologd common data'}[source]) for source in SOURCES if source in ids) + '</p>'
+        details += '<p>Wikipedia: attribution and ShareAlike / 表示・継承。Neologd: Apache 2.0 with its source-data notices / 出典データの通知を含むApache 2.0。Personal-names upstream notice: Apache 2.0. Japan Post place-data notice: no copyright claim for postcode data. 各入力と通知の取得版が同一であることは、配布元の資料からは確認できていません。</p>'
         if category['id'].startswith('person/'):
             additions = json.loads((ROOT/'tools/classified-dictionaries/category-provenance.json').read_text())['personAdditions']
             additions = [row for row in additions if (row['reading'], row['surface']) in person_pairs[category['id']]]
@@ -310,8 +317,7 @@ def notices(counts):
     for category in json.loads(fetch(RAW + 'src/main/specialist/categories.json'))['categories']:
         ident = category['id']
         sources = [source for source in source_metadata if counts[ident][source['id']]]
-        details = '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
-        details += '<p>Changes / 加工: field extraction, normalization, duplicate filtering, POS/cost assignment and binary conversion / 項目抽出・正規化・重複除外・品詞とコスト割当・バイナリ化。</p>'
+        details = common
         if ident == 'medical':
             inferred = specialist['readingOrigins']['gemini_inferred_unverified']
             details += f'<p>{inferred:,} adopted readings were supplemented with Gemini. Automatic and inferred readings are unverified / 採用語の読み{inferred:,}件をGeminiで補完。自動読み・推定読みの正確性は未確認。</p>'
@@ -342,6 +348,16 @@ def check():
     for key, value in json.loads((ROOT/'app/src/main/assets/licenses/notice-snapshots.json').read_text()).items():
         assert sha((ROOT/'app/src/main/assets/licenses/sources'/(key+'.txt')).read_bytes()) == value['sha256'], key
     provenance_manifest = json.loads((ROOT / 'tools/classified-dictionaries/category-provenance.json').read_text())
+    for metadata in (m, provenance_manifest):
+        assert metadata['version'] == VERSION, 'Dictionary version does not match the importer'
+        assert metadata['revision'] == REVISION, 'Dictionary revision does not match the importer'
+    for path in (ROOT / 'app/src/main/assets/licenses').rglob('*.html'):
+        text = path.read_text()
+        assert f'配布: {VERSION} ({REVISION})' in text, f'Stale dictionary notice: {path}'
+    for key, snapshot in json.loads((ROOT/'app/src/main/assets/licenses/notice-snapshots.json').read_text()).items():
+        if 'KazumaProject/kotlin-kana-kanji-converter' in snapshot['url']:
+            assert REVISION in snapshot['url'] or f'/{VERSION}/' in snapshot['url'], key
+
     assert sha((ROOT/'app/src/androidTest/assets/english-reading-expected.json').read_bytes()) == provenance_manifest['englishFixtureSha256']
     assert sha((ROOT/'app/src/androidTest/assets/classified-expected-records.json').read_bytes()) == provenance_manifest['classifiedFixtureSha256']
     assert sha((ROOT/'app/src/main/assets/licenses/sources/distribution-licenses.txt').read_bytes()) == m['licensesSha256']

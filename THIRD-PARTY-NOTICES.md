@@ -85,3 +85,20 @@ verifies archive and asset hashes, derives source-input memberships from the
 hash-verified frozen records, and snapshots upstream notices.
 `python3 tools/classified-dictionaries/prepare.py --check` verifies the bundled
 release assets and notice hashes without network access.
+
+## Release software and native notices / リリース版のソフトウェア・ネイティブ通知
+
+The in-app Licenses and sources screen uses the release dependency catalog in
+`app/src/main/assets/software-licenses/catalog.json`. It distinguishes Full,
+Lite Standard, and Lite F-Droid dependencies and preserves available notices
+from their AAR/JAR distributions. Original notices and license texts are available
+offline. POM declarations do not replace the individual third-party notices.
+
+Zenz model metadata is pinned to
+`Miwa-Keita/zenz-v3.2-xsmall-gguf@4f5423f0fad41a73b1242eb96fe5c12ae4fdca83`
+(Apache 2.0 declaration); native llama.cpp is pinned to
+`88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c` (MIT).
+The OpenMP runtime notice is retained from Android NDK `29.0.14206865`
+`NOTICE.toolchain`, including Apache 2.0 with LLVM Exceptions and its legacy
+notices. See `docs/licenses/README.md` for the evidence and regeneration commands.
+User-provided models retain their distributors’ terms.
