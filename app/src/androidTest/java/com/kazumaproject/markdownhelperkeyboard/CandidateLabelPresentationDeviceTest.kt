@@ -309,6 +309,7 @@ class CandidateLabelPresentationDeviceTest {
                 val target = mixedRow()
                 val label = target.findViewById<TextView>(id("suggestion_item_type_text_view")).text.toString()
                 assertFalse("Character names must not extend the row", label.contains("・"))
+                if (!baseline) assertEquals("[ユーザー]", label)
                 if (sourceLabel == null) { sourceLabel = label; rowWidth = target.width }
                 assertEquals(sourceLabel, label)
                 assertEquals("Indicators changed the candidate width", rowWidth, target.width)
@@ -361,6 +362,8 @@ class CandidateLabelPresentationDeviceTest {
             }
             assertEquals("Numeric date must not be labeled as AI", baseline,
                 row.findViewById<TextView>(id("suggestion_item_type_text_view")).text.contains("AI"))
+            if (!baseline) assertEquals("[日付]",
+                row.findViewById<TextView>(id("suggestion_item_type_text_view")).text.toString())
         }
         capture(if (baseline) "baseline-date" else "date-fixed")
         tapKey(id("suggestion_visibility"))
