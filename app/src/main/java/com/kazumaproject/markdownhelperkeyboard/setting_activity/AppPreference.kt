@@ -2429,6 +2429,13 @@ object AppPreference {
         get() = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorSettings.read(preferences)
 
     const val CANDIDATE_CHARACTER_INDICATORS_KEY = "candidate_character_type_indicators_preference"
+    const val CANDIDATE_CHARACTER_TYPE_LABELS_KEY = "candidate_character_type_labels_preference"
+
+    var candidate_character_type_labels_preference: Boolean
+        get() = preferences.getBoolean(CANDIDATE_CHARACTER_TYPE_LABELS_KEY, true)
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_CHARACTER_TYPE_LABELS_KEY, value)
+        }
 
     var candidate_character_type_indicators_preference: Boolean
         get() = preferences.getBoolean(CANDIDATE_CHARACTER_INDICATORS_KEY, false)
