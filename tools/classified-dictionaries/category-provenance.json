@@ -1,7 +1,7 @@
 {
-  "personSourceSha256": "36f039c23306fb21b8589586d6b3229b7a226c472780343b6e9f50dcc8ff5295",
-  "revision": "13e391bc7a4a245f63aa0091c1e9c11db3dbd759",
-  "version": "v1.7.277",
+  "personSourceSha256": "d4d70703c0e1230d819fa80c82fa8c5f3508927fb6a3dae69ad7d12fd2ecd9f2",
+  "revision": "39b3059dba81d6abb9fff3f57253c67e6e74c08e",
+  "version": "v1.7.278",
   "inputSha256": {
     "src/main/bin/names.txt": "d108a5a15030b573e0e0b3d05c927cc6c752ff8fc25a19dca062a5b99ffbf25c",
     "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
@@ -103,9 +103,12 @@
     "src/main/classification/reviews/2026-10-26-business-mozc-curated.jsonl": "e856090d80a053af3c5faffb866907bcfc06ecbaa43b1c5a63062f56547ba9ed",
     "src/main/classification/reviews/2026-10-26-business-mozc-seeds.jsonl": "50019986e5e1a5a1715d496619645dbf163ce5076be79788c619a5a9712b01dd",
     "src/main/classification/reviews/2026-10-26-business-specialist-reclassifications.jsonl": "bf143524193d0f016b3fcb7196a3b76b43739c423ea65c39f996b12f3ac3e251",
+    "src/main/classification/reviews/2026-10-27-business-mhlw-reading-corrections.jsonl": "6fb1379c41eef24a1bbe014ae5431b0ac5ed8e8216fc7a2b58247eca38604f3c",
+    "src/main/classification/reviews/2026-10-27-business-term-classification-corrections.jsonl": "3e0f946dbb8f0d0704260499dfe4258ae3b40eff0c8272880ac3e4a3669b86ab",
+    "src/main/classification/reviews/2026-10-27-yomi-tsugai-vivant.jsonl": "e41291bc335fbe89f893bcb707ec5b348703e7da0c12d6d898e77eed508ee913",
     "src/main/classification/reviews/collection-cf7e87c20f1b1c28.jsonl": "0b871422af9c55e7d172b5b0bd9efcfcbae45bdcdebce43bfece67875732addb"
   },
-  "decisionSha256": "38a7ad9155f5f2d871a38d5fc68d73a2cb1b5d137be61e42b3af03e7f82df9aa",
+  "decisionSha256": "2a55e969f87ab5adae24160d5d1d6be9b2298fd9854d92c3f65eeb1975373c64",
   "categorySourcePairs": {
     "address": {
       "place": 147777,
@@ -554,74 +557,74 @@
       "wiki": 8182
     },
     "person/actor": {
-      "wiki": 957,
       "web": 3812,
-      "person": 1116,
-      "neologd": 1471
+      "neologd": 1471,
+      "wiki": 957,
+      "person": 1116
     },
     "person/art_design": {
+      "neologd": 25,
       "wiki": 120,
-      "person": 16,
       "web": 777,
-      "neologd": 25
+      "person": 16
     },
     "person/broadcaster": {
-      "web": 1133,
-      "person": 333,
       "neologd": 52,
-      "wiki": 111
+      "person": 333,
+      "wiki": 111,
+      "web": 1133
     },
     "person/business": {
-      "person": 225,
-      "web": 2777,
       "neologd": 432,
+      "web": 2777,
+      "person": 225,
       "wiki": 769
     },
     "person/comedian": {
       "person": 1715,
+      "wiki": 5,
       "neologd": 24,
-      "web": 17,
-      "wiki": 5
+      "web": 17
     },
     "person/competitive_games": {
-      "web": 93,
       "person": 1082,
-      "neologd": 3,
-      "wiki": 7
+      "wiki": 7,
+      "web": 93,
+      "neologd": 3
     },
     "person/film_game_creator": {
-      "person": 59,
-      "web": 162,
       "wiki": 20,
+      "web": 162,
+      "person": 59,
       "neologd": 16
     },
     "person/given_name_origin_foreign": {
-      "neologd": 7,
+      "wiki": 23,
       "web": 18,
-      "wiki": 22
+      "neologd": 7
     },
     "person/given_name_origin_japanese": {
       "neologd": 606,
-      "web": 1238,
       "wiki": 373,
+      "web": 1238,
       "person": 289
     },
     "person/given_name_origin_unconfirmed": {
+      "neologd": 1064,
       "wiki": 722,
-      "person": 543,
       "web": 2386,
-      "neologd": 1064
+      "person": 543
     },
     "person/idol": {
       "person": 105,
-      "web": 106,
       "wiki": 40,
+      "web": 106,
       "neologd": 3
     },
     "person/manga_illustration": {
       "neologd": 74,
-      "web": 126,
       "person": 22,
+      "web": 126,
       "wiki": 6
     },
     "person/musician": {
@@ -632,102 +635,102 @@
     },
     "person/online_creator": {
       "person": 72,
-      "wiki": 31,
       "web": 48,
+      "wiki": 31,
       "neologd": 25
     },
     "person/other_identified": {
       "neologd": 259,
-      "wiki": 1206,
       "person": 185,
-      "web": 3516
+      "web": 3516,
+      "wiki": 1206
     },
     "person/performing_arts": {
-      "person": 18,
       "web": 229,
       "wiki": 25,
-      "neologd": 40
+      "neologd": 40,
+      "person": 18
     },
     "person/personal_name_origin_foreign": {
       "neologd": 516,
-      "web": 1112,
+      "wiki": 724,
       "person": 107,
-      "wiki": 724
+      "web": 1112
     },
     "person/personal_name_origin_japanese": {
-      "person": 8037,
-      "web": 42248,
       "neologd": 14916,
+      "web": 42248,
+      "person": 8037,
       "wiki": 15093,
       "place": 3
     },
     "person/personal_name_origin_unconfirmed": {
-      "wiki": 19009,
-      "person": 10204,
-      "neologd": 20383,
-      "web": 51031,
+      "person": 10206,
+      "web": 51039,
+      "neologd": 20387,
+      "wiki": 19014,
       "place": 8
     },
     "person/politics_public": {
       "wiki": 262,
       "web": 1238,
-      "person": 50,
-      "neologd": 49
+      "neologd": 49,
+      "person": 50
     },
     "person/royalty_nobility": {
-      "neologd": 42,
       "wiki": 84,
+      "neologd": 42,
       "web": 160,
       "person": 2
     },
     "person/science_education": {
-      "wiki": 1210,
-      "web": 5247,
       "neologd": 966,
-      "person": 679
+      "web": 5247,
+      "person": 679,
+      "wiki": 1210
     },
     "person/sports": {
       "person": 2838,
+      "neologd": 158,
       "web": 3830,
-      "wiki": 991,
-      "neologd": 158
+      "wiki": 991
     },
     "person/surname_origin_foreign": {
-      "web": 27,
-      "wiki": 36,
-      "person": 5,
-      "neologd": 23
+      "web": 19,
+      "neologd": 17,
+      "wiki": 30,
+      "person": 3
     },
     "person/surname_origin_japanese": {
-      "wiki": 4762,
       "neologd": 5407,
       "web": 14239,
+      "wiki": 4762,
       "person": 2172,
       "place": 1
     },
     "person/surname_origin_unconfirmed": {
+      "place": 6,
       "neologd": 5037,
-      "web": 13964,
-      "wiki": 4623,
       "person": 2091,
-      "place": 6
+      "web": 13964,
+      "wiki": 4623
     },
     "person/thought": {
       "person": 259,
-      "web": 3,
-      "wiki": 5
+      "wiki": 5,
+      "web": 3
     },
     "person/voice_actor": {
-      "web": 482,
       "person": 395,
       "wiki": 55,
+      "web": 482,
       "neologd": 35
     },
     "person/writer": {
       "web": 918,
-      "neologd": 122,
       "wiki": 85,
-      "person": 51
+      "person": 51,
+      "neologd": 122
     },
     "place": {
       "wiki": 14677,
@@ -783,8 +786,8 @@
     },
     "term/specialist/chemistry_life_sciences": {
       "wiki": 3671,
-      "web": 5705,
-      "neologd": 18159,
+      "web": 5702,
+      "neologd": 18157,
       "person": 32,
       "place": 3
     },
@@ -796,26 +799,26 @@
       "place": 1
     },
     "term/specialist/earth_environment_resources": {
-      "neologd": 988,
+      "neologd": 987,
       "wiki": 322,
       "web": 799
     },
     "term/specialist/economics_management": {
-      "neologd": 3464,
-      "web": 1789,
+      "neologd": 3466,
+      "web": 1791,
       "wiki": 527,
       "person": 2
     },
     "term/specialist/engineering_technology": {
       "wiki": 548,
-      "neologd": 1539,
+      "neologd": 1538,
       "web": 1418,
       "person": 3,
       "place": 1
     },
     "term/specialist/humanities_social_sciences": {
-      "neologd": 9781,
-      "web": 5889,
+      "neologd": 9782,
+      "web": 5885,
       "wiki": 2176,
       "person": 29,
       "place": 4
@@ -829,7 +832,7 @@
     },
     "term/specialist/law_politics": {
       "wiki": 398,
-      "web": 1810,
+      "web": 1815,
       "neologd": 3066,
       "place": 1,
       "person": 3,
@@ -843,7 +846,7 @@
       "place": 1
     },
     "term/specialist/transport_safety_defense": {
-      "neologd": 1964,
+      "neologd": 1966,
       "web": 1559,
       "wiki": 508,
       "person": 6
@@ -125865,9 +125868,9 @@
       "src/main/specialist/sources/hyakuyaku.jsonl.gz": "bbdefe7bec466e25d333adf2971bfd32e12ebf8eccf9e5c1dbe8132eba49027b",
       "src/main/specialist/sources/manbyo.jsonl.gz": "acf4105c8bfff7d7278fb9d2298481b3dae2d6b58eda824f31b3345e6aea9492"
     },
-    "classificationExclusionsSha256": "50fb918b0a0ffb823cdae3c57eff156287bcc8b0580c12001905d158fd4262a2",
+    "classificationExclusionsSha256": "22843ba80f83adb803703c9598e55612bc77ba055e6fc87754efd4004148f7a2",
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "b6bd3ccd684c8cdfd8da746a6a86e5de80cae14b391926322857d5e4b80a8bd1",
+    "existingInventorySha256": "676bc1110260a93b4386a1a30da16614293bc6de93e97661e54c56ea69b002a0",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -125989,7 +125992,7 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1864662,
+    "existingUniquePairs": 1864658,
     "sourceRows": {
       "collected/collected-terms/cf7e87c20f1b1c28.jsonl": {
         "rows": 2,
@@ -126102,8 +126105,8 @@
       "surface": "桂枝茯苓丸加薏苡仁"
     }
   ],
-  "surfaceOverridesSha256": "b7b77c6bd31ca245ae3cd3228d4e0aef5b1b7d2863401bb7514285bbbbfdfef6",
+  "surfaceOverridesSha256": "4a0c3aa44973d59d02824be735f55326e532a14b833ee53dd96607958b369e2a",
   "englishCatalogSha256": "dd49edb7e2e106ad683426e3fe97f538fd4d8be5fddedbe0169e8280311c694e",
-  "englishFixtureSha256": "0027d8ba3899f2cd522e2243654ac946a69e4b96df4e9c7cf1c40e6025d574b2",
-  "classifiedFixtureSha256": "5909dbae5f6a6ded75dc746b314cb98dfd6b605aba71ae9dc24df787d7e32c48"
+  "englishFixtureSha256": "40e3cd9a859802fae68b9bb7954c102774266e7d372d953ae9826b946c1e1ad4",
+  "classifiedFixtureSha256": "9b673253584ba64587d54a936d3e10839701f531e5e172d998cbe21b091ac429"
 }
