@@ -1,6 +1,6 @@
 # Pinned classified dictionary distribution
 
-`prepare.py` imports `v1.7.277`, verifies its archive and all 463 asset
+`prepare.py` imports `v1.7.278`, verifies its archive and all 463 asset
 hashes, and derives category provenance from hash-verified frozen source data.
 The 143 categories include 29 person, 59 facility, 6 event, 15 term and 8 media audience categories,
 Kampo (434 records) and Medical (92,683 records). New subcategories default OFF;
@@ -13,7 +13,7 @@ Name-origin categories are grouped with their corresponding unconfirmed names;
 philosophers and thinkers use only source-verified upstream entries. Person IDs are normalized to their full asset paths.
 Specialist provenance is matched to adopted source rows; license texts include
 CC BY-SA 2.1 Japan, CC BY 4.0 and updated English-reading/CMUdict notices.
-The v1.7.277 MHLW additions are tracked with source and review hashes in
+The v1.7.278 MHLW additions are tracked with source and review hashes in
 `category-provenance.json`; their category page cites PDL1.0 and the processing
 performed. Mozc-derived records keep the source-specific notices supplied by
 the converter.
@@ -25,7 +25,7 @@ python3 tools/classified-dictionaries/prepare.py
 python3 tools/classified-dictionaries/prepare.py --check
 ```
 
-`ClassifiedDictionaryInstrumentedTest` compares all 866,217 decoded records
+`ClassifiedDictionaryInstrumentedTest` compares all 866,219 decoded records
 against count and SHA-256 multiset fingerprints generated from the frozen
 reading/surface/left POS/right POS/cost records. A second fixture verifies all
 5,138 English-reading pairs and costs against the pinned catalog. It also exercises category
@@ -103,7 +103,7 @@ builds, not release-device end-to-end keyboard latency.
 
 ```sh
 adb shell pm clear com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite
-adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.277 \
+adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.278 \
   -e class com.kazumaproject.markdownhelperkeyboard.converter.DictionaryUpdatePerformanceInstrumentedTest \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```
