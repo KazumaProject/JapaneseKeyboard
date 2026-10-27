@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard
 
 import android.content.ContextWrapper
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Looper
 import android.os.SystemClock
@@ -22,6 +23,8 @@ import androidx.test.runner.lifecycle.Stage
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
 import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -123,6 +126,100 @@ class CandidateLabelPresentationDeviceTest {
         }
     }
 
+    private fun rowFor(text: String): View? = WindowInspector.getGlobalWindowViews().firstNotNullOfOrNull { root ->
+        root.findViewById<androidx.recyclerview.widget.RecyclerView>(id("suggestion_recycler_view"))?.let { list ->
+            (0 until list.childCount).map(list::getChildAt).firstOrNull {
+                list.isShown && it.findViewById<TextView>(id("suggestion_item_text_view"))?.text?.toString()?.trim() == text
+            }
+        }
+    }
+
+    @Test fun realImeDisplaysAndCommitsKanaTypeLabelsIndependentlyOfUnderlines() {
+        assumeTrue(InstrumentationRegistry.getArguments().getString("candidate_type_label_device_test") == "true")
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        prefs.edit().clear()
+            .putString("keyboard_order_preference", "[\"TENKEY\"]")
+            .putBoolean("save_last_used_keyboard", false)
+            .putBoolean("live_conversion_preference", false)
+            .putBoolean("learn_dictionary_preference", false)
+            .putBoolean("allow_fullscreen_mode_preference", false)
+            .putBoolean("clipboard_preview_enable_preference", false)
+            .putBoolean("inline_suggestion_enabled_preference", false)
+            .putBoolean("candidate_character_type_indicators_preference", false).commit()
+        previousIme = shell("settings get secure default_input_method")
+        val targetIme = ComponentName(context, IMEService::class.java).flattenToShortString()
+        shell("ime enable $targetIme")
+        shell("ime set $targetIme")
+        assertEquals(targetIme, shell("settings get secure default_input_method"))
+        context.startActivity(Intent(context, CandidateHeightTestHostActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        await("Editor/IME did not start") { service() != null && CandidateHeightTestHostActivity.current.get()?.hasWindowFocus() == true }
+        val host = main { requireNotNull(CandidateHeightTestHostActivity.current.get()) }
+
+        fun enterPe() {
+            main { host.restartEditor() }
+            await("Keyboard not ready") { host.editor.text.isEmpty() && WindowInspector.getGlobalWindowViews().any {
+                it.findViewById<View>(id("key_6"))?.isShown == true
+            } }
+            tapKey(id("key_6"), dx = 1) // へ
+            tapKey(id("key_small_letter")) // べ
+            tapKey(id("key_small_letter")) // ぺ
+            await("The typed reading did not reach the editor") { host.editor.text.toString() == "ぺ" }
+            await("Kana conversion candidates missing") { candidates().any { it.string == "ﾍﾟ" } && candidates().any { it.string == "ペ" } }
+        }
+
+        fun showRow(text: String): Candidate {
+            val candidate = main { candidates().first { it.string == text } }
+            val index = main {
+                val adapter = field("suggestionAdapter") as SuggestionAdapter
+                adapter.suggestions.indexOfFirst { it.string == text }
+            }
+            assertTrue("Candidate missing from adapter: $text", index >= 0)
+            main {
+                val list = WindowInspector.getGlobalWindowViews().firstNotNullOf {
+                    it.findViewById<androidx.recyclerview.widget.RecyclerView>(id("suggestion_recycler_view"))?.takeIf(View::isShown)
+                }
+                list.scrollToPosition(index)
+            }
+            await("Candidate row not visible: $text") { rowFor(text) != null }
+            return candidate
+        }
+
+        enterPe()
+        val half = showRow("ﾍﾟ")
+        assertEquals(CANDIDATE_TYPE_HALF_WIDTH_KATAKANA, half.type)
+        val expectedHalfLabel = context.getString(R.string.candidate_label_half_katakana)
+        assertEquals("[半カナ]", expectedHalfLabel)
+        await("Half-width kana label missing by default") {
+            rowFor("ﾍﾟ")?.findViewById<TextView>(id("suggestion_item_type_text_view"))?.text.toString() == expectedHalfLabel
+        }
+        for (underlines in listOf(false, true)) for (labels in listOf(false, true)) {
+            prefs.edit().putBoolean("candidate_character_type_indicators_preference", underlines)
+                .putBoolean("candidate_character_type_labels_preference", labels).commit()
+            await("Label or underline preference did not update") {
+                val row = rowFor("ﾍﾟ") ?: return@await false
+                val label = row.findViewById<TextView>(id("suggestion_item_type_text_view"))
+                val body = row.findViewById<TextView>(id("suggestion_item_text_view"))
+                label.text.toString() == (if (labels) expectedHalfLabel else "") &&
+                    (body.contentDescription != null) == underlines
+            }
+        }
+        capture("candidate-type-half-kana")
+        main { check(requireNotNull(rowFor("ﾍﾟ")).performClick()) }
+        await("Half-width kana was not committed") { host.editor.text.toString() == "ﾍﾟ" }
+
+        enterPe()
+        val full = showRow("ペ")
+        assertEquals(CANDIDATE_TYPE_KATAKANA, full.type)
+        val expectedFullLabel = context.getString(R.string.candidate_label_katakana)
+        assertEquals("[カナ]", expectedFullLabel)
+        await("Full-width kana label does not match its type") {
+            rowFor("ペ")?.findViewById<TextView>(id("suggestion_item_type_text_view"))?.text.toString() == expectedFullLabel
+        }
+        main { check(requireNotNull(rowFor("ペ")).performClick()) }
+        await("Full-width kana was not committed") { host.editor.text.toString() == "ペ" }
+    }
+
     private fun bodyHasColor(color: Int): Boolean {
         val view = mixedRow().findViewById<TextView>(id("suggestion_item_text_view"))
         if (view.width <= 0 || view.height <= 0) return false
@@ -179,7 +276,7 @@ class CandidateLabelPresentationDeviceTest {
             .putBoolean("inline_suggestion_enabled_preference", false)
             .putBoolean("candidate_character_type_indicators_preference", false).commit()
         previousIme = shell("settings get secure default_input_method")
-        val targetIme = "${context.packageName}/${IMEService::class.java.name}"
+        val targetIme = ComponentName(context, IMEService::class.java).flattenToShortString()
         shell("ime enable $targetIme")
         shell("ime set $targetIme")
         assertEquals("Test IME was not selected", targetIme, shell("settings get secure default_input_method"))
@@ -309,8 +406,17 @@ class CandidateLabelPresentationDeviceTest {
                     await("Settings switch missing: $name") {
                         val fragment = navHost?.childFragmentManager?.primaryNavigationFragment as? PreferenceFragmentCompat
                         fragment?.javaClass?.simpleName == fragmentName && fragment.view?.isShown == true &&
-                            fragment.findPreference<androidx.preference.Preference>("candidate_character_type_indicators_preference") != null
+                            fragment.findPreference<androidx.preference.Preference>("candidate_character_type_indicators_preference") != null &&
+                            fragment.findPreference<androidx.preference.SwitchPreferenceCompat>("candidate_character_type_labels_preference") != null
                     }
+                    main {
+                        val fragment = navHost?.childFragmentManager?.primaryNavigationFragment as PreferenceFragmentCompat
+                        val labels = requireNotNull(fragment.findPreference<androidx.preference.SwitchPreferenceCompat>(
+                            "candidate_character_type_labels_preference"))
+                        assertEquals(name == "settings-new", labels.isChecked)
+                        labels.isChecked = name == "settings-legacy"
+                    }
+                    assertEquals(name == "settings-legacy", prefs.getBoolean("candidate_character_type_labels_preference", true))
                     main { (navHost?.childFragmentManager?.primaryNavigationFragment as PreferenceFragmentCompat)
                         .scrollToPreference("candidate_indicator_style_settings") }
                     val title = main { requireNotNull(navHost).requireContext().getString(

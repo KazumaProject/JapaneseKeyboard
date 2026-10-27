@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.candidate
 
+import com.kazumaproject.core.domain.extensions.isFullWidthNumericSymbol
+import com.kazumaproject.core.domain.extensions.isHalfWidthNumericSymbol
+
 // Legacy behavior/source IDs, not an exhaustive classification of the output characters.
 // Keep their values stable: commit, learning and action handling depend on these IDs.
 const val CANDIDATE_TYPE_CONVERSION: Byte = 1
@@ -48,3 +51,31 @@ const val CANDIDATE_TYPE_FORMULA_UNICODE: Byte = 53
 const val CANDIDATE_TYPE_FORMULA_TEX: Byte = 54
 // Separate from Zenz's 40. Deliberately retains the legacy length-based commit/learning path.
 const val CANDIDATE_TYPE_DIGIT_DATE: Byte = 55
+const val CANDIDATE_TYPE_HALF_WIDTH_KATAKANA: Byte = 56
+// Preserve the source-specific commit behavior of types 13 and 21 while separating widths.
+const val CANDIDATE_TYPE_FULL_WIDTH_SYMBOL: Byte = 57
+const val CANDIDATE_TYPE_HALF_WIDTH_SYMBOL: Byte = 58
+const val CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL: Byte = 59
+const val CANDIDATE_TYPE_HALF_WIDTH_NUMBER_SYMBOL: Byte = 60
+
+/** Classify symbol width at generation time, keeping all other symbol forms on their source ID. */
+internal fun Candidate.withSymbolWidthType(): Candidate {
+    if ((type != CANDIDATE_TYPE_SYMBOL && type != CANDIDATE_TYPE_NUMBER_SYMBOL) || string.isEmpty()) {
+        return this
+    }
+    val fullWidth = string.all { it.isFullWidthNumericSymbol() }
+    val halfWidth = string.all { it.isHalfWidthNumericSymbol() }
+    val resultType = when (type) {
+        CANDIDATE_TYPE_SYMBOL -> when {
+            fullWidth -> CANDIDATE_TYPE_FULL_WIDTH_SYMBOL
+            halfWidth -> CANDIDATE_TYPE_HALF_WIDTH_SYMBOL
+            else -> type
+        }
+        else -> when {
+            fullWidth -> CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL
+            halfWidth -> CANDIDATE_TYPE_HALF_WIDTH_NUMBER_SYMBOL
+            else -> type
+        }
+    }
+    return if (resultType == type) this else copy(type = resultType)
+}

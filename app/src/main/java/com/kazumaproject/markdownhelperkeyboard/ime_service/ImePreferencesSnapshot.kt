@@ -84,6 +84,7 @@ data class ImePreferencesSnapshot(
     val systemNgramDictionaryEnabled: Boolean,
     val customNgramDictionaryEnabled: Boolean,
     val showCharacterIndicators: Boolean,
+    val showCharacterTypeLabels: Boolean,
     val showDictionaryCandidateLabels: Boolean,
     val suppressHentaiganaCandidates: Boolean,
     val zeroQuerySuggestionPreference: Boolean,
@@ -385,6 +386,7 @@ data class ImePreferencesSnapshot(
                 customNgramDictionaryEnabled =
                     appPreference.custom_ngram_dictionary_enable_preference,
                 showCharacterIndicators = appPreference.candidate_character_type_indicators_preference,
+                showCharacterTypeLabels = appPreference.candidate_character_type_labels_preference,
                 showDictionaryCandidateLabels =
                     appPreference.show_dictionary_candidate_labels_preference,
                 suppressHentaiganaCandidates =

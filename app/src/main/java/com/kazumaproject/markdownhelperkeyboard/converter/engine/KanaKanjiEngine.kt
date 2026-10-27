@@ -26,8 +26,11 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_DIGIT_DATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KANJI_NUMBER
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.transformLiteralText
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withLiteralText
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withSymbolWidthType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
@@ -1006,7 +1009,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -1044,8 +1047,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -1503,7 +1506,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -1552,8 +1555,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -2027,7 +2030,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -2076,8 +2079,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -2532,7 +2535,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -2572,8 +2575,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -3023,7 +3026,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -3060,8 +3063,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -3510,7 +3513,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -3559,8 +3562,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -3937,6 +3940,26 @@ class KanaKanjiEngine {
         )
     }
 
+    private fun kanaFormCandidate(
+        input: String,
+        halfWidth: Boolean,
+        fallbackType: Byte,
+        score: Int,
+    ): Candidate {
+        val text = if (halfWidth) input.toHankakuKatakana() else input.hiraToKata()
+        val hasKana = if (halfWidth) {
+            text.any { it in '\uFF66'..'\uFF9D' }
+        } else {
+            text.any { it !in '\uFF66'..'\uFF9F' && Character.UnicodeScript.of(it.code) == Character.UnicodeScript.KATAKANA }
+        }
+        val type = if (!hasKana) fallbackType else if (halfWidth) {
+            CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
+        } else {
+            CANDIDATE_TYPE_KATAKANA
+        }
+        return Candidate(text, type, input.length.toUByte(), score)
+    }
+
     fun getCandidatesEnglishKana(
         input: String,
         predictionConfig: PredictionConfig = PredictionConfig(),
@@ -3957,18 +3980,8 @@ class KanaKanjiEngine {
             add(Candidate(
                 string = input, type = (1).toByte(), length = input.length.toUByte(), score = 3000
             ))
-            add(Candidate(
-                string = input.hiraToKata(),
-                type = (1).toByte(),
-                length = input.length.toUByte(),
-                score = 3000
-            ))
-            add(Candidate(
-                string = input.toHankakuKatakana(),
-                type = (31).toByte(),
-                length = input.length.toUByte(),
-                score = 3000
-            ))
+            add(kanaFormCandidate(input, halfWidth = false, fallbackType = 1, score = 3000))
+            add(kanaFormCandidate(input, halfWidth = true, fallbackType = 1, score = 3000))
             add(Candidate(
                 string = inputToEnglish,
                 type = (1).toByte(),
@@ -4558,7 +4571,7 @@ class KanaKanjiEngine {
                     ),
                     leftId = tokenArray.leftIds[entry.posTableIndex.toInt()],
                     rightId = tokenArray.rightIds[entry.posTableIndex.toInt()]
-                )
+                ).withSymbolWidthType()
             }
         }
     }
@@ -4639,7 +4652,7 @@ class KanaKanjiEngine {
                         score = wordCost.toInt(),
                         leftId = tokenArray.leftIds[posTableIndex.toInt()],
                         rightId = tokenArray.rightIds[posTableIndex.toInt()]
-                    )
+                    ).withSymbolWidthType()
                 )
             }
         }
