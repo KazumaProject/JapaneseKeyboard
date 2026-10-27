@@ -286,6 +286,7 @@ class LOUDSWithTermId {
     ): Int {
         val rank1Value = LBS.rank1CommonShort(pos, rank1Array)
         val select0 = LBS.select0CommonShort(rank1Value, rank0Array)
+        if (select0 < 0) return -1
         val y = select0 + 1
         return if (!LBS[y]) -1 else y
     }
@@ -307,14 +308,20 @@ class LOUDSWithTermId {
     }
 
     private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
-        val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
-        return if (y < 0 || !LBS[y]) -1 else y
+        val select0 = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array)
+        if (select0 < 0) return -1
+        val y = select0 + 1
+        return if (!LBS[y]) -1 else y
     }
 
     private fun firstChild(pos: Int, succinctBitVector: SuccinctBitVector): Int {
         val rank1 = succinctBitVector.rank1(pos)
-        val select0 = succinctBitVector.select0(rank1) + 1
-        return if (select0 < 0 || !LBS[select0]) -1 else select0
+        val select0 = succinctBitVector.select0(rank1)
+        // Packed BitSets omit trailing zero words. A final leaf can have no stored
+        // child delimiter; adding one to select0's -1 would revisit the root sentinel.
+        if (select0 < 0) return -1
+        val y = select0 + 1
+        return if (!LBS[y]) -1 else y
     }
 
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
