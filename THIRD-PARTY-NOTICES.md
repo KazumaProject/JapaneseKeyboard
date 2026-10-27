@@ -10,8 +10,8 @@ Dictionary data keeps its upstream terms; it is not uniformly MIT licensed.
 
 ## Classified dictionaries / 143カテゴリ辞書
 
-Distribution: `v1.7.276`, converter revision
-`6927d27d73fa568d8147f837bdd31fa9493b1875`.
+Distribution: `v1.7.278`, converter revision
+`39b3059dba81d6abb9fff3f57253c67e6e74c08e`.
 The classified dictionaries are reclassified, filtered, and converted from the five
 frozen inputs in that revision. Their exact input hashes and source-pair counts
 are in `tools/classified-dictionaries/category-provenance.json`.
@@ -54,9 +54,9 @@ The person dictionary also includes reviewed fighter names: the per-record
 source URLs and input hashes are preserved, without redistributing source page
 text. Per-entry copyright conditions for these names remain unconfirmed.
 
-The full v1.7.276 `DICTIONARY-LICENSES.txt` is retained in
+The full v1.7.278 `DICTIONARY-LICENSES.txt` is retained in
 `app/src/main/assets/licenses/sources/distribution-licenses.txt`, byte-identical
-and verified against the release asset SHA-256 `053f81437611b301b16e6583d4916be5249982734b7ae9ed246a0f2f8c6354c3`.
+and verified against the release asset SHA-256 `ec74cdd99e434b17081944759e07aef3b388dda6fad0d9c9616bc4dd3988ebf6`.
 
 Two Kampo additions are backed by frozen Tsumura product fields. Source URLs and
 evidence hashes are recorded; source page bodies are not redistributed. Their

@@ -1,5 +1,5 @@
 {
-  "revision": "13e391bc7a4a245f63aa0091c1e9c11db3dbd759",
+  "revision": "39b3059dba81d6abb9fff3f57253c67e6e74c08e",
   "categories": {
     "person/comedian": {
       "assets": {
@@ -9,8 +9,8 @@
       },
       "surfaces": {
         "-2\tくりき": "くりきひなた",
-        "-1\tしゅうじ": "シュージ",
-        "-1\tまつだ": "ﾏﾂﾀﾞ"
+        "-1\tまつだ": "ﾏﾂﾀﾞ",
+        "-1\tしゅうじ": "シュージ"
       }
     }
   }
