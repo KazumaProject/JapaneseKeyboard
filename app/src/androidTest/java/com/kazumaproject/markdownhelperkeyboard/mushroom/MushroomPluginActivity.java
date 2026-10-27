@@ -18,7 +18,7 @@ public final class MushroomPluginActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && editor != null) {
+        if (hasFocus && editor != null && !getIntent().getBooleanExtra("plain_editor", false)) {
             android.util.Log.i("MushroomFixture", "editor=" + editor.getText() + " selection=" + editor.getSelectionStart() + ":" + editor.getSelectionEnd());
             getSystemService(InputMethodManager.class).showSoftInput(editor, 0);
         }
@@ -34,7 +34,9 @@ public final class MushroomPluginActivity extends Activity {
             editor.setSelection(1, 2);
             fitSystemBars(editor);
             setContentView(editor);
-            getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            if (!getIntent().getBooleanExtra("plain_editor", false)) {
+                getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
             editor.requestFocus();
             return;
         }
