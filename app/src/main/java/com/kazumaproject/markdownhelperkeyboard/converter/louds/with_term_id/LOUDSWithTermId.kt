@@ -26,6 +26,7 @@ import com.kazumaproject.toListInt
 import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
+import com.kazumaproject.markdownhelperkeyboard.converter.louds.loudsChildPosition
 import java.util.BitSet
 import java.util.concurrent.ConcurrentHashMap
 
@@ -284,11 +285,8 @@ class LOUDSWithTermId {
     private fun firstChildShortArray(
         pos: Int, rank0Array: ShortArray, rank1Array: ShortArray
     ): Int {
-        val rank1Value = LBS.rank1CommonShort(pos, rank1Array)
-        val select0 = LBS.select0CommonShort(rank1Value, rank0Array)
-        if (select0 < 0) return -1
-        val y = select0 + 1
-        return if (!LBS[y]) -1 else y
+        return loudsChildPosition(LBS, pos,
+            LBS.select0CommonShort(LBS.rank1CommonShort(pos, rank1Array), rank0Array).toInt())
     }
 
     private fun traverseShortArray(
@@ -308,20 +306,13 @@ class LOUDSWithTermId {
     }
 
     private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
-        val select0 = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array)
-        if (select0 < 0) return -1
-        val y = select0 + 1
-        return if (!LBS[y]) -1 else y
+        return loudsChildPosition(LBS, pos,
+            LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array))
     }
 
     private fun firstChild(pos: Int, succinctBitVector: SuccinctBitVector): Int {
-        val rank1 = succinctBitVector.rank1(pos)
-        val select0 = succinctBitVector.select0(rank1)
-        // Packed BitSets omit trailing zero words. A final leaf can have no stored
-        // child delimiter; adding one to select0's -1 would revisit the root sentinel.
-        if (select0 < 0) return -1
-        val y = select0 + 1
-        return if (!LBS[y]) -1 else y
+        return loudsChildPosition(LBS, pos,
+            succinctBitVector.select0(succinctBitVector.rank1(pos)))
     }
 
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
@@ -626,7 +617,9 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = indexOfLabel(charIndex, LBSInBoolArrayPreprocess)
+                val nextIndex = loudsChildPosition(LBS, currentIndex,
+                    indexOfLabel(charIndex, LBSInBoolArrayPreprocess) - 1)
+                if (nextIndex < 0) return -1
                 return search(
                     nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArrayPreprocess
                 )
@@ -656,7 +649,8 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = succinctBitVector.select0(charIndex) + 1
+                val nextIndex = firstChild(currentIndex, succinctBitVector)
+                if (nextIndex < 0) return -1
                 return search(
                     nextIndex,
                     chars,
@@ -705,7 +699,9 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess)
+                val nextIndex = loudsChildPosition(LBS, currentIndex,
+                    indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess) - 1)
+                if (nextIndex < 0) return -1
                 return searchShortArray(
                     nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArrayPreprocess
                 )
