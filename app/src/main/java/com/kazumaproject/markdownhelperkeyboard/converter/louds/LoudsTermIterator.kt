@@ -22,7 +22,7 @@ internal class LoudsTermIterator(
             val frame = stack.last()
             if (!frame.visited) {
                 frame.visited = true
-                frame.child = lbs.select0(lbs.rank1(frame.node)) + 1
+                frame.child = loudsChildPosition(bits, frame.node, lbs.select0(lbs.rank1(frame.node)))
                 val term = termAt(frame.node)
                 if (term >= 0) {
                     pending = reading.toString() to term
