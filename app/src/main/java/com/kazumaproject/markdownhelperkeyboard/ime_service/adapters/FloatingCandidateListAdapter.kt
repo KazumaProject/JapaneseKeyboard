@@ -173,11 +173,12 @@ class FloatingCandidateListAdapter(
             val textColor = candidateTextColor
                 ?: ContextCompat.getColor(itemView.context, com.kazumaproject.core.R.color.keyboard_icon_color)
             formulaView.setFormulaTextColor(textColor)
+            val labelContext = japaneseCandidateLabelContext(itemView.context)
             badgeView.text = when (item.candidateType) {
-                CANDIDATE_TYPE_FORMULA_TEX -> itemView.context.getString(R.string.candidate_badge_formula_tex)
-                CANDIDATE_TYPE_FORMULA_UNICODE -> itemView.context.getString(R.string.candidate_badge_formula_unicode)
-                CANDIDATE_TYPE_CALCULATION -> itemView.context.getString(R.string.candidate_badge_calculation)
-                CANDIDATE_TYPE_UNIT_CONVERSION -> itemView.context.getString(R.string.candidate_badge_unit_conversion)
+                CANDIDATE_TYPE_FORMULA_TEX -> labelContext.getString(R.string.candidate_badge_formula_tex)
+                CANDIDATE_TYPE_FORMULA_UNICODE -> labelContext.getString(R.string.candidate_badge_formula_unicode)
+                CANDIDATE_TYPE_CALCULATION -> labelContext.getString(R.string.candidate_badge_calculation)
+                CANDIDATE_TYPE_UNIT_CONVERSION -> labelContext.getString(R.string.candidate_badge_unit_conversion)
                 else -> ""
             }
             badgeView.setTextColor(textColor)

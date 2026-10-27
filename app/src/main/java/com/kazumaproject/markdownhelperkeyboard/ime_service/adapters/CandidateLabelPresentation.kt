@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import android.content.Context
+import android.content.res.Configuration
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -8,6 +9,14 @@ import android.text.style.RelativeSizeSpan
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
+import java.util.Locale
+
+/** Candidate labels use Japanese even when the IME's context uses another device language. */
+internal fun japaneseCandidateLabelContext(context: Context): Context {
+    val configuration = context.resources.configuration
+    if (configuration.locales[0]?.language == Locale.JAPANESE.language) return context
+    return context.createConfigurationContext(Configuration(configuration).apply { setLocale(Locale.JAPANESE) })
+}
 
 /** One label policy for the real strip, the preview and physical-keyboard candidates. */
 internal fun candidateLabelPresentation(
@@ -16,7 +25,8 @@ internal fun candidateLabelPresentation(
     showDictionaryLabels: Boolean,
     showCharacterTypeLabels: Boolean,
 ): CharSequence {
-    fun label(id: Int) = context.getString(id)
+    val labelContext by lazy(LazyThreadSafetyMode.NONE) { japaneseCandidateLabelContext(context) }
+    fun label(id: Int) = labelContext.getString(id)
     val base: CharSequence = when (candidate.type) {
         CANDIDATE_TYPE_PARTIAL -> label(R.string.candidate_label_partial)
         CANDIDATE_TYPE_KATAKANA ->
@@ -63,6 +73,8 @@ internal fun candidateLabelPresentation(
         }
         originLabel?.let { append(label(it)) }
     }
-    append(classifiedCandidateLabel(context, candidate.dictionaryCategories))
+    if (candidate.dictionaryCategories.isNotEmpty()) {
+        append(classifiedCandidateLabel(labelContext, candidate.dictionaryCategories))
+    }
     return result
 }

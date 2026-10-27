@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.*
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import org.junit.Assert.*
 import org.junit.Test
@@ -98,6 +99,67 @@ class CandidateCharacterPresentationTest {
                 assertEquals("$locale/$type", expected,
                     candidateLabelPresentation(localized, candidate, false, true).toString())
             }
+        }
+    }
+
+    @Test fun otherCandidateLabelsAndAllDictionaryCategoriesUseJapaneseInEnglishImeContext() {
+        val base = ApplicationProvider.getApplicationContext<Context>()
+        val english = base.createConfigurationContext(
+            Configuration(base.resources.configuration).apply { setLocale(Locale.ENGLISH) }
+        )
+        val japanese = base.createConfigurationContext(
+            Configuration(base.resources.configuration).apply { setLocale(Locale.JAPANESE) }
+        )
+        val cases = listOf(
+            Candidate("候補", CANDIDATE_TYPE_PARTIAL, 1u, 0) to "[部]",
+            Candidate("候補", CANDIDATE_TYPE_DATE, 1u, 0) to "[日付]",
+            Candidate("候補", CANDIDATE_TYPE_DIGIT_DATE, 1u, 0) to "[日付]",
+            Candidate("漢字\tかんじ", CANDIDATE_TYPE_READING_CORRECTION, 1u, 0) to "[読] かんじ",
+            Candidate("候補", CANDIDATE_TYPE_USER_DICTIONARY, 1u, 0) to "[ユーザー]",
+            Candidate("候補", CANDIDATE_TYPE_LEARNED_DICTIONARY, 1u, 0) to "[学習]",
+            Candidate("候補", CANDIDATE_TYPE_USER_TEMPLATE, 1u, 0) to "[定型]",
+            Candidate("候補", CANDIDATE_TYPE_TEXT_MACRO, 1u, 0) to "[マクロ]",
+            Candidate("候補", CANDIDATE_TYPE_ENGLISH_CORRECTION, 1u, 0) to "[修正]",
+            Candidate("候補", 41, 1u, 0) to "[訳]",
+            Candidate("候補", CANDIDATE_TYPE_ZENZ, 1u, 0) to "[AI]",
+            Candidate("候補", CANDIDATE_TYPE_CALCULATION, 1u, 0) to "[計算]",
+            Candidate("候補", CANDIDATE_TYPE_UNIT_CONVERSION, 1u, 0) to "[換算]",
+            Candidate("候補", CANDIDATE_TYPE_FORMULA_UNICODE, 1u, 0) to "[文字]",
+            Candidate("候補", CANDIDATE_TYPE_FORMULA_TEX, 1u, 0) to "[TeX]",
+        )
+        for ((candidate, expected) in cases) {
+            assertEquals("type=${candidate.type}", expected,
+                candidateLabelPresentation(english, candidate, true, true).toString())
+        }
+        for (spec in ClassifiedDictionaries.all) {
+            val candidate = Candidate("候補", CANDIDATE_TYPE_CONVERSION, 1u, 0,
+                dictionaryCategories = setOf(spec.category))
+            assertEquals("category=${spec.category}", "[${japanese.getString(spec.labelRes)}]",
+                candidateLabelPresentation(english, candidate, false, true).toString())
+        }
+        assertEquals("[Text]", english.getString(com.kazumaproject.markdownhelperkeyboard.R.string.candidate_badge_formula_unicode))
+    }
+
+    @Test fun floatingFormulaBadgesUseJapaneseInEnglishImeContext() {
+        val base = ApplicationProvider.getApplicationContext<Context>()
+        val english = android.view.ContextThemeWrapper(
+            base.createConfigurationContext(Configuration(base.resources.configuration).apply { setLocale(Locale.ENGLISH) }),
+            com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard
+        )
+        val adapter = FloatingCandidateListAdapter(5)
+        val items = listOf(
+            com.kazumaproject.core.data.floating_candidate.CandidateItem("x+1", 1u,
+                candidateType = CANDIDATE_TYPE_FORMULA_UNICODE, formulaSource = "x+1"),
+            com.kazumaproject.core.data.floating_candidate.CandidateItem("x+1", 1u,
+                candidateType = CANDIDATE_TYPE_FORMULA_TEX, formulaSource = "x+1"),
+        )
+        adapter.submitList(items)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        for ((index, expected) in listOf("[文字]", "[TeX]").withIndex()) {
+            val holder = adapter.onCreateViewHolder(android.widget.FrameLayout(english), adapter.getItemViewType(index))
+            adapter.onBindViewHolder(holder, index)
+            assertEquals(expected, holder.itemView.findViewById<android.widget.TextView>(
+                com.kazumaproject.markdownhelperkeyboard.R.id.floating_formula_badge).text.toString())
         }
     }
 
