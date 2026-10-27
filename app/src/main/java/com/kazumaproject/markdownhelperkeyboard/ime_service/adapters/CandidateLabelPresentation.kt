@@ -14,23 +14,21 @@ internal fun candidateLabelPresentation(
     context: Context,
     candidate: Candidate,
     showDictionaryLabels: Boolean,
-    showCharacterIndicators: Boolean,
-    displayText: String = candidate.string,
+    showCharacterTypeLabels: Boolean,
 ): CharSequence {
     fun label(id: Int) = context.getString(id)
-    fun widthLabel(): String = when {
-        showCharacterIndicators -> ""
-        displayText.isNotEmpty() && displayText.all { it in '０'..'９' || it == '　' || it in '！'..'／' || it in '：'..'＠' || it in '［'..'｀' || it in '｛'..'～' } -> label(R.string.candidate_label_full_width)
-        displayText.isNotEmpty() && displayText.all { it in ' '..'~' && !it.isLetter() } -> label(R.string.candidate_label_half_width)
-        else -> ""
-    }
     val base: CharSequence = when (candidate.type) {
         CANDIDATE_TYPE_PARTIAL -> label(R.string.candidate_label_partial)
-        CANDIDATE_TYPE_SYMBOL, CANDIDATE_TYPE_NUMBER_SYMBOL -> widthLabel()
-        CANDIDATE_TYPE_FULL_WIDTH_NUMBER, CANDIDATE_TYPE_FULL_WIDTH ->
-            if (showCharacterIndicators) "" else label(R.string.candidate_label_full_width)
-        CANDIDATE_TYPE_HALF_WIDTH ->
-            if (showCharacterIndicators) "" else label(R.string.candidate_label_half_width)
+        CANDIDATE_TYPE_KATAKANA ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_katakana) else ""
+        CANDIDATE_TYPE_HALF_WIDTH_KATAKANA ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_half_katakana) else ""
+        CANDIDATE_TYPE_FULL_WIDTH_NUMBER, CANDIDATE_TYPE_FULL_WIDTH,
+        CANDIDATE_TYPE_FULL_WIDTH_SYMBOL, CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_full_width) else ""
+        CANDIDATE_TYPE_HALF_WIDTH, CANDIDATE_TYPE_HALF_WIDTH_SYMBOL,
+        CANDIDATE_TYPE_HALF_WIDTH_NUMBER_SYMBOL ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_half_width) else ""
         CANDIDATE_TYPE_DATE, CANDIDATE_TYPE_DIGIT_DATE -> label(R.string.candidate_label_date)
         CANDIDATE_TYPE_READING_CORRECTION -> {
             val prefix = label(R.string.candidate_label_reading) + " "

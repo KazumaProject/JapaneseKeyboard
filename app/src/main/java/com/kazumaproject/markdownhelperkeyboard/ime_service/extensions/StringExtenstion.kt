@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
 
 import android.view.inputmethod.InputConnection
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withSymbolWidthType
 import timber.log.Timber
 import java.text.BreakIterator
 import java.text.Normalizer
@@ -516,7 +517,7 @@ fun createValueBasedSymbolCandidates(numberValue: Long, inputLength: UByte): Lis
             score = score,
             leftId = 2040,
             rightId = 2040
-        )
+        ).withSymbolWidthType()
     }
 }
 
