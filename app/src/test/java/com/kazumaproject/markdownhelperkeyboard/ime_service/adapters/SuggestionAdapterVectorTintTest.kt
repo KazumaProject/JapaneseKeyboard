@@ -32,6 +32,62 @@ class SuggestionAdapterVectorTintTest {
         return Bitmap.createBitmap(96,96,Bitmap.Config.ARGB_8888).also { view.draw(Canvas(it)) }
     }
 
+    private fun assertContainsSolidColor(view: ImageView, expected: Int) {
+        val image = pixels(view)
+        assertTrue("Icon did not render the expected color #${Integer.toHexString(expected)}",
+            (0 until image.height).any { y -> (0 until image.width).any { x -> image.getPixel(x, y) == expected } })
+    }
+
+    private fun reportedShortcutsFollowKeyboardColor() {
+        val ctx = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
+            com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)
+        val expectedColor = ContextCompat.getColor(ctx, com.kazumaproject.core.R.color.keyboard_icon_color)
+        val shortcuts = listOf(ShortcutType.SETTINGS, ShortcutType.MUSHROOM, ShortcutType.CLIP_BOARD)
+        val toolbar = ShortcutAdapter()
+        toolbar.submitList(shortcuts)
+        repeat(100) { if (toolbar.itemCount != shortcuts.size) { shadowOf(Looper.getMainLooper()).idle(); Thread.sleep(10) } }
+        assertEquals(shortcuts.size, toolbar.itemCount)
+        shortcuts.indices.forEach { index ->
+            val holder = toolbar.onCreateViewHolder(FrameLayout(ctx), 0)
+            toolbar.onBindViewHolder(holder, index)
+            assertContainsSolidColor(holder.imageView, expectedColor)
+            toolbar.setIconColor(Color.MAGENTA)
+            toolbar.onBindViewHolder(holder, index)
+            assertContainsSolidColor(holder.imageView, Color.MAGENTA)
+            toolbar.setIconColor(null)
+        }
+
+        val integrated = SuggestionAdapter()
+        integrated.submitContent(CandidateStripContent.EmptyState(
+            showShortcutEntry = false,
+            quickActions = QuickActionsState(false, false, false, false, "", ""),
+            clipboardPreview = null,
+            shortcutItems = shortcuts,
+            showIntegratedShortcuts = true,
+        ))
+        repeat(100) { if (integrated.itemCount != shortcuts.size) { shadowOf(Looper.getMainLooper()).idle(); Thread.sleep(10) } }
+        assertEquals(shortcuts.size, integrated.itemCount)
+        shortcuts.indices.forEach { index ->
+            val holder = integrated.onCreateViewHolder(FrameLayout(ctx), SuggestionAdapter.VIEW_TYPE_SHORTCUT)
+                as SuggestionAdapter.ShortcutViewHolder
+            integrated.onBindViewHolder(holder, index)
+            assertContainsSolidColor(holder.imageView, expectedColor)
+            integrated.setShortcutIconColor(Color.MAGENTA)
+            integrated.onBindViewHolder(holder, index)
+            assertContainsSolidColor(holder.imageView, Color.MAGENTA)
+            integrated.setShortcutIconColor(null)
+        }
+        integrated.release()
+    }
+
+    @Test @Config(qualifiers = "notnight") fun reportedShortcutsFollowLightKeyboardColor() {
+        reportedShortcutsFollowKeyboardColor()
+    }
+
+    @Test @Config(qualifiers = "night") fun reportedShortcutsFollowDarkKeyboardColor() {
+        reportedShortcutsFollowKeyboardColor()
+    }
+
     @Test fun defaultBindingKeepsTheVectorsOwnTintBeforeAndAfterSkin() {
         val ctx = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(),
             com.kazumaproject.markdownhelperkeyboard.R.style.Theme_MarkdownKeyboard)

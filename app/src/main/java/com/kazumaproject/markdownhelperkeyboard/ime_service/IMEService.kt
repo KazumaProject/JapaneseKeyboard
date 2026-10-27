@@ -4020,6 +4020,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
+        // A result that was already waiting when a new editor connected must not be
+        // inserted later after the user moved to a different field.
+        val resultWasPending = mushroomResult != null
+        mainHandler.post { consumeMushroomResult(rejectChangedEditor = resultWasPending) }
     }
 
     private fun startKanaKanjiConversionSession(backend: ConversionBackend) {
@@ -24213,18 +24217,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun consumeMushroomResult() {
+    private fun consumeMushroomResult(rejectChangedEditor: Boolean = false) {
         val result = mushroomResult ?: return
         val target = mushroomTarget ?: return
-        if (!isInputViewActive || currentMushroomEditor() != mushroomEditor) return
+        if (!currentInputStarted) return
+        if (currentMushroomEditor() != mushroomEditor) {
+            // Transient non-editor connections can belong to the external activity.
+            // Only reject when a new, actual editor has connected after the result.
+            if (rejectChangedEditor && currentInputEditorInfo?.inputType?.let {
+                    it != android.text.InputType.TYPE_NULL
+                } == true) {
+                mushroomTarget = null
+                mushroomResult = null
+                mushroomEditor = null
+                showToastMessage(getString(R.string.mushroom_target_changed))
+            }
+            return
+        }
+        val canReconnect = (mushroomEditor?.fieldId ?: 0) > 0 && mushroomEditor?.token != null
         mushroomTarget = null
         mushroomResult = null
-        val canReconnect = (mushroomEditor?.fieldId ?: 0) > 0 && mushroomEditor?.token != null
+        mushroomEditor = null
         val applied = target.apply(currentInputConnection, result, sameEditorAfterRestart = canReconnect) {
             commitText(it, 1)
         }
         if (!applied) {
             showToastMessage(getString(R.string.mushroom_target_changed))
+        } else if (!isInputViewShown) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                requestShowSelf(0)
+            } else {
+                val token = window?.window?.attributes?.token
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                @Suppress("DEPRECATION")
+                imm.showSoftInputFromInputMethod(token, 0)
+            }
         }
     }
 

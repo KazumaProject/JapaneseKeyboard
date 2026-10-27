@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.mushroom
 
 import android.content.ContextWrapper
 import android.os.ParcelFileDescriptor
+import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
@@ -11,9 +12,12 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.preference.PreferenceManager
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
+import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -152,6 +156,76 @@ class MushroomImeInstrumentedTest {
         }
     }
 
+    @Test(timeout = 180_000) fun returnsToPlainExternalEditorWithoutAnotherTap() {
+        assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
+        val targetIme = "${context.packageName}/${IMEService::class.java.name}"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        prefs.edit().putBoolean("shortcut_toolbar_visibility_preference", true)
+            .putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", false).commit()
+        try {
+            prepareIme(targetIme)
+            withHost {
+                val ime = requireNotNull(service())
+                runBlocking { ime.shortCurRepository.updateShortcuts(listOf(ShortcutType.MUSHROOM, ShortcutType.CLIP_BOARD)) }
+                shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true --ez plain_editor true")
+                var editor: AccessibilityNodeInfo? = null
+                await("Plain external editor visible") {
+                    editor = roots().flatMap { it.findAccessibilityNodeInfosByViewId("android:id/input") }
+                        .firstOrNull { it.isVisibleToUser && it.packageName?.toString() == ins.context.packageName }
+                    editor != null
+                }
+                assertTrue(requireNotNull(editor).performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                await("Select b in the external editor") {
+                    var selectionMatches = false
+                    ins.runOnMainSync {
+                        val text = service()?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        selectionMatches = text?.text?.toString() == "abc" && text.selectionStart == 1 && text.selectionEnd == 2
+                    }
+                    val current = roots().flatMap { it.findAccessibilityNodeInfosByViewId("android:id/input") }
+                        .firstOrNull { it.isVisibleToUser && it.packageName?.toString() == ins.context.packageName }
+                    if (!selectionMatches) {
+                        current?.performAction(
+                            AccessibilityNodeInfo.ACTION_SET_SELECTION,
+                            Bundle().apply {
+                                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 1)
+                                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, 2)
+                            },
+                        )
+                    }
+                    selectionMatches
+                }
+                await("Original editor and toolbar connected") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val active = service()
+                        val text = active?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = active?.isInputViewShown == true && active.currentInputEditorInfo?.packageName == ins.context.packageName &&
+                            text?.text?.toString() == "abc" && text.selectionStart == 1 && text.selectionEnd == 2
+                    }
+                    ready && roots().any { it.findAccessibilityNodeInfosByText(ShortcutType.MUSHROOM.description).isNotEmpty() }
+                }
+                assertTrue("Tap the actual toolbar shortcut", click(ShortcutType.MUSHROOM.description))
+                await("Plugin chooser or direct launch") { hasText("Return result") || click("Mushroom test plugin") }
+                await("Plugin received selected text") { hasText("Source: b") }
+                assertTrue(click("Return result"))
+                await("Editor and keyboard return without tapping the editor") {
+                    val editorText = roots().any { root ->
+                        root.packageName?.toString() == ins.context.packageName &&
+                            root.findAccessibilityNodeInfosByViewId("android:id/input")
+                                .any { it.isVisibleToUser && it.text?.toString() == "a[b]c" }
+                    }
+                    var keyboardShown = false
+                    ins.runOnMainSync { keyboardShown = service()?.isInputViewShown == true }
+                    editorText && keyboardShown
+                }
+            }
+        } finally {
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            shell("ime disable $targetIme")
+        }
+    }
+
     @Test(timeout = 180_000) fun externalPluginRoundTripCancellationMissingResultAndChangedTarget() {
         // Keep the user's installed keyboard and preferences separate from device tests.
         assumeTrue("Run with an isolated applicationId containing mushroomtest",
@@ -272,6 +346,17 @@ class MushroomImeInstrumentedTest {
                 assertTrue(click("Return result"))
                 textIs("changed")
 
+                editor("abc", 1, 2)
+                launch()
+                // Reconnect as a different editor type with the same text and selection.
+                onHost(host) {
+                    it.editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                    it.editText.setSelection(1, 2)
+                }
+                assertTrue(click("Return result"))
+                textIs("abc")
+                onHost(host) { it.editText.inputType = android.text.InputType.TYPE_CLASS_TEXT }
+
                 editor("secret", 0, 6)
                 onHost(host) {
                     it.editText.inputType = android.text.InputType.TYPE_CLASS_TEXT or
@@ -288,7 +373,8 @@ class MushroomImeInstrumentedTest {
 
                 // A missing plugin must return control without touching the original text.
                 val plugin = "${ins.context.packageName}/${MushroomPluginActivity::class.java.name}"
-                shell("pm disable $plugin")
+                val disabled = shell("run-as ${ins.context.packageName} pm disable $plugin")
+                assertTrue("Could not disable the test plugin: $disabled", disabled.contains("new state: disabled"))
                 try {
                     editor("keep", 4)
                     ins.runOnMainSync {
@@ -306,7 +392,7 @@ class MushroomImeInstrumentedTest {
                     }
                     textIs("keep")
                 } finally {
-                    shell("pm enable $plugin")
+                    shell("run-as ${ins.context.packageName} pm enable $plugin")
                 }
             }
         } finally {
