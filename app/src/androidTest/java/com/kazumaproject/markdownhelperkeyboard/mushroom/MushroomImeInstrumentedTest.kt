@@ -3,11 +3,17 @@ package com.kazumaproject.markdownhelperkeyboard.mushroom
 import android.content.ContextWrapper
 import android.os.ParcelFileDescriptor
 import android.os.Bundle
+import android.os.Build
+import android.os.ResultReceiver
 import android.os.SystemClock
 import android.view.View
+import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityEvent
 import android.view.inspector.WindowInspector
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.LinearLayout
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,6 +28,7 @@ import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicBoolean
 
 @RunWith(AndroidJUnit4::class)
 class MushroomImeInstrumentedTest {
@@ -115,6 +122,296 @@ class MushroomImeInstrumentedTest {
             shell("input keyevent KEYCODE_BACK")
             SystemClock.sleep(300)
             onHost(activity) { it.finish() }
+            shell("am broadcast -a ${MushroomPluginActivity.ACTION_CLOSE} -p ${ins.context.packageName}")
+        }
+    }
+
+    private fun bridgeReceiver(): ResultReceiver? {
+        var receiver: ResultReceiver? = null
+        ins.runOnMainSync {
+            val bridge = listOf(Stage.STOPPED, Stage.PAUSED, Stage.STARTED, Stage.RESUMED)
+                .flatMap { ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(it) }
+                .filterIsInstance<MushroomActivity>().firstOrNull()
+            receiver = if (Build.VERSION.SDK_INT >= 33) {
+                bridge?.intent?.getParcelableExtra(MushroomActivity.EXTRA_RECEIVER, ResultReceiver::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                bridge?.intent?.getParcelableExtra(MushroomActivity.EXTRA_RECEIVER)
+            }
+        }
+        return receiver
+    }
+
+    private fun chosenPlugin(): String? {
+        var chosen: String? = null
+        ins.runOnMainSync {
+            chosen = service()?.let { IMEService::class.java.getDeclaredField("mushroomPluginPackage")
+                .apply { isAccessible = true }.get(it) as String? }
+        }
+        return chosen
+    }
+
+    @Test(timeout = 180_000) fun resultAfterOriginalEditorReconnectsIsAppliedOnce() {
+        assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
+        val targetIme = "${context.packageName}/${IMEService::class.java.name}"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        try {
+            prepareIme(targetIme)
+            withHost { host ->
+                onHost(host) {
+                    it.editText.setText("abc")
+                    it.editText.setSelection(1, 2)
+                    it.editText.requestFocus()
+                    it.getSystemService(InputMethodManager::class.java).restartInput(it.editText)
+                    it.getSystemService(InputMethodManager::class.java).showSoftInput(it.editText, 0)
+                }
+                await("Original editor connected") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val snapshot = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime?.currentInputStarted == true && ime.currentInputEditorInfo?.packageName == context.packageName &&
+                            snapshot?.text?.toString() == "abc" && snapshot.selectionStart == 1 && snapshot.selectionEnd == 2
+                    }
+                    ready
+                }
+                ins.runOnMainSync {
+                    IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }.invoke(service()!!)
+                }
+                await("Plugin chooser or direct launch") { hasText("Return result") || click("Mushroom test plugin") }
+                await("Plugin received selected text") { hasText("Source: b") }
+                var receiver: ResultReceiver? = null
+                await("Bridge is available behind the plugin") { bridgeReceiver().also { receiver = it } != null }
+                await("Chooser reports the selected plugin") { chosenPlugin() == ins.context.packageName }
+                shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name} --activity-reorder-to-front")
+                await("Original editor reconnects before the result") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val snapshot = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime?.currentInputStarted == true && ime.currentInputEditorInfo?.packageName == context.packageName &&
+                            snapshot?.text?.toString() == "abc" && snapshot.selectionStart == 1 && snapshot.selectionEnd == 2
+                    }
+                    ready
+                }
+                requireNotNull(receiver).send(android.app.Activity.RESULT_OK, Bundle().apply {
+                    putString(MushroomActivity.REPLACE_KEY, "[b]")
+                })
+                await("Result is applied without another tap") {
+                    var actual = ""
+                    onHost(host) { actual = it.editText.text.toString() }
+                    actual == "a[b]c"
+                }
+                // A duplicate callback for the same request must not insert twice.
+                requireNotNull(receiver).send(android.app.Activity.RESULT_OK, Bundle().apply {
+                    putString(MushroomActivity.REPLACE_KEY, "[b]")
+                })
+                SystemClock.sleep(500)
+                onHost(host) { assertEquals("a[b]c", it.editText.text.toString()) }
+            }
+        } finally {
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            shell("ime disable $targetIme")
+        }
+    }
+
+    @Test(timeout = 180_000) fun resultWhilePluginEditorIsConnectedWaitsForOriginalEditor() =
+        verifyPluginEditorResult(missingChooserCallback = false)
+
+    @Test(timeout = 180_000) fun resultWithoutChooserCallbackWaitsForOriginalEditor() =
+        verifyPluginEditorResult(missingChooserCallback = true)
+
+    private fun verifyPluginEditorResult(missingChooserCallback: Boolean) {
+        assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
+        val targetIme = "${context.packageName}/${IMEService::class.java.name}"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        try {
+            prepareIme(targetIme)
+            withHost { host ->
+                onHost(host) {
+                    it.editText.setText("abc")
+                    it.editText.setSelection(1, 2)
+                    it.editText.requestFocus()
+                    it.getSystemService(InputMethodManager::class.java).restartInput(it.editText)
+                    it.getSystemService(InputMethodManager::class.java).showSoftInput(it.editText, 0)
+                }
+                await("Original editor connected") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val snapshot = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime?.currentInputStarted == true && ime.currentInputEditorInfo?.packageName == context.packageName &&
+                            snapshot?.text?.toString() == "abc" && snapshot.selectionStart == 1 && snapshot.selectionEnd == 2
+                    }
+                    ready
+                }
+                ins.runOnMainSync {
+                    IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }.invoke(service()!!)
+                }
+                await("Plugin chooser or direct launch") { hasText("Return result") || click("Mushroom test plugin") }
+                await("Plugin received selected text") { hasText("Source: b") }
+                var receiver: ResultReceiver? = null
+                await("Bridge is available behind the plugin") { bridgeReceiver().also { receiver = it } != null }
+                await("Chooser reports the selected plugin") { chosenPlugin() == ins.context.packageName }
+                // Simulate the selected plugin's editor still being connected when its result arrives.
+                shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true")
+                await("Different editor connected before the result") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val snapshot = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime?.currentInputStarted == true && ime.currentInputEditorInfo?.packageName == ins.context.packageName &&
+                            snapshot?.text?.toString() == "abc"
+                    }
+                    ready
+                }
+                if (missingChooserCallback) {
+                    // Android allows the chooser callback to be absent; exercise that fallback explicitly.
+                    ins.runOnMainSync {
+                        IMEService::class.java.getDeclaredField("mushroomPluginPackage").apply { isAccessible = true }
+                            .set(service(), null)
+                    }
+                }
+                requireNotNull(receiver).send(android.app.Activity.RESULT_OK, Bundle().apply {
+                    putString(MushroomActivity.REPLACE_KEY, "[b]")
+                })
+                await("Result is pending while the different editor remains connected") {
+                    var pending = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        pending = ime != null && IMEService::class.java.getDeclaredField("mushroomResult")
+                            .apply { isAccessible = true }.get(ime) == "[b]" &&
+                            ime.currentInputEditorInfo?.packageName == ins.context.packageName
+                    }
+                    pending
+                }
+                var text: String? = null
+                ins.runOnMainSync { text = service()?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)?.text?.toString() }
+                assertEquals("abc", text)
+                // Bring back the original host without sending a second plugin result.
+                shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name} --activity-reorder-to-front")
+                await("Original editor reconnects") {
+                    var reconnected = false
+                    ins.runOnMainSync { reconnected = service()?.currentInputEditorInfo?.packageName == context.packageName }
+                    reconnected
+                }
+                await("Pending result is applied when the original editor reconnects") {
+                    var actual = ""
+                    onHost(host) { actual = it.editText.text.toString() }
+                    actual == "a[b]c"
+                }
+            }
+        } finally {
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            shell("ime disable $targetIme")
+        }
+    }
+
+    @Test(timeout = 180_000) fun resultAfterDifferentHostEditorConnectsIsRejected() {
+        assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
+        val targetIme = "${context.packageName}/${IMEService::class.java.name}"
+        val oldIme = shell("settings get secure default_input_method").trim()
+        try {
+            prepareIme(targetIme)
+            withHost { host ->
+                onHost(host) {
+                    it.editText.setText("abc")
+                    it.editText.setSelection(1, 2)
+                    it.editText.requestFocus()
+                    it.getSystemService(InputMethodManager::class.java).restartInput(it.editText)
+                    it.getSystemService(InputMethodManager::class.java).showSoftInput(it.editText, 0)
+                }
+                await("Original editor connected") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val snapshot = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime?.currentInputStarted == true && ime.currentInputEditorInfo?.packageName == context.packageName &&
+                            snapshot?.text?.toString() == "abc" && snapshot.selectionStart == 1 && snapshot.selectionEnd == 2
+                    }
+                    ready
+                }
+                ins.runOnMainSync {
+                    IMEService::class.java.getDeclaredMethod("launchMushroom").apply { isAccessible = true }.invoke(service()!!)
+                }
+                await("Plugin chooser or direct launch") { hasText("Return result") || click("Mushroom test plugin") }
+                await("Plugin received selected text") { hasText("Source: b") }
+                var receiver: ResultReceiver? = null
+                await("Bridge is available behind the plugin") { bridgeReceiver().also { receiver = it } != null }
+                await("Chooser reports the selected plugin") { chosenPlugin() == ins.context.packageName }
+                lateinit var otherEditor: EditText
+                onHost(host) {
+                    otherEditor = EditText(it).apply {
+                        id = View.generateViewId()
+                        setText("other")
+                        setSelection(5)
+                    }
+                    val content = it.findViewById<ViewGroup>(android.R.id.content)
+                    val layout = content.getChildAt(0) as LinearLayout
+                    layout.addView(otherEditor, 1, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                }
+                shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name} --activity-reorder-to-front")
+                await("Host returned to the foreground") {
+                    var focused = false
+                    onHost(host) { focused = it.hasWindowFocus() }
+                    focused
+                }
+                onHost(host) {
+                    otherEditor.requestFocus()
+                    it.getSystemService(InputMethodManager::class.java).restartInput(otherEditor)
+                    it.getSystemService(InputMethodManager::class.java).showSoftInput(otherEditor, 0)
+                }
+                await("Different host editor connects before the result") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val snapshot = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime?.currentInputStarted == true && ime.currentInputEditorInfo?.packageName == context.packageName &&
+                            ime.currentInputEditorInfo?.fieldId == otherEditor.id && snapshot?.text?.toString() == "other"
+                    }
+                    ready
+                }
+                val noticeSeen = AtomicBoolean(false)
+                val expectedNotice = context.getString(R.string.mushroom_target_changed)
+                ins.uiAutomation.setOnAccessibilityEventListener { event ->
+                    if (event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED &&
+                        event.text.any { it.toString() == expectedNotice }) noticeSeen.set(true)
+                }
+                try {
+                    requireNotNull(receiver).send(android.app.Activity.RESULT_OK, Bundle().apply {
+                        putString(MushroomActivity.REPLACE_KEY, "[b]")
+                    })
+                    await("Result is discarded and the user is notified") {
+                        var discarded = false
+                        ins.runOnMainSync {
+                            val ime = service()
+                            discarded = ime != null && IMEService::class.java.getDeclaredField("mushroomTarget")
+                                .apply { isAccessible = true }.get(ime) == null
+                        }
+                        discarded && noticeSeen.get()
+                    }
+                } finally {
+                    ins.uiAutomation.setOnAccessibilityEventListener(null)
+                }
+                onHost(host) {
+                    assertEquals("abc", it.editText.text.toString())
+                    assertEquals("other", otherEditor.text.toString())
+                    it.editText.requestFocus()
+                    it.getSystemService(InputMethodManager::class.java).restartInput(it.editText)
+                }
+                await("Original editor reconnects without a delayed insertion") {
+                    var ready = false
+                    ins.runOnMainSync {
+                        val ime = service()
+                        val snapshot = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                        ready = ime?.currentInputEditorInfo?.fieldId == host.editText.id && snapshot?.text?.toString() == "abc"
+                    }
+                    ready
+                }
+            }
+        } finally {
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            shell("ime disable $targetIme")
         }
     }
 
