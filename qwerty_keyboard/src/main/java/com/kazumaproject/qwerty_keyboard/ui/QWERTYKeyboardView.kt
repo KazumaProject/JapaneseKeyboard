@@ -71,6 +71,7 @@ import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
+import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.QWERTYMode
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
@@ -2488,8 +2489,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val y = event.getY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
 
-        if (independentMultiTouchForCurrentGesture) {
-            val start = pointerStartCoords[pointerId] ?: return
+        val start = pointerStartCoords[pointerId]
+        val isVerticalCursorGesture = isCursorKey(previousView) && start != null &&
+            abs(y - start.second) >= abs(x - start.first)
+        if (independentMultiTouchForCurrentGesture || isVerticalCursorGesture) {
+            if (start == null) return
+            // Keep a vertical cursor gesture on its original key even after crossing its bounds.
+            // Like independent multi-touch, it is classified once at release.
             if (detectFlickDirection(x, y, start.first, start.second, flickThreshold) != FlickDirection.NONE) {
                 cancelLongPressForPointer(pointerId)
             }
@@ -2533,13 +2539,31 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun isCursorKey(view: View?): Boolean =
+        view === binding.cursorLeft || view === binding.cursorRight
+
     private fun tryHandleFlickAt(pointerId: Int, x: Float, y: Float): Boolean {
         if (suppressedPointerIds.contains(pointerId) || isPointerLocked(pointerId)) return false
         if (flickLockedPointers.contains(pointerId)) return true
 
         val (startX, startY) = pointerStartCoords[pointerId] ?: return false
         val previousView = pointerButtonMap[pointerId]
-        return when (detectFlickDirection(x, y, startX, startY, flickThreshold)) {
+        val direction = detectFlickDirection(x, y, startX, startY, flickThreshold)
+        if (previousView != null && isCursorKey(previousView)) {
+            val gesture = when (direction) {
+                FlickDirection.UP -> GestureType.FlickTop
+                FlickDirection.DOWN -> GestureType.FlickBottom
+                else -> null
+            }
+            if (gesture != null) {
+                applyCommonFlickEffects(pointerId, previousView)
+                qwertyButtonMap[previousView]?.let { key ->
+                    qwertyKeyListener?.onCursorFlickQWERTYKey(key, gesture)
+                }
+                return true
+            }
+        }
+        return when (direction) {
             FlickDirection.UP -> {
                 when {
                     enableDeleteUpFlick &&
