@@ -24142,6 +24142,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var mushroomTarget: MushroomTarget? = null
     private var mushroomResult: String? = null
+    private var mushroomPluginPackage: String? = null
     private data class MushroomEditor(
         val token: android.os.IBinder?,
         val packageName: String?,
@@ -24182,9 +24183,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mushroomTarget = target
         mushroomEditor = currentMushroomEditor()
         mushroomResult = null
+        mushroomPluginPackage = null
         val receiver = object : ResultReceiver(mainHandler) {
             override fun onReceiveResult(code: Int, data: Bundle?) {
                 if (mushroomTarget !== target) return
+                if (code == MushroomActivity.RESULT_CHOSEN) {
+                    mushroomPluginPackage = data?.getString(MushroomActivity.EXTRA_PLUGIN_PACKAGE)
+                    if (mushroomResult != null) mainHandler.post { consumeMushroomResult() }
+                    return
+                }
                 if (code == android.app.Activity.RESULT_OK) {
                     mushroomResult = data?.getString(MushroomActivity.REPLACE_KEY)
                     if (mushroomResult == null) mushroomTarget = null
@@ -24222,14 +24229,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val target = mushroomTarget ?: return
         if (!currentInputStarted) return
         if (currentMushroomEditor() != mushroomEditor) {
-            // Transient non-editor connections can belong to the external activity.
-            // Only reject when a new, actual editor has connected after the result.
-            if (rejectChangedEditor && currentInputEditorInfo?.inputType?.let {
+            // The selected plugin may itself have an editor while it returns its result.
+            val currentPackage = currentInputEditorInfo?.packageName
+            val pluginPackage = mushroomPluginPackage
+            val otherThanPlugin = pluginPackage != null && currentPackage != null && currentPackage != pluginPackage
+            val isPluginEditor = pluginPackage != null && currentPackage == pluginPackage
+            if (!isPluginEditor && (rejectChangedEditor || otherThanPlugin) && currentInputEditorInfo?.inputType?.let {
                     it != android.text.InputType.TYPE_NULL
                 } == true) {
                 mushroomTarget = null
                 mushroomResult = null
                 mushroomEditor = null
+                mushroomPluginPackage = null
                 showToastMessage(getString(R.string.mushroom_target_changed))
             }
             return
@@ -24238,6 +24249,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mushroomTarget = null
         mushroomResult = null
         mushroomEditor = null
+        mushroomPluginPackage = null
         val applied = target.apply(currentInputConnection, result, sameEditorAfterRestart = canReconnect) {
             commitText(it, 1)
         }
