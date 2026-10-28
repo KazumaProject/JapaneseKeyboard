@@ -1,7 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.mushroom;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -13,7 +16,11 @@ import android.widget.TextView;
 /** Standalone external plugin: the test APK does not package the target app's Kotlin runtime. */
 public final class MushroomPluginActivity extends Activity {
     private static final String REPLACE_KEY = "replace_key";
+    public static final String ACTION_CLOSE = "com.kazumaproject.markdownhelperkeyboard.mushroom.TEST_CLOSE";
     private EditText editor;
+    private final BroadcastReceiver closeReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) { finish(); }
+    };
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -27,6 +34,12 @@ public final class MushroomPluginActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        IntentFilter closeFilter = new IntentFilter(ACTION_CLOSE);
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(closeReceiver, closeFilter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(closeReceiver, closeFilter);
+        }
         if (getIntent().getBooleanExtra("editor", false)) {
             editor = new EditText(this);
             editor.setId(android.R.id.input);
@@ -62,6 +75,11 @@ public final class MushroomPluginActivity extends Activity {
         }
         fitSystemBars(layout);
         setContentView(layout);
+    }
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(closeReceiver);
+        super.onDestroy();
     }
     private void fitSystemBars(android.view.View root) {
         if (android.os.Build.VERSION.SDK_INT >= 30) {

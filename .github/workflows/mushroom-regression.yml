@@ -58,6 +58,7 @@ jobs:
           -x :app:generateMozcSegmenterData
           :app:testLiteStandardDebugUnitTest
           --tests '*MushroomTargetTest'
+          --tests '*SuggestionAdapterVectorTintTest'
           --tests '*ShortcutToolbarPresentationPolicyTest'
           --tests '*SettingsBackupRepositoryTest'
           :app:assembleLiteStandardDebug
@@ -100,7 +101,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           script: |
             bash -c 'set -euo pipefail; export IME_EMULATOR_LOG_DIR="$RUNNER_TEMP/mushroom-emulator"; source .github/scripts/ime-emulator-common.sh; ime_emulator_prepare'
-            ./gradlew -I "$RUNNER_TEMP/mushroom.init.gradle" -x :app:generateMozcSegmenterData :app:connectedLiteStandardDebugAndroidTest --max-workers=2 -Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8' -Pkotlin.compiler.execution.strategy=in-process -Pandroid.testInstrumentationRunnerArguments.class=com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomImeInstrumentedTest
+            ./gradlew -I "$RUNNER_TEMP/mushroom.init.gradle" -x :app:generateMozcSegmenterData :app:connectedLiteStandardDebugAndroidTest --max-workers=2 -Dorg.gradle.jvmargs='-Xmx2g -Dfile.encoding=UTF-8' -Pkotlin.compiler.execution.strategy=in-process -Pandroid.testInstrumentationRunnerArguments.class=com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomImeInstrumentedTest,com.kazumaproject.markdownhelperkeyboard.mushroom.MushroomCompatibilityInstrumentedTest
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
