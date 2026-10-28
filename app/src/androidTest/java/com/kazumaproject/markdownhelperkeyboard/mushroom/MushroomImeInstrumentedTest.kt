@@ -71,9 +71,15 @@ class MushroomImeInstrumentedTest {
         shell("input keyevent KEYCODE_WAKEUP")
         shell("wm dismiss-keyguard")
         await("IME registered") { shell("ime list -a -s").lineSequence().any { it.trim() == target } }
-        shell("ime enable $target")
-        shell("ime set $target")
-        await("IME selected") { shell("settings get secure default_input_method").trim() == target }
+        await("IME selected") {
+            if (shell("settings get secure default_input_method").trim() == target) {
+                true
+            } else {
+                shell("ime enable $target")
+                shell("ime set $target")
+                false
+            }
+        }
     }
     private fun roots(): List<AccessibilityNodeInfo> = ins.uiAutomation.windows.mapNotNull { it.root }
         .ifEmpty { listOfNotNull(ins.uiAutomation.rootInActiveWindow) }
