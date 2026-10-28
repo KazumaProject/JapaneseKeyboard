@@ -424,12 +424,28 @@ class MushroomImeInstrumentedTest {
             withHost {
                 shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true")
                 await("External editor connected") {
+                    // The system can switch back to its previous IME while the external window opens.
+                    if (shell("settings get secure default_input_method").trim() != targetIme) {
+                        shell("ime enable $targetIme")
+                        shell("ime set $targetIme")
+                    }
                     var ready = false
                     ins.runOnMainSync {
                         val ime = service()
                         val text = ime?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
                         ready = ime != null && text != null && ime.currentInputEditorInfo?.packageName == ins.context.packageName &&
                             ime.isInputViewShown && text.text?.toString() == "abc" && text.selectionStart == 1 && text.selectionEnd == 2
+                    }
+                    if (!ready) {
+                        roots().flatMap { it.findAccessibilityNodeInfosByViewId("android:id/input") }
+                            .firstOrNull { it.isVisibleToUser && it.packageName?.toString() == ins.context.packageName }
+                            ?.let { editor ->
+                                editor.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                                editor.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, Bundle().apply {
+                                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 1)
+                                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, 2)
+                                })
+                            }
                     }
                     ready
                 }
