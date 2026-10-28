@@ -41,4 +41,18 @@
     <string name="voice_input">音声入力</string>
     <string name="action_switch_romaji_english">ローマ字、英語切り替え</string>
     <string name="action_switch_to_hiragana_mode">ひらがなモードに切り替え</string>
+    <string name="action_tab">Tab</string>
+    <string name="action_escape">Esc</string>
+    <string name="action_home">Home</string>
+    <string name="action_end">End</string>
+    <string name="action_page_up">ページ上</string>
+    <string name="action_page_down">ページ下</string>
+    <string name="action_next_field">次の入力欄</string>
+    <string name="action_previous_field">前の入力欄</string>
+    <string name="action_select_left">選択範囲を左に拡張</string>
+    <string name="action_select_right">選択範囲を右に拡張</string>
+    <string name="action_undo_last_delete">削除取り消し</string>
+    <string name="action_ctrl">Ctrl</string>
+    <string name="action_alt">Alt</string>
+    <string name="modifier_locked">%1$s ロック中</string>
 </resources>

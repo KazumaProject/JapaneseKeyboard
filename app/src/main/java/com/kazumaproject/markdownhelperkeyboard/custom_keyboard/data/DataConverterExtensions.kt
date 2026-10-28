@@ -51,6 +51,18 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "MOVE_CURSOR_UP" -> KeyAction.MoveCursorUp
         "MOVE_CURSOR_DOWN" -> KeyAction.MoveCursorDown
         "MOVE_CURSOR_RIGHT" -> KeyAction.MoveCursorRight
+        "Tab" -> KeyAction.Tab
+        "Escape" -> KeyAction.Escape
+        "Home" -> KeyAction.Home
+        "End" -> KeyAction.End
+        "PageUp" -> KeyAction.PageUp
+        "PageDown" -> KeyAction.PageDown
+        "NextField" -> KeyAction.NextField
+        "PreviousField" -> KeyAction.PreviousField
+        "SelectLeft" -> KeyAction.SelectLeft
+        "SelectRight" -> KeyAction.SelectRight
+        "CtrlLock" -> KeyAction.CtrlLock
+        "AltLock" -> KeyAction.AltLock
         "SELECT_ALL" -> KeyAction.SelectAll
         "CUT" -> KeyAction.Cut
         "PASTE" -> KeyAction.Paste
@@ -110,6 +122,18 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "MOVE_CURSOR_UP" -> KeyAction.MoveCursorUp
         "MOVE_CURSOR_DOWN" -> KeyAction.MoveCursorDown
         "MOVE_CURSOR_RIGHT" -> KeyAction.MoveCursorRight
+        "Tab" -> KeyAction.Tab
+        "Escape" -> KeyAction.Escape
+        "Home" -> KeyAction.Home
+        "End" -> KeyAction.End
+        "PageUp" -> KeyAction.PageUp
+        "PageDown" -> KeyAction.PageDown
+        "NextField" -> KeyAction.NextField
+        "PreviousField" -> KeyAction.PreviousField
+        "SelectLeft" -> KeyAction.SelectLeft
+        "SelectRight" -> KeyAction.SelectRight
+        "CtrlLock" -> KeyAction.CtrlLock
+        "AltLock" -> KeyAction.AltLock
         "SELECT_ALL" -> KeyAction.SelectAll
         "CUT" -> KeyAction.Cut
         "PASTE" -> KeyAction.Paste
@@ -174,6 +198,18 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.MoveCursorUp -> "MOVE_CURSOR_UP" to null
             KeyAction.MoveCursorDown -> "MOVE_CURSOR_DOWN" to null
             KeyAction.MoveCursorRight -> "MOVE_CURSOR_RIGHT" to null
+            KeyAction.Tab -> "Tab" to null
+            KeyAction.Escape -> "Escape" to null
+            KeyAction.Home -> "Home" to null
+            KeyAction.End -> "End" to null
+            KeyAction.PageUp -> "PageUp" to null
+            KeyAction.PageDown -> "PageDown" to null
+            KeyAction.NextField -> "NextField" to null
+            KeyAction.PreviousField -> "PreviousField" to null
+            KeyAction.SelectLeft -> "SelectLeft" to null
+            KeyAction.SelectRight -> "SelectRight" to null
+            KeyAction.CtrlLock -> "CtrlLock" to null
+            KeyAction.AltLock -> "AltLock" to null
             KeyAction.SelectAll -> "SELECT_ALL" to null
             KeyAction.Cut -> "CUT" to null
             KeyAction.Paste -> "PASTE" to null

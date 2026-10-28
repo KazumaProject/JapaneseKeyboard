@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="@color/keyboard_icon_color" android:pathData="M5.92,8.50h1.35v1.35h-1.35z M4.57,9.85h1.35v1.35h-1.35z M7.27,9.85h1.35v1.35h-1.35z M4.57,11.20h1.35v1.35h-1.35z M5.92,11.20h1.35v1.35h-1.35z M7.27,11.20h1.35v1.35h-1.35z M4.57,12.55h1.35v1.35h-1.35z M7.27,12.55h1.35v1.35h-1.35z M4.57,13.90h1.35v1.35h-1.35z M7.27,13.90h1.35v1.35h-1.35z M9.97,8.50h1.35v1.35h-1.35z M9.97,9.85h1.35v1.35h-1.35z M9.97,11.20h1.35v1.35h-1.35z M9.97,12.55h1.35v1.35h-1.35z M9.97,13.90h1.35v1.35h-1.35z M11.32,13.90h1.35v1.35h-1.35z M12.68,13.90h1.35v1.35h-1.35z M15.38,8.50h1.35v1.35h-1.35z M16.73,8.50h1.35v1.35h-1.35z M18.07,8.50h1.35v1.35h-1.35z M16.73,9.85h1.35v1.35h-1.35z M16.73,11.20h1.35v1.35h-1.35z M16.73,12.55h1.35v1.35h-1.35z M16.73,13.90h1.35v1.35h-1.35z" />
+</vector>

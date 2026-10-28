@@ -41,4 +41,18 @@
     <string name="voice_input">Voice Input</string>
     <string name="action_switch_romaji_english">Romaji / English Switch</string>
     <string name="action_switch_to_hiragana_mode">Switch to Hiragana Mode</string>
+    <string name="action_tab">Tab</string>
+    <string name="action_escape">Esc</string>
+    <string name="action_home">Home</string>
+    <string name="action_end">End</string>
+    <string name="action_page_up">Page Up</string>
+    <string name="action_page_down">Page Down</string>
+    <string name="action_next_field">Next field</string>
+    <string name="action_previous_field">Previous field</string>
+    <string name="action_select_left">Extend selection left</string>
+    <string name="action_select_right">Extend selection right</string>
+    <string name="action_undo_last_delete">Undo deletion</string>
+    <string name="action_ctrl">Ctrl</string>
+    <string name="action_alt">Alt</string>
+    <string name="modifier_locked">%1$s locked</string>
 </resources>

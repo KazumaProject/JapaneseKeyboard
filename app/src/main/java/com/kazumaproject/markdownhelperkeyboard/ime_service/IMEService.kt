@@ -956,6 +956,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             },
         )
     }
+    private val backspaceHistoryCoordinator by lazy {
+        BackspaceHistoryCoordinator(
+            scope = scope,
+            connection = { currentInputConnection },
+            revision = { editorMutationRevision.current() },
+            session = { flickPreviewEditorSessionId },
+            canDelete = { isConfiguredDeleteUndoAvailable() && !hasCursorPreedit() },
+            delete = { if (!dispatchDirectBackspaceIfNeeded()) deleteLastGraphemeOrSelection() },
+            record = { text, group ->
+                deletedBuffer.pushDeletedText(text, group)
+                refreshEditHistoryUi()
+            },
+            selectionRevision = { horizontalCursorSelectionRevision.get() },
+            latestSelection = {
+                if (cursorNativeSelectionStart >= 0 && cursorNativeSelectionEnd >= 0)
+                    cursorNativeSelectionStart to cursorNativeSelectionEnd else null
+            },
+            invalidateHistory = {
+                clearDeletedBufferWithoutResetLayout()
+                refreshEditHistoryUi()
+            },
+        )
+    }
+    private var nextBackspaceHistoryGroup = 0L
+
     private val kanaKanjiConversionDispatcher = Executors.newSingleThreadExecutor { runnable ->
         Thread(
             {
@@ -2670,13 +2695,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private class EditHistoryBuffer {
         private val undoStack = ArrayDeque<EditHistoryEntry>()
         private val redoStack = ArrayDeque<EditHistoryEntry>()
+        private var deleteGroup: Long? = null
+
+        fun pushDeletedText(text: String, group: Long?) {
+            val previous = undoStack.peekLast() as? EditHistoryEntry.DeleteCommittedText
+            if (group != null && group == deleteGroup && previous?.direction == DeleteDirection.BeforeCursor) {
+                undoStack.removeLast()
+                undoStack.addLast(previous.copy(deletedText = text + previous.deletedText))
+                redoStack.clear()
+            } else {
+                push(EditHistoryEntry.DeleteCommittedText(text))
+                deleteGroup = group
+            }
+        }
 
         fun push(entry: EditHistoryEntry) {
+            deleteGroup = null
             undoStack.addLast(entry)
             redoStack.clear()
         }
 
         fun popUndo(): EditHistoryEntry? {
+            deleteGroup = null
             return if (undoStack.isEmpty()) null else undoStack.removeLast()
         }
 
@@ -2693,6 +2733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         fun clear() {
+            deleteGroup = null
             undoStack.clear()
             redoStack.clear()
         }
@@ -2704,6 +2745,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         fun hasUndoHistory(): Boolean = undoStack.isNotEmpty()
 
         fun hasRedoHistory(): Boolean = redoStack.isNotEmpty()
+
+        fun peekUndo(): EditHistoryEntry? = undoStack.peekLast()
 
         fun peekUndoPreviewText(): String = undoStack.peekLast()?.previewText.orEmpty()
 
@@ -3661,7 +3704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             .also { if (it) stopCursorInputGestures() }
     }
 
-    private fun queueCursorMove(direction: CursorDirection, fromPanel: Boolean = false) {
+    private fun queueCursorMove(direction: CursorDirection, fromPanel: Boolean = false, selecting: Boolean = cursorSelectionMode) {
         val editor = currentInputConnection ?: return
         if (!isInputViewActive || isKeyboardLayoutEditModeActive()) return
         cursorInputTracking = true
@@ -3704,7 +3747,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingCursor?.updateSelection(cursorSelectionMode, !hasCursorPreedit())
             }
         }
-        cursorMoves.trySend(PendingCursorMove(direction, cursorOperation(), editor, cursorWorkGeneration.get(), cursorSelectionMode, fromPanel))
+        cursorMoves.trySend(PendingCursorMove(direction, cursorOperation(), editor, cursorWorkGeneration.get(), selecting, fromPanel))
     }
 
     private fun moveCursorVertically(direction: CursorDirection) {
@@ -3728,6 +3771,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val targetChanged = dictionaryInputEditor !== editor
         if (targetChanged) {
+            backspaceHistoryCoordinator.cancel()
+            resetSoftwareModifiers()
             resetCursorInputSession()
             keyboardPopupRequests.invalidate()
             // Undo entries contain editor text and must never cross input targets.
@@ -3960,6 +4005,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        backspaceHistoryCoordinator.cancel()
+        deletedBuffer.clear()
+        if (!restarting) resetSoftwareModifiers()
         cancelMorseInputs(clearPattern = true)
         floatingCursor?.stop()
         resetCursorInputSession()
@@ -6699,6 +6747,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        backspaceHistoryCoordinator.cancel()
+        deletedBuffer.clear()
+        resetSoftwareModifiers()
         cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
@@ -6722,6 +6773,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        backspaceHistoryCoordinator.cancel()
+        resetSoftwareModifiers()
         cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
@@ -11048,7 +11101,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         flickView.setFlickGuideTextSizeSp((flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat())
         flickView.setKeyboard(
-            applyDeleteKeyFlickPreferences(layout),
+            if (isUserDefinedCustomLayout) KeyboardDefaultLayouts.applyDeleteKeyFlickSettings(
+                layout, currentDeleteKeyFlickSettings().copy(down = true)
+            ) else applyDeleteKeyFlickPreferences(layout),
             if (isUserDefinedCustomLayout) customKeyboardHitTestMode() else KeyHitTestMode.KEY_BOUNDS
         )
     }
@@ -14814,6 +14869,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutRomajiMode = false
     private var isCustomLayoutDirectMode = false
     private var customKeyboardShiftState = CustomKeyboardShiftState.OFF
+    private var softwareModifiers = SoftwareModifiers()
+    private val modifierToggleInputState = CustomToggleInputState()
     private val customToggleInputState = CustomToggleInputState()
     private var customToggleFinalizeJob: Job? = null
     private var customToggleWasDirect: Boolean = false
@@ -15249,11 +15306,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customKeyboardMode = KeyboardInputMode.HIRAGANA
 
     private fun clearDeleteBufferWithView() {
-        appPreference.undo_enable_preference?.let {
-            if (it && deletedBuffer.isNotEmpty()) {
-                clearDeletedBufferWithoutResetLayout()
-                refreshEditHistoryUi()
-            }
+        if (isDeleteHistoryRecordingEnabled() && deletedBuffer.isNotEmpty()) {
+            clearDeletedBufferWithoutResetLayout()
+            refreshEditHistoryUi()
         }
     }
 
@@ -15405,6 +15460,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (flickGuideMaxCharactersPreference ?: 1).coerceIn(1, 4)
         )
         if (qwertyMode.value == TenKeyQWERTYMode.Sumire) applySumireModeSizing(flickView)
+        flickView.setSoftwareModifierState(softwareModifiers.ctrl, softwareModifiers.alt)
 
         flickView.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
@@ -15424,6 +15480,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onActionLongPress(action: KeyAction) {
                 if (deferCursorInput { onActionLongPress(action) }) return
+                flushPendingBackspacesBefore(action)
+                if (isSoftwareSpecialAction(action)) {
+                    activateSplitView(flickView)
+                    if (!isKeyboardLayoutEditModeActive()) vibrate()
+                    return
+                }
                 if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
                         KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
@@ -15431,11 +15493,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 finishCustomToggleForAction()
                 if (action != KeyAction.DoNothing) {
                     vibrate()
-                    clearDeleteBufferWithView()
+                    if (!shouldPreserveDeleteHistoryForAction(action)) clearDeleteBufferWithView()
                 }
                 Timber.d("onActionLongPress: $action")
                 when (action) {
                     KeyAction.DoNothing -> Unit
+                    KeyAction.Tab,
+                    KeyAction.Escape,
+                    KeyAction.Home,
+                    KeyAction.End,
+                    KeyAction.PageUp,
+                    KeyAction.PageDown,
+                    KeyAction.NextField,
+                    KeyAction.PreviousField,
+                    KeyAction.CtrlLock,
+                    KeyAction.AltLock -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> cycleFlickKeyboardInputMode()
 
@@ -15640,6 +15712,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onActionUpAfterLongPress(action: KeyAction) {
                 if (deferCursorInput { onActionUpAfterLongPress(action) }) return
+                flushPendingBackspacesBefore(action)
+                if (isSoftwareSpecialAction(action)) {
+                    activateSplitView(flickView)
+                    if (!isKeyboardLayoutEditModeActive()) {
+                        handleSoftwareSpecialAction(action)
+                        handleKeyReleaseFeedback()
+                    }
+                    return
+                }
                 if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
                         KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
@@ -15647,6 +15728,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("onActionUpAfterLongPress: $action")
                 when (action) {
                     KeyAction.DoNothing -> Unit
+                    KeyAction.Tab,
+                    KeyAction.Escape,
+                    KeyAction.Home,
+                    KeyAction.End,
+                    KeyAction.PageUp,
+                    KeyAction.PageDown,
+                    KeyAction.NextField,
+                    KeyAction.PreviousField,
+                    KeyAction.CtrlLock,
+                    KeyAction.AltLock -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
@@ -15732,6 +15823,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onFlickActionLongPress(action: KeyAction) {
                 if (deferCursorInput { onFlickActionLongPress(action) }) return
+                flushPendingBackspacesBefore(action)
+                if (isSoftwareSpecialAction(action)) {
+                    activateSplitView(flickView)
+                    if (!isKeyboardLayoutEditModeActive()) vibrate()
+                    return
+                }
                 if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
                         KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
@@ -15741,6 +15838,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (action != KeyAction.DoNothing) vibrate()
                 when (action) {
                     KeyAction.DoNothing -> Unit
+                    KeyAction.Tab,
+                    KeyAction.Escape,
+                    KeyAction.Home,
+                    KeyAction.End,
+                    KeyAction.PageUp,
+                    KeyAction.PageDown,
+                    KeyAction.NextField,
+                    KeyAction.PreviousField,
+                    KeyAction.CtrlLock,
+                    KeyAction.AltLock -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
@@ -15887,6 +15994,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
                 if (deferCursorInput { onFlickActionUpAfterLongPress(action, isFlick) }) return
+                flushPendingBackspacesBefore(action)
+                if (isSoftwareSpecialAction(action)) {
+                    activateSplitView(flickView)
+                    if (!isKeyboardLayoutEditModeActive()) {
+                        handleSoftwareSpecialAction(action)
+                        handleKeyReleaseFeedback()
+                    }
+                    return
+                }
                 if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
                         KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
@@ -15895,6 +16011,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
                 when (action) {
                     KeyAction.DoNothing -> Unit
+                    KeyAction.Tab,
+                    KeyAction.Escape,
+                    KeyAction.Home,
+                    KeyAction.End,
+                    KeyAction.PageUp,
+                    KeyAction.PageDown,
+                    KeyAction.NextField,
+                    KeyAction.PreviousField,
+                    KeyAction.CtrlLock,
+                    KeyAction.AltLock -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
@@ -16074,9 +16200,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.UndoLastDelete -> {
-                        if (isDeleteDownFlickPreference == true) {
-                            undoLastHistoryEntry()
-                        }
+                        undoLastDeleteEntry()
                         stopDeleteLongPress()
                     }
 
@@ -16172,6 +16296,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
+                backspaceHistoryCoordinator.flushPendingAndCancel()
+                if (softwareModifiers.active) {
+                    val mutation = modifierToggleInputState.next(
+                        keyIdentity, values, values, SystemClock.elapsedRealtime(),
+                        delayTime?.toLong() ?: DEFAULT_DELAY_MS
+                    )
+                    val text = when (mutation) {
+                        is CustomToggleInputState.Mutation.Append -> mutation.text
+                        is CustomToggleInputState.Mutation.Replace -> mutation.next
+                        null -> null
+                    }
+                    if (text != null && SpecialKeyPolicy.characterKey(text) != null) {
+                        handleSoftwareSpecialAction(KeyAction.Text(text))
+                        handleKeyReleaseFeedback()
+                        return
+                    }
+                    modifierToggleInputState.reset()
+                }
                 handleKeyReleaseFeedback()
                 clearDeleteBufferWithView()
                 val isDirect = isCustomToggleDirectInput()
@@ -16191,10 +16333,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
                 if (deferCursorInput { onAction(action, isFlick) }) return
-                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
-                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
+                flushPendingBackspacesBefore(action)
+                if (handleSoftwareSpecialAction(action)) {
+                    if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
+                    return
+                }
+                if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                        KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
                 finishCustomToggleForAction()
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
@@ -16204,6 +16351,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 when (action) {
                     KeyAction.DoNothing -> Unit
+                    KeyAction.Tab,
+                    KeyAction.Escape,
+                    KeyAction.Home,
+                    KeyAction.End,
+                    KeyAction.PageUp,
+                    KeyAction.PageDown,
+                    KeyAction.NextField,
+                    KeyAction.PreviousField,
+                    KeyAction.CtrlLock,
+                    KeyAction.AltLock -> Unit
                     is KeyAction.Text -> {
                         val text = action.text
                         Timber.d("onAction Text: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
@@ -16632,9 +16789,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.UndoLastDelete -> {
-                        if (isDeleteDownFlickPreference == true) {
-                            undoLastHistoryEntry()
-                        }
+                        undoLastDeleteEntry()
                     }
 
                     KeyAction.MoveCursorDown -> {
@@ -16674,6 +16829,102 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         })
+    }
+
+    private fun syncSoftwareModifierPresentation() {
+        val views = listOfNotNull(
+            getNormalKeyboardSurface()?.customLayout,
+            getFloatingKeyboardSurface()?.customLayout
+        ) + splitInputs.values.map { it.binding.customLayoutFloating }
+        views.distinct().forEach { it.setSoftwareModifierState(softwareModifiers.ctrl, softwareModifiers.alt) }
+    }
+
+    private fun flushPendingBackspacesBefore(action: KeyAction) {
+        val continuesBackspaceBatch = action == KeyAction.Delete && !softwareModifiers.active
+        val preservesPending = continuesBackspaceBatch ||
+            action in setOf(KeyAction.UndoLastDelete, KeyAction.CtrlLock, KeyAction.AltLock)
+        if (!preservesPending) {
+            backspaceHistoryCoordinator.flushPendingAndCancel()
+        }
+    }
+
+    private fun resetSoftwareModifiers() {
+        softwareModifiers = SoftwareModifiers()
+        modifierToggleInputState.reset()
+        syncSoftwareModifierPresentation()
+    }
+
+    private fun isSoftwareSpecialAction(action: KeyAction): Boolean = when (action) {
+        KeyAction.CtrlLock, KeyAction.AltLock, KeyAction.Tab, KeyAction.Escape,
+        KeyAction.Home, KeyAction.End, KeyAction.PageUp, KeyAction.PageDown,
+        KeyAction.NextField, KeyAction.PreviousField, KeyAction.SelectLeft, KeyAction.SelectRight -> true
+        is KeyAction.Text -> softwareModifiers.active && SpecialKeyPolicy.characterKey(action.text) != null
+        is KeyAction.InputText -> softwareModifiers.active && SpecialKeyPolicy.characterKey(action.text) != null
+        else -> softwareModifiers.active && SpecialKeyPolicy.physicalKeyCode(action) != null
+    }
+
+    /** Return true when the action belongs to the editor-facing special-key path. */
+    private fun handleSoftwareSpecialAction(action: KeyAction): Boolean {
+        if (!isSoftwareSpecialAction(action)) return false
+        if (action == KeyAction.CtrlLock || action == KeyAction.AltLock) {
+            softwareModifiers = softwareModifiers.toggle(action)
+            modifierToggleInputState.reset()
+            syncSoftwareModifierPresentation()
+            return true
+        }
+
+        val preedit = hasCursorPreedit()
+        if (action == KeyAction.Escape && !softwareModifiers.active && isHenkan.get()) {
+            if (isBunsetsuCursorMoveSessionActive()) {
+                clearPhysicalCandidateCompositionSession("special key escape")
+                exitBunsetsuCursorMoveSessionToRawInput()
+            } else {
+                val rawInput = inputString.value
+                resetFlagsDeleteKey()
+                applyRawComposingFallback(rawInput)
+            }
+            return true
+        }
+        // Plain Escape is sent to the editor outside conversion. All other new navigation,
+        // selection and modified shortcuts wait until composition has finished.
+        if (preedit && (action != KeyAction.Escape || softwareModifiers.active)) return true
+
+        val connection = currentInputConnection ?: return true
+        if (action == KeyAction.NextField || action == KeyAction.PreviousField) {
+            val editorInfo = currentInputEditorInfo
+            if (SpecialKeyPolicy.editorNavigationAction(editorInfo, action) == null) return true
+            finishCustomToggleForAction()
+            endCursorSelectionForInput()
+            clearDeleteBufferWithView()
+            SpecialKeyPolicy.dispatchEditorNavigation(connection, editorInfo, action)
+            return true
+        }
+        if (action == KeyAction.SelectLeft || action == KeyAction.SelectRight) {
+            finishCustomToggleForAction()
+            clearDeleteBufferWithView()
+            val direction = if (action == KeyAction.SelectLeft) CursorDirection.LEFT else CursorDirection.RIGHT
+            if (softwareModifiers.active) {
+                endCursorSelectionForInput()
+                SpecialKeyPolicy.sendKey(connection, direction.keyCode, softwareModifiers, shift = true)
+            } else {
+                queueCursorMove(direction, selecting = true)
+            }
+            return true
+        }
+
+        val character = when (action) {
+            is KeyAction.Text -> SpecialKeyPolicy.characterKey(action.text)
+            is KeyAction.InputText -> SpecialKeyPolicy.characterKey(action.text)
+            else -> null
+        }
+        val code = character?.keyCode ?: SpecialKeyPolicy.physicalKeyCode(action) ?: return true
+        finishCustomToggleForAction()
+        endCursorSelectionForInput()
+        clearDeleteBufferWithView()
+        val shift = character?.shift == true || customKeyboardShiftState == CustomKeyboardShiftState.ONE_SHOT
+        SpecialKeyPolicy.sendKey(connection, code, softwareModifiers, shift)
+        if (character != null) consumeCustomKeyboardOneShotShift()
+        return true
     }
 
     private fun handleCustomKeyboardShiftTap() {
@@ -17958,6 +18209,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyAction.DeleteAfterCursorUntilSymbol,
             KeyAction.DeleteAfterCursor,
             KeyAction.UndoLastDelete,
+            KeyAction.CtrlLock,
+            KeyAction.AltLock,
             KeyAction.DoNothing -> true
 
             else -> false
@@ -25813,9 +26066,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return appPreference.undo_enable_preference == true
     }
 
+    private fun isConfiguredDeleteUndoAvailable(): Boolean {
+        if (qwertyMode.value !in setOf(TenKeyQWERTYMode.Custom, TenKeyQWERTYMode.Sumire, TenKeyQWERTYMode.Number)) return false
+        return getActiveKeyboardSurface()?.customLayout?.hasConfiguredAction(KeyAction.UndoLastDelete) == true
+    }
+
     private fun isDeleteHistoryRecordingEnabled(): Boolean {
         return appPreference.undo_enable_preference == true ||
-                appPreference.delete_key_down_flick_preference == true
+                appPreference.delete_key_down_flick_preference == true || isConfiguredDeleteUndoAvailable()
     }
 
     private fun isDeleteKeyDownFlickUndoEnabled(): Boolean {
@@ -26016,20 +26274,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
     private fun clearDeletedBuffer() {
-        if (!isDeleteHistoryRecordingEnabled()) return
         deletedBuffer.clear()
         activeDeleteHistoryBatch = null
         updateSideKeyPreviousDrawableForHistory()
     }
 
     private fun clearDeletedBufferWithoutResetLayout() {
-        if (!isDeleteHistoryRecordingEnabled()) return
         deletedBuffer.clear()
         activeDeleteHistoryBatch = null
     }
 
     private fun pushEditHistoryEntry(entry: EditHistoryEntry) {
         if (!isDeleteHistoryRecordingEnabled()) return
+        if (!isEditHistoryEnabled() && appPreference.delete_key_down_flick_preference != true &&
+            entry !is EditHistoryEntry.DeleteCommittedText && entry !is EditHistoryEntry.CompositionChange
+        ) return
         deletedBuffer.push(entry)
         refreshEditHistoryUi()
     }
@@ -26222,6 +26481,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } == true
                 }
+            }
+        }
+    }
+
+    private fun undoLastDeleteEntry() {
+        val editor = currentInputConnection ?: return
+        val editorSession = flickPreviewEditorSessionId
+        backspaceHistoryCoordinator.afterPending {
+            if (currentInputConnection !== editor || flickPreviewEditorSessionId != editorSession) return@afterPending
+            when (deletedBuffer.peekUndo()) {
+                is EditHistoryEntry.DeleteCommittedText, is EditHistoryEntry.CompositionChange -> undoLastHistoryEntry()
+                else -> Unit
             }
         }
     }
@@ -28389,9 +28660,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (stringInTail.get().isNotEmpty()) return
 
         if (insertString.isNotEmpty()) {
+            val beforeTail = stringInTail.get()
             _inputString.update { "" }
             setComposingText("", 0)
             finishComposingText()
+            if (isConfiguredDeleteUndoAvailable()) {
+                createCompositionHistoryEntry(insertString, beforeTail, inputString.value, stringInTail.get())
+                    ?.let(::pushEditHistoryEntry)
+            }
         } else {
             scope.launch {
                 val textBeforeCursor = editorConnectionReadMutex.withLock {
@@ -28488,6 +28764,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             initialTail = stringInTail.get(),
             deletesCommittedText = inputString.value.isEmpty()
         )
+        val historyGroup = ++nextBackspaceHistoryGroup
+        var compositionRecorded = false
+        fun recordCompositionBatch() {
+            val batch = activeDeleteHistoryBatch ?: return
+            if (compositionRecorded || batch.deletesCommittedText || !isConfiguredDeleteUndoAvailable()) return
+            createCompositionHistoryEntry(batch.initialInput, batch.initialTail, inputString.value, stringInTail.get())
+                ?.let(::pushEditHistoryEntry)
+            compositionRecorded = true
+        }
         deleteLongPressJob = scope.launch {
             try {
                 while (isActive && deleteKeyLongKeyPressed.get()) {
@@ -28496,14 +28781,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     if (current.isEmpty()) {
                         if (tailIsEmpty) {
-                            if (isEditHistoryEnabled()) {
-                                val beforeChar =
-                                    captureDeletedTextFromConnection(currentInputConnection)
-                                if (beforeChar.isNotEmpty()) {
-                                    activeDeleteHistoryBatch?.deletedText?.insert(0, beforeChar)
+                            if (isConfiguredDeleteUndoAvailable()) {
+                                recordCompositionBatch()
+                                forwardDeleteCoordinator.cancel()
+                                backspaceHistoryCoordinator.enqueue(historyGroup)
+                            } else {
+                                if (isEditHistoryEnabled()) {
+                                    val beforeChar = captureDeletedTextFromConnection(currentInputConnection)
+                                    if (beforeChar.isNotEmpty()) activeDeleteHistoryBatch?.deletedText?.insert(0, beforeChar)
                                 }
+                                deleteLastGraphemeOrSelection()
                             }
-                            deleteLastGraphemeOrSelection()
                         } else {
                             break
                         }
@@ -28525,10 +28813,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         deleteLongPressJob?.invokeOnCompletion {
-            if (selectMode.value || !isEditHistoryEnabled()) {
+            if (selectMode.value || !isDeleteHistoryRecordingEnabled()) {
                 activeDeleteHistoryBatch = null
                 return@invokeOnCompletion
             }
+            recordCompositionBatch()
             val batch = activeDeleteHistoryBatch
             activeDeleteHistoryBatch = null
             batch?.let {
@@ -28665,6 +28954,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
         clearZeroQueryAllState(refresh = false)
+        if (isConfiguredDeleteUndoAvailable() && !hasCursorPreedit()) {
+            forwardDeleteCoordinator.cancel()
+            backspaceHistoryCoordinator.enqueue()
+            stopDeleteLongPress()
+            return
+        }
         if (dispatchDirectBackspaceIfNeeded()) {
             stopDeleteLongPress()
             return
@@ -28683,8 +28978,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         hasConvertedKatakana = isLiveConversionEnable == true
                     }
                 } else {
+                    val beforeTail = stringInTail.get()
                     deleteStringCommon(insertString)
                     resetFlagsDeleteKey()
+                    if (isConfiguredDeleteUndoAvailable()) {
+                        createCompositionHistoryEntry(insertString, beforeTail, inputString.value, stringInTail.get())
+                            ?.let(::pushEditHistoryEntry)
+                    }
                 }
             }
 

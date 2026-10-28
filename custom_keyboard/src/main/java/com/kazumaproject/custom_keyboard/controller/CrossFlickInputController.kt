@@ -113,8 +113,13 @@ class CrossFlickInputController(
     private var activeGestureConfig: GestureSessionConfig? = null
 
     private var flickActionMap: Map<FlickDirection, FlickAction> = emptyMap()
+    private var actionDisplayTransform: (FlickAction) -> FlickAction = { it }
     private var textMap: Map<FlickDirection, String> = emptyMap()
     private var longPressTextMap: Map<FlickDirection, String> = emptyMap()
+
+    fun setActionDisplayTransform(transform: (FlickAction) -> FlickAction) {
+        actionDisplayTransform = transform
+    }
 
     private val actionPopupViews = mutableMapOf<FlickDirection, CrossFlickPopupView>()
 
@@ -531,7 +536,7 @@ class CrossFlickInputController(
     private fun showActionPopup(direction: FlickDirection, highlighted: Boolean) {
         if (direction == FlickDirection.TAP) return
 
-        val flickAction = resolveAction(direction) ?: return
+        val flickAction = actionDisplayTransform(resolveAction(direction) ?: return)
         if (!isVisiblePopupAction(flickAction)) return
         val anchor = anchorView ?: return
         if (!anchor.isAttachedToWindow) return
