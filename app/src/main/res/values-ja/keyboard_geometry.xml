@@ -1,0 +1,28 @@
+<resources>
+    <string name="keyboard_geometry_title">キーボードの形と候補</string>
+    <string name="keyboard_geometry_summary">分割・カーブ・高さ・候補位置を調整します</string>
+    <string name="keyboard_geometry_portrait">縦画面</string>
+    <string name="keyboard_geometry_landscape">横画面</string>
+    <string name="keyboard_geometry_split">中央の間隔: %1$d%%</string>
+    <string name="keyboard_geometry_curve">カーブ: %1$d°</string>
+    <string name="keyboard_geometry_hand">カーブの向き</string>
+    <string name="keyboard_geometry_right_hand">右手向け</string>
+    <string name="keyboard_geometry_left_hand">左手向け</string>
+    <string name="keyboard_geometry_height">カーブ時の高さ</string>
+    <string name="keyboard_geometry_height_auto">自動で広げる</string>
+    <string name="keyboard_geometry_height_fixed">現在の高さに収める</string>
+    <string name="keyboard_geometry_candidates">候補の表示位置</string>
+    <string name="keyboard_geometry_top">上</string>
+    <string name="keyboard_geometry_left">左</string>
+    <string name="keyboard_geometry_right">右</string>
+    <string name="keyboard_geometry_center">中央</string>
+    <string name="keyboard_geometry_reset">リセット</string>
+    <string name="keyboard_geometry_preview">配置プレビュー</string>
+    <string name="keyboard_geometry_preview_description">見た目の確認用です。文字入力はできません。</string>
+    <string name="keyboard_geometry_glide_disabled">QWERTY の分割中はグライド入力を一時停止します。</string>
+    <string name="keyboard_geometry_candidate_fallback">候補を表示する幅が足りないため、上部に表示します。</string>
+    <string name="keyboard_geometry_gap_limited">キーボードの幅に合わせて分割幅が制限されます。</string>
+    <string name="keyboard_geometry_example_candidate">候補</string>
+    <string name="keyboard_geometry_example_today">今日</string>
+    <string name="keyboard_geometry_example_hello">こんにちは</string>
+</resources>
