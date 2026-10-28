@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.mushroom;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -32,6 +33,7 @@ public final class MushroomPluginActivity extends Activity {
     }
 
     @Override
+    @SuppressLint("UnspecifiedRegisterReceiverFlag") // Before API 33 the legacy receiver is exported by default.
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         IntentFilter closeFilter = new IntentFilter(ACTION_CLOSE);
