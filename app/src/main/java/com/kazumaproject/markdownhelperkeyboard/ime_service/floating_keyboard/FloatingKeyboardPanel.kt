@@ -84,7 +84,7 @@ internal class FloatingKeyboardPanel(
         setMoveBandHeight(if (atTop) FloatingPanelFrame.MOVE_BAND_DP else 48)
         binding.suggestionViewParent.minimumHeight = if (atTop) dp(48) else 0
         val suggestions = binding.suggestionRecyclerView
-        (suggestions.layoutParams as ConstraintLayout.LayoutParams).apply {
+        (suggestions.layoutParams as? ConstraintLayout.LayoutParams)?.apply {
             startToStart = ConstraintLayout.LayoutParams.UNSET
             endToEnd = ConstraintLayout.LayoutParams.UNSET
             leftToLeft = ConstraintLayout.LayoutParams.PARENT_ID
@@ -95,6 +95,9 @@ internal class FloatingKeyboardPanel(
         binding.floatingHideKeyboardBtn.imageTintList = ColorStateList.valueOf(colors.icon)
         requestLayout()
     }
+
+    /** Reapply the latest chrome settings after a temporarily relocated candidate list returns. */
+    fun refreshChromeSettings() = applyChromeSettings()
 
     override fun setEditing(value: Boolean) {
         super.setEditing(value)

@@ -6,6 +6,12 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingInpu
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingCoordinator
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingWindow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.*
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryKeyboard
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidatePlacement
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidateHost
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.geometryBoundsInHost
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreferences
+import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.DictionaryKind
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.CursorDirection
@@ -1028,6 +1034,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { preferences, key ->
+            if (key == null || key.startsWith("keyboard_geometry_")) {
+                runOnMainThread {
+                    if (key == null || key.endsWith("_curve") || key.endsWith("_split") || key.endsWith("_hand")) {
+                        geometryRequiredHeights.clear()
+                    }
+                    // A settings save updates several keys. Coalesce notifications so the
+                    // active IME is laid out once, after the complete preference is saved.
+                    mainHandler.removeCallbacks(refreshGeometryPreference)
+                    mainHandler.post(refreshGeometryPreference)
+                }
+            }
             if (key == null || key.startsWith("candidate_character_")) {
                 runOnMainThread {
                     val styles = appPreference.candidateIndicatorStyles
@@ -1235,6 +1252,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             toggle = inlineSuggestionToggleForCandidateStrip(),
         )
         suggestionAdapter?.submitContent(content, inlineSuggestionState)
+        refreshGeometryCandidates()
         if (floatingCandidateSurfaceActive || isKeyboardFloatingMode != true) {
             mainLayoutBinding?.let { binding ->
                 setMainSuggestionColumn(binding)
@@ -2858,6 +2876,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun startSplitKeyboard() {
         if (splitController != null || splitLoadingJob?.isActive == true) return
+        detachGeometryCandidates()
         val main = mainLayoutBinding ?: return
         disableKeyboardLayoutEditMode()
         stopAllOngoingKeyLongPresses()
@@ -3445,6 +3464,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun moveCandidateSurface(target: android.widget.LinearLayout?) {
         val binding = mainLayoutBinding ?: return
+        detachGeometryCandidates()
         if (target == null) {
             _suggestionViewStatus.value = true
             binding.suggestionRecyclerView.removeOnLayoutChangeListener(floatingCandidateSizeListener)
@@ -5861,6 +5881,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setFloatingSuggestionColumn() {
         if (splitController != null) return
+        if (floatingGeometryCandidateHost?.attached == true) return
         val recyclerView = floatingKeyboardBinding?.suggestionRecyclerView ?: return
         if (suggestionAdapter?.isInlineSuggestionStripShown() == true) {
             val layoutManager = recyclerView.layoutManager as? LinearLayoutManager
@@ -6833,6 +6854,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             runtimeInputPreferenceListenerRegistered = false
         }
+        mainHandler.removeCallbacks(refreshGeometryPreference)
         updateGemmaBackInvokedCallback(registered = false)
         updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
         gemmaMediaPanelController?.destroy()
@@ -11599,10 +11621,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
         val heightPref = if (usesQwertySize) prefs.qwertyHeightPref else prefs.heightPref
         val minimumHeight = if (mode == TenKeyQWERTYMode.Morse) MorsePreferences(this).settings().minimumHeightDp else 60
-        val heightPx = (heightPref.coerceIn(minimumHeight, 420) * density).toInt()
+        val baseHeightPx = (heightPref.coerceIn(minimumHeight, 420) * density).toInt()
+        val geometryType = geometryKeyboardForMode(mode)
+        val activeGeometryView: View? = when (geometryType) {
+            GeometryKeyboard.TENKEY -> floatingView.keyboardViewFloating
+            GeometryKeyboard.SUMIRE -> floatingView.customLayoutFloating
+            GeometryKeyboard.QWERTY -> floatingView.qwertyViewFloating
+            null -> null
+        }
+        val geometry = geometryType?.let {
+            keyboardGeometryPreferences.read(it, resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE).geometry
+        } ?: KeyboardGeometry()
+        listOf(floatingView.keyboardViewFloating, floatingView.customLayoutFloating, floatingView.qwertyViewFloating).forEach { view ->
+            val active = view === activeGeometryView
+            applyKeyboardGeometry(view, if (active) geometry else KeyboardGeometry(), if (active) baseHeightPx else 0) { required ->
+                if (geometryRequiredHeights[view] != required) {
+                    geometryRequiredHeights[view] = required
+                    if (view === activeGeometryView && geometry.autoHeight && view.isShown && splitController == null) {
+                        floatingView.root.post { if (view.isShown && splitController == null) updateFloatingKeyboardSizeForMode(qwertyMode.value, true) }
+                    }
+                }
+            }
+        }
+        val floatingChromeHeight = (floatingView.root.height - floatingView.floatingKeyboardContainer.height).coerceAtLeast(0)
+        val heightPx = geometryHeight(activeGeometryView, geometry, baseHeightPx, floatingChromeHeight)
         val widthPx = resolveFloatingKeyboardUpdateWidthPx(mode)
         var sizeChanged = false
         var containerHeightChanged = false
+        val previousContainerHeight = floatingView.floatingKeyboardContainer.height
+        val previousPosition = IntArray(2)
+        if (popupWindow.isShowing) popupWindow.contentView.getLocationOnScreen(previousPosition)
         (floatingView.floatingKeyboardContainer.layoutParams as? ConstraintLayout.LayoutParams)
             ?.let { params ->
                 if (params.height != heightPx) {
@@ -11632,6 +11680,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             lastAppliedFloatingEditWidthPx = widthPx
             sizeChanged = true
+        }
+        if (popupWindow.isShowing && geometry.curveDegrees > 0 && geometry.autoHeight &&
+            previousContainerHeight > 0 && previousContainerHeight != heightPx) {
+            // Growing the body should move its top, not the bottom edge. Clamp the
+            // resulting window to the safe area after its new contents are measured.
+            floatingView.root.post {
+                if (!popupWindow.isShowing) return@post
+                val area = com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.FloatingWindowCoordinates(
+                    getSystemService(WindowManager::class.java)
+                ).safeArea(mainLayoutBinding?.root ?: floatingView.root)
+                val x = previousPosition[0].coerceIn(area.left, (area.right - popupWindow.contentView.width).coerceAtLeast(area.left))
+                val y = (previousPosition[1] + previousContainerHeight - heightPx)
+                    .coerceIn(area.top, (area.bottom - popupWindow.contentView.height).coerceAtLeast(area.top))
+                updatePopupWindowPositionSafely(popupWindow, x, y)
+                appPreference.keyboard_floating_position_x = x
+                appPreference.keyboard_floating_position_y = y
+            }
+        }
+        floatingView.root.post {
+            if (splitController != null || isKeyboardFloatingMode != true) return@post
+            val containerWidth = floatingView.floatingKeyboardContainer.width
+            val densityNow = resources.displayMetrics.density
+            val minimumCandidate = (96f * densityNow).toInt()
+            val minimumKeyboard = (160f * densityNow).toInt()
+            val placement = geometryKeyboardForCurrentMode()?.let {
+                keyboardGeometryPreferences.read(it, resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE).candidates
+            } ?: GeometryCandidatePlacement.TOP
+            val side = geometryKeyboardForCurrentMode() in setOf(GeometryKeyboard.TENKEY, GeometryKeyboard.SUMIRE) &&
+                placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT) &&
+                !floatingCandidateSurfaceActive && containerWidth >= minimumCandidate + minimumKeyboard
+            listOf(floatingView.keyboardViewFloating, floatingView.customLayoutFloating, floatingView.qwertyViewFloating).forEach { view ->
+                val params = view.layoutParams as? FrameLayout.LayoutParams ?: return@forEach
+                if (side && view === activeGeometryView) {
+                    val sideWidth = (containerWidth / 4).coerceIn(minimumCandidate, (160f * densityNow).toInt())
+                    val targetWidth = containerWidth - sideWidth
+                    val targetGravity = Gravity.BOTTOM or if (placement == GeometryCandidatePlacement.LEFT) Gravity.RIGHT else Gravity.LEFT
+                    if (params.width != targetWidth || params.gravity != targetGravity) {
+                        params.width = targetWidth; params.gravity = targetGravity; view.layoutParams = params
+                    }
+                    geometryNarrowedViews.add(view)
+                } else if (geometryNarrowedViews.remove(view)) {
+                    params.width = ViewGroup.LayoutParams.MATCH_PARENT; params.gravity = Gravity.NO_GRAVITY; view.layoutParams = params
+                }
+            }
+            floatingView.floatingKeyboardContainer.post { refreshGeometryCandidates() }
         }
         return sizeChanged
     }
@@ -20263,6 +20356,120 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return prefixScore + kanjiScore + typeBonus - duplicatePenalty
     }
 
+    private val keyboardGeometryPreferences by lazy {
+        KeyboardGeometryPreferences(androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
+    }
+    private val geometryRequiredHeights = java.util.WeakHashMap<View, Int>()
+    private var dockedGeometryCandidateHost: GeometryCandidateHost? = null
+    private var floatingGeometryCandidateHost: GeometryCandidateHost? = null
+    private var dockedGeometryCandidateRoot: View? = null
+    private var floatingGeometryCandidateRoot: View? = null
+    private val geometryNarrowedViews = java.util.Collections.newSetFromMap(java.util.WeakHashMap<View, Boolean>())
+    private val refreshGeometryPreference = Runnable {
+        if (splitController == null && splitLoadingJob?.isActive != true) {
+            if (isKeyboardFloatingMode == true) updateFloatingKeyboardSizeForMode(qwertyMode.value, true)
+            else mainLayoutBinding?.let { updateKeyboardLayout(it) }
+            refreshGeometryCandidates()
+        }
+    }
+
+    private fun detachGeometryCandidates() {
+        if (dockedGeometryCandidateHost?.detach() == true) lastSuggestionLayoutKey = null
+        floatingGeometryCandidateHost?.detach()
+        mainLayoutBinding?.root?.fallbackTouchExclusion = null
+        floatingKeyboardBinding?.root?.fallbackTouchExclusion = null
+    }
+
+    private fun refreshGeometryCandidates() {
+        val type = geometryKeyboardForCurrentMode()
+        val eligible = currentCandidateStripContent is CandidateStripContent.Candidates ||
+            currentCandidateStripContent is CandidateStripContent.ZeroQuerySuggestions
+        if (type == null || splitController != null || splitLoadingJob?.isActive == true ||
+            floatingCandidateSurfaceActive || keyboardSymbolViewState.value.isShown || !eligible ||
+            suggestionAdapter?.isInlineSuggestionStripShown() == true || isFullCandidateViewVisible()) {
+            detachGeometryCandidates()
+            return
+        }
+        val config = keyboardGeometryPreferences.read(type, resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+        if (config.candidates == GeometryCandidatePlacement.TOP) { detachGeometryCandidates(); return }
+        val floating = isKeyboardFloatingMode == true
+        val main = mainLayoutBinding ?: return
+        val floatBinding = floatingKeyboardBinding
+        if (floating && floatBinding == null) { detachGeometryCandidates(); return }
+        val root = if (floating) floatBinding!!.floatingKeyboardContainer else main.root
+        val body: View = if (floating) when (type) {
+            GeometryKeyboard.QWERTY -> floatBinding!!.qwertyViewFloating
+            GeometryKeyboard.TENKEY -> floatBinding!!.keyboardViewFloating
+            GeometryKeyboard.SUMIRE -> floatBinding!!.customLayoutFloating
+        } else when (type) {
+            GeometryKeyboard.QWERTY -> main.qwertyView
+            GeometryKeyboard.TENKEY -> main.keyboardView
+            GeometryKeyboard.SUMIRE -> main.customLayoutDefault
+        }
+        if (!body.isShown || root.width <= 0 || body.width <= 0 || body.height <= 0) { detachGeometryCandidates(); return }
+        val minCandidateWidth = (96f * resources.displayMetrics.density).toInt()
+        val bodyBounds = geometryBoundsInHost(body, root, android.graphics.RectF(0f, 0f, body.width.toFloat(), body.height.toFloat()))
+            ?: run { detachGeometryCandidates(); return }
+        val bounds = if (type == GeometryKeyboard.QWERTY) {
+            val gap = (body as QWERTYKeyboardView).effectiveSplitGapPx()
+            val left = (body.width - gap) / 2f
+            val mappedGap = geometryBoundsInHost(body, root, android.graphics.RectF(left, 0f, left + gap, body.height.toFloat()))
+            if (config.candidates != GeometryCandidatePlacement.CENTER || mappedGap == null || mappedGap.width() < minCandidateWidth) {
+                detachGeometryCandidates(); return
+            }
+            mappedGap
+        } else {
+            val sideWidth = (root.width / 4).coerceIn(minCandidateWidth, (160f * resources.displayMetrics.density).toInt())
+            val left = if (config.candidates == GeometryCandidatePlacement.LEFT) bodyBounds.left - sideWidth else bodyBounds.right
+            if (left < 0 || left + sideWidth > root.width) { detachGeometryCandidates(); return }
+            Rect(left, bodyBounds.top, left + sideWidth, bodyBounds.bottom)
+        }
+        if (floating) {
+            dockedGeometryCandidateHost?.detach()
+            if (floatingGeometryCandidateRoot !== root) {
+                floatingGeometryCandidateHost?.detach()
+                floatingGeometryCandidateRoot = root
+                floatingGeometryCandidateHost = GeometryCandidateHost(root, floatBinding!!.suggestionRecyclerView) {
+                    floatingKeyboardPanel?.refreshChromeSettings()
+                }
+            }
+            floatingGeometryCandidateHost?.show(bounds)
+            floatBinding!!.root.fallbackTouchExclusion = { x, y -> floatingGeometryCandidateHost?.containsScreenPoint(x, y) == true }
+        } else {
+            floatingGeometryCandidateHost?.detach()
+            if (dockedGeometryCandidateRoot !== root) {
+                dockedGeometryCandidateHost?.detach()
+                dockedGeometryCandidateRoot = root
+                dockedGeometryCandidateHost = GeometryCandidateHost(root, main.suggestionRecyclerView)
+            }
+            dockedGeometryCandidateHost?.show(bounds)
+            main.root.fallbackTouchExclusion = { x, y -> dockedGeometryCandidateHost?.containsScreenPoint(x, y) == true }
+        }
+    }
+
+    private fun geometryKeyboardForCurrentMode(): GeometryKeyboard? = geometryKeyboardForMode(qwertyMode.value)
+
+    private fun geometryKeyboardForMode(mode: TenKeyQWERTYMode): GeometryKeyboard? = when (mode) {
+        TenKeyQWERTYMode.Default -> GeometryKeyboard.TENKEY
+        TenKeyQWERTYMode.Sumire -> GeometryKeyboard.SUMIRE
+        TenKeyQWERTYMode.TenKeyQWERTY, TenKeyQWERTYMode.TenKeyQWERTYRomaji -> GeometryKeyboard.QWERTY
+        else -> null
+    }
+
+    private fun applyKeyboardGeometry(view: View, value: KeyboardGeometry, baseHeight: Int, onHeight: (Int) -> Unit) {
+        when (view) {
+            is QWERTYKeyboardView -> view.setKeyboardGeometry(value, baseHeight, onHeight)
+            is TenKey -> view.setKeyboardGeometry(value, baseHeight, onHeight)
+            is FlickKeyboardView -> view.setSumireGeometry(value, baseHeight, onHeight)
+        }
+    }
+
+    private fun geometryHeight(view: View?, value: KeyboardGeometry, baseHeight: Int, chromeHeight: Int = 0): Int {
+        if (view == null || value.curveDegrees == 0 || !value.autoHeight) return baseHeight
+        val available = (resources.displayMetrics.heightPixels - systemBottomInset - chromeHeight).coerceAtLeast(baseHeight)
+        return (geometryRequiredHeights[view] ?: baseHeight).coerceIn(baseHeight, available)
+    }
+
     private fun getKeyboardSizePreferences(): KeyboardSizePreferences {
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         return if (isPortrait) {
@@ -20333,7 +20540,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
 
         // 2. ピクセル値の計算
-        val heightPx = when {
+        val baseHeightPx = when {
             qwertyMode.value == TenKeyQWERTYMode.Morse -> (prefs.heightPref.coerceIn(MorsePreferences(this).settings().minimumHeightDp, 420) * density).toInt()
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
                 val clampedHeight = if (isPortrait) {
@@ -20358,6 +20565,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+        val geometryType = if (isSymbol || splitController != null || splitLoadingJob?.isActive == true) null else geometryKeyboardForCurrentMode()
+        val activeGeometryView: View? = when (geometryType) {
+            GeometryKeyboard.TENKEY -> mainView.keyboardView
+            GeometryKeyboard.SUMIRE -> mainView.customLayoutDefault
+            GeometryKeyboard.QWERTY -> mainView.qwertyView
+            null -> null
+        }
+        val geometry = geometryType?.let {
+            keyboardGeometryPreferences.read(it, !isPortrait).geometry
+        } ?: KeyboardGeometry()
+        listOf(mainView.keyboardView, mainView.customLayoutDefault, mainView.qwertyView).forEach { view ->
+            val active = view === activeGeometryView
+            applyKeyboardGeometry(view, if (active) geometry else KeyboardGeometry(), if (active) baseHeightPx else 0) { required ->
+                if (geometryRequiredHeights[view] != required) {
+                    geometryRequiredHeights[view] = required
+                    if (view === activeGeometryView && geometry.autoHeight && view.isShown && splitController == null) {
+                        mainView.root.post { if (view.isShown && splitController == null) updateKeyboardLayout(mainView) }
+                    }
+                }
+            }
+        }
         val widthPx = when {
             prefs.widthPref == 100 -> ViewGroup.LayoutParams.MATCH_PARENT
             else -> (screenWidth * (prefs.widthPref / 100f)).toInt()
@@ -20391,8 +20619,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             configuredCandidateStripHeightDp
         }
-        val baseKeyboardHeight = heightPx + if (floatingCandidateSurfaceActive) 0 else applicationContext.dpToPx(candidateStripHeightDp)
-
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
         // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
         val candidateTabHeightPx = if (floatingCandidateSurfaceActive) {
@@ -20413,6 +20639,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 shortcutToolbarHeightPx = shortcutToolbarHeightPx()
             )
         }
+        val candidateAreaHeight = if (floatingCandidateSurfaceActive) 0 else applicationContext.dpToPx(candidateStripHeightDp)
+        val heightPx = geometryHeight(activeGeometryView, geometry, baseHeightPx, candidateAreaHeight + dockedCandidateChromeHeight)
+        val baseKeyboardHeight = heightPx + candidateAreaHeight
         val contentKeyboardHeight = if (floatingCandidateSurfaceActive) {
             heightPx
         } else {
@@ -20455,7 +20684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             contentKeyboardHeight - candidateTabOffset
         }
 
-        val finalKeyboardWidth =
+        val configuredKeyboardWidth =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
                 qwertyWidthPx
             } else {
@@ -20475,6 +20704,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else {
                 dpToPx(prefs.keyboardMarginEnd)
             }
+
+        val placement = geometryType?.let { keyboardGeometryPreferences.read(it, !isPortrait).candidates }
+            ?: GeometryCandidatePlacement.TOP
+        val availableWidth = (screenWidth - finalStartMargin - finalEndMargin).coerceAtLeast(0)
+        val minCandidateWidth = (96f * density).toInt()
+        val minKeyboardWidth = (160f * density).toInt()
+        val sidePlacement = geometryType != GeometryKeyboard.QWERTY && geometryType != null &&
+            placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT) &&
+            !floatingCandidateSurfaceActive && isKeyboardFloatingMode != true && availableWidth >= minCandidateWidth + minKeyboardWidth
+        val finalKeyboardWidth = if (sidePlacement) ViewGroup.LayoutParams.MATCH_PARENT else configuredKeyboardWidth
 
         val finalBottomMargin =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -20516,6 +20755,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             finalEndMargin = finalEndMargin,
             forceLayout = forceFullLayout
         )
+
+        listOf(mainView.keyboardView, mainView.customLayoutDefault, mainView.qwertyView).forEach { view ->
+            val params = view.layoutParams as? FrameLayout.LayoutParams ?: return@forEach
+            if (sidePlacement && view === activeGeometryView) {
+                val sideWidth = (availableWidth / 4).coerceIn(minCandidateWidth, (160f * density).toInt())
+                val desiredWidth = if (configuredKeyboardWidth == ViewGroup.LayoutParams.MATCH_PARENT) availableWidth else configuredKeyboardWidth
+                val targetWidth = desiredWidth.coerceAtMost(availableWidth - sideWidth)
+                val targetGravity = Gravity.BOTTOM or if (placement == GeometryCandidatePlacement.LEFT) Gravity.RIGHT else Gravity.LEFT
+                if (params.width != targetWidth || params.gravity != targetGravity) {
+                    params.width = targetWidth
+                    params.gravity = targetGravity
+                    view.layoutParams = params
+                }
+                geometryNarrowedViews.add(view)
+            } else if (geometryNarrowedViews.remove(view)) {
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                view.layoutParams = params
+            }
+        }
+        mainView.root.post { refreshGeometryCandidates() }
 
         if (isSymbol) {
             (mainView.keyboardSymbolView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
@@ -23177,6 +23436,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         assertMainThread("setMainSuggestionColumn")
         if (floatingCandidateSurfaceActive) { configureFloatingCandidates(mainView); return }
+        if (dockedGeometryCandidateHost?.attached == true) return
         measureDebugSection("IMEService.setMainSuggestionColumn") {
             val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 

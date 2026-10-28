@@ -1,0 +1,28 @@
+<resources>
+    <string name="keyboard_geometry_title">Keyboard shape and candidates</string>
+    <string name="keyboard_geometry_summary">Adjust the split, curve, height and candidate placement</string>
+    <string name="keyboard_geometry_portrait">Portrait</string>
+    <string name="keyboard_geometry_landscape">Landscape</string>
+    <string name="keyboard_geometry_split">Center gap: %1$d%%</string>
+    <string name="keyboard_geometry_curve">Curve: %1$d°</string>
+    <string name="keyboard_geometry_hand">Curve direction</string>
+    <string name="keyboard_geometry_right_hand">Right hand</string>
+    <string name="keyboard_geometry_left_hand">Left hand</string>
+    <string name="keyboard_geometry_height">Height when curved</string>
+    <string name="keyboard_geometry_height_auto">Expand automatically</string>
+    <string name="keyboard_geometry_height_fixed">Keep current height</string>
+    <string name="keyboard_geometry_candidates">Candidate position</string>
+    <string name="keyboard_geometry_top">Top</string>
+    <string name="keyboard_geometry_left">Left</string>
+    <string name="keyboard_geometry_right">Right</string>
+    <string name="keyboard_geometry_center">Center</string>
+    <string name="keyboard_geometry_reset">Reset</string>
+    <string name="keyboard_geometry_preview">Layout preview</string>
+    <string name="keyboard_geometry_preview_description">Illustrative preview; it does not enter text.</string>
+    <string name="keyboard_geometry_glide_disabled">Glide typing is temporarily unavailable while QWERTY is split.</string>
+    <string name="keyboard_geometry_candidate_fallback">Not enough room for candidates here; they will appear above the keyboard.</string>
+    <string name="keyboard_geometry_gap_limited">The gap is limited by the available keyboard width.</string>
+    <string name="keyboard_geometry_example_candidate">Candidate</string>
+    <string name="keyboard_geometry_example_today">Today</string>
+    <string name="keyboard_geometry_example_hello">Hello</string>
+</resources>

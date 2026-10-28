@@ -614,6 +614,9 @@
     <fragment android:id="@+id/splitKeyboardPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SplitKeyboardPreferenceFragment"
         android:label="@string/split_keyboard_title" />
+    <fragment android:id="@+id/keyboardGeometrySettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.KeyboardGeometrySettingsFragment"
+        android:label="@string/keyboard_geometry_title" />
     <fragment
         android:id="@+id/dictionaryBrowserFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_browser.DictionaryBrowserFragment"
