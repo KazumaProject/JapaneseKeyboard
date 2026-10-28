@@ -24817,7 +24817,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
-                    if (deferCursorInput { onReleasedQWERTYKey(qwertyKey, tap, variations) }) return
+                    handleQwertyKeyRelease(qwertyKey, tap, variations, GestureType.Tap)
+                }
+
+                override fun onCursorFlickQWERTYKey(qwertyKey: QWERTYKey, gestureType: GestureType) {
+                    if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight) ||
+                        gestureType !in setOf(GestureType.FlickTop, GestureType.FlickBottom)) return
+                    handleQwertyKeyRelease(qwertyKey, null, null, gestureType)
+                }
+
+                private fun handleQwertyKeyRelease(
+                    qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?, gestureType: GestureType
+                ) {
+                    if (deferCursorInput { handleQwertyKeyRelease(qwertyKey, tap, variations, gestureType) }) return
                     if (qwertyKey !in setOf(QWERTYKey.QWERTYKeyNotSelect, QWERTYKey.QWERTYKeyShift,
                             QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight,
                             QWERTYKey.QWERTYKeyCursorUp, QWERTYKey.QWERTYKeyCursorDown)) endCursorSelectionForInput()
@@ -24894,7 +24906,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                                     handleDeleteKeyInHenkan(suggestions, insertString)
                                 } else {
-                                    handleLeftCursor(GestureType.Tap, insertString)
+                                    handleLeftCursor(gestureType, insertString)
                                 }
                             }
                             cancelLeftLongPress()
@@ -24912,7 +24924,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         mainView, suggestions, insertString
                                     )
                                 } else {
-                                    actionInRightKeyPressed(GestureType.Tap, insertString)
+                                    actionInRightKeyPressed(gestureType, insertString)
                                 }
                             }
                             cancelRightLongPress()
