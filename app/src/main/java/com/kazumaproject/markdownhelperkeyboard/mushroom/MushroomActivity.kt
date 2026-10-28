@@ -5,12 +5,12 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.ResultReceiver
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.net.toUri
 import com.kazumaproject.markdownhelperkeyboard.R
 import java.util.UUID
 
@@ -36,7 +36,7 @@ class MushroomActivity : ComponentActivity() {
         }
         try {
             val chosenIntent = Intent(this, ChosenReceiver::class.java).apply {
-                data = Uri.parse("mushroom://chosen/${UUID.randomUUID()}")
+                data = "mushroom://chosen/${UUID.randomUUID()}".toUri()
                 putExtra(EXTRA_RECEIVER, receiver())
             }
             val flags = PendingIntent.FLAG_ONE_SHOT or
