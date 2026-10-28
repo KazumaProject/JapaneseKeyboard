@@ -1,0 +1,9 @@
+<resources>
+    <item type="id" name="gesture_pad_left" />
+    <item type="id" name="gesture_pad_right" />
+    <item type="id" name="gesture_set_left" />
+    <item type="id" name="gesture_set_right" />
+    <item type="id" name="gesture_pad_third" />
+    <item type="id" name="gesture_pad_fourth" />
+    <item type="id" name="gesture_menu" />
+</resources>

@@ -325,6 +325,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleSettingRequest(request: String?): Boolean {
         return when (request) {
+            "gesture" -> {
+                currentNavController().navigate(R.id.gesturePreferenceFragment)
+                true
+            }
             "setting_fragment_request" -> {
                 navigateToPreferredSettingHome(currentNavController())
                 true

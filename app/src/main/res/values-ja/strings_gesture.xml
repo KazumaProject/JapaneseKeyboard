@@ -1,0 +1,14 @@
+<resources>
+    <string name="gesture_title">ジェスチャー入力</string>
+    <string name="gesture_summary">一筆のジェスチャーで文字を入力します</string>
+    <string name="gesture_controls_title">キーボードの配置</string>
+    <string name="gesture_controls_summary">1〜4個の入力領域と特殊キーを配置・編集</string>
+    <string name="gesture_sets_title">文字セットの管理</string>
+    <string name="gesture_sets_summary">ジェスチャーの作成・複製・割り当て編集</string>
+    <string name="gesture_left_set">左の描画領域</string>
+    <string name="gesture_right_set">右の描画領域</string>
+    <string name="gesture_show_guide">メニューに文字表を表示</string>
+    <string name="gesture_tolerance">認識の許容範囲</string>
+    <string name="gesture_invalid_data">保存データが不正なため標準設定を使用しています。元のデータは保持されています。</string>
+    <string name="gesture_pad_assignments">入力領域</string>
+</resources>

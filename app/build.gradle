@@ -1091,6 +1091,7 @@ dependencies {
     implementation project(':symbol_keyboard')
     implementation project(':gojuon_keyboard')
     implementation project(':morse_keyboard')
+    implementation project(':gesture_keyboard')
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
     fullImplementation project(':zenz')

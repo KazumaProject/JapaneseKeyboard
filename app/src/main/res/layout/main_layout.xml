@@ -161,6 +161,13 @@
         android:layout_gravity="bottom"
         android:visibility="gone" />
 
+    <com.kazumaproject.gesture_keyboard.GestureKeyboardView
+        android:id="@+id/gesture_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:visibility="gone" />
+
     <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
         android:id="@+id/gojuon_view"
         android:layout_width="match_parent"
