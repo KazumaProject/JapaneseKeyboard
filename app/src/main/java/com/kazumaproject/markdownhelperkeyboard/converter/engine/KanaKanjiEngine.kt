@@ -1158,7 +1158,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -1666,7 +1666,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -2105,7 +2105,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -2601,7 +2601,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -3170,7 +3170,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -3669,7 +3669,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -3902,11 +3902,10 @@ class KanaKanjiEngine {
         collector, primaryCandidateCount,
     )
 
-    private fun createAlphanumericCaseCandidates(input: String): List<Candidate> {
-        // Mixed ASCII letters/digits need literal variants without English dictionary prediction.
-        if (!input.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } ||
-            input.none { it in 'a'..'z' || it in 'A'..'Z' } ||
-            input.none { it in '0'..'9' }
+    private fun createAsciiCaseCandidates(input: String): List<Candidate> {
+        // ASCII text containing letters needs literal variants even with symbols or spaces.
+        if (!input.isAllHalfWidthAscii() ||
+            input.none { it in 'a'..'z' || it in 'A'..'Z' }
         ) return emptyList()
 
         return listOf(input, input.replaceFirstChar { it.uppercaseChar() }, input.uppercase())
@@ -4021,7 +4020,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
