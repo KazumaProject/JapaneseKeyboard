@@ -617,6 +617,7 @@ private class SizeHandles(context: android.content.Context, private val preview:
     private val activeColor = MaterialColors.getColor(this, MaterialR.attr.colorPrimaryContainer, Color.rgb(210, 225, 255))
     private val activeIconColor = MaterialColors.getColor(this, MaterialR.attr.colorOnPrimaryContainer, Color.BLACK)
     private val handleOutlineColor = MaterialColors.getColor(this, MaterialR.attr.colorSurface, Color.WHITE)
+    private val gripColor = MaterialColors.getColor(this, MaterialR.attr.colorOnSurfaceVariant, Color.DKGRAY)
     private var gesture = 0
     private var originX = 0f; private var originY = 0f
     private var initialSurfaceWidth = 0f
@@ -636,8 +637,8 @@ private class SizeHandles(context: android.content.Context, private val preview:
         val b = preview.adjustmentBounds() ?: return
         updateGestureExclusion(b)
         when (mode) {
-            SizeEditMode.SIZE -> (2..5).forEach { edge -> drawHandle(canvas, handleCenter(b, edge), edge) }
-            SizeEditMode.POSITION -> drawHandle(canvas, handleCenter(b, 1), 1)
+            SizeEditMode.SIZE -> (2..5).forEach { edge -> drawResizeGrip(canvas, b, edge) }
+            SizeEditMode.POSITION -> drawMoveHandle(canvas, handleCenter(b, 1))
             null -> Unit
         }
     }
@@ -657,27 +658,50 @@ private class SizeHandles(context: android.content.Context, private val preview:
             visibleCenter(y, height, max(halfHeight, targetHalf)))
     }
 
-    private fun drawHandle(canvas: Canvas, center: PointF, handle: Int) {
-        val side = handle == 4 || handle == 5
-        val halfWidth = (if (handle == 1) 20 else if (side) 14 else 24) * density
-        val halfHeight = (if (handle == 1) 20 else if (side) 24 else 14) * density
+    /** A small, edge-aligned grip sits within the existing 48 dp touch target. */
+    private fun drawResizeGrip(canvas: Canvas, bounds: RectF, edge: Int) {
+        val side = edge == 4 || edge == 5
+        val active = gesture == edge
+        val length = (if (active) 36f else 30f) * density
+        val thickness = (if (active) 5f else 4f) * density
+        val outline = 1.5f * density
+        val halfWidth = (if (side) thickness else length) / 2f
+        val halfHeight = (if (side) length else thickness) / 2f
+        val x = when (edge) { 4 -> bounds.left; 5 -> bounds.right; else -> bounds.centerX() }
+        val y = when (edge) { 2 -> bounds.top; 3 -> bounds.bottom; else -> bounds.centerY() }
+        fun visibleCenter(value: Float, limit: Int, halfSize: Float): Float =
+            if (limit < halfSize * 2) limit / 2f else value.coerceIn(halfSize, limit - halfSize)
+        val cx = visibleCenter(x, width, halfWidth + outline)
+        val cy = visibleCenter(y, height, halfHeight + outline)
+        val rect = RectF(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = outline * 2
+        paint.color = handleOutlineColor
+        canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint)
+        paint.style = Paint.Style.FILL
+        paint.color = if (active) handleColor else gripColor
+        canvas.drawRoundRect(rect, thickness / 2f, thickness / 2f, paint)
+    }
+
+    private fun drawMoveHandle(canvas: Canvas, center: PointF) {
+        val halfWidth = 20 * density
+        val halfHeight = 20 * density
         val radius = min(halfWidth, halfHeight)
         val rect = RectF(center.x - halfWidth, center.y - halfHeight, center.x + halfWidth, center.y + halfHeight)
         paint.style = Paint.Style.FILL
-        paint.color = if (gesture == handle) activeColor else handleColor
+        paint.color = if (gesture == 1) activeColor else handleColor
         canvas.drawRoundRect(rect, radius, radius, paint)
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 2 * density
         paint.color = handleOutlineColor
         canvas.drawRoundRect(rect, radius, radius, paint)
 
-        paint.color = if (gesture == handle) activeIconColor else handleIconColor
+        paint.color = if (gesture == 1) activeIconColor else handleIconColor
         paint.strokeWidth = 2 * density
         paint.strokeCap = Paint.Cap.ROUND
         paint.strokeJoin = Paint.Join.ROUND
-        val arrowLength = if (handle == 1) 10.5f else 8f
-        if (handle == 1 || side) drawArrows(canvas, center, horizontal = true, lengthDp = arrowLength)
-        if (handle == 1 || !side) drawArrows(canvas, center, horizontal = false, lengthDp = arrowLength)
+        drawArrows(canvas, center, horizontal = true, lengthDp = 10.5f)
+        drawArrows(canvas, center, horizontal = false, lengthDp = 10.5f)
         paint.style = Paint.Style.FILL
     }
 
