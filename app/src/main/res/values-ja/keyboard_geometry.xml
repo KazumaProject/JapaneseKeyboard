@@ -21,7 +21,7 @@
     <string name="keyboard_geometry_center">中央</string>
     <string name="keyboard_geometry_candidate_width">候補欄の幅（全体に対する割合）: %1$d%%</string>
     <string name="keyboard_geometry_candidate_order">候補の文字の向き</string>
-    <string name="keyboard_geometry_candidate_order_vertical">縦並び</string>
+    <string name="keyboard_geometry_candidate_order_vertical">縦並び（幅に応じて列数を調整）</string>
     <string name="keyboard_geometry_candidate_order_horizontal">横書き</string>
     <string name="keyboard_geometry_candidate_width_limited">候補欄やキーが狭くなりすぎないよう、幅を制限しています。</string>
     <string name="keyboard_geometry_reset">リセット</string>

@@ -414,6 +414,15 @@ class SuggestionAdapter internal constructor(
         if (busy != null) busy.post { if (!released) notifyDataSetChanged() } else notifyDataSetChanged()
     }
 
+    internal fun sideCandidateTextSizeSp(): Float =
+        if (floatingPanelWidth > 0) candidateTextSize.coerceAtLeast(18f) else candidateTextSize
+
+    internal fun sideCandidateSpanSize(position: Int, columns: Int): Int = when (val item = displayItems.getOrNull(position)) {
+        is SuggestionDisplayItem.CandidateItem -> if (item.candidate.presentation == null) 1 else columns
+        is SuggestionDisplayItem.ZeroQueryCandidateItem -> if (item.candidate.presentation == null) 1 else columns
+        else -> columns
+    }
+
     fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
         if (characterStyles == styles) return
         characterStyles = styles
@@ -1231,7 +1240,8 @@ class SuggestionAdapter internal constructor(
 
     internal data class VerticalCandidateState(
         val maxLines: Int, val ellipsize: android.text.TextUtils.TruncateAt?, val gravity: Int,
-        val alignment: Int, val contentDescription: CharSequence?, val itemHeight: Int, val itemMinHeight: Int,
+        val alignment: Int, val contentDescription: CharSequence?, val itemHeight: Int,
+        val itemMinHeight: Int, val itemMinWidth: Int,
     )
 
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -1533,6 +1543,7 @@ class SuggestionAdapter internal constructor(
         text.gravity = state.gravity; text.textAlignment = state.alignment
         text.contentDescription = state.contentDescription
         holder.itemView.minimumHeight = state.itemMinHeight
+        holder.itemView.minimumWidth = state.itemMinWidth
         holder.itemView.layoutParams?.let { it.height = state.itemHeight; holder.itemView.layoutParams = it }
     }
 
@@ -1552,7 +1563,7 @@ class SuggestionAdapter internal constructor(
         val root = holder.itemView
         val state = VerticalCandidateState(text.maxLines, text.ellipsize, text.gravity,
             text.textAlignment, text.contentDescription, root.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT,
-            root.minimumHeight)
+            root.minimumHeight, root.minimumWidth)
         when (holder) {
             is SuggestionViewHolder -> holder.verticalState = state
             is ZeroQueryViewHolder -> holder.verticalState = state
@@ -1580,6 +1591,7 @@ class SuggestionAdapter internal constructor(
             holder.typeText.contentDescription = listOf(label, reading).filter { it.isNotEmpty() }.joinToString(", ")
         }
         root.minimumHeight = maxOf(state.itemMinHeight, (48f * root.resources.displayMetrics.density).toInt())
+        root.minimumWidth = maxOf(state.itemMinWidth, (48f * root.resources.displayMetrics.density).toInt())
         root.layoutParams?.let { it.height = ViewGroup.LayoutParams.WRAP_CONTENT; root.layoutParams = it }
     }
 

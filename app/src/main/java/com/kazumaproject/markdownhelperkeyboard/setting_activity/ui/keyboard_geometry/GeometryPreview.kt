@@ -200,7 +200,7 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
         }
         paint.color = model.candidateTextColor
         paint.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
-            AppPreference.candidate_letter_size ?: 16f, resources.displayMetrics)
+            AppPreference.candidate_letter_size ?: 14f, resources.displayMetrics)
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = KeyboardFontApplicator.processSnapshot.typeface
         val examples = listOf(
@@ -218,17 +218,20 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
             canvas.clipRect(left, model.chromeHeight, left + model.candidateSideWidth, model.chromeHeight + model.bodyHeight)
             if (value.candidates != GeometryCandidatePlacement.CENTER && value.sideCandidateVerticalText) {
                 val density = resources.displayMetrics.density
+                val columns = SideCandidateSizing.columnCount(model.candidateSideWidth.roundToInt(), density, paint.textSize)
+                val cellWidth = model.candidateSideWidth / columns
                 var top = model.chromeHeight
-                for (label in examples) {
-                    val characters = verticalCandidateText(label).split('\n')
-                    val columnWidth = characters.maxOfOrNull { paint.measureText(it) } ?: 0f
-                    val textHeight = characters.size * paint.fontSpacing
-                    val itemHeight = maxOf(48f * density, textHeight)
-                    val cx = left + 5f * density + columnWidth / 2f
-                    var baseline = top + (itemHeight - textHeight) / 2f - paint.fontMetrics.ascent
-                    for (character in characters) {
-                        canvas.drawText(character, cx, baseline, paint)
-                        baseline += paint.fontSpacing
+                for (row in examples.map { verticalCandidateText(it).split('\n') }.chunked(columns)) {
+                    val itemHeight = row.maxOf { maxOf(48f * density, it.size * paint.fontSpacing) }
+                    row.forEachIndexed { column, characters ->
+                        val columnWidth = characters.maxOfOrNull { paint.measureText(it) } ?: 0f
+                        val textHeight = characters.size * paint.fontSpacing
+                        val cx = left + column * cellWidth + 5f * density + columnWidth / 2f
+                        var baseline = top + (itemHeight - textHeight) / 2f - paint.fontMetrics.ascent
+                        for (character in characters) {
+                            canvas.drawText(character, cx, baseline, paint)
+                            baseline += paint.fontSpacing
+                        }
                     }
                     top += itemHeight
                 }
