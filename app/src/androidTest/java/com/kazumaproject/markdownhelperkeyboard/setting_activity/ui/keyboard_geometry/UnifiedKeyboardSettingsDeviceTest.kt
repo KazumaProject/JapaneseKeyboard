@@ -121,7 +121,8 @@ class UnifiedKeyboardSettingsDeviceTest {
                             left = bounds.left
                             val location = IntArray(2).also(preview::getLocationOnScreen)
                             startX = (location[0] + bounds.right.coerceAtMost(preview.width - 9 * context.resources.displayMetrics.density)).roundToInt()
-                            startY = (location[1] + bounds.centerY()).roundToInt()
+                            // Start near the end of the longer visible grip, beyond the old 48 dp target.
+                            startY = (location[1] + bounds.centerY() + 30 * context.resources.displayMetrics.density).roundToInt()
                             delta = (15 * context.resources.displayMetrics.density).roundToInt()
                             laidOut = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q || handles.systemGestureExclusionRects.isNotEmpty()
                         }
@@ -152,9 +153,10 @@ class UnifiedKeyboardSettingsDeviceTest {
                     right = bounds.right
                     val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
                     val delta = 15 * context.resources.displayMetrics.density
-                    touch(handles, MotionEvent.ACTION_DOWN, bounds.left, bounds.centerY())
-                    touch(handles, MotionEvent.ACTION_MOVE, bounds.left + delta, bounds.centerY())
-                    touch(handles, MotionEvent.ACTION_UP, bounds.left + delta, bounds.centerY())
+                    val y = bounds.centerY() - 30 * context.resources.displayMetrics.density
+                    touch(handles, MotionEvent.ACTION_DOWN, bounds.left, y)
+                    touch(handles, MotionEvent.ACTION_MOVE, bounds.left + delta, y)
+                    touch(handles, MotionEvent.ACTION_UP, bounds.left + delta, y)
                 }
                 await { var ready = false; instrumentation.runOnMainSync { ready = page?.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)?.adjustmentBounds() != null }; ready }
                 instrumentation.runOnMainSync {
@@ -191,11 +193,12 @@ class UnifiedKeyboardSettingsDeviceTest {
                     val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
                     val density = context.resources.displayMetrics.density
                     assertEquals(0f, bounds.left, 1f)
-                    // The screen-edge pill is shifted inward; its full 48 dp hit area follows it.
+                    // The screen-edge grip remains draggable both across its depth and near its end.
                     val x = bounds.left + 47 * density
-                    touch(handles, MotionEvent.ACTION_DOWN, x, bounds.centerY())
-                    touch(handles, MotionEvent.ACTION_MOVE, x + 20 * density, bounds.centerY())
-                    touch(handles, MotionEvent.ACTION_UP, x + 20 * density, bounds.centerY())
+                    val y = bounds.centerY() + 30 * density
+                    touch(handles, MotionEvent.ACTION_DOWN, x, y)
+                    touch(handles, MotionEvent.ACTION_MOVE, x + 20 * density, y)
+                    touch(handles, MotionEvent.ACTION_UP, x + 20 * density, y)
                 }
                 assertTrue("left edge responds throughout the visible handle's hit area", prefs.getInt("keyboard_width_preference", 100) < 100)
                 instrumentation.waitForIdleSync()
@@ -205,9 +208,10 @@ class UnifiedKeyboardSettingsDeviceTest {
                     val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
                     val density = context.resources.displayMetrics.density
                     val y = bounds.bottom - 47 * density
-                    touch(handles, MotionEvent.ACTION_DOWN, bounds.centerX(), y)
-                    touch(handles, MotionEvent.ACTION_MOVE, bounds.centerX(), y - 20 * density)
-                    touch(handles, MotionEvent.ACTION_UP, bounds.centerX(), y - 20 * density)
+                    val x = bounds.centerX() + 30 * density
+                    touch(handles, MotionEvent.ACTION_DOWN, x, y)
+                    touch(handles, MotionEvent.ACTION_MOVE, x, y - 20 * density)
+                    touch(handles, MotionEvent.ACTION_UP, x, y - 20 * density)
                 }
                 assertEquals("bottom edge responds throughout the visible handle's hit area", 200, prefs.getInt("keyboard_height_preference", 220))
             }
@@ -262,9 +266,10 @@ class UnifiedKeyboardSettingsDeviceTest {
                     val preview = page.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
                     val bounds = preview.adjustmentBounds()!!; val handles = page.findViewById<View>(R.id.keyboard_layout_handles)
                     val d = 20 * page.resources.displayMetrics.density
-                    touch(handles, MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.top)
-                    touch(handles, MotionEvent.ACTION_MOVE, bounds.centerX(), bounds.top - d)
-                    touch(handles, MotionEvent.ACTION_UP, bounds.centerX(), bounds.top - d)
+                    val x = bounds.centerX() - 30 * page.resources.displayMetrics.density
+                    touch(handles, MotionEvent.ACTION_DOWN, x, bounds.top)
+                    touch(handles, MotionEvent.ACTION_MOVE, x, bounds.top - d)
+                    touch(handles, MotionEvent.ACTION_UP, x, bounds.top - d)
                 }
                 assertEquals(before + ("keyboard_height_preference" to 240), sizeEntries(prefs))
                 instrumentation.runOnMainSync { requireNotNull(root).findViewById<View>(R.id.keyboard_layout_edit_done).performClick() }

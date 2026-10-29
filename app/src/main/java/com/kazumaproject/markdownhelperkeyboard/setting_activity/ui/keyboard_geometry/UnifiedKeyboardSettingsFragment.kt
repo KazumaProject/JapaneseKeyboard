@@ -612,6 +612,8 @@ private class SizeHandles(context: android.content.Context, private val preview:
     private val commit: (IndependentKeyboardSize) -> Unit) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val density = resources.displayMetrics.density
+    private val resizeTargetHalfDepth = 24f * density
+    private val resizeTargetHalfLength = 36f * density
     private val handleColor = MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary, Color.rgb(54, 106, 197))
     private val handleIconColor = MaterialColors.getColor(this, MaterialR.attr.colorOnPrimary, Color.WHITE)
     private val activeColor = MaterialColors.getColor(this, MaterialR.attr.colorPrimaryContainer, Color.rgb(210, 225, 255))
@@ -643,26 +645,23 @@ private class SizeHandles(context: android.content.Context, private val preview:
         }
     }
 
-    /** Keep the whole control visible at the screen edge and use the same center for hit testing. */
+    /** Keep the move control or the entire resize touch target inside the view. */
     private fun handleCenter(bounds: RectF, handle: Int): PointF {
         val side = handle == 4 || handle == 5
-        val halfWidth = (if (handle == 1) 20 else if (side) 14 else 24) * density
-        val halfHeight = (if (handle == 1) 20 else if (side) 24 else 14) * density
+        val halfWidth = if (handle == 1) 20f * density else if (side) resizeTargetHalfDepth else resizeTargetHalfLength
+        val halfHeight = if (handle == 1) 20f * density else if (side) resizeTargetHalfLength else resizeTargetHalfDepth
         val x = when (handle) { 4 -> bounds.left; 5 -> bounds.right; else -> bounds.centerX() }
         val y = when (handle) { 2 -> bounds.top; 3 -> bounds.bottom; else -> bounds.centerY() }
         fun visibleCenter(value: Float, limit: Int, halfSize: Float): Float =
             if (limit < halfSize * 2) limit / 2f else value.coerceIn(halfSize, limit - halfSize)
-        // At a screen edge, keep the full 48 dp resize target inside the view as well.
-        val targetHalf = if (handle == 1) 0f else 24 * density
-        return PointF(visibleCenter(x, width, max(halfWidth, targetHalf)),
-            visibleCenter(y, height, max(halfHeight, targetHalf)))
+        return PointF(visibleCenter(x, width, halfWidth), visibleCenter(y, height, halfHeight))
     }
 
-    /** A clearly visible, edge-aligned grip sits within the 48 dp touch target. */
+    /** The rounded grip fits within the touch target, including its active outline. */
     private fun drawResizeGrip(canvas: Canvas, bounds: RectF, edge: Int) {
         val side = edge == 4 || edge == 5
         val active = gesture == edge
-        val length = (if (active) 44f else 40f) * density
+        val length = (if (active) 68f else 64f) * density
         val thickness = (if (active) 14f else 12f) * density
         val outline = 1.5f * density
         val halfWidth = (if (side) thickness else length) / 2f
@@ -719,9 +718,10 @@ private class SizeHandles(context: android.content.Context, private val preview:
     }
     private fun updateGestureExclusion(bounds: RectF) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        val hit = (24 * density).roundToInt()
-        val top = (if (mode == SizeEditMode.POSITION) bounds.top else bounds.centerY() - hit).roundToInt().coerceIn(0, height)
-        val bottom = (if (mode == SizeEditMode.POSITION) bounds.bottom else bounds.centerY() + hit).roundToInt().coerceIn(top, height)
+        val hit = resizeTargetHalfDepth.roundToInt()
+        val sideCenterY = handleCenter(bounds, 4).y
+        val top = (if (mode == SizeEditMode.POSITION) bounds.top else sideCenterY - resizeTargetHalfLength).roundToInt().coerceIn(0, height)
+        val bottom = (if (mode == SizeEditMode.POSITION) bounds.bottom else sideCenterY + resizeTargetHalfLength).roundToInt().coerceIn(top, height)
         val leftNearEdge = if (mode == SizeEditMode.POSITION) bounds.left <= hit else handleCenter(bounds, 4).x - hit < hit
         val rightNearEdge = if (mode == SizeEditMode.POSITION) width - bounds.right <= hit else width - handleCenter(bounds, 5).x - hit < hit
         val rects = buildList {
@@ -734,10 +734,12 @@ private class SizeHandles(context: android.content.Context, private val preview:
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 val b = preview.adjustmentBounds() ?: return false
-                val hit = 24 * density
                 fun near(handle: Int): Boolean {
                     val center = handleCenter(b, handle)
-                    return abs(event.x - center.x) <= hit && abs(event.y - center.y) <= hit
+                    val side = handle == 4 || handle == 5
+                    val halfWidth = if (side) resizeTargetHalfDepth else resizeTargetHalfLength
+                    val halfHeight = if (side) resizeTargetHalfLength else resizeTargetHalfDepth
+                    return abs(event.x - center.x) <= halfWidth && abs(event.y - center.y) <= halfHeight
                 }
                 val edit = mode ?: return false
                 gesture = when {
