@@ -45,6 +45,8 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidatePlacement
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryKeyboard
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreference
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateText
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSize
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -207,14 +209,45 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
             context.getString(R.string.keyboard_geometry_example_candidate)
         )
         if (model.candidateSideWidth > 0f) {
-            val cx = if (value.candidates == GeometryCandidatePlacement.CENTER) {
-                model.bodyLeft + model.bodyWidth / 2f
+            val left = if (value.candidates == GeometryCandidatePlacement.CENTER) {
+                model.bodyLeft + (model.bodyWidth - model.candidateSideWidth) / 2f
             } else if (value.candidates == GeometryCandidatePlacement.LEFT) {
-                model.bodyLeft - model.candidateSideWidth / 2f
-            } else model.bodyLeft + model.bodyWidth + model.candidateSideWidth / 2f
-            examples.forEachIndexed { i, label ->
-                canvas.drawText(label, cx, model.chromeHeight + (i + 0.8f) * 42f * resources.displayMetrics.density, paint)
+                model.bodyLeft - model.candidateSideWidth
+            } else model.bodyLeft + model.bodyWidth
+            canvas.save()
+            canvas.clipRect(left, model.chromeHeight, left + model.candidateSideWidth, model.chromeHeight + model.bodyHeight)
+            if (value.candidates != GeometryCandidatePlacement.CENTER && value.sideCandidateVerticalText) {
+                val density = resources.displayMetrics.density
+                var top = model.chromeHeight
+                for (label in examples) {
+                    val characters = verticalCandidateText(label).split('\n')
+                    val columnWidth = characters.maxOfOrNull { paint.measureText(it) } ?: 0f
+                    val textHeight = characters.size * paint.fontSpacing
+                    val itemHeight = maxOf(48f * density, textHeight)
+                    val cx = left + 5f * density + columnWidth / 2f
+                    var baseline = top + (itemHeight - textHeight) / 2f - paint.fontMetrics.ascent
+                    for (character in characters) {
+                        canvas.drawText(character, cx, baseline, paint)
+                        baseline += paint.fontSpacing
+                    }
+                    top += itemHeight
+                }
+            } else if (value.candidates == GeometryCandidatePlacement.CENTER) {
+                val cx = left + model.candidateSideWidth / 2f
+                examples.forEachIndexed { i, label ->
+                    canvas.drawText(label, cx, model.chromeHeight + (i + 0.8f) * 42f * resources.displayMetrics.density, paint)
+                }
+            } else {
+                val density = resources.displayMetrics.density
+                paint.textAlign = Paint.Align.LEFT
+                examples.forEachIndexed { i, label ->
+                    val spaces = if (i == 0) 4 else if (label.length == 2) 2 else 1
+                    val x = left + 5f * density + paint.measureText(" ".repeat(spaces))
+                    canvas.drawText(label, x, model.chromeHeight + (i + 0.8f) * 32f * density, paint)
+                }
+                paint.textAlign = Paint.Align.CENTER
             }
+            canvas.restore()
         } else {
             examples.forEachIndexed { i, label ->
                 canvas.drawText(label, model.surfaceLeft + model.surfaceWidth * (i * .3f + .2f), model.chromeHeight * .6f, paint)
@@ -253,8 +286,8 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
         val end = endDp.coerceAtLeast(0) * density
         val available = (screenWidth - start - end).coerceAtLeast(1f)
         val requested = min(available, screenWidth * keyboardWidthPercent / 100f)
-        val side = if (keyboard in setOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE) && value.candidates != GeometryCandidatePlacement.TOP && requested >= 256f * density) {
-            requested / 4f
+        val side = if (keyboard in setOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE) && value.candidates != GeometryCandidatePlacement.TOP) {
+            SideCandidateSizing.width(requested.roundToInt(), density, value.sideCandidateWidthPercent).toFloat()
         } else 0f
         val bodyWidth = (requested - side).coerceAtLeast(1f)
         val surfaceWidth = requested

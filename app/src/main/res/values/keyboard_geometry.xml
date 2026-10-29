@@ -19,6 +19,11 @@
     <string name="keyboard_geometry_left">Left</string>
     <string name="keyboard_geometry_right">Right</string>
     <string name="keyboard_geometry_center">Center</string>
+    <string name="keyboard_geometry_candidate_width">Candidate width: %1$d%% of total</string>
+    <string name="keyboard_geometry_candidate_order">Candidate text direction</string>
+    <string name="keyboard_geometry_candidate_order_vertical">Vertical characters</string>
+    <string name="keyboard_geometry_candidate_order_horizontal">Horizontal text</string>
+    <string name="keyboard_geometry_candidate_width_limited">Candidate width is limited to keep candidates and keys usable.</string>
     <string name="keyboard_geometry_reset">Reset</string>
     <string name="keyboard_geometry_preview">Layout preview</string>
     <string name="keyboard_geometry_preview_description">Display-only preview; it does not enter text.</string>

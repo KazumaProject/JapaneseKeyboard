@@ -1,4 +1,7 @@
 <resources>
+    <item name="keyboard_geometry_candidate_width" type="id" />
+    <item name="keyboard_geometry_candidate_order" type="id" />
+    <item name="keyboard_geometry_candidate_placement" type="id" />
     <item name="keyboard_layout_preview" type="id" />
     <item name="keyboard_layout_handles" type="id" />
     <item name="keyboard_layout_type_selector" type="id" />
