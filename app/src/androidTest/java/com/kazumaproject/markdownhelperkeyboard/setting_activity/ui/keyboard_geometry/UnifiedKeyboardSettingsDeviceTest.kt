@@ -466,10 +466,14 @@ class UnifiedKeyboardSettingsDeviceTest {
         var host: FastInputHostActivity? = null
         try {
             shell("ime disable $ime")
+            await { shell("settings get secure default_input_method") != ime }
+            // The previous bound service is destroyed asynchronously after the selection changes.
+            SystemClock.sleep(750)
             prefs.edit().putString("keyboard_order_preference", "[\"$type\"]")
                 .putBoolean("save_last_used_keyboard", false).putBoolean("keyboard_floating_preference", floating)
                 .putInt("keyboard_height_preference", 300).putInt("keyboard_width_preference", 100).commit()
             shell("ime enable $ime")
+            await { shell("ime list -s").lineSequence().any { it.trim() == ime } }
             shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name}")
             await {
                 instrumentation.runOnMainSync {
@@ -479,7 +483,13 @@ class UnifiedKeyboardSettingsDeviceTest {
                 host != null
             }
             shell("ime set $ime")
-            instrumentation.runOnMainSync { requireNotNull(host).restartEditorInput(clearText = true) }
+            await { shell("settings get secure default_input_method") == ime }
+            instrumentation.runOnMainSync {
+                val activity = requireNotNull(host)
+                activity.restartEditorInput(clearText = true)
+                activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                    .showSoftInput(activity.editText, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
             var surface: View? = null
             val id = when {
                 type == "GOJUON" && floating -> R.id.gojuon_view_floating
