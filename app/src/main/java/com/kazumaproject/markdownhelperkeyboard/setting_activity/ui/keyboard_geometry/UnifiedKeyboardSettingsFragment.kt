@@ -8,6 +8,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Point
+import android.graphics.Rect
+import android.graphics.RectF
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
@@ -195,6 +197,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        (activity as? AppCompatActivity)?.supportActionBar?.setTitle(R.string.keyboard_layout_settings_title)
         backCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() = leaveEditor()
         }.also { requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, it) }
@@ -619,11 +622,13 @@ private class SizeHandles(context: android.content.Context, private val preview:
         set(value) {
             field = value
             contentDescription = context.getString(if (value == SizeEditMode.POSITION) R.string.keyboard_layout_move else R.string.keyboard_layout_resize)
+            if (value == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) systemGestureExclusionRects = emptyList()
             invalidate()
         }
     init { contentDescription = context.getString(R.string.keyboard_layout_resize); isFocusable = true }
     override fun onDraw(canvas: Canvas) {
         val b = preview.adjustmentBounds() ?: return
+        updateGestureExclusion(b)
         paint.color = Color.rgb(54, 106, 197)
         val r = 9 * density
         val points = if (mode == SizeEditMode.POSITION) listOf(b.centerX() to b.centerY())
@@ -636,6 +641,17 @@ private class SizeHandles(context: android.content.Context, private val preview:
             canvas.drawLine(b.centerX() - r / 2, b.centerY(), b.centerX() + r / 2, b.centerY(), paint)
             canvas.drawLine(b.centerX(), b.centerY() - r / 2, b.centerX(), b.centerY() + r / 2, paint)
         }
+    }
+    private fun updateGestureExclusion(bounds: RectF) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val hit = (24 * density).roundToInt()
+        val top = (if (mode == SizeEditMode.POSITION) bounds.top else bounds.centerY() - hit).roundToInt().coerceIn(0, height)
+        val bottom = (if (mode == SizeEditMode.POSITION) bounds.bottom else bounds.centerY() + hit).roundToInt().coerceIn(top, height)
+        val rects = buildList {
+            if (mode != null && bounds.left <= hit) add(Rect(0, top, min(width, hit * 2), bottom))
+            if (mode != null && width - bounds.right <= hit) add(Rect(max(0, width - hit * 2), top, width, bottom))
+        }
+        if (systemGestureExclusionRects != rects) systemGestureExclusionRects = rects
     }
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {

@@ -107,15 +107,21 @@ class UnifiedKeyboardSettingsDeviceTest {
                 instrumentation.runOnMainSync { requireNotNull(page).findViewById<View>(R.id.keyboard_layout_edit_size).performClick() }
                 await { var ready = false; instrumentation.runOnMainSync { ready = (page?.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)?.adjustmentBounds()?.width() ?: 0f) > 0f }; ready }
                 var left = 0f
+                var startX = 0; var startY = 0; var delta = 0
                 instrumentation.runOnMainSync {
                     val preview = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
                     val bounds = preview.adjustmentBounds()!!; left = bounds.left
                     val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
-                    val delta = 15 * context.resources.displayMetrics.density
-                    touch(handles, MotionEvent.ACTION_DOWN, bounds.right, bounds.centerY())
-                    touch(handles, MotionEvent.ACTION_MOVE, bounds.right - delta, bounds.centerY())
-                    touch(handles, MotionEvent.ACTION_UP, bounds.right - delta, bounds.centerY())
+                    val location = IntArray(2).also(preview::getLocationOnScreen)
+                    startX = (location[0] + bounds.right.coerceAtMost(preview.width - 9 * context.resources.displayMetrics.density)).roundToInt()
+                    startY = (location[1] + bounds.centerY()).roundToInt()
+                    delta = (15 * context.resources.displayMetrics.density).roundToInt()
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        assertTrue("edge handle is protected from the system back gesture", handles.systemGestureExclusionRects.isNotEmpty())
+                    }
                 }
+                shell("input swipe $startX $startY ${startX - delta} $startY 500")
+                await { prefs.getInt("keyboard_width_preference", 100) < 80 }
                 await { var ready = false; instrumentation.runOnMainSync { ready = page?.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)?.adjustmentBounds() != null }; ready }
                 var right = 0f
                 instrumentation.runOnMainSync {
