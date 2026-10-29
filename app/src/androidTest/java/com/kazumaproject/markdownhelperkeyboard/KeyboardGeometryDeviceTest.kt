@@ -14,6 +14,7 @@ import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
@@ -41,6 +42,8 @@ class KeyboardGeometryDeviceTest {
     @Test fun sideCandidatesCanSwitchSidesAndReturnToTheTop() = verify(floating = false, tenkey = true, switchSide = true)
     @Test fun sideCandidatesRestoreTheConfiguredMultiRowTopLayout() = verify(floating = false, tenkey = true, switchSide = true, columns = "3")
     @Test fun rightSideCandidatesWorkWithKeyboardMargins() = verify(floating = false, tenkey = true, side = "RIGHT", marginDp = 50)
+    @Test fun dockedSideCandidatesResizeWithTheKeyboard() = verify(floating = false, tenkey = true, resizeSide = true)
+    @Test fun floatingSideCandidatesResizeWithTheKeyboard() = verify(floating = true, tenkey = true, side = "RIGHT", resizeSide = true)
     @Test fun narrowTenKeyFallsBackToTopCandidates() = verify(floating = false, tenkey = true, marginDp = 110, fallback = true)
     @Test fun narrowQwertyGapFallsBackToTopCandidates() = verify(floating = false, tenkey = false, splitPercent = 10, fallback = true)
 
@@ -60,7 +63,7 @@ class KeyboardGeometryDeviceTest {
 
     private fun verify(floating: Boolean, tenkey: Boolean, landscape: Boolean = false, reverse: Boolean = false,
         side: String = "LEFT", marginDp: Int = 0, splitPercent: Int = 40, fallback: Boolean = false,
-        switchSide: Boolean = false, columns: String = "1") {
+        switchSide: Boolean = false, columns: String = "1", resizeSide: Boolean = false) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
         val originalIme = shell("settings get secure default_input_method")
@@ -136,8 +139,9 @@ class KeyboardGeometryDeviceTest {
             fun awaitCandidates(position: String): RecyclerView {
                 val vertical = position != "TOP"
                 val candidates = awaitView<RecyclerView>(R.id.suggestion_recycler_view) {
-                    (it.layoutManager as? LinearLayoutManager)?.orientation ==
-                        (if (vertical) RecyclerView.VERTICAL else RecyclerView.HORIZONTAL) && it.childCount > 0 &&
+                    ((it.layoutManager as? LinearLayoutManager)?.orientation ==
+                        (if (vertical) RecyclerView.VERTICAL else RecyclerView.HORIZONTAL) ||
+                        (!vertical && floating && it.layoutManager is FlexboxLayoutManager)) && it.childCount > 0 &&
                         (vertical || columns == "1" || it.layoutManager is GridLayoutManager)
                 }
                 await {
@@ -163,8 +167,36 @@ class KeyboardGeometryDeviceTest {
             if (tenkey && !floating && !fallback) {
                 val density = context.resources.displayMetrics.density
                 val available = context.resources.displayMetrics.widthPixels - (2 * marginDp * density).toInt()
-                val expectedWidth = (available / 4).coerceIn((96f * density).toInt(), (160f * density).toInt())
+                val expectedWidth = available / 4
                 assertEquals("candidate width uses the available width after margins", expectedWidth.toFloat(), candidates.width.toFloat(), 2f)
+            }
+            if (resizeSide) {
+                val density = context.resources.displayMetrics.density
+                val screenWidth = context.resources.displayMetrics.widthPixels
+                for (percent in listOf(80, 70)) {
+                    check(prefs.edit().putInt("keyboard_width_preference", percent)
+                        .putInt("keyboard_height_preference", 200).commit())
+                    val expectedSurface = screenWidth * percent / 100f - if (floating) 16 * density else 0f
+                    await {
+                        var matches = false
+                        instrumentation.runOnMainSync {
+                            val body = Rect(); val strip = Rect()
+                            if (keyboard.getGlobalVisibleRect(body) && candidates.getGlobalVisibleRect(strip)) {
+                                val total = body.width() + strip.width()
+                                matches = kotlin.math.abs(total - expectedSurface) < 8f &&
+                                    kotlin.math.abs(strip.width() * 4f - total) < 8f &&
+                                    kotlin.math.abs(body.height() - strip.height()) < 8f &&
+                                    if (side == "LEFT") kotlin.math.abs(strip.right - body.left) < 8
+                                    else kotlin.math.abs(strip.left - body.right) < 8
+                            }
+                        }
+                        matches
+                    }
+                }
+                check(prefs.edit().putInt("keyboard_width_preference", 50).commit())
+                candidates = awaitCandidates("TOP")
+                check(prefs.edit().putInt("keyboard_width_preference", 80).commit())
+                candidates = awaitCandidates(side)
             }
             if (switchSide) {
                 for (position in listOf("RIGHT", "TOP", "LEFT")) {

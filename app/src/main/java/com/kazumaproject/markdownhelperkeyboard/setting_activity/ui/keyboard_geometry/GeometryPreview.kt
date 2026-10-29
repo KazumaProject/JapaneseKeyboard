@@ -7,9 +7,11 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Matrix
 import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.LayerDrawable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
@@ -21,6 +23,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.GridLayout
+import android.widget.Space
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.AppCompatButton
@@ -42,6 +46,24 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.Ge
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryKeyboard
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSize
+import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyItem
+import com.kazumaproject.custom_keyboard.data.KeyIconResolver
+import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.GridPlacement
+import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyVisualStyleResolver
+import com.kazumaproject.custom_keyboard.data.FlickAction
+import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
+import com.kazumaproject.gojuon_keyboard.extenstions.setGojuonKeyTextJapanese
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
+import com.kazumaproject.gojuon_keyboard.R as GojuonR
 import com.kazumaproject.qwerty_keyboard.R as QwertyR
 import com.kazumaproject.tenkey.R as TenkeyR
 import kotlin.math.abs
@@ -59,11 +81,20 @@ import kotlin.math.sqrt
  * IME keyboard view, input controller, or input connection. The original XML is read as a
  * presentation resource; the three input-aware widgets are replaced by passive equivalents.
  */
-internal class GeometryPreview(context: Context, private val keyboard: GeometryKeyboard) : View(context) {
+internal enum class PreviewKeyboard { QWERTY, TENKEY, SUMIRE, GOJUON, CUSTOM }
+
+internal class GeometryPreview(context: Context, private val keyboard: PreviewKeyboard) : View(context) {
+    constructor(context: Context, keyboard: GeometryKeyboard) : this(context, when (keyboard) {
+        GeometryKeyboard.QWERTY -> PreviewKeyboard.QWERTY
+        GeometryKeyboard.TENKEY -> PreviewKeyboard.TENKEY
+        GeometryKeyboard.SUMIRE -> PreviewKeyboard.SUMIRE
+    })
     private var value = KeyboardGeometryPreference()
     private var landscape = false
     private var keyboardWidthPercent = 100
     private var alignEnd = true
+    private var sizeOverride: IndependentKeyboardSize? = null
+    private var customLayout: KeyboardLayout? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var scene: PreviewScene? = null
 
@@ -73,11 +104,14 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
     }
 
-    fun update(value: KeyboardGeometryPreference, landscape: Boolean, widthPercent: Int, alignEnd: Boolean) {
+    fun update(value: KeyboardGeometryPreference, landscape: Boolean, widthPercent: Int, alignEnd: Boolean,
+        sizeOverride: IndependentKeyboardSize? = null, customLayout: KeyboardLayout? = null) {
         this.value = value
         this.landscape = landscape
         this.keyboardWidthPercent = widthPercent
         this.alignEnd = alignEnd
+        this.sizeOverride = sizeOverride
+        this.customLayout = customLayout
         scene = null
         requestLayout()
         invalidate()
@@ -86,12 +120,28 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
     @VisibleForTesting
     internal fun snapshotForTesting(): GeometryPreviewSnapshot {
         val model = requireNotNull(scene) { "Measure the preview before inspecting it" }
-        return GeometryPreviewSnapshot(model.screenWidth, model.height - model.chromeHeight, model.bodyLeft,
+        return GeometryPreviewSnapshot(model.screenWidth, model.bodyHeight, model.bodyLeft,
             model.bodyWidth, model.items.map {
                 GeometryPreviewKeyFrame(it.view.id, (it.view as? TextView)?.text?.toString(),
                     it.x, it.y, it.angle, it.halfWidth(), it.halfHeight())
             })
     }
+
+    /** Coordinates in this view, used solely by the settings resize handles. */
+    internal fun bodyBounds(): RectF? = scene?.let {
+        val scale = min(width / it.screenWidth, height / it.height)
+        RectF(it.bodyLeft * scale, it.chromeHeight * scale,
+            (it.bodyLeft + it.bodyWidth) * scale, (it.chromeHeight + it.bodyHeight) * scale)
+    }
+
+    /** The resize and move controls cover the keyboard together with its side candidates. */
+    internal fun adjustmentBounds(): RectF? = scene?.let {
+        val scale = min(width / it.screenWidth, height / it.height)
+        RectF(it.surfaceLeft * scale, it.chromeHeight * scale,
+            (it.surfaceLeft + it.surfaceWidth) * scale, (it.chromeHeight + it.bodyHeight) * scale)
+    }
+
+    internal fun surfaceWidth(): Float? = scene?.let { it.surfaceWidth * min(width / it.screenWidth, height / it.height) }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val availableWidth = MeasureSpec.getSize(widthMeasureSpec).coerceAtLeast(1)
@@ -108,7 +158,7 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
         val scale = min(width / model.screenWidth, height / model.height)
         canvas.save()
         canvas.scale(scale, scale)
-        val bg = RectF(0f, 0f, model.screenWidth, model.height)
+        val bg = RectF(model.surfaceLeft, 0f, model.surfaceLeft + model.surfaceWidth, model.chromeHeight + model.bodyHeight)
         paint.color = model.backgroundColor
         val path = Path()
         val radius = if (AppPreference.keyboard_corner_round_preference) {
@@ -132,7 +182,7 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
             canvas.save()
             if (skin.id == KeyboardSkinId.CUPERTINO_CLASSIC && AppPreference.keyboard_corner_round_preference) canvas.clipPath(path)
             skin.keyboardDrawable(resources).apply {
-                setBounds(0, 0, model.screenWidth.roundToInt(), model.height.roundToInt())
+                setBounds(bg.left.roundToInt(), bg.top.roundToInt(), bg.right.roundToInt(), bg.bottom.roundToInt())
                 draw(canvas)
             }
             canvas.restore()
@@ -167,7 +217,7 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
             }
         } else {
             examples.forEachIndexed { i, label ->
-                canvas.drawText(label, model.screenWidth * (i * .3f + .2f), model.chromeHeight * .6f, paint)
+                canvas.drawText(label, model.surfaceLeft + model.surfaceWidth * (i * .3f + .2f), model.chromeHeight * .6f, paint)
             }
         }
         canvas.restore()
@@ -178,8 +228,8 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
         val density = metrics.density
         val screenWidth = (if (landscape) max(metrics.widthPixels, metrics.heightPixels) else min(metrics.widthPixels, metrics.heightPixels)).toFloat().coerceAtLeast(1f)
         val screenHeight = (if (landscape) min(metrics.widthPixels, metrics.heightPixels) else max(metrics.widthPixels, metrics.heightPixels)).toFloat()
-        val qwerty = keyboard == GeometryKeyboard.QWERTY
-        val heightDp = when {
+        val qwerty = keyboard == PreviewKeyboard.QWERTY
+        val heightDp = sizeOverride?.heightDp ?: when {
             qwerty && landscape -> AppPreference.qwerty_keyboard_height_landscape
             qwerty -> AppPreference.qwerty_keyboard_height
             landscape -> AppPreference.keyboard_height_landscape
@@ -187,13 +237,13 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
         } ?: 220
         val baseHeight = heightDp.coerceIn(100, 420) * density
         val chromeHeight = ((if (landscape) AppPreference.candidate_view_height_dp_landscape else AppPreference.candidate_view_height_dp) ?: 60).coerceIn(0, 200) * density
-        val startDp = when {
+        val startDp = sizeOverride?.marginStartDp ?: when {
             qwerty && landscape -> AppPreference.qwerty_keyboard_margin_start_dp_landscape
             qwerty -> AppPreference.qwerty_keyboard_margin_start_dp
             landscape -> AppPreference.keyboard_margin_start_dp_landscape
             else -> AppPreference.keyboard_margin_start_dp
         } ?: 0
-        val endDp = when {
+        val endDp = sizeOverride?.marginEndDp ?: when {
             qwerty && landscape -> AppPreference.qwerty_keyboard_margin_end_dp_landscape
             qwerty -> AppPreference.qwerty_keyboard_margin_end_dp
             landscape -> AppPreference.keyboard_margin_end_dp_landscape
@@ -203,20 +253,23 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
         val end = endDp.coerceAtLeast(0) * density
         val available = (screenWidth - start - end).coerceAtLeast(1f)
         val requested = min(available, screenWidth * keyboardWidthPercent / 100f)
-        val side = if (!qwerty && value.candidates != GeometryCandidatePlacement.TOP && available >= 256f * density) {
-            (available / 4f).coerceIn(96f * density, 160f * density)
+        val side = if (keyboard in setOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE) && value.candidates != GeometryCandidatePlacement.TOP && requested >= 256f * density) {
+            requested / 4f
         } else 0f
-        val bodyWidth = min(requested, available - side).coerceAtLeast(1f)
+        val bodyWidth = (requested - side).coerceAtLeast(1f)
+        val surfaceWidth = requested
+        val surfaceLeft = if (!alignEnd) start else screenWidth - end - surfaceWidth
         val bodyLeft = when {
-            side > 0f && value.candidates == GeometryCandidatePlacement.LEFT -> screenWidth - end - bodyWidth
-            side > 0f -> start
-            alignEnd -> screenWidth - end - bodyWidth
-            else -> start
+            side > 0f && value.candidates == GeometryCandidatePlacement.LEFT -> surfaceLeft + side
+            else -> surfaceLeft
         }
         val previewContext = orientationContext()
-        val keys = if (keyboard == GeometryKeyboard.SUMIRE) {
-            createSumireKeys(previewContext, bodyWidth, baseHeight)
-        } else createXmlKeys(previewContext, bodyWidth, baseHeight, qwerty)
+        val keys = when (keyboard) {
+            PreviewKeyboard.SUMIRE -> createSumireKeys(previewContext, bodyWidth, baseHeight)
+            PreviewKeyboard.GOJUON -> createGojuonKeys(previewContext, bodyWidth, baseHeight)
+            PreviewKeyboard.CUSTOM -> createCustomKeys(previewContext, bodyWidth, baseHeight, customLayout)
+            else -> createXmlKeys(previewContext, bodyWidth, baseHeight, qwerty)
+        }
         val gap = if (qwerty) min(bodyWidth * value.geometry.splitPercent / 100f, max(0f, bodyWidth - 240f * density)) else 0f
         val placed = PreviewGeometry.place(keys, bodyWidth, baseHeight, gap, value.geometry.curveDegrees, value.geometry.curveDirection,
             value.geometry.hand == KeyboardCurveHand.RIGHT, qwerty, value.geometry.autoHeight, (screenHeight - chromeHeight).coerceAtLeast(baseHeight))
@@ -226,8 +279,9 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
             qwerty && value.candidates == GeometryCandidatePlacement.CENTER && gap >= 96f * density -> gap
             else -> 0f
         }
-        return PreviewScene(screenWidth, chromeHeight + placed.height, bodyLeft, bodyWidth,
-            chromeHeight, candidateSide, colors.background, colors.candidateText, placed.items)
+        val bottomMargin = sizeOverride?.bottomMarginPx?.coerceAtLeast(0)?.toFloat() ?: 0f
+        return PreviewScene(screenWidth, chromeHeight + placed.height + bottomMargin, bodyLeft, bodyWidth,
+            chromeHeight, placed.height, surfaceLeft, surfaceWidth, candidateSide, colors.background, colors.candidateText, placed.items)
     }
 
     private fun orientationContext(): Context {
@@ -488,6 +542,182 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
         return result
     }
 
+    private fun createGojuonKeys(ctx: Context, width: Float, height: Float): List<PreviewItem> {
+        val root = ConstraintLayout(ctx)
+        PreviewLayoutInflater(ctx).inflate(GojuonR.layout.gojuon_layout, root, true)
+        fun scaled(margin: Int, percent: Int): Int {
+            val n = if (percent >= 100) margin * (140 - percent) / 40f
+            else margin + max(margin.toFloat(), 2 * resources.displayMetrics.density) * (100 - percent) / 40f * 1.5f
+            return n.roundToInt().coerceAtLeast(0)
+        }
+        for (i in 0 until root.childCount) {
+            val v = root.getChildAt(i)
+            if (v is androidx.constraintlayout.widget.Guideline) continue
+            val special = v is ImageView || v.id == GojuonR.id.cursor_keys_container || v.id == GojuonR.id.key_10
+            (v.layoutParams as? ConstraintLayout.LayoutParams)?.let { lp ->
+                val ws = if (special) AppPreference.gojuon_special_key_width_scale_percent else AppPreference.gojuon_key_width_scale_percent
+                val hs = if (special) AppPreference.gojuon_special_key_height_scale_percent else AppPreference.gojuon_key_height_scale_percent
+                if (special && lp.width > 0) lp.width = (lp.width * ws / 100f).roundToInt()
+                lp.marginStart = scaled(lp.marginStart, ws); lp.marginEnd = scaled(lp.marginEnd, ws)
+                lp.topMargin = scaled(lp.topMargin, hs); lp.bottomMargin = scaled(lp.bottomMargin, hs)
+                v.layoutParams = lp
+            }
+            if (v is AppCompatButton) {
+                v.setGojuonKeyTextJapanese(v.id, if (special) AppPreference.gojuon_special_text_size_sp else ModeKeySizing.gojuonCenter(KeyboardInputMode.HIRAGANA))
+            }
+            if (v is ViewGroup) {
+                for (j in 0 until v.childCount) styleKey(v.getChildAt(j), SkinKeyRole.MODIFIER, false)
+            } else styleKey(v, if (v is ImageView) SkinKeyRole.MODIFIER else SkinKeyRole.CHARACTER, false)
+            if (v is AppCompatButton && KeyboardSkinRegistry.find(AppPreference.keyboardSkin) == null && AppPreference.theme_mode != "custom") {
+                // The 50-on grid uses connected rectangular cells and rounds only its
+                // lower outside corners; the separate key-size editor adjusts the gaps.
+                val background = when (v.id) {
+                    GojuonR.id.key_5 -> CoreR.drawable.selector_corner_bottom_left_material
+                    GojuonR.id.key_55 -> CoreR.drawable.selector_corner_bottom_right_material
+                    else -> CoreR.drawable.gojuon_keyboard_center_bg_material
+                }
+                v.background = AppCompatResources.getDrawable(ctx, background)?.mutate()
+                if (AppPreference.liquid_glass_preference) v.background?.alpha = AppPreference.liquid_glass_key_alpha.coerceIn(0, 255)
+            }
+            if (v.id == GojuonR.id.key_switch_key_mode && v is ImageView &&
+                KeyboardSkinRegistry.find(AppPreference.keyboardSkin) == null && AppPreference.theme_mode != "custom") v.imageTintList = null
+        }
+        root.measure(MeasureSpec.makeMeasureSpec(width.roundToInt(), MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(height.roundToInt(), MeasureSpec.EXACTLY))
+        root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+        fun applyIconScale(view: View) {
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) applyIconScale(view.getChildAt(i))
+            } else if (view is ImageView && AppPreference.gojuon_special_icon_scale_percent != 100) {
+                val drawable = view.drawable ?: return
+                val w = drawable.intrinsicWidth.toFloat(); val h = drawable.intrinsicHeight.toFloat()
+                val availableWidth = view.width - view.paddingLeft - view.paddingRight
+                val availableHeight = view.height - view.paddingTop - view.paddingBottom
+                if (w <= 0 || h <= 0 || availableWidth <= 0 || availableHeight <= 0) return
+                val fit = min(availableWidth / w, availableHeight / h)
+                val base = when (view.scaleType) { ImageView.ScaleType.CENTER -> 1f; ImageView.ScaleType.CENTER_INSIDE -> min(1f, fit); else -> fit }
+                val scale = base * AppPreference.gojuon_special_icon_scale_percent / 100f
+                view.scaleType = ImageView.ScaleType.MATRIX
+                view.imageMatrix = Matrix().apply { setScale(scale, scale); postTranslate((availableWidth - w * scale) / 2f, (availableHeight - h * scale) / 2f) }
+            }
+        }
+        applyIconScale(root)
+        return (0 until root.childCount).mapNotNull { i ->
+            val v = root.getChildAt(i)
+            if (v.visibility != VISIBLE || v.width <= 0 || v.height <= 0 || v is androidx.constraintlayout.widget.Guideline) null
+            else PreviewItem(v, RectF(v.left.toFloat(), v.top.toFloat(), v.right.toFloat(), v.bottom.toFloat()), PreviewGroup.SINGLE)
+        }
+    }
+
+    private fun createCustomKeys(ctx: Context, width: Float, height: Float, layout: KeyboardLayout?): List<PreviewItem> {
+        if (layout == null) return emptyList()
+        val grid = GridLayout(ctx).apply {
+            columnCount = if (layout.items.isNotEmpty()) layout.columnUnitCount else layout.columnCount
+            rowCount = if (layout.items.isNotEmpty()) layout.rowUnitCount else layout.rowCount
+        }
+        val horizontal = (200f - (AppPreference.flick_key_width_scale_percent ?: 160).coerceIn(0, 200)) / 100f
+        val vertical = (200f - (AppPreference.flick_key_height_scale_percent ?: 160).coerceIn(0, 200)) / 100f
+        val density = resources.displayMetrics.density
+        val iconViews = mutableMapOf<ImageView, KeyData>()
+        fun params(p: GridPlacement, baseH: Int = 0, baseV: Int = 0) = GridLayout.LayoutParams().apply {
+            rowSpec = GridLayout.spec(p.rowUnits, p.rowSpanUnits, GridLayout.FILL, p.rowSpanUnits.toFloat())
+            columnSpec = GridLayout.spec(p.columnUnits, p.columnSpanUnits, GridLayout.FILL, p.columnSpanUnits.toFloat())
+            this.width = 0; this.height = 0
+            val h = ((baseH * horizontal).roundToInt() * density).roundToInt()
+            val v = ((baseV * vertical).roundToInt() * density).roundToInt()
+            setMargins(h, v, h, v)
+        }
+        val items = layout.items.ifEmpty { layout.keys.map {
+            KeyItem(it.keyId.orEmpty(), it, GridPlacement(it.row, it.column, it.rowSpan, it.colSpan))
+        } }
+        items.forEach { item ->
+            when (item) {
+                is SpacerItem -> grid.addView(Space(ctx), params(item.placement))
+                is KeyItem -> {
+                    val data = item.keyData
+                    val modeLabel = if (KeyIconResolver.hasIconOverride(data)) null else when (data.drawableResId) {
+                        CoreR.drawable.input_mode_english_custom -> "ABC"
+                        CoreR.drawable.input_mode_number_select_custom -> "123"
+                        CoreR.drawable.input_mode_japanese_select_custom -> "あいう"
+                        else -> null
+                    }
+                    val view: View = if (KeyIconResolver.hasIcon(data) && modeLabel == null) AppCompatImageButton(ctx).apply {
+                        KeyIconResolver.setImage(this, data); scaleType = ImageView.ScaleType.MATRIX
+                        setPadding(0, 0, 0, 0); iconViews[this] = data
+                    } else PreviewGuideButton(ctx).apply {
+                        text = modeLabel ?: KeyIconResolver.resolvedLabelForRendering(data); isAllCaps = false; gravity = Gravity.CENTER
+                        setPadding(0, 0, 0, 0)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, if (data.isSpecialKey) AppPreference.flick_special_key_text_size_sp ?: 12f else AppPreference.flick_key_text_size_sp ?: 16f)
+                        if (AppPreference.flick_keymap_guide_layout == true && !data.isSpecialKey) {
+                            fun shown(action: FlickAction?): String = when (action) {
+                                is FlickAction.Input -> action.char
+                                else -> ""
+                            }.take((AppPreference.flick_guide_max_characters_preference ?: 1).coerceIn(1, 4))
+                            val circular = (layout.circularFlickKeyMaps[data.keyId] ?: layout.circularFlickKeyMaps[data.label])?.firstOrNull()
+                            val flick = (layout.flickKeyMaps[data.keyId] ?: layout.flickKeyMaps[data.label])?.firstOrNull()
+                            guideLabels = if (data.keyType == KeyType.CIRCULAR_FLICK && circular != null) listOf(
+                                shown(circular[CircularFlickDirection.SLOT_3]), shown(circular[CircularFlickDirection.SLOT_0]),
+                                shown(circular[CircularFlickDirection.SLOT_1]), shown(circular[CircularFlickDirection.SLOT_2]))
+                            else if (flick != null) listOf(shown(flick[FlickDirection.UP_LEFT_FAR] ?: flick[FlickDirection.UP_LEFT]),
+                                shown(flick[FlickDirection.UP]), shown(flick[FlickDirection.UP_RIGHT_FAR] ?: flick[FlickDirection.UP_RIGHT]),
+                                shown(flick[FlickDirection.DOWN])) else null
+                        }
+                    }
+                    val role = KeyVisualStyleResolver.resolveSkinKeyRole(data,
+                        useModifierSurfaceForSpecialSpaceKeys = AppPreference.keyboardSkin == KeyboardSkinId.CUPERTINO_CLASSIC)
+                    styleKey(view, role, false)
+                    if (view is ImageView && !KeyIconResolver.shouldTintIcon(data)) view.imageTintList = null
+                    view.background?.let { bg ->
+                        val insetH = (6f * horizontal).roundToInt()
+                        val insetTop = ((if (data.isSpecialKey) 12f else 9f) * vertical).roundToInt()
+                        val insetBottom = ((if (data.isSpecialKey) 6f else 9f) * vertical).roundToInt()
+                        view.background = InsetDrawable(bg, insetH, insetTop, insetH, insetBottom)
+                    }
+                    if (view is TextView && data.keyType == KeyType.STANDARD_FLICK &&
+                        (layout.flickKeyMaps[data.label]?.firstOrNull() != null) && AppPreference.theme_mode != "custom") {
+                        fun colorAttr(attr: Int, fallback: Int): Int {
+                            val typed = TypedValue()
+                            return if (ctx.theme.resolveAttribute(attr, typed, true)) {
+                                if (typed.resourceId != 0) runCatching { ContextCompat.getColor(ctx, typed.resourceId) }.getOrDefault(fallback) else typed.data
+                            } else fallback
+                        }
+                        val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                        val textSize = AppPreference.flick_key_text_size_sp ?: 16f
+                        view.background = SegmentedBackgroundDrawable(data.label,
+                            colorAttr(if (dark) MaterialR.attr.colorSurfaceContainerHighest else MaterialR.attr.colorSurface, Color.LTGRAY),
+                            colorAttr(MaterialR.attr.colorSecondaryContainer, Color.LTGRAY),
+                            colorAttr(MaterialR.attr.colorOnSurface, Color.BLACK), 20f,
+                            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, textSize, resources.displayMetrics),
+                            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, (textSize * .625f).coerceAtLeast(8f), resources.displayMetrics))
+                        view.setTextColor(Color.TRANSPARENT)
+                    }
+                    val h = if (data.keyType == KeyType.STANDARD_FLICK) 6 else if (data.isSpecialKey) 3 else 4
+                    val v = if (data.keyType == KeyType.STANDARD_FLICK) 9 else 6
+                    grid.addView(view, params(item.placement, h, v))
+                }
+            }
+        }
+        grid.measure(MeasureSpec.makeMeasureSpec(width.roundToInt(), MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(height.roundToInt(), MeasureSpec.EXACTLY))
+        grid.layout(0, 0, grid.measuredWidth, grid.measuredHeight)
+        iconViews.forEach { (view, data) ->
+            val drawable = view.drawable ?: return@forEach
+            val w = drawable.intrinsicWidth.toFloat(); val h = drawable.intrinsicHeight.toFloat()
+            if (w <= 0 || h <= 0 || view.width <= 0 || view.height <= 0) return@forEach
+            val large = data.action in setOf(KeyAction.SwitchToNumberLayout, KeyAction.SwitchToEnglishLayout, KeyAction.SwitchToKanaLayout) ||
+                data.label in setOf("SwitchToNumber", "SwitchToEnglish", "SwitchToKana")
+            val target = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 16f, resources.displayMetrics) * 1.6f *
+                (AppPreference.flick_key_icon_scale_percent ?: 80) / 100f * (if (large) 1.65f else 1f)
+            val scale = min(min(target / w, target / h), min(view.width / w, view.height / h))
+            view.imageMatrix = Matrix().apply { postScale(scale, scale); postTranslate((view.width - w * scale) / 2f, (view.height - h * scale) / 2f) }
+        }
+        return (0 until grid.childCount).mapNotNull { i ->
+            val v = grid.getChildAt(i)
+            if (v is Space || v.width <= 0 || v.height <= 0) null
+            else PreviewItem(v, RectF(v.left.toFloat(), v.top.toFloat(), v.right.toFloat(), v.bottom.toFloat()), PreviewGroup.SINGLE)
+        }
+    }
+
     private fun styleKey(view: View, role: SkinKeyRole, qwerty: Boolean, round: Boolean = false) {
         val skin = KeyboardSkinRegistry.find(AppPreference.keyboardSkin)
         val colors = previewColors(view.context)
@@ -496,12 +726,21 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
         val bg = if (skin != null) {
             skin.keyDrawable(view.resources, qwerty = qwerty, role = role)
         } else if (AppPreference.theme_mode == "custom") {
-            GradientDrawable().apply {
-                setColor(if (special) AppPreference.custom_theme_special_key_color else AppPreference.custom_theme_key_color)
-                cornerRadius = (if (round) 32f else 8f) * resources.displayMetrics.density
-                if (AppPreference.custom_theme_border_enable) setStroke(
-                    (AppPreference.custom_theme_border_width.coerceAtLeast(1) * resources.displayMetrics.density).roundToInt(),
+            val base = if (special) AppPreference.custom_theme_special_key_color else AppPreference.custom_theme_key_color
+            val radius = (if (round) 32f else 8f) * resources.displayMetrics.density
+            fun shape(color: Int) = GradientDrawable().apply { setColor(color); cornerRadius = radius }
+            if (AppPreference.custom_theme_border_enable) shape(base).apply {
+                setStroke((AppPreference.custom_theme_border_width.coerceAtLeast(1) * resources.displayMetrics.density).roundToInt(),
                     AppPreference.custom_theme_border_color)
+            } else {
+                fun shade(factor: Float) = Color.argb(Color.alpha(base), (Color.red(base) * factor).toInt().coerceIn(0, 255),
+                    (Color.green(base) * factor).toInt().coerceIn(0, 255), (Color.blue(base) * factor).toInt().coerceIn(0, 255))
+                val offset = (4 * resources.displayMetrics.density).toInt()
+                val padding = (2 * resources.displayMetrics.density).toInt()
+                LayerDrawable(arrayOf(shape(shade(.8f)), shape(shade(1.2f)), shape(base))).apply {
+                    setLayerInset(0, offset, offset, 0, 0); setLayerInset(1, 0, 0, offset, offset)
+                    setLayerInset(2, padding, padding, padding, padding)
+                }
             }
         } else {
             val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -513,6 +752,7 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
             AppCompatResources.getDrawable(view.context, res)?.constantState?.newDrawable(view.resources)?.mutate()
         }
         view.background = bg
+        if (AppPreference.liquid_glass_preference) view.background?.alpha = AppPreference.liquid_glass_key_alpha.coerceIn(0, 255)
         view.isClickable = false
         view.isFocusable = false
         if (view is TextView) {
@@ -548,7 +788,8 @@ internal data class GeometryPreviewKeyFrame(val id: Int, val text: String?, val 
 
 private data class PreviewColors(val background: Int, val text: Int, val specialText: Int, val candidateText: Int)
 private data class PreviewScene(val screenWidth: Float, val height: Float, val bodyLeft: Float, val bodyWidth: Float,
-    val chromeHeight: Float, val candidateSideWidth: Float, val backgroundColor: Int, val candidateTextColor: Int,
+    val chromeHeight: Float, val bodyHeight: Float, val surfaceLeft: Float, val surfaceWidth: Float,
+    val candidateSideWidth: Float, val backgroundColor: Int, val candidateTextColor: Int,
     val items: List<PlacedPreviewItem>)
 private enum class PreviewGroup { LEFT, RIGHT, SINGLE }
 private data class PreviewItem(val view: View, val bounds: RectF, val group: PreviewGroup)
@@ -680,10 +921,12 @@ private class PreviewQwertyButton(context: Context, attrs: AttributeSet) : AppCo
 /** Draws guide labels around a normal text button without creating a flick controller. */
 private class PreviewGuideButton(context: Context) : AppCompatButton(context) {
     var guide: String? = null
+    var guideLabels: List<String>? = null
     private val guidePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val labels = guide?.takeIf { it.length == 4 } ?: return
+        val labels = guideLabels ?: guide?.takeIf { it.length == 4 }?.map(Char::toString) ?: return
+        if (labels.size != 4) return
         val size = min(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
             (AppPreference.flick_guide_text_size_sp_preference ?: 9).coerceIn(6, 16).toFloat(), resources.displayMetrics),
             min(width, height) * .22f)
@@ -691,9 +934,9 @@ private class PreviewGuideButton(context: Context) : AppCompatButton(context) {
         val fm = guidePaint.fontMetrics
         val centerY = height / 2f - (fm.ascent + fm.descent) / 2f
         val inset = max(10f * resources.displayMetrics.density, width * .16f)
-        canvas.drawText(labels[0].toString(), inset, centerY, guidePaint)
-        canvas.drawText(labels[1].toString(), width / 2f, 3f * resources.displayMetrics.density - fm.ascent, guidePaint)
-        canvas.drawText(labels[2].toString(), width - inset, centerY, guidePaint)
-        canvas.drawText(labels[3].toString(), width / 2f, height - 3f * resources.displayMetrics.density - fm.descent, guidePaint)
+        canvas.drawText(labels[0], inset, centerY, guidePaint)
+        canvas.drawText(labels[1], width / 2f, 3f * resources.displayMetrics.density - fm.ascent, guidePaint)
+        canvas.drawText(labels[2], width - inset, centerY, guidePaint)
+        canvas.drawText(labels[3], width / 2f, height - 3f * resources.displayMetrics.density - fm.descent, guidePaint)
     }
 }

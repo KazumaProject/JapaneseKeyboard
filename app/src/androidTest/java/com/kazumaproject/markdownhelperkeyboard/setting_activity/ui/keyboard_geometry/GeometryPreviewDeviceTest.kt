@@ -44,6 +44,8 @@ class GeometryPreviewDeviceTest {
     @Test fun qwertyPreviewMatchesTheActualSplitKeyboard() = verify(GeometryKeyboard.QWERTY)
     @Test fun tenkeyPreviewMatchesTheActualCurvedKeyboard() = verify(GeometryKeyboard.TENKEY)
     @Test fun sumirePreviewMatchesTheActualCurvedKeyboard() = verify(GeometryKeyboard.SUMIRE)
+    @Test fun resizedTenkeyPreviewMatchesTheActualSideKeyboard() = verify(GeometryKeyboard.TENKEY, widthPercent = 70)
+    @Test fun resizedSumirePreviewMatchesTheActualSideKeyboard() = verify(GeometryKeyboard.SUMIRE, widthPercent = 70)
     @Test fun alternateSumireLayoutMatchesTheActualKeyboard() = verify(GeometryKeyboard.SUMIRE, sumireMethod = "switch-mode-effective")
     @Test fun leftHandTenkeyPreviewMatchesTheActualKeyboard() = verify(GeometryKeyboard.TENKEY, hand = KeyboardCurveHand.LEFT)
     @Test fun fixedHeightPreviewMatchesTheActualKeyboard() = verify(GeometryKeyboard.QWERTY, autoHeight = false)
@@ -164,6 +166,9 @@ class GeometryPreviewDeviceTest {
                 // Background corners are configurable independently of the key geometry.
                 AppPreference.keyboard_corner_round_preference = false
                 val square = draw(preview)
+                val surface = requireNotNull(preview.adjustmentBounds())
+                val surfaceLeft = surface.left.toInt()
+                val surfaceRight = surface.right.toInt()
                 AppPreference.keyboard_corner_round_preference = true
                 AppPreference.keyboard_corner_radius_dp_preference = 64
                 preview.update(config, landscape, widthPercent, true)
@@ -171,16 +176,16 @@ class GeometryPreviewDeviceTest {
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
                 preview.layout(0, 0, preview.measuredWidth, preview.measuredHeight)
                 val rounded = draw(preview)
-                assertTrue("square background should reach corner", (square.getPixel(1, 1) ushr 24) != 0)
-                assertEquals("rounded background should leave corner transparent", 0, rounded.getPixel(1, 1) ushr 24)
+                assertTrue("square background should reach corner", (square.getPixel(surfaceLeft + 1, 1) ushr 24) != 0)
+                assertEquals("rounded background should leave corner transparent", 0, rounded.getPixel(surfaceLeft + 1, 1) ushr 24)
                 AppPreference.keyboard_corner_top_right_preference = false
                 preview.update(config, landscape, widthPercent, true)
                 preview.measure(View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
                 preview.layout(0, 0, preview.measuredWidth, preview.measuredHeight)
                 val asymmetric = draw(preview)
-                assertEquals("top-left remains rounded", 0, asymmetric.getPixel(1, 1) ushr 24)
-                assertTrue("top-right can remain square", (asymmetric.getPixel(asymmetric.width - 2, 1) ushr 24) != 0)
+                assertEquals("top-left remains rounded", 0, asymmetric.getPixel(surfaceLeft + 1, 1) ushr 24)
+                assertTrue("top-right can remain square", (asymmetric.getPixel(surfaceRight - 2, 1) ushr 24) != 0)
             }
         } finally {
             instrumentation.runOnMainSync { host?.finish() }
