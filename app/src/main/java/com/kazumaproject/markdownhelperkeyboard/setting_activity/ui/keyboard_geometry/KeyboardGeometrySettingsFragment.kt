@@ -137,7 +137,7 @@ class KeyboardGeometrySettingsFragment : Fragment() {
             else -> AppPreference.keyboard_margin_end_dp
         } ?: 0
         val availableWidth = (screenWidth - (startMargin.coerceAtLeast(0) + endMargin.coerceAtLeast(0)) * metrics.density).coerceAtLeast(0f)
-        val bodyWidth = if (keyboard == GeometryKeyboard.QWERTY) min(availableWidth, screenWidth * widthPercent.coerceIn(1, 100) / 100f) else availableWidth
+        val bodyWidth = min(availableWidth, screenWidth * widthPercent.coerceIn(1, 100) / 100f)
         val alignEnd = when {
             keyboard == GeometryKeyboard.QWERTY && landscape -> AppPreference.qwerty_keyboard_position_landscape
             keyboard == GeometryKeyboard.QWERTY -> AppPreference.qwerty_keyboard_position
@@ -151,7 +151,7 @@ class KeyboardGeometrySettingsFragment : Fragment() {
             if (keyboard == GeometryKeyboard.QWERTY && effectiveGap > 0f) add(getString(R.string.keyboard_geometry_glide_disabled))
             if (keyboard == GeometryKeyboard.QWERTY && effectiveGap < requestedGap) add(getString(R.string.keyboard_geometry_gap_limited))
             if (keyboard == GeometryKeyboard.QWERTY && value.candidates == GeometryCandidatePlacement.CENTER && effectiveGap < 96f * metrics.density) add(getString(R.string.keyboard_geometry_candidate_fallback))
-            if (keyboard != GeometryKeyboard.QWERTY && value.candidates != GeometryCandidatePlacement.TOP && availableWidth < 256f * metrics.density) add(getString(R.string.keyboard_geometry_candidate_fallback))
+            if (keyboard != GeometryKeyboard.QWERTY && value.candidates != GeometryCandidatePlacement.TOP && bodyWidth < 256f * metrics.density) add(getString(R.string.keyboard_geometry_candidate_fallback))
         }.joinToString("\n")
         updating = false
     }

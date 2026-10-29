@@ -11,6 +11,10 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.Ge
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidateHost
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.geometryBoundsInHost
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreferences
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSize
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizeTarget
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.KeyboardSurfaceSizePreferences
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.DictionaryKind
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryController
@@ -1034,9 +1038,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { preferences, key ->
-            if (key == null || key.startsWith("keyboard_geometry_")) {
+            if (key == null || KeyboardSurfaceSizePreferences.isLegacySizeKey(key)) {
                 runOnMainThread {
-                    if (key == null || key.endsWith("_curve") || key.endsWith("_split") || key.endsWith("_hand") || key.endsWith("_curve_direction")) {
+                    mainHandler.removeCallbacks(refreshLegacySizePreference)
+                    mainHandler.post(refreshLegacySizePreference)
+                }
+            }
+            if (key == null || key.startsWith("keyboard_geometry_") || key.startsWith(IndependentKeyboardSizePreferences.KEY_PREFIX)) {
+                runOnMainThread {
+                    if (key == null || key.startsWith(IndependentKeyboardSizePreferences.KEY_PREFIX) || key.endsWith("_curve") || key.endsWith("_split") || key.endsWith("_hand") || key.endsWith("_curve_direction")) {
                         geometryRequiredHeights.clear()
                     }
                     // A settings save updates several keys. Coalesce notifications so the
@@ -6855,6 +6865,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             runtimeInputPreferenceListenerRegistered = false
         }
         mainHandler.removeCallbacks(refreshGeometryPreference)
+        mainHandler.removeCallbacks(refreshLegacySizePreference)
         updateGemmaBackInvokedCallback(registered = false)
         updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
         gemmaMediaPanelController?.destroy()
@@ -7741,7 +7752,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resolveFloatingKeyboardWidthPx(mode: TenKeyQWERTYMode): Int {
-        val prefs = getKeyboardSizePreferences()
+        val prefs = getKeyboardSizePreferences(mode)
         val screenWidth = resources.displayMetrics.widthPixels
         val usesQwertySize =
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
@@ -7760,7 +7771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resolveFloatingKeyboardUpdateWidthPx(mode: TenKeyQWERTYMode): Int {
-        val prefs = getKeyboardSizePreferences()
+        val prefs = getKeyboardSizePreferences(mode)
         val availableWidth = resolveFloatingKeyboardAvailableWidthPx()
         val usesQwertySize =
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
@@ -11615,7 +11626,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardPanel?.setColors(resolveCandidatePanelColors())
         floatingKeyboardPanel?.setKeyboardMode(mode)
         floatingView.root.background = null
-        val prefs = getKeyboardSizePreferences()
+        val prefs = getKeyboardSizePreferences(mode)
         val density = resources.displayMetrics.density
         val usesQwertySize =
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
@@ -11702,18 +11713,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (splitController != null || isKeyboardFloatingMode != true) return@post
             val containerWidth = floatingView.floatingKeyboardContainer.width
             val densityNow = resources.displayMetrics.density
-            val minimumCandidate = (96f * densityNow).toInt()
-            val minimumKeyboard = (160f * densityNow).toInt()
+            val minimumSideLayout = (256f * densityNow).toInt()
             val placement = geometryKeyboardForCurrentMode()?.let {
                 keyboardGeometryPreferences.read(it, resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE).candidates
             } ?: GeometryCandidatePlacement.TOP
             val side = geometryKeyboardForCurrentMode() in setOf(GeometryKeyboard.TENKEY, GeometryKeyboard.SUMIRE) &&
                 placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT) &&
-                !floatingCandidateSurfaceActive && containerWidth >= minimumCandidate + minimumKeyboard
+                !floatingCandidateSurfaceActive && containerWidth >= minimumSideLayout
             listOf(floatingView.keyboardViewFloating, floatingView.customLayoutFloating, floatingView.qwertyViewFloating).forEach { view ->
                 val params = view.layoutParams as? FrameLayout.LayoutParams ?: return@forEach
                 if (side && view === activeGeometryView) {
-                    val sideWidth = (containerWidth / 4).coerceIn(minimumCandidate, (160f * densityNow).toInt())
+                    val sideWidth = containerWidth / 4
                     val targetWidth = containerWidth - sideWidth
                     val targetGravity = Gravity.BOTTOM or if (placement == GeometryCandidatePlacement.LEFT) Gravity.RIGHT else Gravity.LEFT
                     if (params.width != targetWidth || params.gravity != targetGravity) {
@@ -19352,6 +19362,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
+            var previousSizeTarget = sizeEditTarget(qwertyMode.value)
             qwertyMode.collectLatest {
                 Timber.d("qwertyMode value: $it")
                 when (it) {
@@ -19416,6 +19427,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 syncFloatingKeyboardContentForMode(it)
                 renderCurrentKeyboardStateOnActiveSurface()
                 updateFloatingKeyboardSizeForMode(it)
+                val nextSizeTarget = sizeEditTarget(it)
+                if (nextSizeTarget != previousSizeTarget &&
+                    (independentSizeTarget(nextSizeTarget) != null || independentSizeTarget(previousSizeTarget) != null) &&
+                    isKeyboardFloatingMode != true && splitController == null) {
+                    mainLayoutBinding?.let { binding -> updateKeyboardLayout(binding) }
+                }
+                previousSizeTarget = nextSizeTarget
             }
         }
 
@@ -20359,6 +20377,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val keyboardGeometryPreferences by lazy {
         KeyboardGeometryPreferences(androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
     }
+    private val independentKeyboardSizes by lazy {
+        IndependentKeyboardSizePreferences(androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
+    }
+
+    private fun sizeEditTarget(mode: TenKeyQWERTYMode): KeyboardLayoutEditTarget =
+        KeyboardLayoutEditTarget.from(mode, mode == TenKeyQWERTYMode.Number && numberUsageCustomKeyboardLayoutOrNull() != null)
+
+    private fun independentSizeTarget(target: KeyboardLayoutEditTarget): IndependentKeyboardSizeTarget? = when (target) {
+        KeyboardLayoutEditTarget.Gojuon -> IndependentKeyboardSizeTarget.GOJUON
+        KeyboardLayoutEditTarget.Custom -> IndependentKeyboardSizeTarget.CUSTOM
+        else -> null
+    }
+    private fun independentBottomMarginPx(values: KeyboardLayoutEditValues.Normal): Int =
+        KeyboardLayoutEditConstraints.independentBottomMarginPixels(values, resources.displayMetrics.density)
     private val geometryRequiredHeights = java.util.WeakHashMap<View, Int>()
     private var dockedGeometryCandidateHost: GeometryCandidateHost? = null
     private var floatingGeometryCandidateHost: GeometryCandidateHost? = null
@@ -20370,6 +20402,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isKeyboardFloatingMode == true) updateFloatingKeyboardSizeForMode(qwertyMode.value, true)
             else mainLayoutBinding?.let { updateKeyboardLayout(it) }
             refreshGeometryCandidates()
+        }
+    }
+    private val refreshLegacySizePreference = Runnable {
+        if (keyboardLayoutEditState.value is KeyboardLayoutEditState.Disabled) {
+            reloadKeyboardLayoutEditCachesFromPreferences()
+            geometryRequiredHeights.clear()
+            refreshGeometryPreference.run()
         }
     }
 
@@ -20419,7 +20458,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             mappedGap
         } else {
-            val sideWidth = (root.width / 4).coerceIn(minCandidateWidth, (160f * resources.displayMetrics.density).toInt())
+            val sideWidth = root.width / 4
             val left = if (config.candidates == GeometryCandidatePlacement.LEFT) bodyBounds.left - sideWidth else bodyBounds.right
             if (left < 0 || left + sideWidth > root.width) { detachGeometryCandidates(); return }
             Rect(left, bodyBounds.top, left + sideWidth, bodyBounds.bottom)
@@ -20470,9 +20509,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return (geometryRequiredHeights[view] ?: baseHeight).coerceIn(baseHeight, available)
     }
 
-    private fun getKeyboardSizePreferences(): KeyboardSizePreferences {
+    private fun getKeyboardSizePreferences(mode: TenKeyQWERTYMode = qwertyMode.value): KeyboardSizePreferences {
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        return if (isPortrait) {
+        val legacy = if (isPortrait) {
             KeyboardSizePreferences(
                 heightPref = tenkeyHeightPreferenceValue ?: 280,
                 widthPref = tenkeyWidthPreferenceValue ?: 100,
@@ -20507,6 +20546,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyMarginEnd = qwertyLandScapeEndMarginPreferenceValue ?: 0
             )
         }
+        val editTarget = sizeEditTarget(mode)
+        val independentTarget = independentSizeTarget(editTarget) ?: return legacy
+        var value = independentKeyboardSizes.read(independentTarget, landscape = !isPortrait)
+        val draft = (keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled)?.takeIf {
+            it.target == editTarget && (it.orientation == KeyboardLayoutEditOrientation.Portrait) == isPortrait
+        }
+        when (val editing = draft?.values) {
+            is KeyboardLayoutEditValues.Normal -> value = IndependentKeyboardSize(editing.heightDp, editing.widthPercent,
+                independentBottomMarginPx(editing), editing.marginStartDp, editing.marginEndDp, editing.positionIsEnd)
+            is KeyboardLayoutEditValues.Floating -> value = value.copy(heightDp = editing.heightDp, widthPercent = editing.widthPercent)
+            null -> Unit
+        }
+        return legacy.copy(heightPref = value.heightDp, widthPref = value.widthPercent,
+            bottomMargin = value.bottomMarginPx, positionIsEnd = value.positionEnd,
+            keyboardMarginStart = value.marginStartDp, keyboardMarginEnd = value.marginEndDp)
     }
 
     /**
@@ -20708,12 +20762,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val placement = geometryType?.let { keyboardGeometryPreferences.read(it, !isPortrait).candidates }
             ?: GeometryCandidatePlacement.TOP
         val availableWidth = (screenWidth - finalStartMargin - finalEndMargin).coerceAtLeast(0)
-        val minCandidateWidth = (96f * density).toInt()
-        val minKeyboardWidth = (160f * density).toInt()
+        val desiredWidth = if (configuredKeyboardWidth == ViewGroup.LayoutParams.MATCH_PARENT) availableWidth
+            else configuredKeyboardWidth.coerceAtMost(availableWidth)
         val sidePlacement = geometryType != GeometryKeyboard.QWERTY && geometryType != null &&
             placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT) &&
-            !floatingCandidateSurfaceActive && isKeyboardFloatingMode != true && availableWidth >= minCandidateWidth + minKeyboardWidth
-        val finalKeyboardWidth = if (sidePlacement) ViewGroup.LayoutParams.MATCH_PARENT else configuredKeyboardWidth
+            !floatingCandidateSurfaceActive && isKeyboardFloatingMode != true && desiredWidth >= (256f * density).toInt()
+        // The configured width is the width of the complete surface, including side candidates.
+        val finalKeyboardWidth = if (sidePlacement) desiredWidth else configuredKeyboardWidth
 
         val finalBottomMargin =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -20759,9 +20814,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listOf(mainView.keyboardView, mainView.customLayoutDefault, mainView.qwertyView).forEach { view ->
             val params = view.layoutParams as? FrameLayout.LayoutParams ?: return@forEach
             if (sidePlacement && view === activeGeometryView) {
-                val sideWidth = (availableWidth / 4).coerceIn(minCandidateWidth, (160f * density).toInt())
-                val desiredWidth = if (configuredKeyboardWidth == ViewGroup.LayoutParams.MATCH_PARENT) availableWidth else configuredKeyboardWidth
-                val targetWidth = desiredWidth.coerceAtMost(availableWidth - sideWidth)
+                val sideWidth = desiredWidth / 4
+                val targetWidth = desiredWidth - sideWidth
                 val targetGravity = Gravity.BOTTOM or if (placement == GeometryCandidatePlacement.LEFT) Gravity.RIGHT else Gravity.LEFT
                 if (params.width != targetWidth || params.gravity != targetGravity) {
                     params.width = targetWidth
@@ -23560,7 +23614,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         vibrate()
         closeViewsThatConflictWithKeyboardLayoutEdit()
 
-        val target = KeyboardLayoutEditTarget.from(qwertyMode.value)
+        val target = sizeEditTarget(qwertyMode.value)
         val orientation = currentKeyboardLayoutEditOrientation()
         val state = KeyboardLayoutEditState.Enabled(
             surface = surface,
@@ -23810,6 +23864,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         target: KeyboardLayoutEditTarget,
         orientation: KeyboardLayoutEditOrientation,
     ): KeyboardLayoutEditValues.Normal {
+        independentSizeTarget(target)?.let { independent ->
+            val value = independentKeyboardSizes.read(independent, orientation == KeyboardLayoutEditOrientation.Landscape)
+            return KeyboardLayoutEditValues.Normal(value.heightDp, value.widthPercent,
+                (value.bottomMarginPx / resources.displayMetrics.density).roundToInt(),
+                value.marginStartDp, value.marginEndDp, value.positionEnd, value.bottomMarginPx)
+        }
         return when (orientation to target) {
             KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily ->
                 KeyboardLayoutEditValues.Normal(
@@ -23970,6 +24030,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         orientation: KeyboardLayoutEditOrientation,
         values: KeyboardLayoutEditValues.Normal,
     ) {
+        if (independentSizeTarget(target) != null) return
         when (orientation to target) {
             KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
                 tenkeyHeightPreferenceValue = values.heightDp
@@ -24014,6 +24075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         orientation: KeyboardLayoutEditOrientation,
         values: KeyboardLayoutEditValues.Floating,
     ) {
+        if (independentSizeTarget(target) != null) return
         when (orientation to target) {
             KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
                 tenkeyHeightPreferenceValue = values.heightDp
@@ -24042,6 +24104,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         orientation: KeyboardLayoutEditOrientation,
         values: KeyboardLayoutEditValues.Normal,
     ) {
+        independentSizeTarget(target)?.let { independent ->
+            independentKeyboardSizes.save(independent, orientation == KeyboardLayoutEditOrientation.Landscape,
+                IndependentKeyboardSize(values.heightDp, values.widthPercent, independentBottomMarginPx(values),
+                    values.marginStartDp, values.marginEndDp, values.positionIsEnd))
+            return
+        }
         when (orientation to target) {
             KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
                 appPreference.keyboard_height = values.heightDp
@@ -24087,6 +24155,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         orientation: KeyboardLayoutEditOrientation,
         values: KeyboardLayoutEditValues.Floating,
     ) {
+        independentSizeTarget(target)?.let { independent ->
+            val landscape = orientation == KeyboardLayoutEditOrientation.Landscape
+            val previous = independentKeyboardSizes.read(independent, landscape)
+            independentKeyboardSizes.save(independent, landscape,
+                previous.copy(heightDp = values.heightDp, widthPercent = values.widthPercent))
+            return
+        }
         when (orientation to target) {
             KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
                 appPreference.keyboard_height = values.heightDp
