@@ -3,11 +3,13 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Matrix
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import kotlin.math.roundToInt
@@ -60,7 +62,26 @@ internal class GeometryCandidateHost(
             root.addView(container)
             panel = container
         }
-        (recycler.adapter as? SuggestionAdapter)?.setSideCandidateVerticalText(verticalText)
+        val adapter = recycler.adapter as? SuggestionAdapter
+        if (verticalText) {
+            val metrics = root.resources.displayMetrics
+            val textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, adapter?.sideCandidateTextSizeSp() ?: 14f, metrics)
+            val columns = SideCandidateSizing.columnCount(bounds.width(), metrics.density, textSize)
+            val current = recycler.layoutManager as? GridLayoutManager
+            if (current == null) {
+                val manager = GridLayoutManager(root.context, columns)
+                manager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int =
+                        (recycler.adapter as? SuggestionAdapter)?.sideCandidateSpanSize(position, manager.spanCount) ?: 1
+                }
+                recycler.layoutManager = manager
+            } else if (current.spanCount != columns) {
+                current.spanCount = columns
+            }
+        } else if (recycler.layoutManager is GridLayoutManager) {
+            recycler.layoutManager = LinearLayoutManager(root.context, RecyclerView.VERTICAL, false)
+        }
+        adapter?.setSideCandidateVerticalText(verticalText)
         val container = panel ?: return
         val params = (container.layoutParams as? FrameLayout.LayoutParams) ?: FrameLayout.LayoutParams(bounds.width(), bounds.height())
         if (params.width != bounds.width() || params.height != bounds.height() || params.leftMargin != bounds.left || params.topMargin != bounds.top || params.gravity != (Gravity.TOP or Gravity.LEFT)) {

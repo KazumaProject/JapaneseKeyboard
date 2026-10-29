@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
@@ -51,6 +52,14 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(64, SideCandidateSizing.width(320, 1f, 15))
         assertEquals(128, SideCandidateSizing.width(320, 1f, 50))
         assertEquals(200, SideCandidateSizing.width(400, 1f, 50))
+    }
+
+    @Test fun verticalColumnsFollowWidthAndReserveRoomForLargeText() {
+        assertEquals(1, SideCandidateSizing.columnCount(64, 1f, 14f))
+        assertEquals(1, SideCandidateSizing.columnCount(127, 1f, 14f))
+        assertEquals(2, SideCandidateSizing.columnCount(128, 1f, 14f))
+        assertEquals(3, SideCandidateSizing.columnCount(200, 1f, 14f))
+        assertEquals(1, SideCandidateSizing.columnCount(200, 1f, 80f))
     }
 
     @Test fun verticalTextKeepsGraphemeClustersTogether() {
@@ -113,6 +122,15 @@ class KeyboardGeometryPreferencesTest {
         assertTrue(host.attached)
         assertEquals(RecyclerView.VERTICAL, (recycler.layoutManager as LinearLayoutManager).orientation)
         assertNotSame(originalParent, recycler.parent)
+        val density = context.resources.displayMetrics.density
+        host.show(Rect(0, 0, (200 * density).toInt(), 260), verticalText = true)
+        val grid = recycler.layoutManager as GridLayoutManager
+        assertEquals(3, grid.spanCount)
+        host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = true)
+        assertSame(grid, recycler.layoutManager)
+        assertEquals(1, grid.spanCount)
+        host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = false)
+        assertFalse(recycler.layoutManager is GridLayoutManager)
         assertTrue(host.detach())
         assertSame(originalParent, recycler.parent)
         assertSame(originalManager, recycler.layoutManager)

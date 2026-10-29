@@ -28,6 +28,12 @@ object SideCandidateSizing {
         val requested = (surfaceWidth.toLong() * percent.coerceIn(MIN_PERCENT, MAX_PERCENT) / 100).toInt()
         return requested.coerceIn(minimum, maximum)
     }
+
+    /** Leave at least 64 dp per candidate, or more for unusually large text. */
+    fun columnCount(candidateWidth: Int, density: Float, textSizePx: Float): Int {
+        val minimumColumnWidth = maxOf(64f * density, textSizePx * 1.2f + 24f * density, 1f)
+        return (candidateWidth / minimumColumnWidth).toInt().coerceAtLeast(1)
+    }
 }
 
 /** Separate keys per keyboard and screen orientation; legacy backups use default values. */

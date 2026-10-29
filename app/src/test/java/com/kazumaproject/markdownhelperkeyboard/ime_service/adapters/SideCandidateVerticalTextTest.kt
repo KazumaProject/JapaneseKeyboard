@@ -8,6 +8,9 @@ import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.FormulaCandidatePresentation
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.FormulaCandidateType
+import com.kazumaproject.markdownhelperkeyboard.converter.utility.FormulaNode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import org.junit.Assert.*
 import org.junit.Test
@@ -27,6 +30,7 @@ class SideCandidateVerticalTextTest {
         awaitItems(adapter, 1)
         val parent = FrameLayout(ApplicationProvider.getApplicationContext<Context>())
         val holder = adapter.createViewHolder(parent, adapter.getItemViewType(0))
+        val originalMinimumWidth = holder.itemView.minimumWidth
         var clicked: Candidate? = null
         adapter.setOnItemClickListener { selected, _ -> clicked = selected }
         adapter.setSideCandidateVerticalText(true)
@@ -36,6 +40,7 @@ class SideCandidateVerticalTextTest {
         val label = holder.itemView.findViewById<TextView>(R.id.suggestion_item_type_text_view)
         assertEquals("今\n日", text.text.toString())
         assertEquals("今日", text.contentDescription.toString())
+        assertTrue(holder.itemView.minimumWidth >= (48 * parent.resources.displayMetrics.density).toInt())
         assertEquals(View.GONE, reading.visibility)
         assertTrue(label.text.toString().contains("き\nょ\nう"))
         holder.itemView.performClick()
@@ -44,6 +49,7 @@ class SideCandidateVerticalTextTest {
         adapter.onBindViewHolder(holder, 0)
         assertEquals("今日", text.text.toString().trim())
         assertEquals(1, text.maxLines)
+        assertEquals(originalMinimumWidth, holder.itemView.minimumWidth)
         assertEquals(View.VISIBLE, reading.visibility)
         adapter.release()
     }
@@ -53,6 +59,8 @@ class SideCandidateVerticalTextTest {
         val adapter = SuggestionAdapter()
         adapter.submitContent(CandidateStripContent.ZeroQuerySuggestions(listOf(candidate)))
         awaitItems(adapter, 2)
+        assertEquals(3, adapter.sideCandidateSpanSize(0, 3))
+        assertEquals(1, adapter.sideCandidateSpanSize(1, 3))
         val parent = FrameLayout(ApplicationProvider.getApplicationContext<Context>())
         val holder = adapter.createViewHolder(parent, adapter.getItemViewType(1))
         val height = holder.itemView.layoutParams.height
@@ -64,6 +72,16 @@ class SideCandidateVerticalTextTest {
         adapter.onBindViewHolder(holder, 1)
         assertEquals("今日", text.text.toString().trim())
         assertEquals(height, holder.itemView.layoutParams.height)
+        adapter.release()
+    }
+
+    @Test fun formulaCandidatesRetainAFullWidthPresentation() {
+        val formula = FormulaCandidatePresentation(FormulaNode.Symbol("x"), "x", "x", FormulaCandidateType.UNICODE)
+        val candidate = Candidate("x", 1, 1u, 0, presentation = formula)
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(CandidateStripContent.Candidates(listOf(candidate)))
+        awaitItems(adapter, 1)
+        assertEquals(3, adapter.sideCandidateSpanSize(0, 3))
         adapter.release()
     }
 

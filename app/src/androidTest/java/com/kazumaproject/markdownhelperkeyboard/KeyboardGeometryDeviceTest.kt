@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.inspector.WindowInspector
 import android.view.inputmethod.BaseInputConnection
 import androidx.preference.PreferenceManager
@@ -22,6 +23,7 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.tenkey.TenKey
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,6 +48,7 @@ class KeyboardGeometryDeviceTest {
     @Test fun floatingSideCandidatesResizeWithTheKeyboard() = verify(floating = true, tenkey = true, side = "RIGHT", resizeSide = true)
     @Test fun dockedSideCandidateWidthAndVerticalTextCanChange() = verify(floating = false, tenkey = true, adjustSide = true)
     @Test fun floatingSideCandidateWidthAndVerticalTextCanChange() = verify(floating = true, tenkey = true, side = "RIGHT", adjustSide = true)
+    @Test fun sumireSideCandidateWidthAndVerticalTextCanChange() = verify(floating = false, tenkey = true, adjustSide = true, sumire = true)
     @Test fun narrowTenKeyFallsBackToTopCandidates() = verify(floating = false, tenkey = true, marginDp = 110, fallback = true)
     @Test fun narrowQwertyGapFallsBackToTopCandidates() = verify(floating = false, tenkey = false, splitPercent = 10, fallback = true)
 
@@ -65,17 +68,21 @@ class KeyboardGeometryDeviceTest {
 
     private fun verify(floating: Boolean, tenkey: Boolean, landscape: Boolean = false, reverse: Boolean = false,
         side: String = "LEFT", marginDp: Int = 0, splitPercent: Int = 40, fallback: Boolean = false,
-        switchSide: Boolean = false, columns: String = "1", resizeSide: Boolean = false, adjustSide: Boolean = false) {
+        switchSide: Boolean = false, columns: String = "1", resizeSide: Boolean = false, adjustSide: Boolean = false,
+        sumire: Boolean = false) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
         val originalIme = shell("settings get secure default_input_method")
         val targetIme = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lineSequence().any { it.trim() == targetIme }
         val orientation = if (landscape) "landscape" else "portrait"
+        val geometryName = if (sumire) "sumire" else "tenkey"
         var activity: FastInputHostActivity? = null
         try {
             check(prefs.edit().clear()
-                .putString("keyboard_order_preference", if (tenkey) "[\"TENKEY\"]" else "[\"QWERTY\"]")
+                .putString("keyboard_order_preference", if (sumire) "[\"SUMIRE\"]" else if (tenkey) "[\"TENKEY\"]" else "[\"QWERTY\"]")
+                .putString("sumire_keyboard_style_preference", "default")
+                .putString("sumire_input_method_preference", "toggle")
                 .putBoolean("save_last_used_keyboard", false)
                 .putBoolean("keyboard_floating_preference", floating)
                 .putBoolean("qwerty_glide_input_preference", true)
@@ -92,9 +99,9 @@ class KeyboardGeometryDeviceTest {
                 .putString("keyboard_geometry_qwerty_${orientation}_curve_direction", if (reverse) "UP" else "DOWN")
                 .putString("keyboard_geometry_qwerty_${orientation}_candidates", "CENTER")
                 .putBoolean("keyboard_geometry_qwerty_${orientation}_auto_height", true)
-                .putInt("keyboard_geometry_tenkey_portrait_curve", 20)
-                .putString("keyboard_geometry_tenkey_portrait_curve_direction", if (reverse) "UP" else "DOWN")
-                .putString("keyboard_geometry_tenkey_portrait_candidates", side)
+                .putInt("keyboard_geometry_${geometryName}_portrait_curve", 20)
+                .putString("keyboard_geometry_${geometryName}_portrait_curve_direction", if (reverse) "UP" else "DOWN")
+                .putString("keyboard_geometry_${geometryName}_portrait_candidates", side)
                 .putBoolean("flick_input_only_preference", true)
                 .commit())
             shell("ime enable $targetIme")
@@ -114,7 +121,14 @@ class KeyboardGeometryDeviceTest {
                 host.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
                     .showSoftInput(editor, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
             }
-            val keyboard: View = if (tenkey) {
+            val keyboard: View = if (sumire) {
+                val keyboard = awaitView<ViewGroup>(R.id.custom_layout_default) {
+                    runCatching { findTextView(it, "あ"); findTextView(it, "か") }.isSuccess
+                }
+                tap(findTextView(keyboard, "あ"))
+                if (adjustSide) tap(findTextView(keyboard, "か"))
+                keyboard
+            } else if (tenkey) {
                 val keyboard = awaitView<TenKey>(if (floating) R.id.keyboard_view_floating else R.id.keyboard_view) {
                     val rotation = it.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1)?.rotation ?: 0f
                     if (reverse) rotation > 0f else rotation < 0f
@@ -203,7 +217,7 @@ class KeyboardGeometryDeviceTest {
             }
             if (adjustSide) {
                 for (percent in listOf(40, 20, 50, 25)) {
-                    check(prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", percent).commit())
+                    check(prefs.edit().putInt("keyboard_geometry_${geometryName}_portrait_candidate_width_percent", percent).commit())
                     await {
                         var matches = false
                         instrumentation.runOnMainSync {
@@ -218,18 +232,53 @@ class KeyboardGeometryDeviceTest {
                     }
                 }
                 for (vertical in listOf(true, false, true)) {
-                    check(prefs.edit().putBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", vertical).commit())
+                    check(prefs.edit().putBoolean("keyboard_geometry_${geometryName}_portrait_candidate_vertical_text", vertical).commit())
                     await {
                         var matches = false
                         instrumentation.runOnMainSync {
                             val text = (0 until candidates.childCount).firstNotNullOfOrNull {
                                 candidates.getChildAt(it).findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
                             }
-                            matches = text != null && if (vertical) text.maxLines > 1 else text.maxLines == 1
+                            matches = text != null && if (vertical) {
+                                text.maxLines > 1 && candidates.layoutManager is GridLayoutManager
+                            } else text.maxLines == 1 && candidates.layoutManager !is GridLayoutManager
                         }
                         matches
                     }
                 }
+                var sawOneColumn = false
+                var sawMultipleColumns = false
+                for (percent in listOf(20, 40, 50, 20)) {
+                    check(prefs.edit().putInt("keyboard_geometry_${geometryName}_portrait_candidate_width_percent", percent).commit())
+                    await {
+                        var matches = false
+                        instrumentation.runOnMainSync {
+                            val manager = candidates.layoutManager as? GridLayoutManager
+                            val metrics = context.resources.displayMetrics
+                            val textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
+                                if (floating) 18f else 14f, metrics)
+                            val expected = SideCandidateSizing.columnCount(candidates.width, metrics.density, textSize)
+                            val body = Rect(); val strip = Rect()
+                            val target = if (keyboard.getGlobalVisibleRect(body) && candidates.getGlobalVisibleRect(strip)) {
+                                kotlin.math.abs(strip.width() - (body.width() + strip.width()) * percent / 100f) < 8f
+                            } else false
+                            val positions = (0 until candidates.childCount).mapNotNull {
+                                candidates.getChildAt(it).takeIf { child ->
+                                    child.findViewById<View>(R.id.suggestion_item_text_view) != null
+                                }?.left
+                            }.distinct()
+                            matches = target && manager?.spanCount == expected &&
+                                (expected == 1 || positions.size > 1)
+                            if (matches) {
+                                sawOneColumn = sawOneColumn || expected == 1
+                                sawMultipleColumns = sawMultipleColumns || expected > 1
+                            }
+                        }
+                        matches
+                    }
+                }
+                assertTrue("narrow candidate area uses one column", sawOneColumn)
+                assertTrue("wider candidate area shows multiple columns", sawMultipleColumns)
             }
             if (switchSide) {
                 for (position in listOf("RIGHT", "TOP", "LEFT")) {
@@ -261,6 +310,15 @@ class KeyboardGeometryDeviceTest {
             if (originalIme.isNotBlank() && originalIme != "null") shell("ime set $originalIme")
             if (!wasEnabled) shell("ime disable $targetIme")
         }
+    }
+
+    private fun findTextView(root: View, text: String): View {
+        if (root is android.widget.TextView && root.text.toString() == text) return root
+        if (root is ViewGroup) for (i in 0 until root.childCount) {
+            val found = runCatching { findTextView(root.getChildAt(i), text) }.getOrNull()
+            if (found != null) return found
+        }
+        error("No visible key labeled $text")
     }
 
     private inline fun <reified T : View> awaitView(id: Int, crossinline predicate: (T) -> Boolean): T {
