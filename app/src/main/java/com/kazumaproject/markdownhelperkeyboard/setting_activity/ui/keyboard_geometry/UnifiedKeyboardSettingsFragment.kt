@@ -658,12 +658,12 @@ private class SizeHandles(context: android.content.Context, private val preview:
             visibleCenter(y, height, max(halfHeight, targetHalf)))
     }
 
-    /** A small, edge-aligned grip sits within the existing 48 dp touch target. */
+    /** A clearly visible, edge-aligned grip sits within the 48 dp touch target. */
     private fun drawResizeGrip(canvas: Canvas, bounds: RectF, edge: Int) {
         val side = edge == 4 || edge == 5
         val active = gesture == edge
-        val length = (if (active) 36f else 30f) * density
-        val thickness = (if (active) 5f else 4f) * density
+        val length = (if (active) 44f else 40f) * density
+        val thickness = (if (active) 14f else 12f) * density
         val outline = 1.5f * density
         val halfWidth = (if (side) thickness else length) / 2f
         val halfHeight = (if (side) length else thickness) / 2f
