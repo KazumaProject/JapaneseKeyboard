@@ -91,8 +91,8 @@ object KeyboardViewGeometry {
             val curve = if (qwerty && item.group == KeyboardGeometryGroup.SINGLE) {
                 // A single, unsplit space remains horizontal while following the middle of
                 // the two arcs; this also preserves the curved keyboard's true vertical extent.
-                KeyboardGeometryMath.curve(span, span, safe.curveDegrees.toFloat(), false).copy(rotationDegrees = 0f)
-            } else KeyboardGeometryMath.curve(distance, span, safe.curveDegrees.toFloat(), mirror)
+                KeyboardGeometryMath.curve(span, span, safe.curveDegrees.toFloat(), false, safe.curveDirection).copy(rotationDegrees = 0f)
+            } else KeyboardGeometryMath.curve(distance, span, safe.curveDegrees.toFloat(), mirror, safe.curveDirection)
             Placed(item, x, bounds.centerY() + curve.offsetY, xScale, yScale, curve.rotationDegrees)
         }
 

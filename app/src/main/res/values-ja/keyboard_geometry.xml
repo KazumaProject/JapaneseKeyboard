@@ -5,7 +5,10 @@
     <string name="keyboard_geometry_landscape">横画面</string>
     <string name="keyboard_geometry_split">中央の間隔: %1$d%%</string>
     <string name="keyboard_geometry_curve">カーブ: %1$d°</string>
-    <string name="keyboard_geometry_hand">カーブの向き</string>
+    <string name="keyboard_geometry_curve_direction">カーブの方向</string>
+    <string name="keyboard_geometry_curve_down">内側を下げる</string>
+    <string name="keyboard_geometry_curve_up">内側を上げる</string>
+    <string name="keyboard_geometry_hand">片手向けの配置</string>
     <string name="keyboard_geometry_right_hand">右手向け</string>
     <string name="keyboard_geometry_left_hand">左手向け</string>
     <string name="keyboard_geometry_height">カーブ時の高さ</string>

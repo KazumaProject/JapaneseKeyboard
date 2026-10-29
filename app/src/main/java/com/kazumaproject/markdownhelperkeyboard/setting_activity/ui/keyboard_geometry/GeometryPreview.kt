@@ -34,6 +34,7 @@ import com.kazumaproject.core.R as CoreR
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.skin.SkinKeyRole
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -217,7 +218,7 @@ internal class GeometryPreview(context: Context, private val keyboard: GeometryK
             createSumireKeys(previewContext, bodyWidth, baseHeight)
         } else createXmlKeys(previewContext, bodyWidth, baseHeight, qwerty)
         val gap = if (qwerty) min(bodyWidth * value.geometry.splitPercent / 100f, max(0f, bodyWidth - 240f * density)) else 0f
-        val placed = PreviewGeometry.place(keys, bodyWidth, baseHeight, gap, value.geometry.curveDegrees,
+        val placed = PreviewGeometry.place(keys, bodyWidth, baseHeight, gap, value.geometry.curveDegrees, value.geometry.curveDirection,
             value.geometry.hand == KeyboardCurveHand.RIGHT, qwerty, value.geometry.autoHeight, (screenHeight - chromeHeight).coerceAtLeast(baseHeight))
         val colors = previewColors(previewContext)
         val candidateSide = when {
@@ -573,7 +574,7 @@ private data class PlacedPreviewItem(val view: View, val bounds: RectF, val grou
 /** Independent display-only geometry; it never transforms the real IME's views. */
 private object PreviewGeometry {
     data class Result(val height: Float, val items: List<PlacedPreviewItem>)
-    fun place(keys: List<PreviewItem>, width: Float, baseHeight: Float, gap: Float, degrees: Int,
+    fun place(keys: List<PreviewItem>, width: Float, baseHeight: Float, gap: Float, degrees: Int, direction: KeyboardCurveDirection,
         rightHand: Boolean, qwerty: Boolean, autoHeight: Boolean, maximumHeight: Float): Result {
         if (keys.isEmpty()) return Result(baseHeight, emptyList())
         if (degrees == 0 && gap == 0f) return Result(baseHeight, keys.map {
@@ -599,9 +600,10 @@ private object PreviewGeometry {
             val radians = Math.toRadians(degrees.coerceIn(0, 25).toDouble())
             val radius = if (degrees > 0) span / sin(radians).toFloat() else Float.POSITIVE_INFINITY
             val d = distance.coerceIn(0f, span)
-            val offset = if (degrees > 0) radius - sqrt(max(0f, radius * radius - d * d)) else 0f
+            val directionSign = if (direction == KeyboardCurveDirection.UP) -1f else 1f
+            val offset = if (degrees > 0) (radius - sqrt(max(0f, radius * radius - d * d))) * directionSign else 0f
             val angle = if (degrees > 0 && !(qwerty && key.group == PreviewGroup.SINGLE))
-                Math.toDegrees(asin((d / radius).coerceIn(-1f, 1f)).toDouble()).toFloat() * if (mirror) -1f else 1f else 0f
+                Math.toDegrees(asin((d / radius).coerceIn(-1f, 1f)).toDouble()).toFloat() * (if (mirror) -1f else 1f) * directionSign else 0f
             PlacedPreviewItem(key.view, bounds, key.group, x, bounds.centerY() + offset, sx, sy, angle)
         }
         if (qwerty && gap > 0) {
