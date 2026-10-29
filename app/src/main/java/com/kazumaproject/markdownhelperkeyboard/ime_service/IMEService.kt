@@ -1036,7 +1036,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         SharedPreferences.OnSharedPreferenceChangeListener { preferences, key ->
             if (key == null || key.startsWith("keyboard_geometry_")) {
                 runOnMainThread {
-                    if (key == null || key.endsWith("_curve") || key.endsWith("_split") || key.endsWith("_hand")) {
+                    if (key == null || key.endsWith("_curve") || key.endsWith("_split") || key.endsWith("_hand") || key.endsWith("_curve_direction")) {
                         geometryRequiredHeights.clear()
                     }
                     // A settings save updates several keys. Coalesce notifications so the

@@ -7,6 +7,7 @@ import android.graphics.RectF
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardViewGeometry
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideInputListener
@@ -22,7 +23,13 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = android.app.Application::class)
 class QwertyGeometryTest {
-    @Test fun unsplitCurvedKeyboardStillRecognizesGlideAcrossTransformedKeys() {
+    @Test fun unsplitCurvedKeyboardStillRecognizesGlideAcrossTransformedKeys() =
+        verifyUnsplitGlide(KeyboardCurveDirection.DOWN)
+
+    @Test fun reverseCurvedKeyboardStillRecognizesGlideAcrossTransformedKeys() =
+        verifyUnsplitGlide(KeyboardCurveDirection.UP)
+
+    private fun verifyUnsplitGlide(direction: KeyboardCurveDirection) {
         val keyboard = keyboard()
         var started = false
         var ended = false
@@ -36,7 +43,7 @@ class QwertyGeometryTest {
             override fun onQwertyGlideCancelled() = Unit
         })
         keyboard.setQwertyGlideInputMode(true)
-        keyboard.setKeyboardGeometry(KeyboardGeometry(curveDegrees = 20), 500)
+        keyboard.setKeyboardGeometry(KeyboardGeometry(curveDegrees = 20, curveDirection = direction), 500)
         layout(keyboard)
         val keys = listOf(R.id.key_q, R.id.key_w, R.id.key_e, R.id.key_r).map { keyboard.findViewById<View>(it) }
         keys.forEachIndexed { index, key ->
@@ -55,9 +62,9 @@ class QwertyGeometryTest {
     }
 
     @Test fun rotatedCornersStayInsideAtLargeAnglesAndDifferentWidths() {
-        for (width in listOf(400, 700, 1080)) for (split in listOf(0, 40)) {
+        for (width in listOf(400, 700, 1080)) for (split in listOf(0, 40)) for (direction in KeyboardCurveDirection.entries) {
             val keyboard = keyboard()
-            keyboard.setKeyboardGeometry(KeyboardGeometry(splitPercent = split, curveDegrees = 25), 500)
+            keyboard.setKeyboardGeometry(KeyboardGeometry(splitPercent = split, curveDegrees = 25, curveDirection = direction), 500)
             keyboard.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(500, View.MeasureSpec.EXACTLY))
             keyboard.layout(0, 0, width, 500)
             val views = listOf(R.id.key_q, R.id.key_t, R.id.key_y, R.id.key_p, R.id.key_z, R.id.key_m, R.id.key_space)

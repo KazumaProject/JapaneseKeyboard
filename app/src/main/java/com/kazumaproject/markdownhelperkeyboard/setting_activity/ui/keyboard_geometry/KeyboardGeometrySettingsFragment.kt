@@ -14,6 +14,7 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.preference.PreferenceManager
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidatePlacement
@@ -38,6 +39,7 @@ class KeyboardGeometrySettingsFragment : Fragment() {
     private lateinit var curve: SeekBar
     private lateinit var orientation: RadioGroup
     private lateinit var hand: RadioGroup
+    private lateinit var curveDirection: RadioGroup
     private lateinit var height: RadioGroup
     private lateinit var candidates: RadioGroup
 
@@ -64,6 +66,8 @@ class KeyboardGeometrySettingsFragment : Fragment() {
         split.visibility = splitLabel.visibility
         curveLabel = TextView(context).also(content::addView)
         curve = SeekBar(context).apply { max = 25 }.also(content::addView)
+        heading(R.string.keyboard_geometry_curve_direction)
+        curveDirection = group(listOf(11 to R.string.keyboard_geometry_curve_down, 12 to R.string.keyboard_geometry_curve_up), vertical = true)
         val handLabel = heading(R.string.keyboard_geometry_hand)
         hand = group(listOf(3 to R.string.keyboard_geometry_right_hand, 4 to R.string.keyboard_geometry_left_hand))
         handLabel.visibility = if (keyboard == GeometryKeyboard.QWERTY) View.GONE else View.VISIBLE
@@ -78,6 +82,7 @@ class KeyboardGeometrySettingsFragment : Fragment() {
 
         orientation.setOnCheckedChangeListener { _, id -> if (!updating) { landscape = id == 2; load() } }
         hand.setOnCheckedChangeListener { _, id -> if (!updating) save(value.copy(geometry = value.geometry.copy(hand = if (id == 4) KeyboardCurveHand.LEFT else KeyboardCurveHand.RIGHT))) }
+        curveDirection.setOnCheckedChangeListener { _, id -> if (!updating) save(value.copy(geometry = value.geometry.copy(curveDirection = if (id == 12) KeyboardCurveDirection.UP else KeyboardCurveDirection.DOWN))) }
         height.setOnCheckedChangeListener { _, id -> if (!updating) save(value.copy(geometry = value.geometry.copy(autoHeight = id == 5))) }
         candidates.setOnCheckedChangeListener { _, id -> if (!updating) save(value.copy(candidates = when (id) {
             8 -> GeometryCandidatePlacement.CENTER; 9 -> GeometryCandidatePlacement.LEFT; 10 -> GeometryCandidatePlacement.RIGHT; else -> GeometryCandidatePlacement.TOP
@@ -105,6 +110,7 @@ class KeyboardGeometrySettingsFragment : Fragment() {
         split.contentDescription = splitLabel.text
         curve.contentDescription = curveLabel.text
         hand.check(if (value.geometry.hand == KeyboardCurveHand.LEFT) 4 else 3)
+        curveDirection.check(if (value.geometry.curveDirection == KeyboardCurveDirection.UP) 12 else 11)
         height.check(if (value.geometry.autoHeight) 5 else 6)
         candidates.check(when (value.candidates) {
             GeometryCandidatePlacement.TOP -> 7; GeometryCandidatePlacement.CENTER -> 8

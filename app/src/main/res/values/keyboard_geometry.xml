@@ -5,7 +5,10 @@
     <string name="keyboard_geometry_landscape">Landscape</string>
     <string name="keyboard_geometry_split">Center gap: %1$d%%</string>
     <string name="keyboard_geometry_curve">Curve: %1$d°</string>
-    <string name="keyboard_geometry_hand">Curve direction</string>
+    <string name="keyboard_geometry_curve_direction">Curve direction</string>
+    <string name="keyboard_geometry_curve_down">Inner edge down</string>
+    <string name="keyboard_geometry_curve_up">Inner edge up</string>
+    <string name="keyboard_geometry_hand">Handedness</string>
     <string name="keyboard_geometry_right_hand">Right hand</string>
     <string name="keyboard_geometry_left_hand">Left hand</string>
     <string name="keyboard_geometry_height">Height when curved</string>
@@ -18,7 +21,7 @@
     <string name="keyboard_geometry_center">Center</string>
     <string name="keyboard_geometry_reset">Reset</string>
     <string name="keyboard_geometry_preview">Layout preview</string>
-    <string name="keyboard_geometry_preview_description">Illustrative preview; it does not enter text.</string>
+    <string name="keyboard_geometry_preview_description">Display-only preview; it does not enter text.</string>
     <string name="keyboard_geometry_glide_disabled">Glide typing is temporarily unavailable while QWERTY is split.</string>
     <string name="keyboard_geometry_candidate_fallback">Not enough room for candidates here; they will appear above the keyboard.</string>
     <string name="keyboard_geometry_gap_limited">The gap is limited by the available keyboard width.</string>

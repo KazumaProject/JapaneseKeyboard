@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.content.SharedPreferences
 import android.graphics.Matrix
+import android.graphics.Rect
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.InputDevice
@@ -11,6 +12,7 @@ import android.view.inspector.WindowInspector
 import android.view.inputmethod.BaseInputConnection
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
@@ -19,6 +21,7 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.tenkey.TenKey
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +36,13 @@ class KeyboardGeometryDeviceTest {
     @Test fun floatingSplitQwertyAcceptsInputAndCenterCandidatesCanBeSelected() = verify(floating = true, tenkey = false)
     @Test fun curvedTenKeyAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = false, tenkey = true)
     @Test fun floatingCurvedTenKeyAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = true, tenkey = true)
+    @Test fun reverseSplitQwertyAcceptsInputAndCenterCandidatesCanBeSelected() = verify(floating = false, tenkey = false, reverse = true)
+    @Test fun floatingReverseTenKeyAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = true, tenkey = true, reverse = true)
+    @Test fun sideCandidatesCanSwitchSidesAndReturnToTheTop() = verify(floating = false, tenkey = true, switchSide = true)
+    @Test fun sideCandidatesRestoreTheConfiguredMultiRowTopLayout() = verify(floating = false, tenkey = true, switchSide = true, columns = "3")
+    @Test fun rightSideCandidatesWorkWithKeyboardMargins() = verify(floating = false, tenkey = true, side = "RIGHT", marginDp = 50)
+    @Test fun narrowTenKeyFallsBackToTopCandidates() = verify(floating = false, tenkey = true, marginDp = 110, fallback = true)
+    @Test fun narrowQwertyGapFallsBackToTopCandidates() = verify(floating = false, tenkey = false, splitPercent = 10, fallback = true)
 
     @Test fun landscapeSplitQwertyAcceptsInputAndCenterCandidatesCanBeSelected() {
         val oldAuto = shell("settings get system accelerometer_rotation")
@@ -48,7 +58,9 @@ class KeyboardGeometryDeviceTest {
         }
     }
 
-    private fun verify(floating: Boolean, tenkey: Boolean, landscape: Boolean = false) {
+    private fun verify(floating: Boolean, tenkey: Boolean, landscape: Boolean = false, reverse: Boolean = false,
+        side: String = "LEFT", marginDp: Int = 0, splitPercent: Int = 40, fallback: Boolean = false,
+        switchSide: Boolean = false, columns: String = "1") {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
         val originalIme = shell("settings get secure default_input_method")
@@ -63,16 +75,21 @@ class KeyboardGeometryDeviceTest {
                 .putBoolean("keyboard_floating_preference", floating)
                 .putBoolean("qwerty_glide_input_preference", true)
                 .putBoolean("learn_dictionary_preference", false)
+                .putString("candidate_column_preference", columns)
                 .putInt("qwerty_keyboard_width_preference", 100)
                 .putInt("qwerty_keyboard_height_preference", 220)
                 .putInt("qwerty_keyboard_width_landscape_preference", 100)
                 .putInt("qwerty_keyboard_height_landscape_preference", 200)
-                .putInt("keyboard_geometry_qwerty_${orientation}_split", 40)
+                .putInt("keyboard_margin_start_dp_preference", marginDp)
+                .putInt("keyboard_margin_end_dp_preference", marginDp)
+                .putInt("keyboard_geometry_qwerty_${orientation}_split", splitPercent)
                 .putInt("keyboard_geometry_qwerty_${orientation}_curve", 20)
+                .putString("keyboard_geometry_qwerty_${orientation}_curve_direction", if (reverse) "UP" else "DOWN")
                 .putString("keyboard_geometry_qwerty_${orientation}_candidates", "CENTER")
                 .putBoolean("keyboard_geometry_qwerty_${orientation}_auto_height", true)
                 .putInt("keyboard_geometry_tenkey_portrait_curve", 20)
-                .putString("keyboard_geometry_tenkey_portrait_candidates", "LEFT")
+                .putString("keyboard_geometry_tenkey_portrait_curve_direction", if (reverse) "UP" else "DOWN")
+                .putString("keyboard_geometry_tenkey_portrait_candidates", side)
                 .putBoolean("flick_input_only_preference", true)
                 .commit())
             shell("ime enable $targetIme")
@@ -92,14 +109,18 @@ class KeyboardGeometryDeviceTest {
                 host.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
                     .showSoftInput(editor, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
             }
-            if (tenkey) {
+            val keyboard: View = if (tenkey) {
                 val keyboard = awaitView<TenKey>(if (floating) R.id.keyboard_view_floating else R.id.keyboard_view) {
-                    (it.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1)?.rotation ?: 0f) != 0f
+                    val rotation = it.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1)?.rotation ?: 0f
+                    if (reverse) rotation > 0f else rotation < 0f
                 }
                 tap(keyboard.findViewById(com.kazumaproject.tenkey.R.id.key_1))
+                keyboard
             } else {
                 val keyboard = awaitView<QWERTYKeyboardView>(if (floating) R.id.qwerty_view_floating else R.id.qwerty_view) {
-                    it.effectiveSplitGapPx() > 96f * context.resources.displayMetrics.density
+                    val rotation = it.findViewById<View>(com.kazumaproject.qwerty_keyboard.R.id.key_t)?.rotation ?: 0f
+                    it.effectiveSplitGapPx() > 0f &&
+                        if (reverse) rotation < 0f else rotation > 0f
                 }
                 for (id in listOf(com.kazumaproject.qwerty_keyboard.R.id.key_h,
                     com.kazumaproject.qwerty_keyboard.R.id.key_e,
@@ -108,17 +129,55 @@ class KeyboardGeometryDeviceTest {
                     com.kazumaproject.qwerty_keyboard.R.id.key_o)) {
                     tap(keyboard.findViewById(id))
                 }
+                keyboard
             }
             await { var text = ""; instrumentation.runOnMainSync { text = editor.text.toString() }; text.isNotEmpty() }
             SystemClock.sleep(1200)
+            fun awaitCandidates(position: String): RecyclerView {
+                val vertical = position != "TOP"
+                val candidates = awaitView<RecyclerView>(R.id.suggestion_recycler_view) {
+                    (it.layoutManager as? LinearLayoutManager)?.orientation ==
+                        (if (vertical) RecyclerView.VERTICAL else RecyclerView.HORIZONTAL) && it.childCount > 0 &&
+                        (vertical || columns == "1" || it.layoutManager is GridLayoutManager)
+                }
+                await {
+                    var correctlyPlaced = false
+                    instrumentation.runOnMainSync {
+                        val body = Rect(); val strip = Rect()
+                        if (keyboard.getGlobalVisibleRect(body) && candidates.getGlobalVisibleRect(strip)) {
+                            val tolerance = (2f * context.resources.displayMetrics.density).toInt()
+                            correctlyPlaced = when (position) {
+                                "LEFT" -> strip.right <= body.left + tolerance
+                                "RIGHT" -> strip.left >= body.right - tolerance
+                                "TOP" -> strip.bottom <= body.top + tolerance
+                                else -> strip.left >= body.left && strip.right <= body.right
+                            }
+                        }
+                    }
+                    correctlyPlaced
+                }
+                return candidates
+            }
+            val initialPosition = if (fallback) "TOP" else if (tenkey) side else "CENTER"
+            var candidates = awaitCandidates(initialPosition)
+            if (tenkey && !floating && !fallback) {
+                val density = context.resources.displayMetrics.density
+                val available = context.resources.displayMetrics.widthPixels - (2 * marginDp * density).toInt()
+                val expectedWidth = (available / 4).coerceIn((96f * density).toInt(), (160f * density).toInt())
+                assertEquals("candidate width uses the available width after margins", expectedWidth.toFloat(), candidates.width.toFloat(), 2f)
+            }
+            if (switchSide) {
+                for (position in listOf("RIGHT", "TOP", "LEFT")) {
+                    check(prefs.edit().putString("keyboard_geometry_tenkey_portrait_candidates", position).commit())
+                    candidates = awaitCandidates(position)
+                }
+            }
             var committed = false
             // Suggestions can be replaced asynchronously as dictionaries finish loading.
             // Reacquire the visible item if a pending update replaces it during a tap.
             repeat(5) {
                 if (!committed) {
-                    val candidates = awaitView<RecyclerView>(R.id.suggestion_recycler_view) {
-                        (it.layoutManager as? LinearLayoutManager)?.orientation == RecyclerView.VERTICAL && it.childCount > 0
-                    }
+                    candidates = awaitCandidates(if (switchSide) "LEFT" else initialPosition)
                     var first: View? = null
                     instrumentation.runOnMainSync { first = candidates.getChildAt(0)?.takeIf { it.isShown && it.isAttachedToWindow } }
                     first?.let { tap(it) }

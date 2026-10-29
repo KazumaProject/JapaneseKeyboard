@@ -9,6 +9,7 @@ import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import com.kazumaproject.core.ui.geometry.KeyboardViewGeometry
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -39,14 +40,14 @@ class TenKeyGeometryTest {
         )
         activity.setContentView(FrameLayout(activity).apply { addView(keyboard) })
         try {
-            for (hand in KeyboardCurveHand.entries) for (independent in listOf(false, true)) {
+            for (hand in KeyboardCurveHand.entries) for (direction in KeyboardCurveDirection.entries) for (independent in listOf(false, true)) {
                 val events = mutableListOf<Pair<GestureType, Key>>()
                 keyboard.setOnFlickListener(object : FlickListener {
                     override fun onFlick(gestureType: GestureType, key: Key, char: Char?) { events += gestureType to key }
                 })
                 keyboard.setIndependentMultiTouchEnabled(independent)
                 keyboard.setFlickGuideEnabled(false)
-                keyboard.setKeyboardGeometry(KeyboardGeometry(curveDegrees = 25, hand = hand), 500)
+                keyboard.setKeyboardGeometry(KeyboardGeometry(curveDegrees = 25, hand = hand, curveDirection = direction), 500)
                 keyboard.measure(View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(500, View.MeasureSpec.EXACTLY))
                 keyboard.layout(0, 0, 720, 500)
                 val key = keyboard.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1)
@@ -61,7 +62,7 @@ class TenKeyGeometryTest {
                 val down = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, x, y, 0)
                 val up = MotionEvent.obtain(0, 20, MotionEvent.ACTION_UP, x - 100f * cos(angle).toFloat(), y - 100f * sin(angle).toFloat(), 0)
                 try { keyboard.onTouch(keyboard, down); keyboard.onTouch(keyboard, up) } finally { down.recycle(); up.recycle() }
-                assertTrue("hand=$hand independent=$independent events=$events", events.contains(GestureType.FlickLeft to Key.KeyA))
+                assertTrue("hand=$hand direction=$direction independent=$independent events=$events", events.contains(GestureType.FlickLeft to Key.KeyA))
                 assertEquals(GestureType.Down to Key.KeyA, events.first())
             }
         } finally { activity.finish() }

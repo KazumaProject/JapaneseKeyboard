@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry
 
 import android.content.SharedPreferences
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 
@@ -22,6 +23,7 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
         fun int(name: String, default: Int) = runCatching { preferences.getInt("${p}_$name", default) }.getOrDefault(default)
         fun string(name: String, default: String) = runCatching { preferences.getString("${p}_$name", default) }.getOrNull() ?: default
         val hand = runCatching { KeyboardCurveHand.valueOf(string("hand", "RIGHT")) }.getOrDefault(KeyboardCurveHand.RIGHT)
+        val direction = runCatching { KeyboardCurveDirection.valueOf(string("curve_direction", "DOWN")) }.getOrDefault(KeyboardCurveDirection.DOWN)
         val placement = runCatching { GeometryCandidatePlacement.valueOf(string("candidates", "TOP")) }.getOrDefault(GeometryCandidatePlacement.TOP)
         val allowed = when (keyboard) {
             GeometryKeyboard.QWERTY -> placement == GeometryCandidatePlacement.CENTER || placement == GeometryCandidatePlacement.TOP
@@ -33,6 +35,7 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
                 curveDegrees = int("curve", 0),
                 hand = hand,
                 autoHeight = runCatching { preferences.getBoolean("${p}_auto_height", true) }.getOrDefault(true),
+                curveDirection = direction,
             ).normalized(),
             candidates = if (allowed) placement else GeometryCandidatePlacement.TOP,
         )
@@ -48,6 +51,7 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
         } ?: GeometryCandidatePlacement.TOP
         preferences.edit().putInt("${p}_split", if (keyboard == GeometryKeyboard.QWERTY) value.splitPercent else 0)
             .putInt("${p}_curve", value.curveDegrees).putString("${p}_hand", value.hand.name)
+            .putString("${p}_curve_direction", value.curveDirection.name)
             .putBoolean("${p}_auto_height", value.autoHeight).putString("${p}_candidates", placement.name).apply()
     }
 
