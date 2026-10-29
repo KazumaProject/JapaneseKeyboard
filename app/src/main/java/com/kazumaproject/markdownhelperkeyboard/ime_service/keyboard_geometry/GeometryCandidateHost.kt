@@ -72,8 +72,17 @@ internal class GeometryCandidateHost(
 
     fun containsScreenPoint(x: Float, y: Float): Boolean {
         val view = panel ?: return false
+        if (!view.isShown) return false
         val location = IntArray(2).also(view::getLocationOnScreen)
-        return view.isShown && x >= location[0] && x < location[0] + view.width && y >= location[1] && y < location[1] + view.height
+        val localToGlobal = Matrix().also(view::transformMatrixToGlobal)
+        val globalOrigin = floatArrayOf(0f, 0f).also(localToGlobal::mapPoints)
+        val globalToLocal = Matrix()
+        if (!localToGlobal.invert(globalToLocal)) return false
+        // getLocationOnScreen includes the window offset, whereas the matrix is in
+        // global view coordinates. Translate the event into that coordinate space first.
+        val point = floatArrayOf(x - location[0] + globalOrigin[0], y - location[1] + globalOrigin[1])
+        globalToLocal.mapPoints(point)
+        return point[0] >= 0f && point[0] < view.width && point[1] >= 0f && point[1] < view.height
     }
 
     fun detach(): Boolean {

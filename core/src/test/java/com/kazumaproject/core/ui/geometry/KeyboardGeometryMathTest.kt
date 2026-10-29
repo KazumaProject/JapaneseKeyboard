@@ -15,6 +15,16 @@ class KeyboardGeometryMathTest {
         assertTrue(right.offsetY > 0f)
     }
 
+    @Test fun reversingCurveReflectsTheArcAndTangentForEitherHand() {
+        for (mirror in listOf(false, true)) {
+            val down = KeyboardGeometryMath.curve(80f, 100f, 25f, mirror, KeyboardCurveDirection.DOWN)
+            val up = KeyboardGeometryMath.curve(80f, 100f, 25f, mirror, KeyboardCurveDirection.UP)
+            assertEquals(-down.offsetY, up.offsetY, 0.001f)
+            assertEquals(-down.rotationDegrees, up.rotationDegrees, 0.001f)
+        }
+        assertEquals(KeyboardCurvePoint(0f, 0f), KeyboardGeometryMath.curve(80f, 100f, 0f, false, KeyboardCurveDirection.UP))
+    }
+
     @Test fun splitGapCannotConsumeTheLetterKeys() {
         assertEquals(0f, KeyboardGeometryMath.effectiveSplitGap(200f, 40, 24f), 0.001f)
         assertEquals(120f, KeyboardGeometryMath.effectiveSplitGap(360f, 40, 24f), 0.001f)

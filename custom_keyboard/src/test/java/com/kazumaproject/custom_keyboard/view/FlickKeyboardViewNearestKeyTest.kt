@@ -17,6 +17,7 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardViewGeometry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -50,24 +51,27 @@ class FlickKeyboardViewNearestKeyTest {
     }
 
     @Test fun curvedStandardFlickUsesTheKeyDirection() {
-        val view = keyboard()
-        val data = keys().keys.map { it.copy(keyType = KeyType.STANDARD_FLICK) }
-        val maps = data.associate { it.label to listOf(mapOf(
-            FlickDirection.TAP to FlickAction.Input(it.label),
-            FlickDirection.UP to FlickAction.Input(it.label + "-up")
-        )) }
-        view.setKeyboard(KeyboardLayout(data, maps, 2, 2), KeyHitTestMode.NEAREST_KEY)
-        view.setSumireGeometry(KeyboardGeometry(curveDegrees = 25), 400)
-        layout(view)
-        val key = view.getChildAt(0)
-        val (x, y) = KeyboardViewGeometry.centerInParent(key)
-        val radians = Math.toRadians(key.rotation.toDouble())
-        val dx = kotlin.math.sin(radians).toFloat() * 100f
-        val dy = -kotlin.math.cos(radians).toFloat() * 100f
-        event(view, MotionEvent.ACTION_DOWN, x, y)
-        event(view, MotionEvent.ACTION_MOVE, x + dx, y + dy)
-        event(view, MotionEvent.ACTION_UP, x + dx, y + dy)
-        assertEquals(listOf(KeyAction.Text("a-up")), actions)
+        for (direction in KeyboardCurveDirection.entries) {
+            actions.clear()
+            val view = keyboard()
+            val data = keys().keys.map { it.copy(keyType = KeyType.STANDARD_FLICK) }
+            val maps = data.associate { it.label to listOf(mapOf(
+                FlickDirection.TAP to FlickAction.Input(it.label),
+                FlickDirection.UP to FlickAction.Input(it.label + "-up")
+            )) }
+            view.setKeyboard(KeyboardLayout(data, maps, 2, 2), KeyHitTestMode.NEAREST_KEY)
+            view.setSumireGeometry(KeyboardGeometry(curveDegrees = 25, curveDirection = direction), 400)
+            layout(view)
+            val key = view.getChildAt(0)
+            val (x, y) = KeyboardViewGeometry.centerInParent(key)
+            val radians = Math.toRadians(key.rotation.toDouble())
+            val dx = kotlin.math.sin(radians).toFloat() * 100f
+            val dy = -kotlin.math.cos(radians).toFloat() * 100f
+            event(view, MotionEvent.ACTION_DOWN, x, y)
+            event(view, MotionEvent.ACTION_MOVE, x + dx, y + dy)
+            event(view, MotionEvent.ACTION_UP, x + dx, y + dy)
+            assertEquals("direction=$direction", listOf(KeyAction.Text("a-up")), actions)
+        }
     }
     private val longs = mutableListOf<KeyAction>()
     private val releases = mutableListOf<KeyAction>()

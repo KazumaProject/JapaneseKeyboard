@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry
 
 import android.content.Context
+import android.app.Activity
 import android.graphics.Rect
 import android.graphics.RectF
 import android.view.View
@@ -10,11 +11,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Robolectric
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -26,7 +29,8 @@ class KeyboardGeometryPreferencesTest {
         prefs.edit().clear().commit()
         val store = KeyboardGeometryPreferences(prefs)
         val configured = KeyboardGeometryPreference(
-            KeyboardGeometry(splitPercent = 20, curveDegrees = 15, hand = KeyboardCurveHand.LEFT, autoHeight = false),
+            KeyboardGeometry(splitPercent = 20, curveDegrees = 15, hand = KeyboardCurveHand.LEFT, autoHeight = false,
+                curveDirection = KeyboardCurveDirection.UP),
             GeometryCandidatePlacement.CENTER,
         )
         store.save(GeometryKeyboard.QWERTY, true, configured)
@@ -35,6 +39,17 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.SUMIRE, true))
         store.reset(GeometryKeyboard.QWERTY, true)
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.QWERTY, true))
+    }
+
+    @Test fun absentOrInvalidCurveDirectionKeepsTheExistingDirection() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("geometry_direction_test", Context.MODE_PRIVATE)
+        prefs.edit().clear().putInt("keyboard_geometry_qwerty_portrait_curve", 15).commit()
+        val store = KeyboardGeometryPreferences(prefs)
+        assertEquals(KeyboardCurveDirection.DOWN, store.read(GeometryKeyboard.QWERTY, false).geometry.curveDirection)
+        prefs.edit().putString("keyboard_geometry_qwerty_portrait_curve_direction", "invalid").commit()
+        assertEquals(KeyboardCurveDirection.DOWN, store.read(GeometryKeyboard.QWERTY, false).geometry.curveDirection)
+        assertEquals(15, store.read(GeometryKeyboard.QWERTY, false).geometry.curveDegrees)
     }
 
     @Test fun invalidCandidateModesCannotLeakBetweenKeyboardTypes() {
@@ -83,5 +98,29 @@ class KeyboardGeometryPreferencesTest {
         scaled.pivotX = 0f; scaled.pivotY = 0f; scaled.scaleX = .5f; scaled.scaleY = .5f
         body.layout(40, 60, 240, 260)
         assertEquals(Rect(40, 70, 140, 170), geometryBoundsInHost(body, host, RectF(0f, 0f, 200f, 200f)))
+    }
+
+    @Test fun candidateTouchExclusionFollowsScaledFloatingAncestors() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        try {
+            val outer = FrameLayout(activity)
+            val scaled = FrameLayout(activity).apply { pivotX = 0f; pivotY = 0f; scaleX = .5f; scaleY = .5f }
+            val root = FrameLayout(activity)
+            val originalParent = FrameLayout(activity)
+            val recycler = RecyclerView(activity).apply { layoutManager = LinearLayoutManager(activity) }
+            originalParent.addView(recycler)
+            root.addView(originalParent)
+            scaled.addView(root)
+            outer.addView(scaled)
+            activity.setContentView(outer)
+            val candidateHost = GeometryCandidateHost(root, recycler)
+            candidateHost.show(Rect(40, 60, 240, 260))
+            outer.measure(View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY))
+            outer.layout(0, 0, 600, 600)
+            val location = IntArray(2).also((recycler.parent as View)::getLocationOnScreen)
+            assertTrue(candidateHost.containsScreenPoint(location[0] + 50f, location[1] + 50f))
+            assertFalse(candidateHost.containsScreenPoint(location[0] + 150f, location[1] + 50f))
+        } finally { activity.finish() }
     }
 }

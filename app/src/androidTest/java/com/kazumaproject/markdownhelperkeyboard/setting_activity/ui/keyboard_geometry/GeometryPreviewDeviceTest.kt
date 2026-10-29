@@ -17,6 +17,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
+import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
@@ -46,6 +47,9 @@ class GeometryPreviewDeviceTest {
     @Test fun alternateSumireLayoutMatchesTheActualKeyboard() = verify(GeometryKeyboard.SUMIRE, sumireMethod = "switch-mode-effective")
     @Test fun leftHandTenkeyPreviewMatchesTheActualKeyboard() = verify(GeometryKeyboard.TENKEY, hand = KeyboardCurveHand.LEFT)
     @Test fun fixedHeightPreviewMatchesTheActualKeyboard() = verify(GeometryKeyboard.QWERTY, autoHeight = false)
+    @Test fun reverseQwertyPreviewMatchesTheActualSplitKeyboard() = verify(GeometryKeyboard.QWERTY, direction = KeyboardCurveDirection.UP)
+    @Test fun reverseTenkeyPreviewMatchesTheActualKeyboard() = verify(GeometryKeyboard.TENKEY, hand = KeyboardCurveHand.LEFT, direction = KeyboardCurveDirection.UP)
+    @Test fun reverseSumirePreviewMatchesTheActualKeyboard() = verify(GeometryKeyboard.SUMIRE, autoHeight = false, direction = KeyboardCurveDirection.UP)
 
     @Test fun landscapePreviewMatchesTheActualCustomSize() {
         val oldAuto = shell("settings get system accelerometer_rotation")
@@ -63,7 +67,7 @@ class GeometryPreviewDeviceTest {
 
     private fun verify(type: GeometryKeyboard, landscape: Boolean = false, widthPercent: Int = 100,
         heightDp: Int = 220, hand: KeyboardCurveHand = KeyboardCurveHand.RIGHT, autoHeight: Boolean = true,
-        sumireMethod: String = "toggle") {
+        sumireMethod: String = "toggle", direction: KeyboardCurveDirection = KeyboardCurveDirection.DOWN) {
         AppPreference.init(context)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
@@ -90,6 +94,7 @@ class GeometryPreviewDeviceTest {
                 .putInt("keyboard_geometry_${name}_${orientation}_split", if (qwerty) 40 else 0)
                 .putString("keyboard_geometry_${name}_${orientation}_candidates", side)
                 .putString("keyboard_geometry_${name}_${orientation}_hand", hand.name)
+                .putString("keyboard_geometry_${name}_${orientation}_curve_direction", direction.name)
                 .putBoolean("keyboard_geometry_${name}_${orientation}_auto_height", autoHeight)
                 .commit())
             shell("ime enable $ime")
@@ -118,7 +123,7 @@ class GeometryPreviewDeviceTest {
                 assertFalse(preview.isClickable)
                 val config = KeyboardGeometryPreference(
                     KeyboardGeometry(splitPercent = if (qwerty) 40 else 0, curveDegrees = 25,
-                        hand = hand, autoHeight = autoHeight),
+                        hand = hand, autoHeight = autoHeight, curveDirection = direction),
                     if (qwerty) GeometryCandidatePlacement.CENTER else if (hand == KeyboardCurveHand.LEFT) GeometryCandidatePlacement.RIGHT else GeometryCandidatePlacement.LEFT)
                 preview.update(config, landscape = landscape, widthPercent = widthPercent, alignEnd = true)
                 val screenWidth = context.resources.displayMetrics.widthPixels
