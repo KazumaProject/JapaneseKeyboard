@@ -53,6 +53,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.Ge
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryKeyboard
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreference
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreferences
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSize
@@ -395,22 +396,25 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     }
     private fun buildShapeBody() {
         val ctx = requireContext()
-        fun slider(title: Int, current: Int, maximum: Int, changed: (Int) -> Unit) {
+        fun slider(title: Int, current: Int, maximum: Int, minimum: Int = 0, viewId: Int = View.NO_ID, changed: (Int) -> Unit) {
             val caption = TextView(ctx).apply { text = getString(title, current); setPadding(0, dp(8), 0, 0) }
             body.addView(caption)
             body.addView(SeekBar(ctx).apply {
-                max = maximum; progress = current; contentDescription = caption.text
+                id = viewId; max = maximum - minimum; progress = current - minimum; contentDescription = caption.text
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
-                        if (fromUser) { caption.text = getString(title, value); contentDescription = caption.text; changed(value) }
+                        if (fromUser) {
+                            val actual = value + minimum
+                            caption.text = getString(title, actual); contentDescription = caption.text; changed(actual)
+                        }
                     }
                     override fun onStartTrackingTouch(bar: SeekBar?) = Unit
                     override fun onStopTrackingTouch(bar: SeekBar?) = Unit
                 })
             })
         }
-        fun choices(heading: Int, options: List<Pair<Int, Int>>, checked: Int, action: (Int) -> Unit) {
-            body.addView(label(heading)); body.addView(radio(options, true).apply { check(checked); setOnCheckedChangeListener { _, id -> action(id) } })
+        fun choices(heading: Int, options: List<Pair<Int, Int>>, checked: Int, viewId: Int = View.NO_ID, action: (Int) -> Unit) {
+            body.addView(label(heading)); body.addView(radio(options, true).apply { id = viewId; check(checked); setOnCheckedChangeListener { _, id -> action(id) } })
         }
         if (type == PreviewKeyboard.QWERTY) slider(R.string.keyboard_geometry_split, geometry.geometry.splitPercent, 40) {
             saveGeometry(geometry.copy(geometry = geometry.geometry.copy(splitPercent = it)))
@@ -433,9 +437,25 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
             else listOf(1 to R.string.keyboard_geometry_top, 3 to R.string.keyboard_geometry_left, 4 to R.string.keyboard_geometry_right)
         choices(R.string.keyboard_geometry_candidates, candidates, when (geometry.candidates) {
             GeometryCandidatePlacement.TOP -> 1; GeometryCandidatePlacement.CENTER -> 2; GeometryCandidatePlacement.LEFT -> 3; GeometryCandidatePlacement.RIGHT -> 4
-        }) { saveGeometry(geometry.copy(candidates = when (it) {
-            2 -> GeometryCandidatePlacement.CENTER; 3 -> GeometryCandidatePlacement.LEFT; 4 -> GeometryCandidatePlacement.RIGHT; else -> GeometryCandidatePlacement.TOP
-        })) }
+        }, viewId = R.id.keyboard_geometry_candidate_placement) {
+            val oldSide = geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)
+            val placement = when (it) {
+                2 -> GeometryCandidatePlacement.CENTER; 3 -> GeometryCandidatePlacement.LEFT; 4 -> GeometryCandidatePlacement.RIGHT; else -> GeometryCandidatePlacement.TOP
+            }
+            saveGeometry(geometry.copy(candidates = placement))
+            if (oldSide != (placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT))) buildBody()
+        }
+        if (type != PreviewKeyboard.QWERTY && geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
+            slider(R.string.keyboard_geometry_candidate_width, geometry.sideCandidateWidthPercent,
+                SideCandidateSizing.MAX_PERCENT, SideCandidateSizing.MIN_PERCENT, R.id.keyboard_geometry_candidate_width) {
+                saveGeometry(geometry.copy(sideCandidateWidthPercent = it))
+            }
+            choices(R.string.keyboard_geometry_candidate_order,
+                listOf(1 to R.string.keyboard_geometry_candidate_order_horizontal, 2 to R.string.keyboard_geometry_candidate_order_vertical),
+                if (geometry.sideCandidateVerticalText) 2 else 1, R.id.keyboard_geometry_candidate_order) {
+                saveGeometry(geometry.copy(sideCandidateVerticalText = it == 2))
+            }
+        }
         body.addView(MaterialButton(ctx, null, MaterialR.attr.materialButtonOutlinedStyle).apply { isAllCaps = false; setText(R.string.keyboard_layout_reset_shape); setOnClickListener {
             geometryTarget()?.let { geometries.reset(it, landscape) }; loadValues(); updatePreview(); buildBody()
         } })
@@ -453,6 +473,12 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
             if (type == PreviewKeyboard.QWERTY && gap < requested) add(getString(R.string.keyboard_geometry_gap_limited))
             if (type == PreviewKeyboard.QWERTY && geometry.candidates == GeometryCandidatePlacement.CENTER && gap < 96f * metrics.density) add(getString(R.string.keyboard_geometry_candidate_fallback))
             if (type in listOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE) && geometry.candidates != GeometryCandidatePlacement.TOP && width < 256f * metrics.density) add(getString(R.string.keyboard_geometry_candidate_fallback))
+            if (type in listOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE) && geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
+                val pixels = width.roundToInt()
+                val actual = SideCandidateSizing.width(pixels, metrics.density, geometry.sideCandidateWidthPercent)
+                val requestedSide = pixels * geometry.sideCandidateWidthPercent / 100
+                if (actual > 0 && actual != requestedSide) add(getString(R.string.keyboard_geometry_candidate_width_limited))
+            }
         }.joinToString("\n")
     }
 

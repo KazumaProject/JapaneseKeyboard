@@ -44,6 +44,8 @@ class KeyboardGeometryDeviceTest {
     @Test fun rightSideCandidatesWorkWithKeyboardMargins() = verify(floating = false, tenkey = true, side = "RIGHT", marginDp = 50)
     @Test fun dockedSideCandidatesResizeWithTheKeyboard() = verify(floating = false, tenkey = true, resizeSide = true)
     @Test fun floatingSideCandidatesResizeWithTheKeyboard() = verify(floating = true, tenkey = true, side = "RIGHT", resizeSide = true)
+    @Test fun dockedSideCandidateWidthAndVerticalTextCanChange() = verify(floating = false, tenkey = true, adjustSide = true)
+    @Test fun floatingSideCandidateWidthAndVerticalTextCanChange() = verify(floating = true, tenkey = true, side = "RIGHT", adjustSide = true)
     @Test fun narrowTenKeyFallsBackToTopCandidates() = verify(floating = false, tenkey = true, marginDp = 110, fallback = true)
     @Test fun narrowQwertyGapFallsBackToTopCandidates() = verify(floating = false, tenkey = false, splitPercent = 10, fallback = true)
 
@@ -63,7 +65,7 @@ class KeyboardGeometryDeviceTest {
 
     private fun verify(floating: Boolean, tenkey: Boolean, landscape: Boolean = false, reverse: Boolean = false,
         side: String = "LEFT", marginDp: Int = 0, splitPercent: Int = 40, fallback: Boolean = false,
-        switchSide: Boolean = false, columns: String = "1", resizeSide: Boolean = false) {
+        switchSide: Boolean = false, columns: String = "1", resizeSide: Boolean = false, adjustSide: Boolean = false) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
         val originalIme = shell("settings get secure default_input_method")
@@ -118,6 +120,7 @@ class KeyboardGeometryDeviceTest {
                     if (reverse) rotation > 0f else rotation < 0f
                 }
                 tap(keyboard.findViewById(com.kazumaproject.tenkey.R.id.key_1))
+                if (adjustSide) tap(keyboard.findViewById(com.kazumaproject.tenkey.R.id.key_2))
                 keyboard
             } else {
                 val keyboard = awaitView<QWERTYKeyboardView>(if (floating) R.id.qwerty_view_floating else R.id.qwerty_view) {
@@ -197,6 +200,36 @@ class KeyboardGeometryDeviceTest {
                 candidates = awaitCandidates("TOP")
                 check(prefs.edit().putInt("keyboard_width_preference", 80).commit())
                 candidates = awaitCandidates(side)
+            }
+            if (adjustSide) {
+                for (percent in listOf(40, 20, 50, 25)) {
+                    check(prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", percent).commit())
+                    await {
+                        var matches = false
+                        instrumentation.runOnMainSync {
+                            val body = Rect(); val strip = Rect()
+                            if (keyboard.getGlobalVisibleRect(body) && candidates.getGlobalVisibleRect(strip)) {
+                                val total = body.width() + strip.width()
+                                matches = kotlin.math.abs(strip.width() - total * percent / 100f) < 8f &&
+                                    kotlin.math.abs(strip.height() - body.height()) < 8f
+                            }
+                        }
+                        matches
+                    }
+                }
+                for (vertical in listOf(true, false, true)) {
+                    check(prefs.edit().putBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", vertical).commit())
+                    await {
+                        var matches = false
+                        instrumentation.runOnMainSync {
+                            val text = (0 until candidates.childCount).firstNotNullOfOrNull {
+                                candidates.getChildAt(it).findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
+                            }
+                            matches = text != null && if (vertical) text.maxLines > 1 else text.maxLines == 1
+                        }
+                        matches
+                    }
+                }
             }
             if (switchSide) {
                 for (position in listOf("RIGHT", "TOP", "LEFT")) {

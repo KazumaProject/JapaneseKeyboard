@@ -11,6 +11,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.Ge
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidateHost
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.geometryBoundsInHost
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreferences
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSize
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizeTarget
@@ -11713,17 +11714,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (splitController != null || isKeyboardFloatingMode != true) return@post
             val containerWidth = floatingView.floatingKeyboardContainer.width
             val densityNow = resources.displayMetrics.density
-            val minimumSideLayout = (256f * densityNow).toInt()
-            val placement = geometryKeyboardForCurrentMode()?.let {
-                keyboardGeometryPreferences.read(it, resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE).candidates
-            } ?: GeometryCandidatePlacement.TOP
+            val candidateGeometry = geometryKeyboardForCurrentMode()?.let {
+                keyboardGeometryPreferences.read(it, resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+            }
+            val placement = candidateGeometry?.candidates ?: GeometryCandidatePlacement.TOP
+            val sideWidth = SideCandidateSizing.width(containerWidth, densityNow,
+                candidateGeometry?.sideCandidateWidthPercent ?: SideCandidateSizing.DEFAULT_PERCENT)
             val side = geometryKeyboardForCurrentMode() in setOf(GeometryKeyboard.TENKEY, GeometryKeyboard.SUMIRE) &&
                 placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT) &&
-                !floatingCandidateSurfaceActive && containerWidth >= minimumSideLayout
+                !floatingCandidateSurfaceActive && sideWidth > 0
             listOf(floatingView.keyboardViewFloating, floatingView.customLayoutFloating, floatingView.qwertyViewFloating).forEach { view ->
                 val params = view.layoutParams as? FrameLayout.LayoutParams ?: return@forEach
                 if (side && view === activeGeometryView) {
-                    val sideWidth = containerWidth / 4
                     val targetWidth = containerWidth - sideWidth
                     val targetGravity = Gravity.BOTTOM or if (placement == GeometryCandidatePlacement.LEFT) Gravity.RIGHT else Gravity.LEFT
                     if (params.width != targetWidth || params.gravity != targetGravity) {
@@ -20458,7 +20460,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             mappedGap
         } else {
-            val sideWidth = root.width / 4
+            val sideWidth = SideCandidateSizing.width(root.width, resources.displayMetrics.density, config.sideCandidateWidthPercent)
+            if (sideWidth == 0) { detachGeometryCandidates(); return }
             val left = if (config.candidates == GeometryCandidatePlacement.LEFT) bodyBounds.left - sideWidth else bodyBounds.right
             if (left < 0 || left + sideWidth > root.width) { detachGeometryCandidates(); return }
             Rect(left, bodyBounds.top, left + sideWidth, bodyBounds.bottom)
@@ -20472,7 +20475,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingKeyboardPanel?.refreshChromeSettings()
                 }
             }
-            floatingGeometryCandidateHost?.show(bounds)
+            floatingGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText)
             floatBinding!!.root.fallbackTouchExclusion = { x, y -> floatingGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         } else {
             floatingGeometryCandidateHost?.detach()
@@ -20481,7 +20484,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 dockedGeometryCandidateRoot = root
                 dockedGeometryCandidateHost = GeometryCandidateHost(root, main.suggestionRecyclerView)
             }
-            dockedGeometryCandidateHost?.show(bounds)
+            dockedGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText)
             main.root.fallbackTouchExclusion = { x, y -> dockedGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         }
     }
@@ -20759,14 +20762,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 dpToPx(prefs.keyboardMarginEnd)
             }
 
-        val placement = geometryType?.let { keyboardGeometryPreferences.read(it, !isPortrait).candidates }
-            ?: GeometryCandidatePlacement.TOP
+        val candidateGeometry = geometryType?.let { keyboardGeometryPreferences.read(it, !isPortrait) }
+        val placement = candidateGeometry?.candidates ?: GeometryCandidatePlacement.TOP
         val availableWidth = (screenWidth - finalStartMargin - finalEndMargin).coerceAtLeast(0)
         val desiredWidth = if (configuredKeyboardWidth == ViewGroup.LayoutParams.MATCH_PARENT) availableWidth
             else configuredKeyboardWidth.coerceAtMost(availableWidth)
+        val sideWidth = SideCandidateSizing.width(desiredWidth, density,
+            candidateGeometry?.sideCandidateWidthPercent ?: SideCandidateSizing.DEFAULT_PERCENT)
         val sidePlacement = geometryType != GeometryKeyboard.QWERTY && geometryType != null &&
             placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT) &&
-            !floatingCandidateSurfaceActive && isKeyboardFloatingMode != true && desiredWidth >= (256f * density).toInt()
+            !floatingCandidateSurfaceActive && isKeyboardFloatingMode != true && sideWidth > 0
         // The configured width is the width of the complete surface, including side candidates.
         val finalKeyboardWidth = if (sidePlacement) desiredWidth else configuredKeyboardWidth
 
@@ -20814,7 +20819,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listOf(mainView.keyboardView, mainView.customLayoutDefault, mainView.qwertyView).forEach { view ->
             val params = view.layoutParams as? FrameLayout.LayoutParams ?: return@forEach
             if (sidePlacement && view === activeGeometryView) {
-                val sideWidth = desiredWidth / 4
                 val targetWidth = desiredWidth - sideWidth
                 val targetGravity = Gravity.BOTTOM or if (placement == GeometryCandidatePlacement.LEFT) Gravity.RIGHT else Gravity.LEFT
                 if (params.width != targetWidth || params.gravity != targetGravity) {

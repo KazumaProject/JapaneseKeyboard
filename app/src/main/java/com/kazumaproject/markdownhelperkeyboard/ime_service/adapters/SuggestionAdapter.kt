@@ -52,6 +52,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctRe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
 import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateText
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -395,6 +396,7 @@ class SuggestionAdapter internal constructor(
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
     private var candidateTextSize: Float = 14f
+    private var sideCandidateVerticalText = false
     private var candidateTextColor: Int? = null
     private var candidateDividerColor: Int? = null
     private var candidateDividerVerticalMarginDp: Int? = null
@@ -403,6 +405,14 @@ class SuggestionAdapter internal constructor(
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showCharacterIndicators: Boolean = false
     private var characterStyles = CandidateIndicatorStyles()
+
+    /** A side-panel presentation only; candidate strings and click actions stay unchanged. */
+    internal fun setSideCandidateVerticalText(enabled: Boolean) {
+        if (sideCandidateVerticalText == enabled) return
+        sideCandidateVerticalText = enabled
+        val busy = attachedRecyclerViews.keys.firstOrNull { it.isComputingLayout }
+        if (busy != null) busy.post { if (!released) notifyDataSetChanged() } else notifyDataSetChanged()
+    }
 
     fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
         if (characterStyles == styles) return
@@ -1219,11 +1229,17 @@ class SuggestionAdapter internal constructor(
         }
     }
 
+    internal data class VerticalCandidateState(
+        val maxLines: Int, val ellipsize: android.text.TextUtils.TruncateAt?, val gravity: Int,
+        val alignment: Int, val contentDescription: CharSequence?, val itemHeight: Int, val itemMinHeight: Int,
+    )
+
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val formulaView: FormulaView = itemView.findViewById(R.id.suggestion_item_formula_view)
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
         val yomiText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_yomi_text_view)
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
+        internal var verticalState: VerticalCandidateState? = null
     }
 
     inner class SelectionActionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -1245,6 +1261,7 @@ class SuggestionAdapter internal constructor(
 
     inner class ZeroQueryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.zero_query_item_text_view)
+        internal var verticalState: VerticalCandidateState? = null
     }
 
     inner class QuickActionsViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -1431,6 +1448,7 @@ class SuggestionAdapter internal constructor(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = displayItems.getOrNull(position) ?: return
+        restoreVerticalCandidate(holder)
         if (candidateTextColor == null) visitAppearanceViews(holder.itemView, capture = false)
         when (getItemViewType(position) % FLOATING_VIEW_TYPE_OFFSET) {
             VIEW_TYPE_EMPTY -> onBindQuickActionsViewHolder(
@@ -1497,6 +1515,72 @@ class SuggestionAdapter internal constructor(
         }
         applyKeyboardFont(holder)
         styleFloatingItem(holder, position)
+        if (sideCandidateVerticalText) applyVerticalCandidate(holder, item)
+    }
+
+    private fun restoreVerticalCandidate(holder: RecyclerView.ViewHolder) {
+        val state = when (holder) {
+            is SuggestionViewHolder -> holder.verticalState.also { holder.verticalState = null }
+            is ZeroQueryViewHolder -> holder.verticalState.also { holder.verticalState = null }
+            else -> null
+        } ?: return
+        val text = when (holder) {
+            is SuggestionViewHolder -> holder.text
+            is ZeroQueryViewHolder -> holder.text
+            else -> return
+        }
+        text.maxLines = state.maxLines; text.ellipsize = state.ellipsize
+        text.gravity = state.gravity; text.textAlignment = state.alignment
+        text.contentDescription = state.contentDescription
+        holder.itemView.minimumHeight = state.itemMinHeight
+        holder.itemView.layoutParams?.let { it.height = state.itemHeight; holder.itemView.layoutParams = it }
+    }
+
+    private fun applyVerticalCandidate(holder: RecyclerView.ViewHolder, item: SuggestionDisplayItem) {
+        val candidate = when (item) {
+            is SuggestionDisplayItem.CandidateItem -> item.candidate
+            is SuggestionDisplayItem.ZeroQueryCandidateItem -> item.candidate
+            else -> return
+        }
+        // Formula views have their own non-text presentation and remain intact.
+        if (candidate.presentation != null) return
+        val text = when (holder) {
+            is SuggestionViewHolder -> holder.text
+            is ZeroQueryViewHolder -> holder.text
+            else -> return
+        }
+        val root = holder.itemView
+        val state = VerticalCandidateState(text.maxLines, text.ellipsize, text.gravity,
+            text.textAlignment, text.contentDescription, root.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT,
+            root.minimumHeight)
+        when (holder) {
+            is SuggestionViewHolder -> holder.verticalState = state
+            is ZeroQueryViewHolder -> holder.verticalState = state
+        }
+        val body = if (candidate.type == 15.toByte()) candidate.string.correctReading().first else candidate.string
+        val formatted = verticalCandidateText(body)
+        text.text = formatted
+        text.maxLines = Int.MAX_VALUE; text.ellipsize = null
+        text.gravity = Gravity.CENTER; text.textAlignment = View.TEXT_ALIGNMENT_CENTER
+        var description = body
+        if (text is CandidateCharacterTextView) {
+            val index = (item as SuggestionDisplayItem.CandidateItem).candidateIndex
+            text.setCharacterIndicators(formatted, showCharacterIndicators, selected = index == highlightedPosition, styles = characterStyles)
+            description = text.contentDescription?.toString()?.replace(formatted, body) ?: body
+        }
+        text.contentDescription = description
+        if (holder is SuggestionViewHolder && holder.yomiText.isVisible) {
+            // The horizontal ruby overlay cannot follow multiline text. Keep the reading
+            // beside the vertical candidate instead of dropping it or drawing it incorrectly.
+            val reading = holder.yomiText.text.toString()
+            holder.yomiText.isVisible = false
+            val label = holder.typeText.text.toString()
+            holder.typeText.text = listOf(label, verticalCandidateText(reading)).filter { it.isNotEmpty() }.joinToString("\n")
+            holder.typeText.maxLines = Int.MAX_VALUE; holder.typeText.ellipsize = null
+            holder.typeText.contentDescription = listOf(label, reading).filter { it.isNotEmpty() }.joinToString(", ")
+        }
+        root.minimumHeight = maxOf(state.itemMinHeight, (48f * root.resources.displayMetrics.density).toInt())
+        root.layoutParams?.let { it.height = ViewGroup.LayoutParams.WRAP_CONTENT; root.layoutParams = it }
     }
 
     private fun styleFloatingItem(holder: RecyclerView.ViewHolder, position: Int) {

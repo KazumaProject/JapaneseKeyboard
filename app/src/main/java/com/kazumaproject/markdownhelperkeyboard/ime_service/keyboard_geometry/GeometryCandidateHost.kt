@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import kotlin.math.roundToInt
 
 /** Maps a keyboard-local rectangle through floating-panel scaling into its host. */
@@ -40,7 +41,7 @@ internal class GeometryCandidateHost(
     private var panel: FrameLayout? = null
     val attached: Boolean get() = panel != null
 
-    fun show(bounds: Rect) {
+    fun show(bounds: Rect, verticalText: Boolean = false) {
         if (bounds.width() <= 0 || bounds.height() <= 0) { detach(); return }
         if (!attached) {
             val originalParent = recycler.parent as? ViewGroup ?: return
@@ -59,6 +60,7 @@ internal class GeometryCandidateHost(
             root.addView(container)
             panel = container
         }
+        (recycler.adapter as? SuggestionAdapter)?.setSideCandidateVerticalText(verticalText)
         val container = panel ?: return
         val params = (container.layoutParams as? FrameLayout.LayoutParams) ?: FrameLayout.LayoutParams(bounds.width(), bounds.height())
         if (params.width != bounds.width() || params.height != bounds.height() || params.leftMargin != bounds.left || params.topMargin != bounds.top || params.gravity != (Gravity.TOP or Gravity.LEFT)) {
@@ -95,6 +97,7 @@ internal class GeometryCandidateHost(
         originalPadding?.let { recycler.setPadding(it.left, it.top, it.right, it.bottom) }
         parent?.addView(recycler, index.coerceIn(0, parent!!.childCount), originalParams)
         panel = null; parent = null; originalParams = null; originalManager = null; originalPadding = null
+        (recycler.adapter as? SuggestionAdapter)?.setSideCandidateVerticalText(false)
         onRestore()
         return true
     }

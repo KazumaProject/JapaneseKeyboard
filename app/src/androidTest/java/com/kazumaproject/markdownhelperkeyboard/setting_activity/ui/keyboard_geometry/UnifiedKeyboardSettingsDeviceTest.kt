@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inspector.WindowInspector
 import android.widget.RadioGroup
+import android.widget.SeekBar
 import android.widget.Spinner
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.PreferenceManager
@@ -56,6 +57,68 @@ class UnifiedKeyboardSettingsDeviceTest {
     private val context get() = instrumentation.targetContext
     private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
+
+    @Test fun sideCandidateControlsAppearOnlyForSidePlacementAndSaveChanges() {
+        AppPreference.init(context)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val original = prefs.all.toMap()
+        try {
+            prefs.edit().putString("keyboard_geometry_tenkey_portrait_candidates", "TOP").commit()
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
+                await { var ready = false; scenario.onActivity { ready = it.isSettingsContentReady }; ready }
+                scenario.onActivity { host(it).navController.navigate(R.id.keyboardGeometrySettingsFragment,
+                    Bundle().apply { putString("geometryKeyboard", "TENKEY") }) }
+                var page: View? = null
+                await { scenario.onActivity { page = host(it).childFragmentManager.primaryNavigationFragment?.view }; page?.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement) != null }
+                instrumentation.runOnMainSync {
+                    val root = requireNotNull(page)
+                    assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_width))
+                    root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement).check(3)
+                }
+                await { var ready = false; instrumentation.runOnMainSync { ready = (page?.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_width)?.width ?: 0) > 0 }; ready }
+                instrumentation.runOnMainSync {
+                    val root = requireNotNull(page)
+                    val seek = root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_width)
+                    val x = seek.width * .8f; val y = seek.height / 2f
+                    touch(seek, MotionEvent.ACTION_DOWN, x, y)
+                    touch(seek, MotionEvent.ACTION_UP, x, y)
+                    root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_order).check(2)
+                }
+                assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 25) > 25)
+                assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", false))
+                instrumentation.runOnMainSync {
+                    val root = requireNotNull(page)
+                    root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement).check(1)
+                    assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_width))
+                    assertNull(root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_order))
+                }
+            }
+        } finally { restore(prefs, original) }
+    }
+
+    @Test fun sideCandidatePreviewUsesTheRequestedWidthAndKeepsKeysUsable() {
+        AppPreference.init(context)
+        instrumentation.runOnMainSync {
+            val screen = context.resources.displayMetrics.widthPixels
+            val density = context.resources.displayMetrics.density
+            for (type in listOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE)) {
+                for (placement in listOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
+                    val preview = GeometryPreview(context, type)
+                    for (candidatePercent in listOf(15, 25, 40, 50)) {
+                        preview.update(KeyboardGeometryPreference(candidates = placement, sideCandidateWidthPercent = candidatePercent),
+                            false, 100, false, IndependentKeyboardSize(widthPercent = 100))
+                        measurePreview(preview, screen)
+                        val surface = requireNotNull(preview.adjustmentBounds())
+                        val body = requireNotNull(preview.bodyBounds())
+                        val expected = (screen * candidatePercent / 100f).coerceIn(64f * density, screen - 192f * density)
+                        assertEquals("candidate width follows its percentage and minimum sizes", expected, surface.width() - body.width(), 3f)
+                        if (placement == GeometryCandidatePlacement.LEFT) assertEquals(surface.left + expected, body.left, 3f)
+                        else assertEquals(surface.left, body.left, 2f)
+                    }
+                }
+            }
+        }
+    }
 
     @Test fun sideCandidatePreviewResizesTheWholeSurfaceAndFallsBackWhenNarrow() {
         AppPreference.init(context)

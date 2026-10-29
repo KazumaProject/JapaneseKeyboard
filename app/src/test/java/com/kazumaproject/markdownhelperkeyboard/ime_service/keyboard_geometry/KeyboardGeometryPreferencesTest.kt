@@ -23,6 +23,41 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class KeyboardGeometryPreferencesTest {
+    @Test fun sideCandidateSettingsPreserveDefaultsAndAreIndependent() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("geometry_side_settings", Context.MODE_PRIVATE)
+        prefs.edit().clear().commit()
+        val store = KeyboardGeometryPreferences(prefs)
+        assertEquals(25, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
+        assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
+        val configured = KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.LEFT,
+            sideCandidateWidthPercent = 40, sideCandidateVerticalText = true)
+        store.save(GeometryKeyboard.TENKEY, false, configured)
+        assertEquals(configured, store.read(GeometryKeyboard.TENKEY, false))
+        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, true))
+        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.SUMIRE, false))
+        store.reset(GeometryKeyboard.TENKEY, false)
+        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, false))
+        prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 999)
+            .putString("keyboard_geometry_tenkey_portrait_candidate_vertical_text", "invalid").commit()
+        assertEquals(SideCandidateSizing.MAX_PERCENT, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
+        assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
+    }
+
+    @Test fun sideWidthPreservesTheDefaultAndProtectsBothRegions() {
+        assertEquals(0, SideCandidateSizing.width(255, 1f, 25))
+        assertEquals(64, SideCandidateSizing.width(256, 1f, 25))
+        assertEquals(80, SideCandidateSizing.width(320, 1f, 25))
+        assertEquals(64, SideCandidateSizing.width(320, 1f, 15))
+        assertEquals(128, SideCandidateSizing.width(320, 1f, 50))
+        assertEquals(200, SideCandidateSizing.width(400, 1f, 50))
+    }
+
+    @Test fun verticalTextKeepsGraphemeClustersTogether() {
+        assertEquals("今\n日\nが\n👨‍👩‍👧‍👦", verticalCandidateText("今日が👨‍👩‍👧‍👦"))
+        assertEquals("", verticalCandidateText(""))
+    }
+
     @Test fun settingsAreIndependentAndLegacyDefaultsRemainUnchanged() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val prefs = context.getSharedPreferences("geometry_test", Context.MODE_PRIVATE)
