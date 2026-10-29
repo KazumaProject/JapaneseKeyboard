@@ -233,7 +233,7 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
                             baseline += paint.fontSpacing
                         }
                     }
-                    top += itemHeight
+                    top += itemHeight + 8f * density
                 }
             } else if (value.candidates == GeometryCandidatePlacement.CENTER) {
                 val cx = left + model.candidateSideWidth / 2f

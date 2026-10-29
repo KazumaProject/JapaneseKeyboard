@@ -122,16 +122,21 @@ class KeyboardGeometryPreferencesTest {
         assertTrue(host.attached)
         assertEquals(RecyclerView.VERTICAL, (recycler.layoutManager as LinearLayoutManager).orientation)
         assertNotSame(originalParent, recycler.parent)
+        val originalDecorations = recycler.itemDecorationCount
         val density = context.resources.displayMetrics.density
         host.show(Rect(0, 0, (200 * density).toInt(), 260), verticalText = true)
         val grid = recycler.layoutManager as GridLayoutManager
         assertEquals(3, grid.spanCount)
+        assertEquals(originalDecorations + 1, recycler.itemDecorationCount)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = true)
         assertSame(grid, recycler.layoutManager)
         assertEquals(1, grid.spanCount)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = false)
         assertFalse(recycler.layoutManager is GridLayoutManager)
+        assertEquals(originalDecorations, recycler.itemDecorationCount)
+        host.show(Rect(0, 0, (200 * density).toInt(), 260), verticalText = true)
         assertTrue(host.detach())
+        assertEquals(originalDecorations, recycler.itemDecorationCount)
         assertSame(originalParent, recycler.parent)
         assertSame(originalManager, recycler.layoutManager)
         assertSame(originalParams, recycler.layoutParams)

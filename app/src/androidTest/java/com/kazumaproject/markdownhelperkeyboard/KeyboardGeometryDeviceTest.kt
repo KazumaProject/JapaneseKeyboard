@@ -279,6 +279,25 @@ class KeyboardGeometryDeviceTest {
                 }
                 assertTrue("narrow candidate area uses one column", sawOneColumn)
                 assertTrue("wider candidate area shows multiple columns", sawMultipleColumns)
+                check(prefs.edit().putString("keyboard_geometry_${geometryName}_portrait_candidates", "TOP").commit())
+                candidates = awaitCandidates("TOP")
+                await {
+                    var restored = false
+                    instrumentation.runOnMainSync {
+                        val text = (0 until candidates.childCount).firstNotNullOfOrNull {
+                            candidates.getChildAt(it).findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
+                        }
+                        restored = text?.maxLines == 1
+                    }
+                    restored
+                }
+                check(prefs.edit().putString("keyboard_geometry_${geometryName}_portrait_candidates", side).commit())
+                candidates = awaitCandidates(side)
+                await {
+                    var restored = false
+                    instrumentation.runOnMainSync { restored = candidates.layoutManager is GridLayoutManager }
+                    restored
+                }
             }
             if (switchSide) {
                 for (position in listOf("RIGHT", "TOP", "LEFT")) {
