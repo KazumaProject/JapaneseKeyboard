@@ -41,6 +41,12 @@ internal class GeometryCandidateHost(
     private var originalClipToPadding = false
     private var originalPadding: Rect? = null
     private var panel: FrameLayout? = null
+    private var verticalSpacingApplied = false
+    private val verticalSpacing = object : RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+            outRect.bottom = (8f * parent.resources.displayMetrics.density).roundToInt()
+        }
+    }
     val attached: Boolean get() = panel != null
 
     fun show(bounds: Rect, verticalText: Boolean = false) {
@@ -64,6 +70,10 @@ internal class GeometryCandidateHost(
         }
         val adapter = recycler.adapter as? SuggestionAdapter
         if (verticalText) {
+            if (!verticalSpacingApplied) {
+                recycler.addItemDecoration(verticalSpacing)
+                verticalSpacingApplied = true
+            }
             val metrics = root.resources.displayMetrics
             val textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, adapter?.sideCandidateTextSizeSp() ?: 14f, metrics)
             val columns = SideCandidateSizing.columnCount(bounds.width(), metrics.density, textSize)
@@ -78,8 +88,14 @@ internal class GeometryCandidateHost(
             } else if (current.spanCount != columns) {
                 current.spanCount = columns
             }
-        } else if (recycler.layoutManager is GridLayoutManager) {
-            recycler.layoutManager = LinearLayoutManager(root.context, RecyclerView.VERTICAL, false)
+        } else {
+            if (verticalSpacingApplied) {
+                recycler.removeItemDecoration(verticalSpacing)
+                verticalSpacingApplied = false
+            }
+            if (recycler.layoutManager is GridLayoutManager) {
+                recycler.layoutManager = LinearLayoutManager(root.context, RecyclerView.VERTICAL, false)
+            }
         }
         adapter?.setSideCandidateVerticalText(verticalText)
         val container = panel ?: return
@@ -110,6 +126,10 @@ internal class GeometryCandidateHost(
 
     fun detach(): Boolean {
         val container = panel ?: return false
+        if (verticalSpacingApplied) {
+            recycler.removeItemDecoration(verticalSpacing)
+            verticalSpacingApplied = false
+        }
         container.removeView(recycler)
         root.removeView(container)
         recycler.layoutManager = originalManager
