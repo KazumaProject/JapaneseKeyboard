@@ -8,6 +8,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Point
+import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Build
@@ -611,6 +612,11 @@ private class SizeHandles(context: android.content.Context, private val preview:
     private val commit: (IndependentKeyboardSize) -> Unit) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val density = resources.displayMetrics.density
+    private val handleColor = MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary, Color.rgb(54, 106, 197))
+    private val handleIconColor = MaterialColors.getColor(this, MaterialR.attr.colorOnPrimary, Color.WHITE)
+    private val activeColor = MaterialColors.getColor(this, MaterialR.attr.colorPrimaryContainer, Color.rgb(210, 225, 255))
+    private val activeIconColor = MaterialColors.getColor(this, MaterialR.attr.colorOnPrimaryContainer, Color.BLACK)
+    private val handleOutlineColor = MaterialColors.getColor(this, MaterialR.attr.colorSurface, Color.WHITE)
     private var gesture = 0
     private var originX = 0f; private var originY = 0f
     private var initialSurfaceWidth = 0f
@@ -629,27 +635,74 @@ private class SizeHandles(context: android.content.Context, private val preview:
     override fun onDraw(canvas: Canvas) {
         val b = preview.adjustmentBounds() ?: return
         updateGestureExclusion(b)
-        paint.color = Color.rgb(54, 106, 197)
-        val r = 9 * density
-        val points = if (mode == SizeEditMode.POSITION) listOf(b.centerX() to b.centerY())
-            else listOf(b.centerX() to b.top, b.centerX() to b.bottom, b.left to b.centerY(), b.right to b.centerY())
-        points.forEach { (x, y) ->
-            canvas.drawCircle(x.coerceIn(r, width - r), y.coerceIn(r, height - r), r, paint)
+        when (mode) {
+            SizeEditMode.SIZE -> (2..5).forEach { edge -> drawHandle(canvas, handleCenter(b, edge), edge) }
+            SizeEditMode.POSITION -> drawHandle(canvas, handleCenter(b, 1), 1)
+            null -> Unit
         }
-        if (mode == SizeEditMode.POSITION) {
-            paint.color = Color.WHITE; paint.strokeWidth = 2 * density
-            canvas.drawLine(b.centerX() - r / 2, b.centerY(), b.centerX() + r / 2, b.centerY(), paint)
-            canvas.drawLine(b.centerX(), b.centerY() - r / 2, b.centerX(), b.centerY() + r / 2, paint)
+    }
+
+    /** Keep the whole control visible at the screen edge and use the same center for hit testing. */
+    private fun handleCenter(bounds: RectF, handle: Int): PointF {
+        val side = handle == 4 || handle == 5
+        val halfWidth = (if (handle == 1) 20 else if (side) 14 else 24) * density
+        val halfHeight = (if (handle == 1) 20 else if (side) 24 else 14) * density
+        val x = when (handle) { 4 -> bounds.left; 5 -> bounds.right; else -> bounds.centerX() }
+        val y = when (handle) { 2 -> bounds.top; 3 -> bounds.bottom; else -> bounds.centerY() }
+        fun visibleCenter(value: Float, limit: Int, halfSize: Float): Float =
+            if (limit < halfSize * 2) limit / 2f else value.coerceIn(halfSize, limit - halfSize)
+        // At a screen edge, keep the full 48 dp resize target inside the view as well.
+        val targetHalf = if (handle == 1) 0f else 24 * density
+        return PointF(visibleCenter(x, width, max(halfWidth, targetHalf)),
+            visibleCenter(y, height, max(halfHeight, targetHalf)))
+    }
+
+    private fun drawHandle(canvas: Canvas, center: PointF, handle: Int) {
+        val side = handle == 4 || handle == 5
+        val halfWidth = (if (handle == 1) 20 else if (side) 14 else 24) * density
+        val halfHeight = (if (handle == 1) 20 else if (side) 24 else 14) * density
+        val radius = min(halfWidth, halfHeight)
+        val rect = RectF(center.x - halfWidth, center.y - halfHeight, center.x + halfWidth, center.y + halfHeight)
+        paint.style = Paint.Style.FILL
+        paint.color = if (gesture == handle) activeColor else handleColor
+        canvas.drawRoundRect(rect, radius, radius, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2 * density
+        paint.color = handleOutlineColor
+        canvas.drawRoundRect(rect, radius, radius, paint)
+
+        paint.color = if (gesture == handle) activeIconColor else handleIconColor
+        paint.strokeWidth = 2 * density
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
+        val arrowLength = if (handle == 1) 10.5f else 8f
+        if (handle == 1 || side) drawArrows(canvas, center, horizontal = true, lengthDp = arrowLength)
+        if (handle == 1 || !side) drawArrows(canvas, center, horizontal = false, lengthDp = arrowLength)
+        paint.style = Paint.Style.FILL
+    }
+
+    /** A double-headed arrow shows the direction in which this control can be dragged. */
+    private fun drawArrows(canvas: Canvas, center: PointF, horizontal: Boolean, lengthDp: Float) {
+        val end = lengthDp * density
+        val head = 3.5f * density
+        fun line(x1: Float, y1: Float, x2: Float, y2: Float) {
+            if (horizontal) canvas.drawLine(center.x + x1, center.y + y1, center.x + x2, center.y + y2, paint)
+            else canvas.drawLine(center.x + y1, center.y + x1, center.x + y2, center.y + x2, paint)
         }
+        line(-end, 0f, end, 0f)
+        line(-end, 0f, -end + head, -head); line(-end, 0f, -end + head, head)
+        line(end, 0f, end - head, -head); line(end, 0f, end - head, head)
     }
     private fun updateGestureExclusion(bounds: RectF) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val hit = (24 * density).roundToInt()
         val top = (if (mode == SizeEditMode.POSITION) bounds.top else bounds.centerY() - hit).roundToInt().coerceIn(0, height)
         val bottom = (if (mode == SizeEditMode.POSITION) bounds.bottom else bounds.centerY() + hit).roundToInt().coerceIn(top, height)
+        val leftNearEdge = if (mode == SizeEditMode.POSITION) bounds.left <= hit else handleCenter(bounds, 4).x - hit < hit
+        val rightNearEdge = if (mode == SizeEditMode.POSITION) width - bounds.right <= hit else width - handleCenter(bounds, 5).x - hit < hit
         val rects = buildList {
-            if (mode != null && bounds.left <= hit) add(Rect(0, top, min(width, hit * 2), bottom))
-            if (mode != null && width - bounds.right <= hit) add(Rect(max(0, width - hit * 2), top, width, bottom))
+            if (mode != null && leftNearEdge) add(Rect(0, top, min(width, hit * 2), bottom))
+            if (mode != null && rightNearEdge) add(Rect(max(0, width - hit * 2), top, width, bottom))
         }
         if (systemGestureExclusionRects != rects) systemGestureExclusionRects = rects
     }
@@ -658,15 +711,18 @@ private class SizeHandles(context: android.content.Context, private val preview:
             MotionEvent.ACTION_DOWN -> {
                 val b = preview.adjustmentBounds() ?: return false
                 val hit = 24 * density
-                fun near(x: Float, y: Float) = abs(event.x - x) <= hit && abs(event.y - y) <= hit
+                fun near(handle: Int): Boolean {
+                    val center = handleCenter(b, handle)
+                    return abs(event.x - center.x) <= hit && abs(event.y - center.y) <= hit
+                }
                 val edit = mode ?: return false
                 gesture = when {
                     edit == SizeEditMode.POSITION && b.contains(event.x, event.y) -> 1
                     edit != SizeEditMode.SIZE -> 0
-                    near(b.centerX(), b.top) -> 2
-                    near(b.centerX(), b.bottom) -> 3
-                    near(b.left, b.centerY()) -> 4
-                    near(b.right, b.centerY()) -> 5
+                    near(2) -> 2
+                    near(3) -> 3
+                    near(4) -> 4
+                    near(5) -> 5
                     else -> 0
                 }
                 if (gesture == 0) return false
@@ -676,7 +732,7 @@ private class SizeHandles(context: android.content.Context, private val preview:
                 val canvas = parent?.parent as? KeyboardPositionCanvas
                 maxBottomMargin = canvas?.let { (it.availableHeight - b.bottom).roundToInt().coerceAtLeast(initial.bottomMarginPx) }
                     ?: Int.MAX_VALUE
-                parent?.requestDisallowInterceptTouchEvent(true); return true
+                parent?.requestDisallowInterceptTouchEvent(true); invalidate(); return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (gesture == 0) return false
@@ -709,8 +765,8 @@ private class SizeHandles(context: android.content.Context, private val preview:
                 }
                 draft(latest); return true
             }
-            MotionEvent.ACTION_UP -> { if (gesture != 0) { gesture = 0; commit(latest); performClick(); return true } }
-            MotionEvent.ACTION_CANCEL -> { if (gesture != 0) { gesture = 0; draft(initial); return true } }
+            MotionEvent.ACTION_UP -> { if (gesture != 0) { gesture = 0; invalidate(); commit(latest); performClick(); return true } }
+            MotionEvent.ACTION_CANCEL -> { if (gesture != 0) { gesture = 0; invalidate(); draft(initial); return true } }
         }
         return super.onTouchEvent(event)
     }

@@ -108,17 +108,38 @@ class UnifiedKeyboardSettingsDeviceTest {
                 await { var ready = false; instrumentation.runOnMainSync { ready = (page?.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)?.adjustmentBounds()?.width() ?: 0f) > 0f }; ready }
                 var left = 0f
                 var startX = 0; var startY = 0; var delta = 0
-                instrumentation.runOnMainSync {
-                    val preview = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
-                    val bounds = preview.adjustmentBounds()!!; left = bounds.left
-                    val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
-                    val location = IntArray(2).also(preview::getLocationOnScreen)
-                    startX = (location[0] + bounds.right.coerceAtMost(preview.width - 9 * context.resources.displayMetrics.density)).roundToInt()
-                    startY = (location[1] + bounds.centerY()).roundToInt()
-                    delta = (15 * context.resources.displayMetrics.density).roundToInt()
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                        assertTrue("edge handle is protected from the system back gesture", handles.systemGestureExclusionRects.isNotEmpty())
+                val rect = Regex("\\((\\d+),(\\d+),(\\d+),(\\d+)\\)")
+                var previousStart: Pair<Int, Int>? = null
+                var stableSamples = 0
+                await {
+                    var laidOut = false
+                    instrumentation.runOnMainSync {
+                        val preview = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
+                        val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
+                        val bounds = preview.adjustmentBounds()
+                        if (bounds != null && handles.isShown && handles.hasWindowFocus() && handles.width > 0 && handles.height > 0 && !handles.isLayoutRequested) {
+                            left = bounds.left
+                            val location = IntArray(2).also(preview::getLocationOnScreen)
+                            startX = (location[0] + bounds.right.coerceAtMost(preview.width - 9 * context.resources.displayMetrics.density)).roundToInt()
+                            startY = (location[1] + bounds.centerY()).roundToInt()
+                            delta = (15 * context.resources.displayMetrics.density).roundToInt()
+                            laidOut = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q || handles.systemGestureExclusionRects.isNotEmpty()
+                        }
                     }
+                    // Both the editor layout and WindowManager's exclusion arrive asynchronously.
+                    // Recalculate the start point until the actual exclusion covers it.
+                    val excluded = if (!laidOut) false else if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) true else {
+                        val exclusion = shell("dumpsys window displays").lineSequence()
+                            .firstOrNull { it.contains("mSystemGestureExclusion=SkRegion(") }.orEmpty()
+                        rect.findAll(exclusion).any { match ->
+                            val (l, t, r, b) = match.destructured
+                            startX >= l.toInt() && startX < r.toInt() && startY >= t.toInt() && startY < b.toInt()
+                        }
+                    }
+                    val start = startX to startY
+                    stableSamples = if (excluded && start == previousStart) stableSamples + 1 else 0
+                    previousStart = if (excluded) start else null
+                    stableSamples >= 2
                 }
                 shell("input swipe $startX $startY ${startX - delta} $startY 500")
                 await { prefs.getInt("keyboard_width_preference", 100) < 80 }
@@ -140,6 +161,55 @@ class UnifiedKeyboardSettingsDeviceTest {
                     val bounds = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview).adjustmentBounds()!!
                     assertEquals("left handle keeps the right edge fixed", right, bounds.right, 3f)
                 }
+            }
+        } finally { restore(prefs, original); if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme"); if (!enabled) shell("ime disable $ime") }
+    }
+
+    @Test fun resizeHitAreasFollowTheVisibleHandlesAtScreenEdges() {
+        AppPreference.init(context)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val original = prefs.all.toMap()
+        val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        val oldIme = shell("settings get secure default_input_method")
+        val enabled = shell("ime list -s").lineSequence().any { it.trim() == ime }
+        try {
+            shell("ime enable $ime"); shell("ime set $ime")
+            prefs.edit().putInt("keyboard_height_preference", 220).putInt("keyboard_width_preference", 100)
+                .putBoolean("keyboard_position_preference", false)
+                .putInt("keyboard_margin_start_dp_preference", 0).putInt("keyboard_margin_end_dp_preference", 0)
+                .putInt("keyboard_vertical_margin_bottom_preference", 0).commit()
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
+                await { var ready = false; scenario.onActivity { ready = it.isSettingsContentReady }; ready }
+                scenario.onActivity { host(it).navController.navigate(R.id.keyboardSettingFragment) }
+                var page: View? = null
+                await { scenario.onActivity { page = host(it).childFragmentManager.primaryNavigationFragment?.view }; page?.findViewById<View>(R.id.keyboard_layout_edit_size) != null }
+                instrumentation.runOnMainSync { requireNotNull(page).findViewById<View>(R.id.keyboard_layout_edit_size).performClick() }
+                await { var ready = false; instrumentation.runOnMainSync { ready = (page?.findViewById<View>(R.id.keyboard_layout_handles)?.height ?: 0) > 0 }; ready }
+                instrumentation.runOnMainSync {
+                    val preview = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
+                    val bounds = preview.adjustmentBounds()!!
+                    val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
+                    val density = context.resources.displayMetrics.density
+                    assertEquals(0f, bounds.left, 1f)
+                    // The screen-edge pill is shifted inward; its full 48 dp hit area follows it.
+                    val x = bounds.left + 47 * density
+                    touch(handles, MotionEvent.ACTION_DOWN, x, bounds.centerY())
+                    touch(handles, MotionEvent.ACTION_MOVE, x + 20 * density, bounds.centerY())
+                    touch(handles, MotionEvent.ACTION_UP, x + 20 * density, bounds.centerY())
+                }
+                assertTrue("left edge responds throughout the visible handle's hit area", prefs.getInt("keyboard_width_preference", 100) < 100)
+                instrumentation.waitForIdleSync()
+                instrumentation.runOnMainSync {
+                    val preview = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
+                    val bounds = preview.adjustmentBounds()!!
+                    val handles = requireNotNull(page).findViewById<View>(R.id.keyboard_layout_handles)
+                    val density = context.resources.displayMetrics.density
+                    val y = bounds.bottom - 47 * density
+                    touch(handles, MotionEvent.ACTION_DOWN, bounds.centerX(), y)
+                    touch(handles, MotionEvent.ACTION_MOVE, bounds.centerX(), y - 20 * density)
+                    touch(handles, MotionEvent.ACTION_UP, bounds.centerX(), y - 20 * density)
+                }
+                assertEquals("bottom edge responds throughout the visible handle's hit area", 200, prefs.getInt("keyboard_height_preference", 220))
             }
         } finally { restore(prefs, original); if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme"); if (!enabled) shell("ime disable $ime") }
     }
@@ -179,7 +249,7 @@ class UnifiedKeyboardSettingsDeviceTest {
                     assertFalse(page.findViewById<View>(R.id.keyboard_layout_type_selector).isShown)
                     assertTrue(page.findViewById<View>(R.id.keyboard_layout_edit_done).isShown)
                     val preview = page.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
-                    val bounds = preview.bodyBounds()!!
+                    val bounds = preview.adjustmentBounds()!!
                     val handles = page.findViewById<View>(R.id.keyboard_layout_handles)
                     val d = 20 * page.resources.displayMetrics.density
                     touch(handles, MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.top)
@@ -190,7 +260,7 @@ class UnifiedKeyboardSettingsDeviceTest {
                 instrumentation.runOnMainSync {
                     val page = requireNotNull(root)
                     val preview = page.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
-                    val bounds = preview.bodyBounds()!!; val handles = page.findViewById<View>(R.id.keyboard_layout_handles)
+                    val bounds = preview.adjustmentBounds()!!; val handles = page.findViewById<View>(R.id.keyboard_layout_handles)
                     val d = 20 * page.resources.displayMetrics.density
                     touch(handles, MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.top)
                     touch(handles, MotionEvent.ACTION_MOVE, bounds.centerX(), bounds.top - d)
@@ -306,6 +376,21 @@ class UnifiedKeyboardSettingsDeviceTest {
                 }
                 instrumentation.runOnMainSync {
                     val spinner = requireNotNull(fragment?.view?.findViewById<Spinner>(R.id.keyboard_layout_custom_selector))
+                    spinner.setSelection((0 until spinner.count).first { spinner.getItemAtPosition(it) == "Preview B" })
+                }
+                await {
+                    var found = false
+                    instrumentation.runOnMainSync {
+                        val preview = fragment?.view?.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
+                        found = runCatching { preview?.snapshotForTesting()?.keys?.any { it.text == "Preview B" } == true }.getOrDefault(false)
+                    }
+                    found
+                }
+                // The active IME may restore its own last layout while the screen opens.
+                // Compare immediately across a real preview selection instead.
+                val activeBeforeSelection = AppPreference.last_used_custom_keyboard_stable_id
+                instrumentation.runOnMainSync {
+                    val spinner = requireNotNull(fragment?.view?.findViewById<Spinner>(R.id.keyboard_layout_custom_selector))
                     spinner.setSelection((0 until spinner.count).first { spinner.getItemAtPosition(it) == "Preview A" })
                 }
                 await {
@@ -316,7 +401,7 @@ class UnifiedKeyboardSettingsDeviceTest {
                     }
                     found
                 }
-                assertEquals("preview-test-unchanged", AppPreference.last_used_custom_keyboard_stable_id)
+                assertEquals(activeBeforeSelection, AppPreference.last_used_custom_keyboard_stable_id)
             }
             val chosen = runBlocking { requireNotNull(repository).getLayoutsNotFlow().first { it.layoutId == created.first() } }
             prefs.edit().putString("last_used_custom_keyboard_stable_id", chosen.stableId).commit()
