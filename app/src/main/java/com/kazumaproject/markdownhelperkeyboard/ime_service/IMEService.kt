@@ -123,6 +123,7 @@ import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
+import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -3324,9 +3325,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             onListUpdated = {
                 if (Looper.myLooper() == Looper.getMainLooper()) {
                     updateMainCandidateStripAfterListUpdated()
+                    scheduleExpandedSideCandidateFirstRow()
                 } else {
                     mainHandler.post {
                         updateMainCandidateStripAfterListUpdated()
+                        scheduleExpandedSideCandidateFirstRow()
                     }
                 }
             }
@@ -3340,7 +3343,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
-        suggestionAdapterFull = SuggestionAdapter()
+        suggestionAdapterFull = SuggestionAdapter().apply {
+            onListUpdated = { scheduleExpandedSideCandidateFirstRow() }
+        }
         shortcutAdapter = ShortcutAdapter()
         keyboardLayoutEditController = KeyboardLayoutEditController(this)
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
@@ -20398,6 +20403,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingGeometryCandidateHost: GeometryCandidateHost? = null
     private var dockedGeometryCandidateRoot: View? = null
     private var floatingGeometryCandidateRoot: View? = null
+    private var expandedGeometrySideActive = false
+    private val expandedGeometryOriginalBottomPadding = java.util.WeakHashMap<RecyclerView, Int>()
     private val geometryNarrowedViews = java.util.Collections.newSetFromMap(java.util.WeakHashMap<View, Boolean>())
     private val refreshGeometryPreference = Runnable {
         if (splitController == null && splitLoadingJob?.isActive != true) {
@@ -20475,7 +20482,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingKeyboardPanel?.refreshChromeSettings()
                 }
             }
-            floatingGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText)
+            floatingGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
+                config.sideCandidateRightToLeft)
             floatBinding!!.root.fallbackTouchExclusion = { x, y -> floatingGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         } else {
             floatingGeometryCandidateHost?.detach()
@@ -20484,7 +20492,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 dockedGeometryCandidateRoot = root
                 dockedGeometryCandidateHost = GeometryCandidateHost(root, main.suggestionRecyclerView)
             }
-            dockedGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText)
+            dockedGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
+                config.sideCandidateRightToLeft)
             main.root.fallbackTouchExclusion = { x, y -> dockedGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         }
     }
@@ -21269,6 +21278,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
+        val wasExpanded = isFullCandidateViewVisible()
+        if (isVisible) {
+            expandedGeometrySideActive = false
+            expandedGeometryOriginalBottomPadding.forEach { (view, bottom) ->
+                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, bottom)
+            }
+            expandedGeometryOriginalBottomPadding.clear()
+        } else {
+            expandedGeometrySideActive = dockedGeometryCandidateHost?.attached == true ||
+                floatingGeometryCandidateHost?.attached == true
+        }
         if (floatingCandidateSurfaceActive) {
             _suggestionViewStatus.value = true
             candidateSurfaceHost?.setExpanded(false)
@@ -21293,7 +21313,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 animateViewVisibility(floatingKeyboardLayoutBinding.candidatesRowView, !isVisible)
                 activeFloatingKeyboardView.isVisible = isVisible
-                hideFirstRowCandidatesInFullScreenFloating(floatingKeyboardLayoutBinding)
+                if (!expandedGeometrySideActive) hideFirstRowCandidatesInFullScreenFloating(floatingKeyboardLayoutBinding)
                 floatingKeyboardLayoutBinding.candidatesRowView.scrollToPosition(0)
                 if (isVisible) {
                     if (activeFloatingKeyboardView.isInvisible) {
@@ -21323,7 +21343,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
         mainView.candidatesRowView.scrollToPosition(0)
-        hideFirstRowCandidatesInFullScreen(mainView)
+        if (!expandedGeometrySideActive) hideFirstRowCandidatesInFullScreen(mainView)
         if (isVisible) {
             mainLayoutBinding?.apply {
                 when {
@@ -21370,7 +21390,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // The full candidate view was intentionally not diffed while hidden. Submit the
             // latest state after it becomes the active surface.
             refreshCandidateStripContent(candidatesShown = true)
+            scheduleExpandedSideCandidateFirstRow()
+        } else if (wasExpanded) {
+            // The expanded list remains visible until its closing animation finishes.
+            // Reattach side candidates after it is gone, without waiting for another keystroke.
+            mainView.root.postDelayed({
+                if (suggestionViewStatus.value && !isFullCandidateViewVisible()) refreshGeometryCandidates()
+            }, 240L)
         }
+    }
+
+    /** Keep the first row in the header without repeating it in the expanded side list. */
+    private fun scheduleExpandedSideCandidateFirstRow() {
+        if (!expandedGeometrySideActive || suggestionViewStatus.value) return
+        val list = if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.candidatesRowView
+            else mainLayoutBinding?.candidatesRowView
+        list ?: return
+        list.doOnPreDraw {
+            if (!expandedGeometrySideActive || !list.isShown || list.canScrollVertically(-1)) return@doOnPreDraw
+            val manager = list.layoutManager as? FlexboxLayoutManager ?: return@doOnPreDraw
+            val lines = manager.flexLines
+            val firstLine = lines.firstOrNull() ?: return@doOnPreDraw
+            val rowHeight = firstLine.crossSize
+            if (rowHeight <= 0) return@doOnPreDraw
+            // Only hide a row when every item in it is completely present in the header.
+            // The full list can be wider than the header, or have different auxiliary items.
+            val header = if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.suggestionRecyclerView
+                else mainLayoutBinding?.suggestionRecyclerView
+            val headerContent = currentCandidateStripContent as? CandidateStripContent.Candidates ?: return@doOnPreDraw
+            val count = firstLine.itemCount
+            if (header == null || headerContent.inlineSuggestionToggle != null || currentInlineSuggestionViews.isNotEmpty() ||
+                headerContent.candidates.size < count || currentCandidateStripFullCandidates.size < count ||
+                headerContent.candidates.take(count) != currentCandidateStripFullCandidates.take(count)) return@doOnPreDraw
+            val visibleHeaderPositions = (0 until header.childCount).mapNotNull { index ->
+                val child = header.getChildAt(index)
+                val visible = android.graphics.Rect()
+                if (child.getGlobalVisibleRect(visible) && visible.width() >= child.width) header.getChildAdapterPosition(child) else null
+            }.toSet()
+            if (!(0 until count).all { it in visibleHeaderPositions }) return@doOnPreDraw
+            val originalBottom = expandedGeometryOriginalBottomPadding.getOrPut(list) { list.paddingBottom }
+            val viewport = (list.height - list.paddingTop - originalBottom).coerceAtLeast(0)
+            val totalHeight = lines.sumOf { it.crossSize }
+            val extraBottom = (viewport + rowHeight - totalHeight).coerceAtLeast(0)
+            fun skipFirstRow() {
+                if (expandedGeometrySideActive && list.isShown && !list.canScrollVertically(-1)) list.scrollBy(0, rowHeight)
+            }
+            if (list.paddingBottom != originalBottom + extraBottom) {
+                list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight, originalBottom + extraBottom)
+                list.doOnPreDraw { list.post { skipFirstRow() } }
+            } else list.post { skipFirstRow() }
+        }
+        list.invalidate()
     }
 
     private fun animateViewVisibility(
@@ -23187,7 +23257,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             ioScope.launch {
                                 setCandidatesForMode(input, mainView, mode, token)
                                 withContext(Dispatchers.Main) {
-                                    hideFirstRowCandidatesInFullScreen(mainView)
+                                    if (expandedGeometrySideActive) scheduleExpandedSideCandidateFirstRow()
+                                    else hideFirstRowCandidatesInFullScreen(mainView)
                                 }
                             }
                         }

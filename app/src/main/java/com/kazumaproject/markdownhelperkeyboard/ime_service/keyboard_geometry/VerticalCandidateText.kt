@@ -17,3 +17,14 @@ internal fun verticalCandidateText(text: String): String {
     }
     return parts.joinToString("\n")
 }
+
+/** Truncate only the presentation; the candidate's underlying text is never changed. */
+internal fun ellipsizeVerticalLines(text: String, maxLines: Int): String {
+    val limit = maxLines.coerceAtLeast(1)
+    val lines = text.split('\n')
+    return when {
+        lines.size <= limit -> text
+        limit == 1 -> lines.first() + "…"
+        else -> (lines.take(limit - 1) + "…").joinToString("\n")
+    }
+}

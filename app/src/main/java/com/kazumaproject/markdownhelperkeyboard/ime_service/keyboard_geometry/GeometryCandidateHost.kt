@@ -3,14 +3,18 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Matrix
+import android.content.Context
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.android.flexbox.AlignItems
+import com.kazumaproject.android.flexbox.FlexDirection
+import com.kazumaproject.android.flexbox.FlexWrap
+import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import kotlin.math.roundToInt
 
@@ -26,6 +30,44 @@ internal fun geometryBoundsInHost(body: View, host: View, bounds: RectF): Rect? 
     bodyToScreen.mapRect(mapped)
     screenToHost.mapRect(mapped)
     return Rect(mapped.left.roundToInt(), mapped.top.roundToInt(), mapped.right.roundToInt(), mapped.bottom.roundToInt())
+}
+
+/** Flows candidates down each column, then scrolls between columns horizontally. */
+internal class SideCandidateFlowLayoutManager(context: Context, var rightToLeft: Boolean) :
+    FlexboxLayoutManager(context, FlexDirection.COLUMN, FlexWrap.WRAP) {
+    init { alignItems = AlignItems.FLEX_START }
+    // Affect column order only; candidate text views keep their own layout direction.
+    override fun getLayoutDirection(): Int = if (rightToLeft) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+    override fun generateLayoutParams(params: ViewGroup.LayoutParams): RecyclerView.LayoutParams =
+        FlexboxLayoutManager.LayoutParams(params)
+
+    // The bundled Flexbox manager reports LTR scroll offsets for RTL columns. Estimate
+    // a consistent range from visible items so accessibility and nested scrolling can
+    // discover the correct direction as well as ordinary touch gestures.
+    private fun scrollMetrics(state: RecyclerView.State): Triple<Int, Int, Int> {
+        val extent = (width - paddingLeft - paddingRight).coerceAtLeast(0)
+        if (extent == 0 || childCount == 0 || state.itemCount == 0) return Triple(0, extent, extent)
+        val first = findFirstVisibleItemPosition()
+        val last = findLastVisibleItemPosition()
+        if (first < 0 || last < first) return Triple(0, extent, extent)
+        val firstView = findViewByPosition(first)
+        val lastView = findViewByPosition(last)
+        val earlier = first > 0 || (firstView != null && if (rightToLeft)
+            getDecoratedRight(firstView) > width - paddingRight else getDecoratedLeft(firstView) < paddingLeft)
+        val later = last < state.itemCount - 1 || (lastView != null && if (rightToLeft)
+            getDecoratedLeft(lastView) < paddingLeft else getDecoratedRight(lastView) > width - paddingRight)
+        val visibleItems = (last - first + 1).coerceAtLeast(1)
+        val estimated = (extent.toLong() * state.itemCount / visibleItems).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val extra = maxOf(estimated - extent, if (earlier && later) 2 else if (earlier || later) 1 else 0)
+        var progress = (extra.toLong() * first / (state.itemCount - visibleItems).coerceAtLeast(1)).toInt()
+        progress = if (earlier) progress.coerceAtLeast(1) else 0
+        progress = if (later) progress.coerceAtMost(extra - 1) else extra
+        return Triple(if (rightToLeft) extra - progress else progress, extent, extent + extra)
+    }
+
+    override fun computeHorizontalScrollOffset(state: RecyclerView.State): Int = scrollMetrics(state).first
+    override fun computeHorizontalScrollExtent(state: RecyclerView.State): Int = scrollMetrics(state).second
+    override fun computeHorizontalScrollRange(state: RecyclerView.State): Int = scrollMetrics(state).third
 }
 
 /** Moves the existing candidate list into the keyboard's reserved space and restores it exactly. */
@@ -49,7 +91,7 @@ internal class GeometryCandidateHost(
     }
     val attached: Boolean get() = panel != null
 
-    fun show(bounds: Rect, verticalText: Boolean = false) {
+    fun show(bounds: Rect, verticalText: Boolean = false, rightToLeft: Boolean = false) {
         if (bounds.width() <= 0 || bounds.height() <= 0) { detach(); return }
         if (!attached) {
             val originalParent = recycler.parent as? ViewGroup ?: return
@@ -69,35 +111,39 @@ internal class GeometryCandidateHost(
             panel = container
         }
         val adapter = recycler.adapter as? SuggestionAdapter
+        var columnWidth = 0
         if (verticalText) {
             if (!verticalSpacingApplied) {
                 recycler.addItemDecoration(verticalSpacing)
                 verticalSpacingApplied = true
             }
             val metrics = root.resources.displayMetrics
+            val inset = SideCandidateSizing.horizontalInset(bounds.width(), metrics.density)
+            if (recycler.paddingLeft != inset || recycler.paddingRight != inset) recycler.setPadding(inset, 0, inset, 0)
             val textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, adapter?.sideCandidateTextSizeSp() ?: 14f, metrics)
             val columns = SideCandidateSizing.columnCount(bounds.width(), metrics.density, textSize)
-            val current = recycler.layoutManager as? GridLayoutManager
+            columnWidth = ((bounds.width() - 2 * inset) / columns).coerceAtLeast(1)
+            val current = recycler.layoutManager as? SideCandidateFlowLayoutManager
             if (current == null) {
-                val manager = GridLayoutManager(root.context, columns)
-                manager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int =
-                        (recycler.adapter as? SuggestionAdapter)?.sideCandidateSpanSize(position, manager.spanCount) ?: 1
+                recycler.layoutManager = SideCandidateFlowLayoutManager(root.context, rightToLeft)
+            } else {
+                if (current.rightToLeft != rightToLeft) {
+                    current.rightToLeft = rightToLeft
+                    current.scrollToPosition(0)
+                    current.requestLayout()
                 }
-                recycler.layoutManager = manager
-            } else if (current.spanCount != columns) {
-                current.spanCount = columns
             }
         } else {
+            if (recycler.paddingLeft != 0 || recycler.paddingRight != 0) recycler.setPadding(0, 0, 0, 0)
             if (verticalSpacingApplied) {
                 recycler.removeItemDecoration(verticalSpacing)
                 verticalSpacingApplied = false
             }
-            if (recycler.layoutManager is GridLayoutManager) {
+            if (recycler.layoutManager is SideCandidateFlowLayoutManager) {
                 recycler.layoutManager = LinearLayoutManager(root.context, RecyclerView.VERTICAL, false)
             }
         }
-        adapter?.setSideCandidateVerticalText(verticalText)
+        adapter?.setSideCandidateVerticalText(verticalText, columnWidth, bounds.height(), bounds.width() - 2 * recycler.paddingLeft)
         val container = panel ?: return
         val params = (container.layoutParams as? FrameLayout.LayoutParams) ?: FrameLayout.LayoutParams(bounds.width(), bounds.height())
         if (params.width != bounds.width() || params.height != bounds.height() || params.leftMargin != bounds.left || params.topMargin != bounds.top || params.gravity != (Gravity.TOP or Gravity.LEFT)) {

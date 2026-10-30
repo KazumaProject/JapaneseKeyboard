@@ -83,9 +83,13 @@ class UnifiedKeyboardSettingsDeviceTest {
                     touch(seek, MotionEvent.ACTION_DOWN, x, y)
                     touch(seek, MotionEvent.ACTION_UP, x, y)
                     root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_order).check(2)
+                    val direction = root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_direction)
+                    assertTrue(direction.isShown)
+                    direction.check(2)
                 }
                 assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 25) > 25)
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", false))
+                assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_right_to_left", false))
                 instrumentation.runOnMainSync {
                     val root = requireNotNull(page)
                     root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement).check(1)

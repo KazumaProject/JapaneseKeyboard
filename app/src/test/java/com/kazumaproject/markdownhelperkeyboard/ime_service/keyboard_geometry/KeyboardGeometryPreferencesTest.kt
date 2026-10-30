@@ -8,7 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
@@ -31,8 +30,9 @@ class KeyboardGeometryPreferencesTest {
         val store = KeyboardGeometryPreferences(prefs)
         assertEquals(25, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
+        assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
         val configured = KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.LEFT,
-            sideCandidateWidthPercent = 40, sideCandidateVerticalText = true)
+            sideCandidateWidthPercent = 40, sideCandidateVerticalText = true, sideCandidateRightToLeft = true)
         store.save(GeometryKeyboard.TENKEY, false, configured)
         assertEquals(configured, store.read(GeometryKeyboard.TENKEY, false))
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, true))
@@ -40,9 +40,11 @@ class KeyboardGeometryPreferencesTest {
         store.reset(GeometryKeyboard.TENKEY, false)
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, false))
         prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 999)
-            .putString("keyboard_geometry_tenkey_portrait_candidate_vertical_text", "invalid").commit()
+            .putString("keyboard_geometry_tenkey_portrait_candidate_vertical_text", "invalid")
+            .putString("keyboard_geometry_tenkey_portrait_candidate_right_to_left", "invalid").commit()
         assertEquals(SideCandidateSizing.MAX_PERCENT, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
+        assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
     }
 
     @Test fun sideWidthPreservesTheDefaultAndProtectsBothRegions() {
@@ -57,13 +59,21 @@ class KeyboardGeometryPreferencesTest {
     @Test fun verticalColumnsFollowWidthAndReserveRoomForLargeText() {
         assertEquals(1, SideCandidateSizing.columnCount(64, 1f, 14f))
         assertEquals(1, SideCandidateSizing.columnCount(127, 1f, 14f))
-        assertEquals(2, SideCandidateSizing.columnCount(128, 1f, 14f))
-        assertEquals(3, SideCandidateSizing.columnCount(200, 1f, 14f))
+        assertEquals(1, SideCandidateSizing.columnCount(128, 1f, 14f))
+        assertEquals(2, SideCandidateSizing.columnCount(144, 1f, 14f))
+        assertEquals(3, SideCandidateSizing.columnCount(208, 1f, 14f))
         assertEquals(1, SideCandidateSizing.columnCount(200, 1f, 80f))
+        assertEquals(8, SideCandidateSizing.horizontalInset(64, 1f))
+        assertEquals(2, SideCandidateSizing.horizontalInset(52, 1f))
+        assertEquals(0, SideCandidateSizing.horizontalInset(40, 1f))
     }
 
     @Test fun verticalTextKeepsGraphemeClustersTogether() {
         assertEquals("今\n日\nが\n👨‍👩‍👧‍👦", verticalCandidateText("今日が👨‍👩‍👧‍👦"))
+        assertEquals("今\n日\n…", ellipsizeVerticalLines(verticalCandidateText("今日が👨‍👩‍👧‍👦"), 3))
+        assertEquals("今\n日\nが\n👨‍👩‍👧‍👦", ellipsizeVerticalLines(verticalCandidateText("今日が👨‍👩‍👧‍👦"), 4))
+        assertEquals("👨‍👩‍👧‍👦\n…", ellipsizeVerticalLines(verticalCandidateText("👨‍👩‍👧‍👦今日"), 2))
+        assertEquals("今…", ellipsizeVerticalLines(verticalCandidateText("今日"), 1))
         assertEquals("", verticalCandidateText(""))
     }
 
@@ -108,6 +118,7 @@ class KeyboardGeometryPreferencesTest {
         val root = FrameLayout(context)
         val originalParent = FrameLayout(context)
         val recycler = RecyclerView(context)
+        recycler.setPadding(7, 8, 9, 10)
         val originalManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
         recycler.layoutManager = originalManager
         val originalParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 50)
@@ -124,19 +135,22 @@ class KeyboardGeometryPreferencesTest {
         assertNotSame(originalParent, recycler.parent)
         val originalDecorations = recycler.itemDecorationCount
         val density = context.resources.displayMetrics.density
-        host.show(Rect(0, 0, (200 * density).toInt(), 260), verticalText = true)
-        val grid = recycler.layoutManager as GridLayoutManager
-        assertEquals(3, grid.spanCount)
+        host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true)
+        val flow = recycler.layoutManager as SideCandidateFlowLayoutManager
+        assertEquals(View.LAYOUT_DIRECTION_LTR, flow.layoutDirection)
+        assertTrue(flow.canScrollHorizontally())
         assertEquals(originalDecorations + 1, recycler.itemDecorationCount)
+        assertEquals(SideCandidateSizing.horizontalInset((220 * density).toInt(), density), recycler.paddingLeft)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = true)
-        assertSame(grid, recycler.layoutManager)
-        assertEquals(1, grid.spanCount)
+        assertSame(flow, recycler.layoutManager)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = false)
-        assertFalse(recycler.layoutManager is GridLayoutManager)
+        assertFalse(recycler.layoutManager is SideCandidateFlowLayoutManager)
         assertEquals(originalDecorations, recycler.itemDecorationCount)
-        host.show(Rect(0, 0, (200 * density).toInt(), 260), verticalText = true)
+        host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true)
+        assertEquals(View.LAYOUT_DIRECTION_RTL, (recycler.layoutManager as SideCandidateFlowLayoutManager).layoutDirection)
         assertTrue(host.detach())
         assertEquals(originalDecorations, recycler.itemDecorationCount)
+        assertEquals(Rect(7, 8, 9, 10), Rect(recycler.paddingLeft, recycler.paddingTop, recycler.paddingRight, recycler.paddingBottom))
         assertSame(originalParent, recycler.parent)
         assertSame(originalManager, recycler.layoutManager)
         assertSame(originalParams, recycler.layoutParams)

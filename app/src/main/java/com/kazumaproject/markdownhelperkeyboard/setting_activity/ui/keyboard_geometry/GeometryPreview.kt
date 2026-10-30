@@ -219,19 +219,29 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
             if (value.candidates != GeometryCandidatePlacement.CENTER && value.sideCandidateVerticalText) {
                 val density = resources.displayMetrics.density
                 val columns = SideCandidateSizing.columnCount(model.candidateSideWidth.roundToInt(), density, paint.textSize)
-                val cellWidth = model.candidateSideWidth / columns
+                val inset = SideCandidateSizing.horizontalInset(model.candidateSideWidth.roundToInt(), density).toFloat()
+                val cellWidth = (model.candidateSideWidth - 2 * inset) / columns
                 var top = model.chromeHeight
-                for (row in examples.map { verticalCandidateText(it).split('\n') }.chunked(columns)) {
-                    val itemHeight = row.maxOf { maxOf(48f * density, it.size * paint.fontSpacing) }
-                    row.forEachIndexed { column, characters ->
-                        val columnWidth = characters.maxOfOrNull { paint.measureText(it) } ?: 0f
-                        val textHeight = characters.size * paint.fontSpacing
-                        val cx = left + column * cellWidth + 5f * density + columnWidth / 2f
-                        var baseline = top + (itemHeight - textHeight) / 2f - paint.fontMetrics.ascent
-                        for (character in characters) {
-                            canvas.drawText(character, cx, baseline, paint)
-                            baseline += paint.fontSpacing
-                        }
+                var column = 0
+                val verticalExamples = examples + listOf(
+                    context.getString(R.string.keyboard_geometry_example_conversion),
+                    context.getString(R.string.keyboard_geometry_example_japanese),
+                )
+                for (characters in verticalExamples.map { verticalCandidateText(it).split('\n') }) {
+                    val itemHeight = maxOf(48f * density, characters.size * paint.fontSpacing)
+                    if (top > model.chromeHeight && top + itemHeight > model.chromeHeight + model.bodyHeight) {
+                        column++
+                        top = model.chromeHeight
+                    }
+                    if (column >= columns) break
+                    val columnWidth = characters.maxOfOrNull { paint.measureText(it) } ?: 0f
+                    val textHeight = characters.size * paint.fontSpacing
+                    val physicalColumn = if (value.sideCandidateRightToLeft) columns - 1 - column else column
+                    val cx = left + inset + physicalColumn * cellWidth + 5f * density + columnWidth / 2f
+                    var baseline = top + (itemHeight - textHeight) / 2f - paint.fontMetrics.ascent
+                    for (character in characters) {
+                        canvas.drawText(character, cx, baseline, paint)
+                        baseline += paint.fontSpacing
                     }
                     top += itemHeight + 8f * density
                 }

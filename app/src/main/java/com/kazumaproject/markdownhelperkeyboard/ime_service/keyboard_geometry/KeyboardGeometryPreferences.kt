@@ -13,6 +13,7 @@ data class KeyboardGeometryPreference(
     val candidates: GeometryCandidatePlacement = GeometryCandidatePlacement.TOP,
     val sideCandidateWidthPercent: Int = SideCandidateSizing.DEFAULT_PERCENT,
     val sideCandidateVerticalText: Boolean = false,
+    val sideCandidateRightToLeft: Boolean = false,
 )
 
 /** Size rules only; settings previews and IME views remain separate. */
@@ -32,8 +33,13 @@ object SideCandidateSizing {
     /** Leave at least 64 dp per candidate, or more for unusually large text. */
     fun columnCount(candidateWidth: Int, density: Float, textSizePx: Float): Int {
         val minimumColumnWidth = maxOf(64f * density, textSizePx * 1.2f + 24f * density, 1f)
-        return (candidateWidth / minimumColumnWidth).toInt().coerceAtLeast(1)
+        val usableWidth = (candidateWidth - 2 * horizontalInset(candidateWidth, density)).coerceAtLeast(0)
+        return (usableWidth / minimumColumnWidth).toInt().coerceAtLeast(1)
     }
+
+    /** Preserve at least a 48 dp target when the candidate area is very narrow. */
+    fun horizontalInset(candidateWidth: Int, density: Float): Int =
+        minOf((8f * density).toInt(), ((candidateWidth - (48f * density).toInt()) / 2).coerceAtLeast(0))
 }
 
 /** Separate keys per keyboard and screen orientation; legacy backups use default values. */
@@ -64,6 +70,7 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
             sideCandidateWidthPercent = int("candidate_width_percent", SideCandidateSizing.DEFAULT_PERCENT)
                 .coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT),
             sideCandidateVerticalText = runCatching { preferences.getBoolean("${p}_candidate_vertical_text", false) }.getOrDefault(false),
+            sideCandidateRightToLeft = runCatching { preferences.getBoolean("${p}_candidate_right_to_left", false) }.getOrDefault(false),
         )
     }
 
@@ -80,7 +87,8 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
             .putString("${p}_curve_direction", value.curveDirection.name)
             .putBoolean("${p}_auto_height", value.autoHeight).putString("${p}_candidates", placement.name)
             .putInt("${p}_candidate_width_percent", preference.sideCandidateWidthPercent.coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT))
-            .putBoolean("${p}_candidate_vertical_text", preference.sideCandidateVerticalText).apply()
+            .putBoolean("${p}_candidate_vertical_text", preference.sideCandidateVerticalText)
+            .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft).apply()
     }
 
     fun reset(keyboard: GeometryKeyboard, landscape: Boolean) = save(keyboard, landscape, KeyboardGeometryPreference())
