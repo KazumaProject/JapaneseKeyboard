@@ -23,7 +23,12 @@
     <string name="keyboard_geometry_candidate_order">候補の文字の向き</string>
     <string name="keyboard_geometry_candidate_order_vertical">縦並び（幅に応じて列数を調整）</string>
     <string name="keyboard_geometry_candidate_order_horizontal">横書き</string>
-    <string name="keyboard_geometry_candidate_vertical_hint">候補は左右にスワイプして表示します。長い候補は省略表示されることがありますが、選択すると全文が入力されます。</string>
+    <string name="keyboard_geometry_candidate_vertical_hint">候補は左右にスワイプして表示します。候補を選ぶと全文が入力されます。</string>
+    <string name="keyboard_geometry_candidate_long_display">長い縦書き候補</string>
+    <string name="keyboard_geometry_candidate_truncate">省略する</string>
+    <string name="keyboard_geometry_candidate_wrap">省略せず、次の列に続ける</string>
+    <string name="keyboard_geometry_candidate_spacing">縦書き候補の行間: %1$d dp</string>
+    <string name="keyboard_geometry_candidate_spacing_hint">候補の間と、折り返した列の間隔を変更します。</string>
     <string name="keyboard_geometry_candidate_direction">縦並びの候補の順序</string>
     <string name="keyboard_geometry_candidate_left_to_right">左から右</string>
     <string name="keyboard_geometry_candidate_right_to_left">右から左</string>
