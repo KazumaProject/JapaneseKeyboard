@@ -19,6 +19,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Robolectric
 import org.robolectric.annotation.Config
+import kotlin.math.roundToInt
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -31,9 +32,13 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(25, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
+        assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateWrapLongText)
+        assertEquals(SideCandidateSizing.DEFAULT_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateSpacingDp)
         assertTrue(store.read(GeometryKeyboard.TENKEY, false).showSegmentEditor)
         val configured = KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.LEFT,
             sideCandidateWidthPercent = 40, sideCandidateVerticalText = true, sideCandidateRightToLeft = true,
+            sideCandidateWrapLongText = true,
+            sideCandidateSpacingDp = 16,
             showSegmentEditor = false)
         store.save(GeometryKeyboard.TENKEY, false, configured)
         assertEquals(configured, store.read(GeometryKeyboard.TENKEY, false))
@@ -42,11 +47,13 @@ class KeyboardGeometryPreferencesTest {
         store.reset(GeometryKeyboard.TENKEY, false)
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, false))
         prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 999)
+            .putInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 999)
             .putString("keyboard_geometry_tenkey_portrait_candidate_vertical_text", "invalid")
             .putString("keyboard_geometry_tenkey_portrait_candidate_right_to_left", "invalid").commit()
         assertEquals(SideCandidateSizing.MAX_PERCENT, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
+        assertEquals(SideCandidateSizing.MAX_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateSpacingDp)
     }
 
     @Test fun sideWidthPreservesTheDefaultAndProtectsBothRegions() {
@@ -65,6 +72,15 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(2, SideCandidateSizing.columnCount(144, 1f, 14f))
         assertEquals(3, SideCandidateSizing.columnCount(208, 1f, 14f))
         assertEquals(1, SideCandidateSizing.columnCount(200, 1f, 80f))
+        assertEquals(60, SideCandidateSizing.columnWidth(144, 1f, 14f))
+        assertEquals(64, SideCandidateSizing.columnWidth(220, 1f, 14f))
+        assertEquals(120, SideCandidateSizing.columnWidth(200, 1f, 80f))
+        for (panelWidth in listOf(144, 208, 220)) {
+            val usableWidth = panelWidth - 2 * SideCandidateSizing.horizontalInset(panelWidth, 1f)
+            val columns = SideCandidateSizing.columnCount(panelWidth, 1f, 14f)
+            val widthWithGap = SideCandidateSizing.columnWidth(panelWidth, 1f, 14f) + SideCandidateSizing.DEFAULT_SPACING_DP
+            assertTrue(columns * widthWithGap <= usableWidth)
+        }
         assertEquals(8, SideCandidateSizing.horizontalInset(64, 1f))
         assertEquals(2, SideCandidateSizing.horizontalInset(52, 1f))
         assertEquals(0, SideCandidateSizing.horizontalInset(40, 1f))
@@ -77,6 +93,9 @@ class KeyboardGeometryPreferencesTest {
         assertEquals("👨‍👩‍👧‍👦\n…", ellipsizeVerticalLines(verticalCandidateText("👨‍👩‍👧‍👦今日"), 2))
         assertEquals("今…", ellipsizeVerticalLines(verticalCandidateText("今日"), 1))
         assertEquals("", verticalCandidateText(""))
+        assertEquals(listOf("今\n日", "が\n👨‍👩‍👧‍👦"), verticalCandidateColumns("今日が👨‍👩‍👧‍👦", 2))
+        assertEquals(listOf("今", "日"), verticalCandidateColumns("今日", 1))
+        assertEquals(listOf("今\n↵", "日\n⇥"), verticalCandidateColumns("今\n日\t", 2))
     }
 
     @Test fun settingsAreIndependentAndLegacyDefaultsRemainUnchanged() {
@@ -143,6 +162,17 @@ class KeyboardGeometryPreferencesTest {
         assertTrue(flow.canScrollHorizontally())
         assertEquals(originalDecorations + 1, recycler.itemDecorationCount)
         assertEquals(SideCandidateSizing.horizontalInset((220 * density).toInt(), density), recycler.paddingLeft)
+        val decoration = recycler.getItemDecorationAt(originalDecorations)
+        val offsets = Rect()
+        decoration.getItemOffsets(offsets, View(context), recycler, RecyclerView.State())
+        assertEquals((4 * density).roundToInt(), offsets.right)
+        assertEquals((4 * density).roundToInt(), offsets.bottom)
+        host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true, spacingDp = 20)
+        offsets.setEmpty()
+        decoration.getItemOffsets(offsets, View(context), recycler, RecyclerView.State())
+        assertEquals((20 * density).roundToInt(), offsets.left)
+        assertEquals((20 * density).roundToInt(), offsets.bottom)
+        assertEquals(0, offsets.right)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = true)
         assertSame(flow, recycler.layoutManager)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = false)
@@ -172,6 +202,29 @@ class KeyboardGeometryPreferencesTest {
         scaled.pivotX = 0f; scaled.pivotY = 0f; scaled.scaleX = .5f; scaled.scaleY = .5f
         body.layout(40, 60, 240, 260)
         assertEquals(Rect(40, 70, 140, 170), geometryBoundsInHost(body, host, RectF(0f, 0f, 200f, 200f)))
+    }
+
+    @Test fun segmentBarUsesTheKeyboardBodyBoundsOnEitherSide() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val root = FrameLayout(context)
+        val row = androidx.constraintlayout.widget.ConstraintLayout(context)
+        val body = View(context)
+        val bar = View(context)
+        root.addView(row)
+        root.addView(body)
+        row.addView(bar, androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(0, 40))
+        root.layout(0, 0, 400, 400)
+        row.layout(0, 0, 400, 80)
+        body.layout(80, 80, 400, 380)
+        alignSegmentBarToKeyboardBody(bar, body, emptyList())
+        var params = bar.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+        assertEquals(80, params.leftMargin)
+        assertEquals(0, params.rightMargin)
+        body.layout(0, 80, 320, 380)
+        alignSegmentBarToKeyboardBody(bar, body, emptyList())
+        params = bar.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+        assertEquals(0, params.leftMargin)
+        assertEquals(80, params.rightMargin)
     }
 
     @Test fun candidateTouchExclusionFollowsScaledFloatingAncestors() {

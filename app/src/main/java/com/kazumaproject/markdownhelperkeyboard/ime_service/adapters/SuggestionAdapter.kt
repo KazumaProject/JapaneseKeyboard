@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -53,7 +54,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrin
 import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateText
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateColumns
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.ellipsizeVerticalLines
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -401,6 +404,9 @@ class SuggestionAdapter internal constructor(
     private var sideCandidateColumnWidth = 0
     private var sideCandidatePanelWidth = 0
     private var sideCandidatePanelHeight = 0
+    private var sideCandidateWrapLongText = false
+    private var sideCandidateRightToLeft = false
+    private var sideCandidateSpacingDp = SideCandidateSizing.DEFAULT_SPACING_DP
     private var candidateTextColor: Int? = null
     private var candidateDividerColor: Int? = null
     private var candidateDividerVerticalMarginDp: Int? = null
@@ -411,16 +417,27 @@ class SuggestionAdapter internal constructor(
     private var characterStyles = CandidateIndicatorStyles()
 
     /** A side-panel presentation only; candidate strings and click actions stay unchanged. */
-    internal fun setSideCandidateVerticalText(enabled: Boolean, columnWidth: Int = 0, panelHeight: Int = 0, panelWidth: Int = 0) {
+    internal fun setSideCandidateVerticalText(
+        enabled: Boolean, columnWidth: Int = 0, panelHeight: Int = 0, panelWidth: Int = 0,
+        wrapLongText: Boolean = false, rightToLeft: Boolean = false,
+        spacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
+    ) {
         val width = if (enabled) columnWidth else 0
         val height = if (enabled) panelHeight else 0
         val fullWidth = if (enabled) panelWidth else 0
+        val spacing = if (enabled) spacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP)
+            else SideCandidateSizing.DEFAULT_SPACING_DP
         if (sideCandidateVerticalText == enabled && sideCandidateColumnWidth == width &&
-            sideCandidatePanelHeight == height && sideCandidatePanelWidth == fullWidth) return
+            sideCandidatePanelHeight == height && sideCandidatePanelWidth == fullWidth &&
+            sideCandidateWrapLongText == (enabled && wrapLongText) &&
+            sideCandidateRightToLeft == (enabled && rightToLeft) && sideCandidateSpacingDp == spacing) return
         sideCandidateVerticalText = enabled
         sideCandidateColumnWidth = width
         sideCandidatePanelHeight = height
         sideCandidatePanelWidth = fullWidth
+        sideCandidateWrapLongText = enabled && wrapLongText
+        sideCandidateRightToLeft = enabled && rightToLeft
+        sideCandidateSpacingDp = spacing
         val busy = attachedRecyclerViews.keys.firstOrNull { it.isComputingLayout }
         if (busy != null) busy.post { if (!released) notifyDataSetChanged() } else notifyDataSetChanged()
     }
@@ -1247,6 +1264,13 @@ class SuggestionAdapter internal constructor(
         val maxLines: Int, val ellipsize: android.text.TextUtils.TruncateAt?, val gravity: Int,
         val alignment: Int, val contentDescription: CharSequence?, val itemWidth: Int, val itemHeight: Int,
         val itemMinHeight: Int, val itemMinWidth: Int,
+        val dividerVisibility: Int?,
+        var columns: VerticalCandidateColumns? = null,
+    )
+
+    internal data class VerticalCandidateColumns(
+        val parent: ViewGroup, val wrapper: LinearLayout, val index: Int,
+        val textLayoutParams: ViewGroup.LayoutParams,
     )
 
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -1544,6 +1568,12 @@ class SuggestionAdapter internal constructor(
             is ZeroQueryViewHolder -> holder.text
             else -> return
         }
+        state.columns?.let { columns ->
+            columns.wrapper.removeView(text)
+            columns.parent.removeView(columns.wrapper)
+            columns.parent.addView(text, columns.index.coerceAtMost(columns.parent.childCount), columns.textLayoutParams)
+        }
+        state.dividerVisibility?.let { holder.itemView.findViewById<View>(R.id.candidate_divider)?.visibility = it }
         text.maxLines = state.maxLines; text.ellipsize = state.ellipsize
         text.gravity = state.gravity; text.textAlignment = state.alignment
         text.contentDescription = state.contentDescription
@@ -1564,15 +1594,17 @@ class SuggestionAdapter internal constructor(
             else -> return
         }
         val root = holder.itemView
+        val divider = root.findViewById<View>(R.id.candidate_divider)
         val state = VerticalCandidateState(text.maxLines, text.ellipsize, text.gravity,
             text.textAlignment, text.contentDescription, root.layoutParams?.width ?: ViewGroup.LayoutParams.WRAP_CONTENT,
             root.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT,
-            root.minimumHeight, root.minimumWidth)
+            root.minimumHeight, root.minimumWidth, divider?.visibility)
         when (holder) {
             is SuggestionViewHolder -> holder.verticalState = state
             is ZeroQueryViewHolder -> holder.verticalState = state
         }
-        val spacing = (8f * root.resources.displayMetrics.density).toInt()
+        divider?.visibility = View.GONE
+        val spacing = (sideCandidateSpacingDp * root.resources.displayMetrics.density).toInt()
         val availableHeight = (sideCandidatePanelHeight - spacing).coerceAtLeast(1)
         val availableTextHeight = (availableHeight - root.paddingTop - root.paddingBottom - spacing / 2).coerceAtLeast(1)
         // Rich presentations retain their own rendering and occupy a whole column.
@@ -1590,10 +1622,14 @@ class SuggestionAdapter internal constructor(
         // Leave one line for font padding and decorations so the ellipsis remains visible.
         val maxLines = if (sideCandidatePanelHeight > 0)
             (availableTextHeight / text.lineHeight.coerceAtLeast(1) - 1).coerceAtLeast(1) else Int.MAX_VALUE
-        val formatted = ellipsizeVerticalLines(verticalCandidateText(body), maxLines)
+        val columns = if (sideCandidateWrapLongText && sideCandidatePanelHeight > 0) {
+            verticalCandidateColumns(body, maxLines)
+        } else emptyList()
+        val formatted = if (columns.isNotEmpty()) columns.first() else
+            ellipsizeVerticalLines(verticalCandidateText(body), maxLines)
         text.text = formatted
         text.maxLines = maxLines
-        text.ellipsize = if (sideCandidatePanelHeight > 0) android.text.TextUtils.TruncateAt.END else null
+        text.ellipsize = if (sideCandidatePanelHeight > 0 && !sideCandidateWrapLongText) android.text.TextUtils.TruncateAt.END else null
         text.gravity = Gravity.CENTER; text.textAlignment = View.TEXT_ALIGNMENT_CENTER
         var description = body
         if (text is CandidateCharacterTextView) {
@@ -1602,6 +1638,47 @@ class SuggestionAdapter internal constructor(
             description = text.contentDescription?.toString()?.replace(formatted, body) ?: body
         }
         text.contentDescription = description
+        var wrappedTextWidth = 0
+        if (columns.size > 1) {
+            val parent = text.parent as ViewGroup
+            val index = parent.indexOfChild(text)
+            val originalParams = text.layoutParams
+            parent.removeView(text)
+            val wrapper = LinearLayout(root.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutDirection = if (sideCandidateRightToLeft) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+                gravity = Gravity.TOP
+            }
+            parent.addView(wrapper, index, originalParams)
+            state.columns = VerticalCandidateColumns(parent, wrapper, index, originalParams)
+            val glyphWidth = columns.asSequence().flatMap { it.split('\n').asSequence() }
+                .maxOfOrNull { text.paint.measureText(it) } ?: 0f
+            val textWidth = kotlin.math.ceil(maxOf(text.textSize, glyphWidth) +
+                text.compoundPaddingLeft + text.compoundPaddingRight + spacing).toInt().coerceAtLeast(1)
+            wrappedTextWidth = (textWidth.toLong() * columns.size).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            wrapper.addView(text, LinearLayout.LayoutParams(textWidth, ViewGroup.LayoutParams.WRAP_CONTENT))
+            columns.drop(1).forEach { column ->
+                val continuation = if (text is CandidateCharacterTextView) CandidateCharacterTextView(root.context)
+                    else MaterialTextView(root.context)
+                continuation.apply {
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, text.textSize)
+                    typeface = text.typeface
+                    setTextColor(text.textColors)
+                    gravity = Gravity.CENTER
+                    textAlignment = View.TEXT_ALIGNMENT_CENTER
+                    this.maxLines = text.maxLines
+                    ellipsize = null
+                    this.text = column
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+                if (continuation is CandidateCharacterTextView) {
+                    val candidateIndex = (item as SuggestionDisplayItem.CandidateItem).candidateIndex
+                    continuation.setCharacterIndicators(column, showCharacterIndicators,
+                        selected = candidateIndex == highlightedPosition, styles = characterStyles)
+                }
+                wrapper.addView(continuation, LinearLayout.LayoutParams(textWidth, ViewGroup.LayoutParams.WRAP_CONTENT))
+            }
+        }
         if (holder is SuggestionViewHolder && holder.yomiText.isVisible) {
             // The horizontal ruby overlay cannot follow multiline text. Keep the reading
             // beside the vertical candidate instead of dropping it or drawing it incorrectly.
@@ -1617,9 +1694,19 @@ class SuggestionAdapter internal constructor(
             holder.typeText.contentDescription = listOf(label, reading).filter { it.isNotEmpty() }.joinToString(", ")
         }
         root.minimumHeight = maxOf(state.itemMinHeight, (48f * root.resources.displayMetrics.density).toInt())
-        root.minimumWidth = maxOf(state.itemMinWidth, sideCandidateColumnWidth, (48f * root.resources.displayMetrics.density).toInt())
+        val columnWidth = maxOf(sideCandidateColumnWidth, (48f * root.resources.displayMetrics.density).toInt())
+        val typeText = (holder as? SuggestionViewHolder)?.typeText
+        val labelWidth = typeText?.takeIf { it.isVisible && it.text.isNotEmpty() }?.let { label ->
+            val textWidth = label.text.toString().split('\n').maxOfOrNull { label.paint.measureText(it) } ?: 0f
+            val margins = label.layoutParams as? ViewGroup.MarginLayoutParams
+            kotlin.math.ceil(textWidth).toInt() + (margins?.marginStart ?: 0) + (margins?.marginEnd ?: 0)
+        } ?: 0
+        val itemWidth = if (columns.size > 1) maxOf(columnWidth,
+            (wrappedTextWidth.toLong() + root.paddingLeft + root.paddingRight + labelWidth).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        else columnWidth
+        root.minimumWidth = maxOf(state.itemMinWidth, itemWidth)
         root.layoutParams?.let {
-            if (sideCandidateColumnWidth > 0) it.width = sideCandidateColumnWidth
+            if (sideCandidateColumnWidth > 0) it.width = itemWidth
             it.height = ViewGroup.LayoutParams.WRAP_CONTENT
             root.layoutParams = it
         }

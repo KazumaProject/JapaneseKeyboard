@@ -10,6 +10,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.Ge
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidatePlacement
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidateHost
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.geometryBoundsInHost
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.alignSegmentBarToKeyboardBody
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreferences
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSize
@@ -7812,6 +7813,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     appPreference.keyboard_floating_position_y = y
                 }
             },
+            onChromeChanged = { refreshGeometryCandidates() },
         ).also { panel ->
             panel.setColors(resolveCandidatePanelColors())
             floatingKeyboardPanel = panel
@@ -20868,7 +20870,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             floatingGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
-                config.sideCandidateRightToLeft)
+                config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp)
+            alignSegmentBarToKeyboardBody(floatBinding!!.segmentCandidateBar, body,
+                listOf(floatBinding.suggestionVisibility, floatBinding.floatingHideKeyboardBtn))
             floatBinding!!.root.fallbackTouchExclusion = { x, y -> floatingGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         } else {
             floatingGeometryCandidateHost?.detach()
@@ -20878,7 +20882,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 dockedGeometryCandidateHost = GeometryCandidateHost(root, main.suggestionRecyclerView)
             }
             dockedGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
-                config.sideCandidateRightToLeft)
+                config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp)
+            alignSegmentBarToKeyboardBody(main.segmentCandidateBar, body, listOf(main.suggestionVisibility))
             main.root.fallbackTouchExclusion = { x, y -> dockedGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         }
         refreshVerticalSegmentEditor()

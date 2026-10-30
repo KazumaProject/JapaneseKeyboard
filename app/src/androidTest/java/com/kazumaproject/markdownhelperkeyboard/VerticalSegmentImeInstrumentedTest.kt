@@ -29,6 +29,7 @@ class VerticalSegmentImeInstrumentedTest {
         await("live converted text") { text().contains("明日") }
         assertComposing()
         await("first segment") { rangeNode(0, 4) != null }
+        assertBarWithinKeyboard(R.id.keyboard_view)
         dragFirstBoundaryLeft()
         await("changed boundary") { rangeNode(0, 3) != null }
         await("new candidate applied") { segmentLabels().isNotEmpty() && text() == segmentLabels().joinToString("") }
@@ -169,19 +170,109 @@ class VerticalSegmentImeInstrumentedTest {
         withKeyboard(floating = true, live = true) {
             typeSentence()
             await("floating segment bar") { segmentBarVisible() }
+            assertBarWithinKeyboard(R.id.keyboard_view_floating)
             assertComposing()
         }
         withKeyboard(sumire = true, live = true) {
             tapSumireA()
             await("sumire segment bar") { segmentBarVisible() }
+            assertBarWithinKeyboard(R.id.custom_layout_default)
             assertComposing()
         }
     }
 
     @Test fun rightSideLandscapeCandidatesShowEditor() = withKeyboard(live = true, landscape = true, side = "RIGHT") {
         softKey(com.kazumaproject.tenkey.R.id.key_1)
+        if (text().isEmpty()) {
+            host.onActivity { it.requestImeForEditor() }
+            SystemClock.sleep(500)
+            softKey(com.kazumaproject.tenkey.R.id.key_1)
+        }
+        await("landscape input") { text().isNotEmpty() }
         await("landscape segment bar") { segmentBarVisible() }
+        assertBarWithinKeyboard(R.id.keyboard_view)
         assertComposing()
+    }
+
+    @Test fun wrappedLongCandidateScrollsAndCommitsItsFullText() = withKeyboard(show = false, wrapLongText = true) {
+        softKey(com.kazumaproject.tenkey.R.id.key_1)
+        await("side candidates") {
+            var ready = false
+            instrumentation.runOnMainSync {
+                ready = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
+                    .any { it.isShown && it.layoutManager is com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager && it.childCount > 0 }
+            }
+            ready
+        }
+        val expected = "長い変換候補を省略せずに表示します".repeat(5)
+        val candidate = com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate(expected, 1, 1u, 0)
+        instrumentation.runOnMainSync {
+            val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
+                .first { it.isShown && it.layoutManager is com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager }
+            (recycler.adapter as com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter).suggestions = listOf(candidate)
+        }
+        await("wrapped candidate") {
+            var ready = false
+            instrumentation.runOnMainSync {
+                val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
+                    .firstOrNull { it.isShown && it.layoutManager is com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager }
+                val item = recycler?.findViewHolderForAdapterPosition(0)?.itemView
+                val text = item?.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
+                val columns = text?.parent as? android.widget.LinearLayout
+                ready = columns != null && columns.childCount > 1 && text.contentDescription == expected &&
+                    item.findViewById<android.view.View>(R.id.candidate_divider).visibility == android.view.View.GONE
+            }
+            ready
+        }
+        fun visibleColumnWidth(): Int {
+            var width = 0
+            instrumentation.runOnMainSync {
+                val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
+                    .firstOrNull { it.isShown && it.layoutManager is com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager }
+                val text = recycler?.findViewHolderForAdapterPosition(0)?.itemView
+                    ?.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
+                val columns = text?.parent as? android.widget.LinearLayout
+                if (text?.contentDescription == expected && columns != null && columns.childCount > 1) {
+                    width = columns.getChildAt(0).layoutParams.width
+                }
+            }
+            return width
+        }
+        val initialColumnWidth = visibleColumnWidth()
+        val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
+        check(prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 20).commit())
+        await("candidate spacing updated") { visibleColumnWidth() > initialColumnWidth }
+        check(prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 4).commit())
+        await("candidate spacing restored") { visibleColumnWidth() == initialColumnWidth }
+        var lastVisible: android.graphics.Rect? = null
+        repeat(20) {
+            instrumentation.runOnMainSync {
+                val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
+                    .first { it.isShown && it.layoutManager is com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager }
+                val item = recycler.findViewHolderForAdapterPosition(0)!!.itemView
+                val columns = item.findViewById<android.view.View>(R.id.suggestion_item_text_view).parent as android.widget.LinearLayout
+                val last = columns.getChildAt(columns.childCount - 1)
+                val visible = android.graphics.Rect()
+                if (last.getLocalVisibleRect(visible) && visible.width() > 0) {
+                    val location = IntArray(2).also(last::getLocationOnScreen)
+                    visible.offset(location[0], location[1])
+                    lastVisible = visible
+                }
+                else recycler.scrollBy(recycler.width / 2, 0)
+            }
+            if (lastVisible != null) return@repeat
+            SystemClock.sleep(100)
+        }
+        assertNotNull("The last column must be reachable by scrolling", lastVisible)
+        val visible = lastVisible!!
+        tapAt(visible.centerX().toFloat(), visible.centerY().toFloat())
+        awaitText(expected)
+        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
     }
 
     private fun softKey(id: Int, dx: Int = 0, dy: Int = 0) {
@@ -276,6 +367,26 @@ class VerticalSegmentImeInstrumentedTest {
     }
     private fun segmentBarVisible() = segmentBar() != null
 
+    private fun assertBarWithinKeyboard(keyboardId: Int) {
+        await("segment bar aligned with keyboard") {
+            var aligned = false
+            instrumentation.runOnMainSync {
+                val windows = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                val bar = windows.mapNotNull { it.findViewById<android.view.View>(R.id.segment_candidate_bar) }
+                    .firstOrNull { it.isShown }
+                val keyboard = windows.mapNotNull { it.findViewById<android.view.View>(keyboardId) }
+                    .firstOrNull { it.isShown }
+                val barRect = android.graphics.Rect()
+                val keyboardRect = android.graphics.Rect()
+                if (bar != null && keyboard != null && bar.getGlobalVisibleRect(barRect) && keyboard.getGlobalVisibleRect(keyboardRect)) {
+                    val tolerance = 2 * instrumentation.targetContext.resources.displayMetrics.density
+                    aligned = barRect.left >= keyboardRect.left - tolerance && barRect.right <= keyboardRect.right + tolerance
+                }
+            }
+            aligned
+        }
+    }
+
     private fun segmentLabels(): List<String> {
         val result = mutableListOf<String>()
         instrumentation.runOnMainSync {
@@ -342,6 +453,16 @@ class VerticalSegmentImeInstrumentedTest {
             event(android.view.MotionEvent.ACTION_MOVE, x + (endX - x) * (step + 1) / 8, y + (endY - y) * (step + 1) / 8)
         }
         event(android.view.MotionEvent.ACTION_UP, endX, endY)
+    }
+
+    private fun tapAt(x: Float, y: Float) {
+        val down = SystemClock.uptimeMillis()
+        for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+            val event = android.view.MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            assertTrue(automation.injectInputEvent(event, true))
+            event.recycle()
+        }
     }
 
     private fun screenshot(name: String) {
@@ -443,7 +564,7 @@ class VerticalSegmentImeInstrumentedTest {
 
     private fun withKeyboard(
         floating: Boolean = false, live: Boolean = false, show: Boolean = true, sumire: Boolean = false,
-        landscape: Boolean = false, side: String = "LEFT", block: () -> Unit,
+        landscape: Boolean = false, side: String = "LEFT", wrapLongText: Boolean = false, block: () -> Unit,
     ) {
         automation.serviceInfo = automation.serviceInfo.apply {
             flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
@@ -459,6 +580,8 @@ class VerticalSegmentImeInstrumentedTest {
             "keyboard_order_preference" to if (sumire) "[\"SUMIRE\"]" else "[\"TENKEY\"]",
             "keyboard_geometry_${geometry}_${orientation}_candidates" to side,
             "keyboard_geometry_${geometry}_${orientation}_candidate_vertical_text" to true,
+            "keyboard_geometry_${geometry}_${orientation}_candidate_wrap_long_text" to wrapLongText,
+            "keyboard_geometry_${geometry}_${orientation}_candidate_spacing_dp" to 4,
             "keyboard_geometry_${geometry}_${orientation}_segment_editor" to show,
             "keyboard_floating_preference" to floating,
             "allow_fullscreen_mode_preference" to false,
@@ -492,7 +615,10 @@ class VerticalSegmentImeInstrumentedTest {
                 actual == if (landscape) android.content.res.Configuration.ORIENTATION_LANDSCAPE
                     else android.content.res.Configuration.ORIENTATION_PORTRAIT
             }
-            host.onActivity { it.restartEditorInput(true) }
+            host.onActivity {
+                it.editText.importantForAutofill = android.view.View.IMPORTANT_FOR_AUTOFILL_NO
+                it.restartEditorInput(true)
+            }
             host.onActivity { it.requestImeForEditor() }
             await("software keyboard") {
                 allNodes().any { it.contentDescription?.toString() == "delete_key" && it.isVisibleToUser } ||
