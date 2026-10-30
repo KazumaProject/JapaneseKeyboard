@@ -227,6 +227,19 @@ class VerticalSegmentImeInstrumentedTest {
             }
             ready
         }
+        instrumentation.runOnMainSync {
+            val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
+                .first { it.isShown && it.layoutManager is com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager }
+            val item = recycler.findViewHolderForAdapterPosition(0)!!.itemView
+            val columns = item.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view).parent as android.widget.LinearLayout
+            for (i in 0 until columns.childCount) {
+                val column = columns.getChildAt(i) as android.widget.TextView
+                val requiredHeight = column.layout.height + column.compoundPaddingTop + column.compoundPaddingBottom
+                assertTrue("Column $i clips its last line: needs $requiredHeight px, has ${column.height} px",
+                    requiredHeight <= column.height)
+            }
+        }
         fun visibleColumnWidth(): Int {
             var width = 0
             instrumentation.runOnMainSync {

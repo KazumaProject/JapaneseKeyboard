@@ -55,6 +55,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateText
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateColumns
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateMaxLines
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.ellipsizeVerticalLines
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
@@ -1619,14 +1620,15 @@ class SuggestionAdapter internal constructor(
             return
         }
         val body = if (candidate.type == 15.toByte()) candidate.string.correctReading().first else candidate.string
-        // Leave one line for font padding and decorations so the ellipsis remains visible.
+        val verticalText = if (sideCandidateWrapLongText && sideCandidatePanelHeight > 0)
+            verticalCandidateColumns(body, Int.MAX_VALUE).firstOrNull().orEmpty() else verticalCandidateText(body)
         val maxLines = if (sideCandidatePanelHeight > 0)
-            (availableTextHeight / text.lineHeight.coerceAtLeast(1) - 1).coerceAtLeast(1) else Int.MAX_VALUE
+            verticalCandidateMaxLines(text, verticalText, availableTextHeight) else Int.MAX_VALUE
         val columns = if (sideCandidateWrapLongText && sideCandidatePanelHeight > 0) {
             verticalCandidateColumns(body, maxLines)
         } else emptyList()
         val formatted = if (columns.isNotEmpty()) columns.first() else
-            ellipsizeVerticalLines(verticalCandidateText(body), maxLines)
+            ellipsizeVerticalLines(verticalText, maxLines)
         text.text = formatted
         text.maxLines = maxLines
         text.ellipsize = if (sideCandidatePanelHeight > 0 && !sideCandidateWrapLongText) android.text.TextUtils.TruncateAt.END else null
