@@ -86,7 +86,12 @@ class UnifiedKeyboardSettingsDeviceTest {
                     val direction = root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_direction)
                     assertTrue(direction.isShown)
                     direction.check(2)
+                    val segmentEditor = root.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.keyboard_geometry_segment_editor)
+                    assertTrue(segmentEditor.isShown)
+                    assertTrue(segmentEditor.isChecked)
+                    segmentEditor.isChecked = false
                 }
+                assertFalse(prefs.getBoolean("keyboard_geometry_tenkey_portrait_segment_editor", true))
                 assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 25) > 25)
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", false))
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_right_to_left", false))

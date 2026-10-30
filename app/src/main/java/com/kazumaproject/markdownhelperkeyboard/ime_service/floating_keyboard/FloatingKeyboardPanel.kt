@@ -92,6 +92,10 @@ internal class FloatingKeyboardPanel(
             leftMargin = if (atTop) dp(48) else 0
             suggestions.layoutParams = this
         }
+        (binding.segmentCandidateBar.layoutParams as? ConstraintLayout.LayoutParams)?.apply {
+            leftMargin = if (atTop) dp(48) else 0
+            binding.segmentCandidateBar.layoutParams = this
+        }
         binding.floatingHideKeyboardBtn.imageTintList = ColorStateList.valueOf(colors.icon)
         requestLayout()
     }

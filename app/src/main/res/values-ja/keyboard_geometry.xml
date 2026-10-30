@@ -39,4 +39,6 @@
     <string name="keyboard_geometry_example_hello">こんにちは</string>
     <string name="keyboard_geometry_example_conversion">変換</string>
     <string name="keyboard_geometry_example_japanese">日本語</string>
+    <string name="keyboard_geometry_segment_editor">文節の編集欄を表示</string>
+    <string name="keyboard_geometry_segment_editor_hint">文節を選び、ハンドルを動かして区切りを変更できます。文節を長押ししてドラッグすると並べ替えられます。</string>
 </resources>

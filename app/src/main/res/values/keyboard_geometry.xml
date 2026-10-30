@@ -39,4 +39,6 @@
     <string name="keyboard_geometry_example_hello">Hello</string>
     <string name="keyboard_geometry_example_conversion">Convert</string>
     <string name="keyboard_geometry_example_japanese">Japanese</string>
+    <string name="keyboard_geometry_segment_editor">Show segment editor</string>
+    <string name="keyboard_geometry_segment_editor_hint">Select a segment and drag its handles to adjust boundaries. Long-press and drag a segment to reorder it.</string>
 </resources>
