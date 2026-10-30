@@ -14,6 +14,7 @@ data class KeyboardGeometryPreference(
     val sideCandidateWidthPercent: Int = SideCandidateSizing.DEFAULT_PERCENT,
     val sideCandidateVerticalText: Boolean = false,
     val sideCandidateRightToLeft: Boolean = false,
+    val showSegmentEditor: Boolean = true,
 )
 
 /** Size rules only; settings previews and IME views remain separate. */
@@ -71,6 +72,7 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
                 .coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT),
             sideCandidateVerticalText = runCatching { preferences.getBoolean("${p}_candidate_vertical_text", false) }.getOrDefault(false),
             sideCandidateRightToLeft = runCatching { preferences.getBoolean("${p}_candidate_right_to_left", false) }.getOrDefault(false),
+            showSegmentEditor = runCatching { preferences.getBoolean("${p}_segment_editor", true) }.getOrDefault(true),
         )
     }
 
@@ -88,7 +90,8 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
             .putBoolean("${p}_auto_height", value.autoHeight).putString("${p}_candidates", placement.name)
             .putInt("${p}_candidate_width_percent", preference.sideCandidateWidthPercent.coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT))
             .putBoolean("${p}_candidate_vertical_text", preference.sideCandidateVerticalText)
-            .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft).apply()
+            .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft)
+            .putBoolean("${p}_segment_editor", preference.showSegmentEditor).apply()
     }
 
     fun reset(keyboard: GeometryKeyboard, landscape: Boolean) = save(keyboard, landscape, KeyboardGeometryPreference())
