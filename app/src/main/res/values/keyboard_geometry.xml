@@ -23,6 +23,10 @@
     <string name="keyboard_geometry_candidate_order">Candidate text direction</string>
     <string name="keyboard_geometry_candidate_order_vertical">Vertical characters (columns adapt to width)</string>
     <string name="keyboard_geometry_candidate_order_horizontal">Horizontal text</string>
+    <string name="keyboard_geometry_candidate_vertical_hint">Swipe horizontally for more candidates. Long candidates may be shortened on screen, but selecting one inserts the full text.</string>
+    <string name="keyboard_geometry_candidate_direction">Vertical candidate order</string>
+    <string name="keyboard_geometry_candidate_left_to_right">Left to right</string>
+    <string name="keyboard_geometry_candidate_right_to_left">Right to left</string>
     <string name="keyboard_geometry_candidate_width_limited">Candidate width is limited to keep candidates and keys usable.</string>
     <string name="keyboard_geometry_reset">Reset</string>
     <string name="keyboard_geometry_preview">Layout preview</string>
@@ -33,4 +37,6 @@
     <string name="keyboard_geometry_example_candidate">Candidate</string>
     <string name="keyboard_geometry_example_today">Today</string>
     <string name="keyboard_geometry_example_hello">Hello</string>
+    <string name="keyboard_geometry_example_conversion">Convert</string>
+    <string name="keyboard_geometry_example_japanese">Japanese</string>
 </resources>

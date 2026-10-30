@@ -53,6 +53,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrin
 import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.verticalCandidateText
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.ellipsizeVerticalLines
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -397,6 +398,9 @@ class SuggestionAdapter internal constructor(
 
     private var candidateTextSize: Float = 14f
     private var sideCandidateVerticalText = false
+    private var sideCandidateColumnWidth = 0
+    private var sideCandidatePanelWidth = 0
+    private var sideCandidatePanelHeight = 0
     private var candidateTextColor: Int? = null
     private var candidateDividerColor: Int? = null
     private var candidateDividerVerticalMarginDp: Int? = null
@@ -407,21 +411,22 @@ class SuggestionAdapter internal constructor(
     private var characterStyles = CandidateIndicatorStyles()
 
     /** A side-panel presentation only; candidate strings and click actions stay unchanged. */
-    internal fun setSideCandidateVerticalText(enabled: Boolean) {
-        if (sideCandidateVerticalText == enabled) return
+    internal fun setSideCandidateVerticalText(enabled: Boolean, columnWidth: Int = 0, panelHeight: Int = 0, panelWidth: Int = 0) {
+        val width = if (enabled) columnWidth else 0
+        val height = if (enabled) panelHeight else 0
+        val fullWidth = if (enabled) panelWidth else 0
+        if (sideCandidateVerticalText == enabled && sideCandidateColumnWidth == width &&
+            sideCandidatePanelHeight == height && sideCandidatePanelWidth == fullWidth) return
         sideCandidateVerticalText = enabled
+        sideCandidateColumnWidth = width
+        sideCandidatePanelHeight = height
+        sideCandidatePanelWidth = fullWidth
         val busy = attachedRecyclerViews.keys.firstOrNull { it.isComputingLayout }
         if (busy != null) busy.post { if (!released) notifyDataSetChanged() } else notifyDataSetChanged()
     }
 
     internal fun sideCandidateTextSizeSp(): Float =
         if (floatingPanelWidth > 0) candidateTextSize.coerceAtLeast(18f) else candidateTextSize
-
-    internal fun sideCandidateSpanSize(position: Int, columns: Int): Int = when (val item = displayItems.getOrNull(position)) {
-        is SuggestionDisplayItem.CandidateItem -> if (item.candidate.presentation == null) 1 else columns
-        is SuggestionDisplayItem.ZeroQueryCandidateItem -> if (item.candidate.presentation == null) 1 else columns
-        else -> columns
-    }
 
     fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
         if (characterStyles == styles) return
@@ -1240,7 +1245,7 @@ class SuggestionAdapter internal constructor(
 
     internal data class VerticalCandidateState(
         val maxLines: Int, val ellipsize: android.text.TextUtils.TruncateAt?, val gravity: Int,
-        val alignment: Int, val contentDescription: CharSequence?, val itemHeight: Int,
+        val alignment: Int, val contentDescription: CharSequence?, val itemWidth: Int, val itemHeight: Int,
         val itemMinHeight: Int, val itemMinWidth: Int,
     )
 
@@ -1544,7 +1549,7 @@ class SuggestionAdapter internal constructor(
         text.contentDescription = state.contentDescription
         holder.itemView.minimumHeight = state.itemMinHeight
         holder.itemView.minimumWidth = state.itemMinWidth
-        holder.itemView.layoutParams?.let { it.height = state.itemHeight; holder.itemView.layoutParams = it }
+        holder.itemView.layoutParams?.let { it.width = state.itemWidth; it.height = state.itemHeight; holder.itemView.layoutParams = it }
     }
 
     private fun applyVerticalCandidate(holder: RecyclerView.ViewHolder, item: SuggestionDisplayItem) {
@@ -1553,8 +1558,6 @@ class SuggestionAdapter internal constructor(
             is SuggestionDisplayItem.ZeroQueryCandidateItem -> item.candidate
             else -> return
         }
-        // Formula views have their own non-text presentation and remain intact.
-        if (candidate.presentation != null) return
         val text = when (holder) {
             is SuggestionViewHolder -> holder.text
             is ZeroQueryViewHolder -> holder.text
@@ -1562,16 +1565,35 @@ class SuggestionAdapter internal constructor(
         }
         val root = holder.itemView
         val state = VerticalCandidateState(text.maxLines, text.ellipsize, text.gravity,
-            text.textAlignment, text.contentDescription, root.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT,
+            text.textAlignment, text.contentDescription, root.layoutParams?.width ?: ViewGroup.LayoutParams.WRAP_CONTENT,
+            root.layoutParams?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT,
             root.minimumHeight, root.minimumWidth)
         when (holder) {
             is SuggestionViewHolder -> holder.verticalState = state
             is ZeroQueryViewHolder -> holder.verticalState = state
         }
+        val spacing = (8f * root.resources.displayMetrics.density).toInt()
+        val availableHeight = (sideCandidatePanelHeight - spacing).coerceAtLeast(1)
+        val availableTextHeight = (availableHeight - root.paddingTop - root.paddingBottom - spacing / 2).coerceAtLeast(1)
+        // Rich presentations retain their own rendering and occupy a whole column.
+        if (candidate.presentation != null) {
+            if (sideCandidatePanelHeight > 0) root.minimumHeight = maxOf(state.itemMinHeight, availableHeight)
+            root.minimumWidth = maxOf(state.itemMinWidth, sideCandidatePanelWidth)
+            root.layoutParams?.let {
+                if (sideCandidatePanelWidth > 0) it.width = sideCandidatePanelWidth
+                it.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                root.layoutParams = it
+            }
+            return
+        }
         val body = if (candidate.type == 15.toByte()) candidate.string.correctReading().first else candidate.string
-        val formatted = verticalCandidateText(body)
+        // Leave one line for font padding and decorations so the ellipsis remains visible.
+        val maxLines = if (sideCandidatePanelHeight > 0)
+            (availableTextHeight / text.lineHeight.coerceAtLeast(1) - 1).coerceAtLeast(1) else Int.MAX_VALUE
+        val formatted = ellipsizeVerticalLines(verticalCandidateText(body), maxLines)
         text.text = formatted
-        text.maxLines = Int.MAX_VALUE; text.ellipsize = null
+        text.maxLines = maxLines
+        text.ellipsize = if (sideCandidatePanelHeight > 0) android.text.TextUtils.TruncateAt.END else null
         text.gravity = Gravity.CENTER; text.textAlignment = View.TEXT_ALIGNMENT_CENTER
         var description = body
         if (text is CandidateCharacterTextView) {
@@ -1586,13 +1608,21 @@ class SuggestionAdapter internal constructor(
             val reading = holder.yomiText.text.toString()
             holder.yomiText.isVisible = false
             val label = holder.typeText.text.toString()
-            holder.typeText.text = listOf(label, verticalCandidateText(reading)).filter { it.isNotEmpty() }.joinToString("\n")
-            holder.typeText.maxLines = Int.MAX_VALUE; holder.typeText.ellipsize = null
+            val readingLines = if (sideCandidatePanelHeight > 0)
+                (availableTextHeight / holder.typeText.lineHeight.coerceAtLeast(1) - 1).coerceAtLeast(1) else Int.MAX_VALUE
+            val displayedReading = listOf(label, verticalCandidateText(reading)).filter { it.isNotEmpty() }.joinToString("\n")
+            holder.typeText.text = ellipsizeVerticalLines(displayedReading, readingLines)
+            holder.typeText.maxLines = readingLines
+            holder.typeText.ellipsize = if (sideCandidatePanelHeight > 0) android.text.TextUtils.TruncateAt.END else null
             holder.typeText.contentDescription = listOf(label, reading).filter { it.isNotEmpty() }.joinToString(", ")
         }
         root.minimumHeight = maxOf(state.itemMinHeight, (48f * root.resources.displayMetrics.density).toInt())
-        root.minimumWidth = maxOf(state.itemMinWidth, (48f * root.resources.displayMetrics.density).toInt())
-        root.layoutParams?.let { it.height = ViewGroup.LayoutParams.WRAP_CONTENT; root.layoutParams = it }
+        root.minimumWidth = maxOf(state.itemMinWidth, sideCandidateColumnWidth, (48f * root.resources.displayMetrics.density).toInt())
+        root.layoutParams?.let {
+            if (sideCandidateColumnWidth > 0) it.width = sideCandidateColumnWidth
+            it.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            root.layoutParams = it
+        }
     }
 
     private fun styleFloatingItem(holder: RecyclerView.ViewHolder, position: Int) {
