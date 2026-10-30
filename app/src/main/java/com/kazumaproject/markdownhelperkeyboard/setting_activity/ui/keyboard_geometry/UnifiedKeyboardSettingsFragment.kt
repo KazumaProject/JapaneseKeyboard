@@ -450,11 +450,33 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 SideCandidateSizing.MAX_PERCENT, SideCandidateSizing.MIN_PERCENT, R.id.keyboard_geometry_candidate_width) {
                 saveGeometry(geometry.copy(sideCandidateWidthPercent = it))
             }
+            val directionLabel = label(R.string.keyboard_geometry_candidate_direction).apply {
+                isVisible = geometry.sideCandidateVerticalText
+            }
+            val verticalHint = TextView(ctx).apply {
+                setText(R.string.keyboard_geometry_candidate_vertical_hint)
+                textSize = 13f
+                setPadding(0, 0, 0, dp(8))
+                isVisible = geometry.sideCandidateVerticalText
+            }
+            val direction = radio(listOf(1 to R.string.keyboard_geometry_candidate_left_to_right,
+                2 to R.string.keyboard_geometry_candidate_right_to_left), true).apply {
+                id = R.id.keyboard_geometry_candidate_direction
+                isVisible = geometry.sideCandidateVerticalText
+                check(if (geometry.sideCandidateRightToLeft) 2 else 1)
+                setOnCheckedChangeListener { _, id -> saveGeometry(geometry.copy(sideCandidateRightToLeft = id == 2)) }
+            }
             choices(R.string.keyboard_geometry_candidate_order,
                 listOf(1 to R.string.keyboard_geometry_candidate_order_horizontal, 2 to R.string.keyboard_geometry_candidate_order_vertical),
                 if (geometry.sideCandidateVerticalText) 2 else 1, R.id.keyboard_geometry_candidate_order) {
                 saveGeometry(geometry.copy(sideCandidateVerticalText = it == 2))
+                verticalHint.isVisible = it == 2
+                directionLabel.isVisible = it == 2
+                direction.isVisible = it == 2
             }
+            body.addView(verticalHint)
+            body.addView(directionLabel)
+            body.addView(direction)
         }
         body.addView(MaterialButton(ctx, null, MaterialR.attr.materialButtonOutlinedStyle).apply { isAllCaps = false; setText(R.string.keyboard_layout_reset_shape); setOnClickListener {
             geometryTarget()?.let { geometries.reset(it, landscape) }; loadValues(); updatePreview(); buildBody()

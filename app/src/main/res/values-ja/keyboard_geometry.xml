@@ -23,6 +23,10 @@
     <string name="keyboard_geometry_candidate_order">候補の文字の向き</string>
     <string name="keyboard_geometry_candidate_order_vertical">縦並び（幅に応じて列数を調整）</string>
     <string name="keyboard_geometry_candidate_order_horizontal">横書き</string>
+    <string name="keyboard_geometry_candidate_vertical_hint">候補は左右にスワイプして表示します。長い候補は省略表示されることがありますが、選択すると全文が入力されます。</string>
+    <string name="keyboard_geometry_candidate_direction">縦並びの候補の順序</string>
+    <string name="keyboard_geometry_candidate_left_to_right">左から右</string>
+    <string name="keyboard_geometry_candidate_right_to_left">右から左</string>
     <string name="keyboard_geometry_candidate_width_limited">候補欄やキーが狭くなりすぎないよう、幅を制限しています。</string>
     <string name="keyboard_geometry_reset">リセット</string>
     <string name="keyboard_geometry_preview">配置プレビュー</string>
@@ -33,4 +37,6 @@
     <string name="keyboard_geometry_example_candidate">候補</string>
     <string name="keyboard_geometry_example_today">今日</string>
     <string name="keyboard_geometry_example_hello">こんにちは</string>
+    <string name="keyboard_geometry_example_conversion">変換</string>
+    <string name="keyboard_geometry_example_japanese">日本語</string>
 </resources>

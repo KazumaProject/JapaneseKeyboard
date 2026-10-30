@@ -59,8 +59,6 @@ class SideCandidateVerticalTextTest {
         val adapter = SuggestionAdapter()
         adapter.submitContent(CandidateStripContent.ZeroQuerySuggestions(listOf(candidate)))
         awaitItems(adapter, 2)
-        assertEquals(3, adapter.sideCandidateSpanSize(0, 3))
-        assertEquals(1, adapter.sideCandidateSpanSize(1, 3))
         val parent = FrameLayout(ApplicationProvider.getApplicationContext<Context>())
         val holder = adapter.createViewHolder(parent, adapter.getItemViewType(1))
         val height = holder.itemView.layoutParams.height
@@ -75,13 +73,47 @@ class SideCandidateVerticalTextTest {
         adapter.release()
     }
 
-    @Test fun formulaCandidatesRetainAFullWidthPresentation() {
+    @Test fun formulaCandidatesRetainTheirPresentationInAFullColumn() {
         val formula = FormulaCandidatePresentation(FormulaNode.Symbol("x"), "x", "x", FormulaCandidateType.UNICODE)
         val candidate = Candidate("x", 1, 1u, 0, presentation = formula)
         val adapter = SuggestionAdapter()
         adapter.submitContent(CandidateStripContent.Candidates(listOf(candidate)))
         awaitItems(adapter, 1)
-        assertEquals(3, adapter.sideCandidateSpanSize(0, 3))
+        val parent = FrameLayout(ApplicationProvider.getApplicationContext<Context>())
+        val holder = adapter.createViewHolder(parent, adapter.getItemViewType(0))
+        val originalWidth = holder.itemView.minimumWidth
+        val originalHeight = holder.itemView.minimumHeight
+        adapter.setSideCandidateVerticalText(true, columnWidth = 80, panelHeight = 300, panelWidth = 220)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals(View.VISIBLE, holder.itemView.findViewById<View>(R.id.suggestion_item_formula_view).visibility)
+        assertTrue(holder.itemView.minimumWidth >= 220)
+        assertTrue(holder.itemView.minimumHeight > originalHeight)
+        adapter.setSideCandidateVerticalText(false)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals(originalWidth, holder.itemView.minimumWidth)
+        assertEquals(originalHeight, holder.itemView.minimumHeight)
+        adapter.release()
+    }
+
+    @Test fun longVerticalCandidateFitsThePanelWithoutChangingWhatIsCommitted() {
+        val candidate = Candidate("あ".repeat(30), 1, 2u, 0, "あ")
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(CandidateStripContent.Candidates(listOf(candidate)))
+        awaitItems(adapter, 1)
+        val parent = FrameLayout(ApplicationProvider.getApplicationContext<Context>())
+        val holder = adapter.createViewHolder(parent, adapter.getItemViewType(0))
+        var clicked: Candidate? = null
+        adapter.setOnItemClickListener { selected, _ -> clicked = selected }
+        adapter.setSideCandidateVerticalText(true, columnWidth = 100, panelHeight = 180, panelWidth = 200)
+        adapter.onBindViewHolder(holder, 0)
+        val text = holder.itemView.findViewById<TextView>(R.id.suggestion_item_text_view)
+        assertTrue(text.maxLines in 1..29)
+        assertTrue(text.text.toString().endsWith("…"))
+        assertEquals(android.text.TextUtils.TruncateAt.END, text.ellipsize)
+        assertEquals(candidate.string, text.contentDescription.toString())
+        assertTrue(holder.itemView.minimumWidth >= 100)
+        holder.itemView.performClick()
+        assertSame(candidate, clicked)
         adapter.release()
     }
 
