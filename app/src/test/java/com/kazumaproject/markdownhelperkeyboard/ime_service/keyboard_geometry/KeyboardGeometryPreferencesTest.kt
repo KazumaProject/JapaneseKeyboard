@@ -31,8 +31,10 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(25, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
+        assertTrue(store.read(GeometryKeyboard.TENKEY, false).showSegmentEditor)
         val configured = KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.LEFT,
-            sideCandidateWidthPercent = 40, sideCandidateVerticalText = true, sideCandidateRightToLeft = true)
+            sideCandidateWidthPercent = 40, sideCandidateVerticalText = true, sideCandidateRightToLeft = true,
+            showSegmentEditor = false)
         store.save(GeometryKeyboard.TENKEY, false, configured)
         assertEquals(configured, store.read(GeometryKeyboard.TENKEY, false))
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, true))
