@@ -59,4 +59,8 @@
     <string name="settings_engine_enable_learning_dictionary_summary">学習した単語を予測に使うには、辞書設定で学習辞書を有効にしてください。</string>
     <string name="settings_engine_enable_user_dictionary">ユーザー辞書を有効にする</string>
     <string name="settings_engine_enable_user_dictionary_summary">登録した単語を予測に使うには、辞書設定でユーザー辞書を有効にしてください。</string>
+    <string name="settings_learn_dictionary_prediction_start">学習辞書の予測開始文字数</string>
+    <string name="settings_learn_dictionary_prediction_limit">学習辞書の予測候補数</string>
+    <string name="settings_user_dictionary_prediction_start">ユーザー辞書の予測開始文字数</string>
+    <string name="settings_user_dictionary_prediction_limit">ユーザー辞書の予測候補数</string>
 </resources>

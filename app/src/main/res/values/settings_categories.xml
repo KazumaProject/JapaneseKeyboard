@@ -59,4 +59,8 @@
     <string name="settings_engine_enable_learning_dictionary_summary">Enable the learning dictionary in Dictionary settings to use learned words for prediction.</string>
     <string name="settings_engine_enable_user_dictionary">Enable the user dictionary</string>
     <string name="settings_engine_enable_user_dictionary_summary">Enable the user dictionary in Dictionary settings to use registered words for prediction.</string>
+    <string name="settings_learn_dictionary_prediction_start">Characters before learned word predictions</string>
+    <string name="settings_learn_dictionary_prediction_limit">Learned word prediction limit</string>
+    <string name="settings_user_dictionary_prediction_start">Characters before user dictionary predictions</string>
+    <string name="settings_user_dictionary_prediction_limit">User dictionary prediction limit</string>
 </resources>
