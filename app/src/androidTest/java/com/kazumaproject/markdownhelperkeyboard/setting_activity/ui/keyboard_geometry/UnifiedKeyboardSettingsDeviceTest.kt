@@ -86,15 +86,41 @@ class UnifiedKeyboardSettingsDeviceTest {
                     val direction = root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_direction)
                     assertTrue(direction.isShown)
                     direction.check(2)
+                    val longDisplay = root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_long_display)
+                    assertTrue(longDisplay.isShown)
+                    assertEquals(1, longDisplay.checkedRadioButtonId)
+                    longDisplay.check(2)
+                    val spacing = root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)
+                    assertTrue(spacing.isShown)
+                    val segmentEditor = root.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.keyboard_geometry_segment_editor)
+                    assertTrue(segmentEditor.isShown)
+                    assertTrue(segmentEditor.isChecked)
+                    segmentEditor.isChecked = false
                 }
+                await {
+                    var ready = false
+                    instrumentation.runOnMainSync { ready = (page?.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)?.width ?: 0) > 0 }
+                    ready
+                }
+                instrumentation.runOnMainSync {
+                    val spacing = requireNotNull(page).findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)
+                    val x = spacing.width * .75f; val y = spacing.height / 2f
+                    touch(spacing, MotionEvent.ACTION_DOWN, x, y)
+                    touch(spacing, MotionEvent.ACTION_UP, x, y)
+                }
+                assertFalse(prefs.getBoolean("keyboard_geometry_tenkey_portrait_segment_editor", true))
                 assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 25) > 25)
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", false))
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_right_to_left", false))
+                assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_wrap_long_text", false))
+                assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 4) > 4)
                 instrumentation.runOnMainSync {
                     val root = requireNotNull(page)
                     root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement).check(1)
                     assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_width))
                     assertNull(root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_order))
+                    assertNull(root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_long_display))
+                    assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing))
                 }
             }
         } finally { restore(prefs, original) }
