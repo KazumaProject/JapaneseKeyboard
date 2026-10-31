@@ -35,6 +35,12 @@
             android:summary="%s"
             android:title="@string/sumire_input_method_title" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="sumire_mode_key_highlight_preference"
+            android:title="@string/sumire_mode_key_highlight_title"
+            app:summary="@string/sumire_mode_key_highlight_summary" />
+
         <ListPreference
             android:defaultValue="default"
             android:dialogTitle="@string/sumire_keyboard_style_dialog_title"
