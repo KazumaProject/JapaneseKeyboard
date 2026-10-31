@@ -3,6 +3,10 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CONVERSION
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KANA_LITERAL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import org.junit.Assert.assertEquals
@@ -13,6 +17,40 @@ class CandidateDisplayMergerTest {
     private val medical = DictionaryCategory.CLASSIFIED_MEDICAL
     private val dictionary = Candidate("阿仙薬", 9, 5u, 9_066, yomi = "あせんやく",
         leftId = 1851, rightId = 1851, dictionaryCategories = setOf(kampo))
+
+    @Test fun matchingKanaVariantKeepsTheFirstCandidatesMetadataAndOrder() {
+        for ((text, type) in listOf("ペ" to CANDIDATE_TYPE_KATAKANA, "ﾍﾟ" to CANDIDATE_TYPE_HALF_WIDTH_KATAKANA)) {
+            for (firstType in listOf(CANDIDATE_TYPE_CONVERSION, CANDIDATE_TYPE_KANA_LITERAL)) {
+                val first = Candidate(text, firstType, 1u, 123, yomi = "ぺ", leftId = 22, rightId = 24,
+                    dictionaryCategories = setOf(kampo))
+                val variant = Candidate(text, type, 1u, 6_000, dictionaryCategories = setOf(medical))
+                val other = Candidate("別", 1, 1u, 99)
+                assertEquals(listOf(other, first.copy(type = type, dictionaryCategories = setOf(kampo, medical))),
+                    CandidateDisplayMerger.merge(listOf(other, first, variant)))
+                assertEquals(listOf(first.copy(type = type)),
+                    CandidateDisplayMerger.merge(listOf(first, variant), mergeDictionaryCategories = false))
+            }
+        }
+    }
+
+    @Test fun kanaTypeIsNotInheritedAcrossDifferentCommitPathsOrInputRanges() {
+        val variant = Candidate("ペ", CANDIDATE_TYPE_KATAKANA, 1u, 6_000)
+        val first = Candidate("ペ", CANDIDATE_TYPE_CONVERSION, 1u, 123)
+        for (winner in listOf(
+            first.copy(type = CANDIDATE_TYPE_USER_DICTIONARY),
+            first.copy(type = CANDIDATE_TYPE_LEARNED_DICTIONARY),
+            first.copy(length = 2u),
+            first.copy(commitText = "別"),
+            first.copy(sourceId = 1),
+        )) {
+            assertEquals(listOf(winner), CandidateDisplayMerger.merge(listOf(winner, variant)))
+        }
+        val differentCommit = first.copy(commitText = "別")
+        assertEquals(listOf(differentCommit), CandidateDisplayMerger.merge(
+            listOf(differentCommit, variant.copy(commitText = "別"))))
+        assertEquals(listOf(first), CandidateDisplayMerger.merge(
+            listOf(first, variant.copy(sourceId = 1))))
+    }
 
     @Test fun learnedWinnerKeepsItsScoreTypeReadingAndCommitWhileInheritingKampoLabel() {
         val learned = dictionary.copy(type = CANDIDATE_TYPE_LEARNED_DICTIONARY, score = -1_000,
@@ -41,6 +79,18 @@ class CandidateDisplayMergerTest {
         val secondMacro = macro.copy(sourceId = 2)
         assertEquals(listOf(macro, dictionary, secondMacro), CandidateDisplayMerger.merge(
             listOf(macro, dictionary, secondMacro, macro.copy(dictionaryCategories = setOf(medical)))))
+    }
+
+    @Test fun stringDeduplicationModeKeepsTheFirstMacroOrConversionCandidate() {
+        val macro = dictionary.copy(type = CANDIDATE_TYPE_TEXT_MACRO, sourceId = 1,
+            dictionaryCategories = emptySet())
+        for (candidates in listOf(
+            listOf(macro, dictionary, macro.copy(sourceId = 2)),
+            listOf(dictionary, macro, macro.copy(sourceId = 2)),
+        )) {
+            assertEquals(candidates.distinctBy { it.string }, CandidateDisplayMerger.merge(
+                candidates, mergeDictionaryCategories = false, separateMacroActions = false))
+        }
     }
 
     @Test fun sameDisplayWithDifferentCommitTextDoesNotInheritLabels() {
