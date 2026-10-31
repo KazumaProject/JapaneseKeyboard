@@ -653,6 +653,41 @@ class KanaKanjiConversionSessionParityTest {
         )
     }
 
+    @Test
+    fun forcedBoundariesConstrainWholePathsAndDoNotContaminateIncrementalQueries() = runBlocking {
+        val input = "あしたはとうきょうにいきます"
+        val query = request(input, CandidateQueryMode.PREDICTION, true)
+        val fingerprints = mutableListOf<List<List<Any?>>>()
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            val baseline = session.query(query)
+            val results = listOf(listOf(2, 10), listOf(4, 10), emptyList()).map { splits ->
+                val result = session.query(query.copy(forcedSplitPositions = splits))
+                assertTrue(result.candidates.isNotEmpty())
+                assertEquals(listOf(splits), result.bunsetsuResult!!.splitPatterns)
+                for (candidate in result.candidates) {
+                    val path = result.candidateSegmentsByString.getValue(candidate.string)
+                    assertEquals(candidate.string, path.joinToString("") { it.output })
+                    assertEquals(0, path.first().inputStart)
+                    assertEquals(input.length, path.last().inputEnd)
+                    assertTrue(splits.all { boundary -> path.any { it.inputEnd == boundary } })
+                    assertTrue(path.none { node -> splits.any { it > node.inputStart && it < node.inputEnd } })
+                }
+                result.candidates.fingerprint()
+            }
+            fingerprints.add(results.flatten())
+            assertEquals(baseline.candidates.fingerprint(), session.query(query).candidates.fingerprint())
+            var rejectedInvalidBoundary = false
+            try {
+                session.query(query.copy(input = "😀あ", forcedSplitPositions = listOf(1)))
+            } catch (_: IllegalArgumentException) {
+                rejectedInvalidBoundary = true
+            }
+            assertTrue("Boundaries must not split a surrogate pair", rejectedInvalidBoundary)
+        }
+        assertEquals(fingerprints[0], fingerprints[1])
+    }
+
     private fun request(
         input: String,
         mode: CandidateQueryMode,
