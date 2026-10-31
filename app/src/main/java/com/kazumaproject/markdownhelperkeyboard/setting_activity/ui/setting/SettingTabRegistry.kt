@@ -50,7 +50,7 @@ object SettingTabRegistry {
             SettingTabSpec(
                 key = TAB_THEME,
                 title = { context -> context.getString(R.string.keyboardthemefragment) },
-                xmlRes = null,
+                xmlRes = R.xml.pref_theme,
                 destinationId = R.id.keyboardThemeFragment,
                 fragmentFactory = { KeyboardThemeFragment() },
             ),

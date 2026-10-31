@@ -5,23 +5,9 @@
     <PreferenceCategory android:title="@string/setting_category_input_method_title">
 
         <Preference
-            android:icon="@drawable/keyboard_24px"
-            android:key="keyboard_selection_preference"
-            android:summary="@string/keyboard_selection_summary"
-            android:title="@string/keyboard_selection_preference_title" />
-
-        <Preference
             android:key="setting_route_gojuon_preferences"
             android:title="@string/gojuon_settings_category"
             android:summary="@string/gojuon_keyboard_size_summary" />
-
-        <ListPreference
-            android:defaultValue="default"
-            android:entries="@array/type_null_input_behavior_entries"
-            android:entryValues="@array/type_null_input_behavior_values"
-            android:key="type_null_input_behavior_preference"
-            android:summary="@string/type_null_input_behavior_summary"
-            android:title="@string/type_null_input_behavior_title" />
 
         <Preference
             android:icon="@drawable/language_japanese_kana_24px"
@@ -70,4 +56,14 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/settings_related_settings">
+        <Preference
+            android:key="setting_route_canonical_settings_common_privacy"
+            android:title="@string/settings_common_privacy_title"
+            android:summary="@string/settings_common_privacy_summary" />
+        <Preference
+            android:key="setting_route_canonical_settings_common_selection"
+            android:title="@string/settings_common_selection_title"
+            android:summary="@string/settings_common_selection_summary" />
+    </PreferenceCategory>
 </PreferenceScreen>
