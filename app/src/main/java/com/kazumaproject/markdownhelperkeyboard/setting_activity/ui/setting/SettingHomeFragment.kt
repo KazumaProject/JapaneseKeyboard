@@ -178,10 +178,10 @@ class SettingHomeFragment : Fragment() {
         val switchTarget = destination.destination as? SettingDestinationType.SwitchPreference
         val switchValue = switchTarget?.let { settingCardEditorController.readSwitchPreference(it) }
         val card = MaterialCardView(context).apply {
-            radius = dp(8).toFloat()
-            strokeWidth = dp(1)
+            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
-            setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurfaceVariant))
+            setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
             isClickable = true
             isFocusable = true
             foreground = selectableItemBackground(context)
@@ -297,8 +297,8 @@ class SettingHomeFragment : Fragment() {
         val title = destination.title
         val summary = currentSummary(destination)
         val card = MaterialCardView(context).apply {
-            radius = dp(8).toFloat()
-            strokeWidth = dp(1)
+            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
             isClickable = true
@@ -312,7 +312,7 @@ class SettingHomeFragment : Fragment() {
             gravity = android.view.Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(14), dp(12), dp(12), dp(12))
-            minimumHeight = dp(76)
+            minimumHeight = resources.getDimensionPixelSize(R.dimen.settings_row_min_height)
         }
 
         row.addView(
