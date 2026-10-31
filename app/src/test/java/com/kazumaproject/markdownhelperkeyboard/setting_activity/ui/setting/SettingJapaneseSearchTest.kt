@@ -33,4 +33,23 @@ class SettingJapaneseSearchTest {
             }
         }
     }
+
+    @Test fun dictionaryPredictionLabelsDistinguishTheirSourceAndKeepPreviousSearchTerms() {
+        val base = ApplicationProvider.getApplicationContext<Context>()
+        AppPreference.init(base)
+        val context = base.createConfigurationContext(Configuration(base.resources.configuration).apply { setLocale(Locale.JAPANESE) })
+        val oldTitles = mapOf(
+            "learn_prediction_preference" to "予測変換",
+            "user_dictionary_prefix_match_number" to "予測変換",
+            "learn_dictionary_prediction_candidate_limit_preference" to "予測候補数",
+            "user_dictionary_prediction_candidate_limit_preference" to "予測候補数",
+        )
+        for (scope in SettingSearchScope.entries) {
+            val index = SettingSearchIndex.searchable(context, scope)
+            assertEquals(oldTitles.size, index.filter { it.key in oldTitles }.map { it.title }.distinct().size)
+            oldTitles.forEach { (key, previousTitle) ->
+                assertTrue(SettingSearchIndex.search(context, index, previousTitle).any { it.key == key })
+            }
+        }
+    }
 }
