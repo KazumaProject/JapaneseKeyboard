@@ -10,6 +10,16 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_DIGIT_DATE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_NUMBER_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FULL_WIDTH_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_NUMBER_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CONVERSION
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -72,6 +82,43 @@ class DictionaryWhitespaceCandidateCommitTest {
                 val tail = ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicReference<String>>(service, "stringInTail")
                 assertEquals(if (input.length == 4) "" else "1", tail.get())
             }
+        }
+    }
+
+    @Test fun newTypesKeepTheirSourceCommitAndPartialInputBehavior() {
+        val cases = listOf(
+            Triple(CANDIDATE_TYPE_SYMBOL, "!", ""),
+            Triple(CANDIDATE_TYPE_FULL_WIDTH_SYMBOL, "！", ""),
+            Triple(CANDIDATE_TYPE_HALF_WIDTH_SYMBOL, "!", ""),
+            Triple(CANDIDATE_TYPE_NUMBER_SYMBOL, "①", "b"),
+            Triple(CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL, "１", "b"),
+            Triple(CANDIDATE_TYPE_HALF_WIDTH_NUMBER_SYMBOL, "1", "b"),
+            Triple(CANDIDATE_TYPE_HALF_WIDTH, "a", "b"),
+            Triple(CANDIDATE_TYPE_HALF_WIDTH_KATAKANA, "ﾍﾟ", "b"),
+            Triple(CANDIDATE_TYPE_CONVERSION, "ペ", "b"),
+            Triple(CANDIDATE_TYPE_KATAKANA, "ペ", "b"),
+        )
+        for ((type, text, expectedTail) in cases) {
+            val editor = Editor()
+            val service = spy(IMEService())
+            val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+            com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference.init(context)
+            service.appPreference = com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+            ReflectionHelpers.callInstanceMethod<Unit>(service, "attachBaseContext",
+                ClassParameter.from(android.content.Context::class.java, context))
+            ReflectionHelpers.setField(service, "runtimeInputSharedPreferences",
+                androidx.preference.PreferenceManager.getDefaultSharedPreferences(context))
+            doReturn(editor).`when`(service).getCurrentInputConnection()
+            val candidate = Candidate(text, type, 1u, 100)
+            ReflectionHelpers.callInstanceMethod<Unit>(service, "processCandidate",
+                ClassParameter.from(Candidate::class.java, candidate),
+                ClassParameter.from(String::class.java, "ab"),
+                ClassParameter.from(InputMode::class.java, InputMode.ModeJapanese),
+                ClassParameter.from(Int::class.javaPrimitiveType, 0),
+            )
+            assertEquals("type=$type", text, editor.editable.toString())
+            val tail = ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicReference<String>>(service, "stringInTail")
+            assertEquals("type=$type", expectedTail, tail.get())
         }
     }
 }

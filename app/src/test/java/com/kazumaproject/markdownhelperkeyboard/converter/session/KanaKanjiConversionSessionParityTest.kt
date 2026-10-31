@@ -4,8 +4,11 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWid
 import com.kazumaproject.markdownhelperkeyboard.ime_service.BunsetsuConversionSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunsetsuSegments
 import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateDisplayMerger
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
@@ -28,6 +31,26 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class KanaKanjiConversionSessionParityTest {
+
+    @Test fun kanaTypesAreConsistentAcrossConversionModesAndBackends() = runBlocking {
+        for (input in listOf("ぺ", "ぺんをかう")) {
+            for (bunsetsu in listOf(false, true)) for (mode in CandidateQueryMode.entries) {
+                val results = ConversionBackend.entries.map { backend ->
+                    KanaKanjiConversionSession(engine, backend).query(request(input, mode, bunsetsu)).candidates
+                }
+                val context = "$input/$mode/bunsetsu=$bunsetsu"
+                assertEquals(context, results[0].fingerprint(), results[1].fingerprint())
+                for (candidates in results) {
+                    assertTrue(context, candidates.any { it.type == CANDIDATE_TYPE_KATAKANA && it.string.contains("ペ") })
+                    assertTrue(context, candidates.any { it.type == CANDIDATE_TYPE_HALF_WIDTH_KATAKANA && it.string.contains("ﾍﾟ") })
+                    if (input == "ぺ" && mode == CandidateQueryMode.NO_TAB_DEFAULT && !bunsetsu) {
+                        assertEquals(context, CANDIDATE_TYPE_KATAKANA,
+                            CandidateDisplayMerger.merge(candidates).first { it.string == "ペ" }.type)
+                    }
+                }
+            }
+        }
+    }
 
     @Test
     fun alphanumericInputKeepsHalfWidthUppercaseAcrossQueryModes() = runBlocking {
@@ -651,6 +674,41 @@ class KanaKanjiConversionSessionParityTest {
             legacyResult.bunsetsuResult?.splitPatterns,
             incrementalResult.bunsetsuResult?.splitPatterns,
         )
+    }
+
+    @Test
+    fun forcedBoundariesConstrainWholePathsAndDoNotContaminateIncrementalQueries() = runBlocking {
+        val input = "あしたはとうきょうにいきます"
+        val query = request(input, CandidateQueryMode.PREDICTION, true)
+        val fingerprints = mutableListOf<List<List<Any?>>>()
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            val baseline = session.query(query)
+            val results = listOf(listOf(2, 10), listOf(4, 10), emptyList()).map { splits ->
+                val result = session.query(query.copy(forcedSplitPositions = splits))
+                assertTrue(result.candidates.isNotEmpty())
+                assertEquals(listOf(splits), result.bunsetsuResult!!.splitPatterns)
+                for (candidate in result.candidates) {
+                    val path = result.candidateSegmentsByString.getValue(candidate.string)
+                    assertEquals(candidate.string, path.joinToString("") { it.output })
+                    assertEquals(0, path.first().inputStart)
+                    assertEquals(input.length, path.last().inputEnd)
+                    assertTrue(splits.all { boundary -> path.any { it.inputEnd == boundary } })
+                    assertTrue(path.none { node -> splits.any { it > node.inputStart && it < node.inputEnd } })
+                }
+                result.candidates.fingerprint()
+            }
+            fingerprints.add(results.flatten())
+            assertEquals(baseline.candidates.fingerprint(), session.query(query).candidates.fingerprint())
+            var rejectedInvalidBoundary = false
+            try {
+                session.query(query.copy(input = "😀あ", forcedSplitPositions = listOf(1)))
+            } catch (_: IllegalArgumentException) {
+                rejectedInvalidBoundary = true
+            }
+            assertTrue("Boundaries must not split a surrogate pair", rejectedInvalidBoundary)
+        }
+        assertEquals(fingerprints[0], fingerprints[1])
     }
 
     private fun request(

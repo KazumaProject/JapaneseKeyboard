@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.PointF
 import android.view.MotionEvent
 import android.view.View
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
 import android.view.ViewConfiguration
 import android.widget.Button
 import com.kazumaproject.core.data.popup.PopupViewStyle
@@ -268,8 +269,9 @@ class CrossFlickInputController(
             MotionEvent.ACTION_MOVE -> {
                 view.drawableHotspotChanged(event.x, event.y)
 
-                val dx = event.rawX - initialTouchPoint.x
-                val dy = event.rawY - initialTouchPoint.y
+                val (dx, dy) = KeyboardGeometryMath.localDelta(
+                    event.rawX - initialTouchPoint.x, event.rawY - initialTouchPoint.y, anchorView?.rotation ?: 0f
+                )
 
                 if (inputMode == InputMode.TEXT && !isLongPressMode) {
                     val cancelThreshold = currentFlickThreshold() * 0.5f
@@ -909,11 +911,7 @@ class CrossFlickInputController(
                 anchorX = popupAnchorLocation[0],
                 anchorY = popupAnchorLocation[1]
             )
-            popupOverlay.place(
-                popupView = popupView,
-                left = popupPositionScratch[0],
-                top = popupPositionScratch[1]
-            )
+            placePopupForAnchor(popupView, anchor)
         }
     }
 
@@ -931,11 +929,7 @@ class CrossFlickInputController(
             popupWidth = popupView.measuredWidth,
             popupHeight = popupView.measuredHeight
         )
-        popupOverlay.place(
-            popupView = popupView,
-            left = popupPositionScratch[0],
-            top = popupPositionScratch[1]
-        )
+        placePopupForAnchor(popupView, anchor)
     }
 
     private fun positionGridPopup(anchor: View) {
@@ -948,10 +942,20 @@ class CrossFlickInputController(
             popupWidth = gridPopupView.measuredWidth,
             popupHeight = gridPopupView.measuredHeight
         )
+        placePopupForAnchor(gridPopupView, anchor)
+    }
+
+    private fun placePopupForAnchor(popupView: View, anchor: View) {
+        val originX = popupAnchorLocation[0] + anchor.width / 2f
+        val originY = popupAnchorLocation[1] + anchor.height / 2f
+        val dx = popupPositionScratch[0] + popupView.measuredWidth / 2f - originX
+        val dy = popupPositionScratch[1] + popupView.measuredHeight / 2f - originY
+        val (rotatedX, rotatedY) = KeyboardGeometryMath.localDelta(dx, dy, -anchor.rotation)
+        popupView.rotation = anchor.rotation
         popupOverlay.place(
-            popupView = gridPopupView,
-            left = popupPositionScratch[0],
-            top = popupPositionScratch[1]
+            popupView = popupView,
+            left = (originX + rotatedX - popupView.measuredWidth / 2f).toInt(),
+            top = (originY + rotatedY - popupView.measuredHeight / 2f).toInt(),
         )
     }
 }

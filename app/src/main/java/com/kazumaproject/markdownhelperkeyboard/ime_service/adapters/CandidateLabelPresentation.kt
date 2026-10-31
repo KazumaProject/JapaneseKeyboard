@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import android.content.Context
+import android.content.res.Configuration
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -8,29 +9,36 @@ import android.text.style.RelativeSizeSpan
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
+import java.util.Locale
+
+/** Candidate labels use Japanese even when the IME's context uses another device language. */
+internal fun japaneseCandidateLabelContext(context: Context): Context {
+    val configuration = context.resources.configuration
+    if (configuration.locales[0]?.language == Locale.JAPANESE.language) return context
+    return context.createConfigurationContext(Configuration(configuration).apply { setLocale(Locale.JAPANESE) })
+}
 
 /** One label policy for the real strip, the preview and physical-keyboard candidates. */
 internal fun candidateLabelPresentation(
     context: Context,
     candidate: Candidate,
     showDictionaryLabels: Boolean,
-    showCharacterIndicators: Boolean,
-    displayText: String = candidate.string,
+    showCharacterTypeLabels: Boolean,
 ): CharSequence {
-    fun label(id: Int) = context.getString(id)
-    fun widthLabel(): String = when {
-        showCharacterIndicators -> ""
-        displayText.isNotEmpty() && displayText.all { it in '０'..'９' || it == '　' || it in '！'..'／' || it in '：'..'＠' || it in '［'..'｀' || it in '｛'..'～' } -> label(R.string.candidate_label_full_width)
-        displayText.isNotEmpty() && displayText.all { it in ' '..'~' && !it.isLetter() } -> label(R.string.candidate_label_half_width)
-        else -> ""
-    }
+    val labelContext by lazy(LazyThreadSafetyMode.NONE) { japaneseCandidateLabelContext(context) }
+    fun label(id: Int) = labelContext.getString(id)
     val base: CharSequence = when (candidate.type) {
         CANDIDATE_TYPE_PARTIAL -> label(R.string.candidate_label_partial)
-        CANDIDATE_TYPE_SYMBOL, CANDIDATE_TYPE_NUMBER_SYMBOL -> widthLabel()
-        CANDIDATE_TYPE_FULL_WIDTH_NUMBER, CANDIDATE_TYPE_FULL_WIDTH ->
-            if (showCharacterIndicators) "" else label(R.string.candidate_label_full_width)
-        CANDIDATE_TYPE_HALF_WIDTH ->
-            if (showCharacterIndicators) "" else label(R.string.candidate_label_half_width)
+        CANDIDATE_TYPE_KATAKANA ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_katakana) else ""
+        CANDIDATE_TYPE_HALF_WIDTH_KATAKANA ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_half_katakana) else ""
+        CANDIDATE_TYPE_FULL_WIDTH_NUMBER, CANDIDATE_TYPE_FULL_WIDTH,
+        CANDIDATE_TYPE_FULL_WIDTH_SYMBOL, CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_full_width) else ""
+        CANDIDATE_TYPE_HALF_WIDTH, CANDIDATE_TYPE_HALF_WIDTH_SYMBOL,
+        CANDIDATE_TYPE_HALF_WIDTH_NUMBER_SYMBOL ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_half_width) else ""
         CANDIDATE_TYPE_DATE, CANDIDATE_TYPE_DIGIT_DATE -> label(R.string.candidate_label_date)
         CANDIDATE_TYPE_READING_CORRECTION -> {
             val prefix = label(R.string.candidate_label_reading) + " "
@@ -65,6 +73,8 @@ internal fun candidateLabelPresentation(
         }
         originLabel?.let { append(label(it)) }
     }
-    append(classifiedCandidateLabel(context, candidate.dictionaryCategories))
+    if (candidate.dictionaryCategories.isNotEmpty()) {
+        append(classifiedCandidateLabel(labelContext, candidate.dictionaryCategories))
+    }
     return result
 }
