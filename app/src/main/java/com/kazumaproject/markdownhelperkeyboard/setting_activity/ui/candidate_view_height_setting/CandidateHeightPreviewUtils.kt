@@ -801,6 +801,7 @@ private fun createPreviewSumireKeyboardLayout(
         dynamicKeyStates = dynamicStates,
         inputLayoutType = layoutType,
         inputStyle = appPreference.sumire_keyboard_style,
+        highlightSelectedMode = appPreference.sumire_mode_key_highlight_preference,
         deleteKeyFlickSettings = currentDeleteKeyFlickSettings(appPreference)
     )
     val circularLayout = CircularSlotActionApplier.apply(

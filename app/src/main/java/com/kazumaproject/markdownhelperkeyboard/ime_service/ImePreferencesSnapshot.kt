@@ -104,6 +104,7 @@ data class ImePreferencesSnapshot(
     val tfbiDiagonalRecognitionModePreferenceValue: String,
     val tfbiFlickRotationPreferenceValue: String,
     val sumireFlickInputModePreferenceValue: String,
+    val sumireModeKeyHighlight: Boolean,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
     val qwertyShowEmojiButtonPreference: Boolean,
@@ -453,6 +454,7 @@ data class ImePreferencesSnapshot(
                     appPreference.sumire_flick_rotation_preference.preferenceValue,
                 sumireFlickInputModePreferenceValue =
                     appPreference.sumire_flick_input_mode_preference.preferenceValue,
+                sumireModeKeyHighlight = appPreference.sumire_mode_key_highlight_preference,
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,
                 qwertyShowIMEButtonPreference = appPreference.qwerty_show_ime_button ?: true,

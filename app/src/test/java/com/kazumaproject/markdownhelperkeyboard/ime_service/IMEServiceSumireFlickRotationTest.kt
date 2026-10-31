@@ -9,6 +9,7 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
@@ -201,6 +202,47 @@ class IMEServiceSumireFlickRotationTest {
         assertSame(customLayout, layoutOf(floating.customLayoutFloating))
         assertSame(dockedLayout, layoutOf(main.customLayoutDefault))
         assertEquals(SplitSlot.SUB, ReflectionHelpers.getField<SplitSlot>(service, "activeSplitSlot"))
+    }
+
+    @Test
+    fun highlightPreferenceRefreshesDockedAndFloatingSurfacesInEveryMode() {
+        val (main, floating) = installSumireSurfaces("third-flick")
+        ReflectionHelpers.setField(service, "sumireInputKeyLayoutType", "flick")
+        ReflectionHelpers.setField(service, "isKeyboardFloatingMode", true)
+        for (mode in KeyboardInputMode.entries) {
+            ReflectionHelpers.setField(service, "customKeyboardMode", mode)
+            for (enabled in listOf(true, false)) {
+                AppPreference.sumire_mode_key_highlight_preference = enabled
+                notifyPreferenceChanged(AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY)
+                for (view in listOf(main.customLayoutDefault, floating.customLayoutFloating)) {
+                    assertEquals(if (enabled) 1 else 0, layoutOf(view).keys.count { it.isHiLighted })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun splitHighlightRefreshIncludesEnglishAndNumbersAndDefersTouchingPane() {
+        val (_, floating) = installSumireSurfaces("third-flick")
+        ReflectionHelpers.setField(service, "sumireInputKeyLayoutType", "flick")
+        ReflectionHelpers.setField(service, "splitController",
+            SplitKeyboardController(floating.root.context, View(floating.root.context), {}, {}, {}))
+        val state = installSplitInput(SplitSlot.MAIN, floating, KeyboardType.SUMIRE)
+        for (mode in KeyboardInputMode.entries) {
+            ReflectionHelpers.setField(state, "customMode", mode)
+            for (enabled in listOf(true, false)) {
+                ReflectionHelpers.setField(state, "touching", true)
+                AppPreference.sumire_mode_key_highlight_preference = enabled
+                notifyPreferenceChanged(AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY)
+                val pending = ReflectionHelpers.getField<(() -> Unit)?>(state, "pendingLayout")
+                assertNotNull(pending)
+                ReflectionHelpers.setField(state, "touching", false)
+                pending!!.invoke()
+                ReflectionHelpers.setField(state, "pendingLayout", null)
+                assertEquals(if (enabled) 1 else 0,
+                    layoutOf(floating.customLayoutFloating).keys.count { it.isHiLighted })
+            }
+        }
     }
 
     private fun installSumireSurfaces(

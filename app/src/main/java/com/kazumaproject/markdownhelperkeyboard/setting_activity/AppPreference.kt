@@ -135,6 +135,7 @@ object AppPreference {
     const val TFBI_DIAGONAL_RECOGNITION_MODE_KEY = "tfbi_diagonal_recognition_mode_preference"
     const val SUMIRE_FLICK_ROTATION_KEY = "sumire_flick_rotation_preference"
     const val SUMIRE_FLICK_INPUT_MODE_KEY = "sumire_flick_input_mode_preference"
+    const val SUMIRE_MODE_KEY_HIGHLIGHT_KEY = "sumire_mode_key_highlight_preference"
     const val FLICK_TFBI_POPUP_PRESENTATION_KEY = "flick_tfbi_popup_presentation_preference"
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
         "flick_tfbi_flick_start_position_preference"
@@ -1951,6 +1952,10 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putString(SUMIRE_FLICK_INPUT_MODE_KEY, value.preferenceValue)
         }
+
+    var sumire_mode_key_highlight_preference: Boolean
+        get() = preferences.getBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, false)
+        set(value) = preferences.edit { it.putBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, value) }
 
     var hierarchical_flick_mode_switch_angle_margin_preference: Int
         get() = preferences.getInt(

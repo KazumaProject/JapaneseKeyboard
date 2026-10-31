@@ -3136,6 +3136,12 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyInfos.forEach { it.controller = null }
     }
 
+    private fun restorePersistentKeyHighlights() {
+        // Controllers clear the transient pressed state on UP/CANCEL. Keep the layout
+        // selection visible, including when tapping the already selected mode.
+        keyInfos.forEach { if (it.keyData.isHiLighted) it.view.isPressed = true }
+    }
+
     /** Reconnect disposed handlers without replacing keys or resetting their dynamic state. */
     private fun restoreInputControllersIfNeeded() {
         if (!controllerRebindPending || currentLayout == null) return
@@ -3145,6 +3151,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyInfos.forEach { info ->
             info.controller = attachKeyBehavior(info.view, info.keyData)
         }
+        restorePersistentKeyHighlights()
     }
 
     private fun cancelTrackedTouchState() {
@@ -3184,6 +3191,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         motionTargets.clear()
         pointerDownTime.clear()
+        restorePersistentKeyHighlights()
     }
 
     private fun View.displayScale(): Pair<Float, Float> {
@@ -3399,6 +3407,19 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        return try {
+            handleKeyboardTouchEvent(event)
+        } finally {
+            if (event.actionMasked == MotionEvent.ACTION_UP ||
+                event.actionMasked == MotionEvent.ACTION_POINTER_UP ||
+                event.actionMasked == MotionEvent.ACTION_CANCEL
+            ) {
+                restorePersistentKeyHighlights()
+            }
+        }
+    }
+
+    private fun handleKeyboardTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             independentMultiTouchForCurrentGesture = runtimeGestureSettings.snapshot().independentMultiTouchEnabled
         }
