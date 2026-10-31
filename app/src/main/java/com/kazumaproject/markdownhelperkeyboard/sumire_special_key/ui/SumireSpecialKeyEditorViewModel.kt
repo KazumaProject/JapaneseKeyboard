@@ -135,6 +135,7 @@ class SumireSpecialKeyEditorViewModel @Inject constructor(
             dynamicKeyStates = previewDynamicStates,
             inputLayoutType = layoutType,
             inputStyle = appPreference.sumire_keyboard_style,
+            highlightSelectedMode = appPreference.sumire_mode_key_highlight_preference,
             deleteKeyFlickSettings = KeyboardDefaultLayouts.DeleteKeyFlickSettings(
                 left = appPreference.delete_key_left_flick_preference,
                 up = appPreference.delete_key_up_flick_preference,

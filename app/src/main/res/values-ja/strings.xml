@@ -1962,4 +1962,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="mushroom_failed">マッシュルーム対応アプリを起動できませんでした</string>
     <string name="mushroom_target_changed">入力先を確認できないため、マッシュルームの結果を入力しませんでした</string>
     <string name="mushroom_unsupported">この入力欄ではマッシュルームを使用できません</string>
+    <string name="sumire_mode_key_highlight_title">選択中のモードキーのハイライトを残す</string>
+    <string name="sumire_mode_key_highlight_summary">キーの配置がフリック入力の場合、モード切り替え後も、現在のひらがな・英語・数字のモードキーにハイライトを残します。</string>
 </resources>
