@@ -1880,6 +1880,70 @@ class KanaKanjiEngine {
 
     }
 
+    /** Search the whole lattice with explicitly chosen reading boundaries. */
+    suspend fun getCandidatesWithForcedBoundaries(
+        input: String,
+        splitPositions: List<Int>,
+        n: Int,
+        enabledDictionaryCategories: Set<DictionaryCategory> = emptySet(),
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>?,
+    ): BunsetsuCandidateResult {
+        require(splitPositions == splitPositions.distinct().sorted())
+        require(splitPositions.all { it in 1 until input.length })
+        val graphemes = android.icu.text.BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(input) }
+        require(splitPositions.all(graphemes::isBoundary))
+        val context = currentCoroutineContext()
+        // An isolated graph prevents a manually constrained query from contaminating either
+        // the legacy append cache or the input session's incremental graph and DP caches.
+        val isolated = createIncrementalSessionState()
+        val source = graphBuilder.constructGraph(
+            input, systemYomiTrie, systemTangoTrie, systemTokenArray,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            classifiedDictionaries = activeClassifiedDictionaries(enabledDictionaryCategories),
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
+            sessionState = isolated.graphState,
+        )
+        val graph = graphWithForcedBoundaries(input, splitPositions, source)
+        val found = if (graph.isEmpty()) null else findPath.backwardAStarWithBunsetsu(
+            originalInput = input, graph = graph, length = input.length,
+            connectionMatrix = connectionMatrixSnapshot().costTable,
+            n = n, beamWidth = beamWidth, cancellationCheck = { context.ensureActive() },
+            candidateSegmentCollector = candidateSegmentCollector,
+            forcedBoundaryPositions = splitPositions.toSet(),
+        )
+        val candidates = found?.candidates.orEmpty().ifEmpty {
+            val ranges = (listOf(0) + splitPositions + input.length).zipWithNext()
+            candidateSegmentCollector?.set(input, ranges.map { (start, end) ->
+                CandidateConversionSegment(start, end, input.substring(start, end))
+            })
+            listOf(Candidate(string = input, type = 1, length = input.length.toUByte(), score = 30000))
+        }
+        return BunsetsuCandidateResult(
+            candidates = candidates,
+            splitPatterns = listOf(splitPositions),
+            splitPatternByCandidateString = candidates.associate { it.string to splitPositions },
+            systemNgramMatchedCandidates = found?.systemNgramMatchedCandidates.orEmpty(),
+        )
+    }
+
     suspend fun getCandidatesWithBunsetsuSeparation(
         input: String,
         n: Int,
