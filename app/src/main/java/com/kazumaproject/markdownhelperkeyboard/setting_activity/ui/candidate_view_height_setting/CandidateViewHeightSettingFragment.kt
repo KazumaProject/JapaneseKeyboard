@@ -100,6 +100,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
         setupMenu()
         setupAdapter()
         suggestionAdapter.setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference)
+        suggestionAdapter.setShowCharacterTypeLabels(appPreference.candidate_character_type_labels_preference)
         suggestionAdapter.setCharacterIndicatorStyles(appPreference.candidateIndicatorStyles)
         suggestionAdapter.setShowDictionaryCandidateLabels(
             appPreference.show_dictionary_candidate_labels_preference
@@ -256,6 +257,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
 
     private fun applyCandidateAdapterPresentation() {
         suggestionAdapter.setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference)
+        suggestionAdapter.setShowCharacterTypeLabels(appPreference.candidate_character_type_labels_preference)
         suggestionAdapter.setCharacterIndicatorStyles(appPreference.candidateIndicatorStyles)
         suggestionAdapter.setKeyboardFont(com.kazumaproject.core.ui.font.KeyboardFontApplicator.processSnapshot)
         suggestionAdapter.setCandidateYomiMode(appPreference.live_conversion_candidate_yomi_mode)

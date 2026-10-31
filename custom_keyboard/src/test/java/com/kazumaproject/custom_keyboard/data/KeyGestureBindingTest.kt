@@ -44,6 +44,14 @@ class KeyGestureBindingTest {
         )
     }
 
+    @Test
+    fun modifierKeysAlwaysToggleOnEveryTap() {
+        for (action in listOf(KeyAction.CtrlLock, KeyAction.AltLock)) {
+            val key = key(action, isSpecialKey = true, binding = DoubleTapBinding(KeyAction.Copy))
+            assertNull(key.effectiveDoubleTapBinding(action))
+        }
+    }
+
     private fun key(
         normalAction: KeyAction,
         isSpecialKey: Boolean,

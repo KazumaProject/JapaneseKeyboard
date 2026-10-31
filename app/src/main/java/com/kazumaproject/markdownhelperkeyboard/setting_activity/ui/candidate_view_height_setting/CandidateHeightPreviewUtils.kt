@@ -52,12 +52,16 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import timber.log.Timber
 import kotlin.math.roundToInt
 
 internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
     return listOf(
         "学校に行く" to "がっこうにいく",
+        "ペ" to "ぺ",
+        "ﾍﾟ" to "ぺ",
         "変換候補" to "へんかんこうほ",
         "変換する" to "へんかんする",
         "日本語" to "にほんご",
@@ -72,7 +76,11 @@ internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
     ).mapIndexed { index, (text, yomi) ->
         Candidate(
             string = text,
-            type = if (index == 0) 9.toByte() else 1.toByte(),
+            type = when (text) {
+                "ペ" -> CANDIDATE_TYPE_KATAKANA
+                "ﾍﾟ" -> CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
+                else -> if (index == 0) 9.toByte() else 1.toByte()
+            },
             length = text.length.toUByte(),
             score = 4000 - index,
             yomi = yomi,

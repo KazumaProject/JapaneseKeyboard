@@ -26,8 +26,11 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_DIGIT_DATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KANJI_NUMBER
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.transformLiteralText
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withLiteralText
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withSymbolWidthType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
@@ -1006,7 +1009,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -1044,8 +1047,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -1158,7 +1161,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -1503,7 +1506,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -1552,8 +1555,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -1666,7 +1669,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -1877,6 +1880,70 @@ class KanaKanjiEngine {
 
     }
 
+    /** Search the whole lattice with explicitly chosen reading boundaries. */
+    suspend fun getCandidatesWithForcedBoundaries(
+        input: String,
+        splitPositions: List<Int>,
+        n: Int,
+        enabledDictionaryCategories: Set<DictionaryCategory> = emptySet(),
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>?,
+    ): BunsetsuCandidateResult {
+        require(splitPositions == splitPositions.distinct().sorted())
+        require(splitPositions.all { it in 1 until input.length })
+        val graphemes = android.icu.text.BreakIterator.getCharacterInstance(Locale.ROOT).apply { setText(input) }
+        require(splitPositions.all(graphemes::isBoundary))
+        val context = currentCoroutineContext()
+        // An isolated graph prevents a manually constrained query from contaminating either
+        // the legacy append cache or the input session's incremental graph and DP caches.
+        val isolated = createIncrementalSessionState()
+        val source = graphBuilder.constructGraph(
+            input, systemYomiTrie, systemTangoTrie, systemTokenArray,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            classifiedDictionaries = activeClassifiedDictionaries(enabledDictionaryCategories),
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
+            sessionState = isolated.graphState,
+        )
+        val graph = graphWithForcedBoundaries(input, splitPositions, source)
+        val found = if (graph.isEmpty()) null else findPath.backwardAStarWithBunsetsu(
+            originalInput = input, graph = graph, length = input.length,
+            connectionMatrix = connectionMatrixSnapshot().costTable,
+            n = n, beamWidth = beamWidth, cancellationCheck = { context.ensureActive() },
+            candidateSegmentCollector = candidateSegmentCollector,
+            forcedBoundaryPositions = splitPositions.toSet(),
+        )
+        val candidates = found?.candidates.orEmpty().ifEmpty {
+            val ranges = (listOf(0) + splitPositions + input.length).zipWithNext()
+            candidateSegmentCollector?.set(input, ranges.map { (start, end) ->
+                CandidateConversionSegment(start, end, input.substring(start, end))
+            })
+            listOf(Candidate(string = input, type = 1, length = input.length.toUByte(), score = 30000))
+        }
+        return BunsetsuCandidateResult(
+            candidates = candidates,
+            splitPatterns = listOf(splitPositions),
+            splitPatternByCandidateString = candidates.associate { it.string to splitPositions },
+            systemNgramMatchedCandidates = found?.systemNgramMatchedCandidates.orEmpty(),
+        )
+    }
+
     suspend fun getCandidatesWithBunsetsuSeparation(
         input: String,
         n: Int,
@@ -2027,7 +2094,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -2076,8 +2143,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -2105,7 +2172,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -2532,7 +2599,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -2572,8 +2639,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -2601,7 +2668,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -3023,7 +3090,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -3060,8 +3127,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -3170,7 +3237,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -3510,7 +3577,7 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 leftId = 2040,
                 rightId = 2040
-            )
+            ).withSymbolWidthType()
 
             val subscriptCandidate = Candidate(
                 string = input.toSubscriptDigits(),
@@ -3559,8 +3626,8 @@ class KanaKanjiEngine {
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
-            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
+            kanaFormCandidate(input, halfWidth = false, fallbackType = 3, score = 6000),
+            kanaFormCandidate(input, halfWidth = true, fallbackType = 3, score = 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -3669,7 +3736,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -3902,11 +3969,10 @@ class KanaKanjiEngine {
         collector, primaryCandidateCount,
     )
 
-    private fun createAlphanumericCaseCandidates(input: String): List<Candidate> {
-        // Mixed ASCII letters/digits need literal variants without English dictionary prediction.
-        if (!input.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } ||
-            input.none { it in 'a'..'z' || it in 'A'..'Z' } ||
-            input.none { it in '0'..'9' }
+    private fun createAsciiCaseCandidates(input: String): List<Candidate> {
+        // ASCII text containing letters needs literal variants even with symbols or spaces.
+        if (!input.isAllHalfWidthAscii() ||
+            input.none { it in 'a'..'z' || it in 'A'..'Z' }
         ) return emptyList()
 
         return listOf(input, input.replaceFirstChar { it.uppercaseChar() }, input.uppercase())
@@ -3937,6 +4003,26 @@ class KanaKanjiEngine {
         )
     }
 
+    private fun kanaFormCandidate(
+        input: String,
+        halfWidth: Boolean,
+        fallbackType: Byte,
+        score: Int,
+    ): Candidate {
+        val text = if (halfWidth) input.toHankakuKatakana() else input.hiraToKata()
+        val hasKana = if (halfWidth) {
+            text.any { it in '\uFF66'..'\uFF9D' }
+        } else {
+            text.any { it !in '\uFF66'..'\uFF9F' && Character.UnicodeScript.of(it.code) == Character.UnicodeScript.KATAKANA }
+        }
+        val type = if (!hasKana) fallbackType else if (halfWidth) {
+            CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
+        } else {
+            CANDIDATE_TYPE_KATAKANA
+        }
+        return Candidate(text, type, input.length.toUByte(), score)
+    }
+
     fun getCandidatesEnglishKana(
         input: String,
         predictionConfig: PredictionConfig = PredictionConfig(),
@@ -3957,18 +4043,8 @@ class KanaKanjiEngine {
             add(Candidate(
                 string = input, type = (1).toByte(), length = input.length.toUByte(), score = 3000
             ))
-            add(Candidate(
-                string = input.hiraToKata(),
-                type = (1).toByte(),
-                length = input.length.toUByte(),
-                score = 3000
-            ))
-            add(Candidate(
-                string = input.toHankakuKatakana(),
-                type = (31).toByte(),
-                length = input.length.toUByte(),
-                score = 3000
-            ))
+            add(kanaFormCandidate(input, halfWidth = false, fallbackType = 1, score = 3000))
+            add(kanaFormCandidate(input, halfWidth = true, fallbackType = 1, score = 3000))
             add(Candidate(
                 string = inputToEnglish,
                 type = (1).toByte(),
@@ -4021,7 +4097,7 @@ class KanaKanjiEngine {
                 enablePrediction = predictionConfig.englishPredictionEnabled,
             )
         } else {
-            createAlphanumericCaseCandidates(input)
+            createAsciiCaseCandidates(input)
         }
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
@@ -4558,7 +4634,7 @@ class KanaKanjiEngine {
                     ),
                     leftId = tokenArray.leftIds[entry.posTableIndex.toInt()],
                     rightId = tokenArray.rightIds[entry.posTableIndex.toInt()]
-                )
+                ).withSymbolWidthType()
             }
         }
     }
@@ -4639,7 +4715,7 @@ class KanaKanjiEngine {
                         score = wordCost.toInt(),
                         leftId = tokenArray.leftIds[posTableIndex.toInt()],
                         rightId = tokenArray.rightIds[posTableIndex.toInt()]
-                    )
+                    ).withSymbolWidthType()
                 )
             }
         }

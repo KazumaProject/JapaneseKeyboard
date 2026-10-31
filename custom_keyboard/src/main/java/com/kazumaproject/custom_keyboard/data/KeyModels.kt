@@ -49,6 +49,18 @@ sealed class KeyAction {
     data object DeleteAfterCursor : KeyAction()
     data object UndoLastDelete : KeyAction()
 
+    // Editor-facing keys and independently latched modifiers.
+    data object Tab : KeyAction()
+    data object Escape : KeyAction()
+    data object Home : KeyAction()
+    data object End : KeyAction()
+    data object PageUp : KeyAction()
+    data object PageDown : KeyAction()
+    data object NextField : KeyAction()
+    data object PreviousField : KeyAction()
+    data object CtrlLock : KeyAction()
+    data object AltLock : KeyAction()
+
     data object SwitchDirectMode : KeyAction()
 
     // カーソル操作系
