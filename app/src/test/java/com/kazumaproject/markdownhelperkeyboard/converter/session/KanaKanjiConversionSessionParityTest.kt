@@ -4,8 +4,11 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWid
 import com.kazumaproject.markdownhelperkeyboard.ime_service.BunsetsuConversionSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunsetsuSegments
 import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateDisplayMerger
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
@@ -28,6 +31,26 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class KanaKanjiConversionSessionParityTest {
+
+    @Test fun kanaTypesAreConsistentAcrossConversionModesAndBackends() = runBlocking {
+        for (input in listOf("ぺ", "ぺんをかう")) {
+            for (bunsetsu in listOf(false, true)) for (mode in CandidateQueryMode.entries) {
+                val results = ConversionBackend.entries.map { backend ->
+                    KanaKanjiConversionSession(engine, backend).query(request(input, mode, bunsetsu)).candidates
+                }
+                val context = "$input/$mode/bunsetsu=$bunsetsu"
+                assertEquals(context, results[0].fingerprint(), results[1].fingerprint())
+                for (candidates in results) {
+                    assertTrue(context, candidates.any { it.type == CANDIDATE_TYPE_KATAKANA && it.string.contains("ペ") })
+                    assertTrue(context, candidates.any { it.type == CANDIDATE_TYPE_HALF_WIDTH_KATAKANA && it.string.contains("ﾍﾟ") })
+                    if (input == "ぺ" && mode == CandidateQueryMode.NO_TAB_DEFAULT && !bunsetsu) {
+                        assertEquals(context, CANDIDATE_TYPE_KATAKANA,
+                            CandidateDisplayMerger.merge(candidates).first { it.string == "ペ" }.type)
+                    }
+                }
+            }
+        }
+    }
 
     @Test
     fun alphanumericInputKeepsHalfWidthUppercaseAcrossQueryModes() = runBlocking {
