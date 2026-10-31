@@ -134,7 +134,8 @@ class HierarchicalFlickAngleMarginFragment : Fragment() {
             mode = KeyboardInputMode.HIRAGANA,
             dynamicKeyStates = emptyMap(),
             inputLayoutType = "flick",
-            inputStyle = "third-flick"
+            inputStyle = "third-flick",
+            highlightSelectedMode = AppPreference.sumire_mode_key_highlight_preference
         )
 
     private fun View.requestAncestorsDisallowIntercept(disallow: Boolean) {

@@ -994,6 +994,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY,
         AppPreference.SUMIRE_FLICK_ROTATION_KEY,
         AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY,
+        AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
@@ -2184,6 +2185,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputStyle: String? = "default"
     private var sumireFlickRotation = TfbiFlickRotation.DEFAULT
     private var sumireFlickInputMode = SumireFlickInputMode.ALL
+    private var sumireModeKeyHighlight = false
     private var candidateColumns: String? = "1"
     private var candidateColumnsLandscape: String? = "1"
     private var candidateViewHeight: String? = "2"
@@ -4113,6 +4115,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val latestSumireFlickInputMode = appPreference.sumire_flick_input_mode_preference
         val sumireFlickInputModeChanged = sumireFlickInputMode != latestSumireFlickInputMode
         sumireFlickInputMode = latestSumireFlickInputMode
+        val latestSumireModeKeyHighlight = appPreference.sumire_mode_key_highlight_preference
+        val sumireModeKeyHighlightChanged = sumireModeKeyHighlight != latestSumireModeKeyHighlight
+        sumireModeKeyHighlight = latestSumireModeKeyHighlight
 
         flickSensitivityPreferenceValue = sensitivity
         flickThresholdShapePreferenceValue = thresholdShape
@@ -4209,10 +4214,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         applyIndependentMultiTouchPreference()
         syncCustomKeyboardHitTestPreference()
-        if (sumireFlickRotationChanged ||
+        if (sumireModeKeyHighlightChanged || sumireFlickRotationChanged ||
             (sumireFlickInputModeChanged && sumireInputStyle == "third-flick")
         ) {
-            refreshSumireTfbiLayouts()
+            refreshSumireLayouts(hiraganaOnly = !sumireModeKeyHighlightChanged)
         }
     }
 
@@ -4421,6 +4426,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireFlickInputMode = SumireFlickInputMode.fromPreferenceValue(
             preferences.sumireFlickInputModePreferenceValue
         )
+        sumireModeKeyHighlight = preferences.sumireModeKeyHighlight
         candidateColumns = preferences.candidateColumns
         candidateColumnsLandscape = preferences.candidateColumnsLandscape
         candidateTabVisibility = preferences.candidateTabVisibility
@@ -10916,18 +10922,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         renderDynamicKeysOnActiveSurface()
     }
 
-    private fun refreshSumireTfbiLayouts() {
+    private fun refreshSumireLayouts(hiraganaOnly: Boolean) {
         if (splitController != null) {
             splitInputs.values.filter {
                 it.selection.type == KeyboardType.SUMIRE &&
                         it.presentedMode == TenKeyQWERTYMode.Sumire &&
-                        it.customMode == KeyboardInputMode.HIRAGANA
+                        (!hiraganaOnly || it.customMode == KeyboardInputMode.HIRAGANA)
             }.forEach { state ->
                 val apply = {
                     if (splitInputs[state.slot] === state &&
                         state.selection.type == KeyboardType.SUMIRE &&
                         state.presentedMode == TenKeyQWERTYMode.Sumire &&
-                        state.customMode == KeyboardInputMode.HIRAGANA
+                        (!hiraganaOnly || state.customMode == KeyboardInputMode.HIRAGANA)
                     ) {
                         setSumireLayoutTo(state.binding.customLayoutFloating, state.customMode)
                         syncSplitPresentation()
@@ -10987,7 +10993,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 inputStyle = sumireInputStyle ?: "default",
                 deleteKeyFlickSettings = currentDeleteKeyFlickSettings(),
                 tfbiFlickRotation = sumireFlickRotation,
-                sumireFlickInputMode = sumireFlickInputMode
+                sumireFlickInputMode = sumireFlickInputMode,
+                highlightSelectedMode = sumireModeKeyHighlight
             ),
             mode
         ).let { baseLayout ->
