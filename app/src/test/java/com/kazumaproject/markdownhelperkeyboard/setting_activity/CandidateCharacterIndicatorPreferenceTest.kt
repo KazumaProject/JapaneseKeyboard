@@ -18,14 +18,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class CandidateCharacterIndicatorPreferenceTest {
-    @Test fun characterLabelsDefaultOnAndBothScreensUseTheSameIndependentSwitch() {
+    @Test fun characterLabelsDefaultOnAndThemeUsesTheIndependentSwitch() {
         val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         prefs.edit().clear().commit()
         AppPreference.init(context)
         assertTrue(AppPreference.candidate_character_type_labels_preference)
         assertTrue(ImePreferencesSnapshot.from(AppPreference).showCharacterTypeLabels)
-        for (xml in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
+        for (xml in listOf(R.xml.pref_theme)) {
             val manager = PreferenceManager(context)
             val screen = manager.inflateFromResource(context, xml, null)
             manager.setPreferences(screen)
@@ -45,14 +45,14 @@ class CandidateCharacterIndicatorPreferenceTest {
         }
     }
 
-    @Test fun bothScreensPersistTheSameIndependentDefaultOffSwitchAndExposeItInSearch() {
+    @Test fun themePersistsTheIndependentDefaultOffSwitchAndExposesItInSearch() {
         val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         prefs.edit().clear().commit()
         AppPreference.init(context)
         assertFalse(AppPreference.candidate_character_type_indicators_preference)
         assertFalse(ImePreferencesSnapshot.from(AppPreference).showCharacterIndicators)
-        for (xml in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
+        for (xml in listOf(R.xml.pref_theme)) {
             val manager = PreferenceManager(context)
             val screen = manager.inflateFromResource(context, xml, null)
             manager.setPreferences(screen)
@@ -71,10 +71,10 @@ class CandidateCharacterIndicatorPreferenceTest {
             assertTrue(SettingSearchIndex.searchable(context, scope).any { it.key == AppPreference.CANDIDATE_CHARACTER_INDICATORS_KEY })
         }
     }
-    @Test fun styleControlsAreAvailableFromBothScreensAndSearchScopes() {
+    @Test fun styleControlsAreAvailableFromThemeAndSearchScopes() {
         val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
         val manager = PreferenceManager(context)
-        for (xml in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
+        for (xml in listOf(R.xml.pref_theme)) {
             val screen = manager.inflateFromResource(context, xml, null)
             assertNotNull(screen.findPreference<androidx.preference.Preference>("candidate_indicator_style_settings"))
         }
