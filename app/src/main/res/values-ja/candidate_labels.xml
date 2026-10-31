@@ -1,12 +1,16 @@
 <resources>
     <string name="candidate_character_indicators_title">候補の文字種を見分けやすく表示</string>
-    <string name="candidate_character_indicators_summary">カタカナ・全角・半角の部分に下線を表示します。文字種ラベルは追加しません。ひらがなは装飾しません。ライブ変換のON/OFFにかかわらず使えます。</string>
+    <string name="candidate_character_indicators_summary">カタカナ・全角・半角・半角カタカナの部分に下線を表示します。文字種ラベルとは別に設定できます。ひらがなは装飾しません。</string>
+    <string name="candidate_character_type_labels_title">候補の文字種ラベルを表示</string>
+    <string name="candidate_character_type_labels_summary">カタカナ・全角・半角・半角カタカナへの変換候補に種類を表示します。下線とは別に設定できます。</string>
     <string name="candidate_character_hiragana">ひら</string>
     <string name="candidate_character_katakana">カナ</string>
     <string name="candidate_character_full_width">全</string>
     <string name="candidate_character_half_width">半</string>
     <string name="candidate_character_half_katakana">半カナ</string>
     <string name="candidate_label_partial">[部]</string>
+    <string name="candidate_label_katakana">[カナ]</string>
+    <string name="candidate_label_half_katakana">[半カナ]</string>
     <string name="candidate_label_half_width">[半]</string>
     <string name="candidate_label_full_width">[全]</string>
     <string name="candidate_label_date">[日付]</string>
