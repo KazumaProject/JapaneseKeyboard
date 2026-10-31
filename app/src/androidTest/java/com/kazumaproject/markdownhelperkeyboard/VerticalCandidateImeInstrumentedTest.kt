@@ -222,24 +222,37 @@ class VerticalCandidateImeInstrumentedTest {
                 }
                 expanded != null && expanded.first > compact!!.first && expanded.second > compact!!.second
             }
-            var lineX = 0
             var lineY = 0
-            var lineColor = 0
+            var backgroundY = 0
+            var textCenter = 0f
+            var scanLeft = 0
+            var scanRight = 0
+            var density = 1f
             instrumentation.runOnMainSync {
                 val list = candidates()!!
                 val first = list.findViewHolderForAdapterPosition(0)!!.itemView
                 val origin = IntArray(2).also(list::getLocationOnScreen)
-                val density = list.resources.displayMetrics.density
-                lineX = origin[0] + (first.left + first.right) / 2
+                val text = first.findViewById<android.view.View>(R.id.suggestion_item_text_view)
+                val textOrigin = IntArray(2).also(text::getLocationOnScreen)
+                density = list.resources.displayMetrics.density
+                textCenter = textOrigin[0] + text.width / 2f
                 lineY = origin[1] + first.bottom + (24 * density / 2).toInt()
-                lineColor = (first.findViewById<android.view.View>(R.id.candidate_divider).background as
-                    android.graphics.drawable.ColorDrawable).color
+                backgroundY = lineY + (3 * density).toInt()
+                scanLeft = origin[0] + first.left
+                scanRight = origin[0] + first.right - 1
             }
             val bitmap = requireNotNull(automation.takeScreenshot())
-            assertEquals("A horizontal divider is drawn below an ordinary vertical candidate",
-                lineColor and 0x00ffffff, bitmap.getPixel(lineX, lineY) and 0x00ffffff)
+            val linePixels = (scanLeft.coerceAtLeast(0)..scanRight.coerceAtMost(bitmap.width - 1)).filter { x ->
+                bitmap.getPixel(x, lineY) != bitmap.getPixel(x, backgroundY)
+            }
+            assertTrue("A short horizontal divider is drawn below an ordinary vertical candidate", linePixels.isNotEmpty())
+            val lineWidth = linePixels.last() - linePixels.first() + 1
+            assertTrue("The divider should be short, but was $lineWidth pixels", lineWidth <= 20 * density)
+            assertTrue("The divider should be visible", lineWidth >= 15 * density)
+            assertTrue("The divider should be centered under the text",
+                kotlin.math.abs((linePixels.first() + linePixels.last()) / 2f - textCenter) <= 2f)
             bitmap.recycle()
-            if (!rightToLeft) screenshot("vertical-candidates.png")
+            screenshot(if (rightToLeft) "vertical-candidates-rtl.png" else "vertical-candidates.png")
         }
 
     @Test fun wrappedLongCandidateScrollsAndCommitsItsFullText() = withKeyboard(wrapLongText = true) {

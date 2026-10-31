@@ -4,6 +4,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Matrix
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.ColorDrawable
 import android.content.Context
@@ -13,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.content.ContextCompat
@@ -106,20 +108,33 @@ internal class GeometryCandidateHost(
         override fun onDrawOver(canvas: Canvas, parent: RecyclerView, state: RecyclerView.State) {
             val density = parent.resources.displayMetrics.density
             val thickness = density.coerceAtLeast(1f)
-            val inset = 8f * density
             for (i in 0 until parent.childCount) {
                 val child = parent.getChildAt(i)
-                if (child.findViewById<View>(R.id.suggestion_item_text_view) == null &&
-                    child.findViewById<View>(R.id.zero_query_item_text_view) == null) continue
+                val text = child.findViewById<View>(R.id.suggestion_item_text_view)
+                    ?: child.findViewById<View>(R.id.zero_query_item_text_view) ?: continue
+                val formula = child.findViewById<View>(R.id.suggestion_item_formula_view)
+                val columns = text.parent as? LinearLayout
+                val content = when {
+                    formula?.visibility == View.VISIBLE -> formula
+                    // A wrapped candidate has several text views in a horizontal wrapper.
+                    columns != null && columns !== child && columns.id != R.id.suggestion_text_container &&
+                        columns.childCount > 1 -> columns
+                    else -> text
+                }
+                if (content.width <= 0) continue
+                val bounds = Rect(0, 0, content.width, content.height)
+                (child as? ViewGroup)?.offsetDescendantRectToMyCoords(content, bounds) ?: continue
+                val center = child.left + bounds.exactCenterX()
+                // Align the short separator with the displayed text, not the wider cell.
+                val halfWidth = minOf(9f * density, center - child.left, child.right - center)
+                if (halfWidth <= 0f) continue
                 val divider = child.findViewById<View>(R.id.candidate_divider)
                 dividerPaint.color = (divider?.background as? ColorDrawable)?.color
                     ?: ContextCompat.getColor(parent.context, com.kazumaproject.core.R.color.sub_text_color)
-                val left = child.left + inset
-                val right = child.right - inset
-                if (right <= left) continue
+                dividerPaint.alpha = (Color.alpha(dividerPaint.color) * 0.6f).roundToInt()
                 val gap = maxOf(verticalSpacingPx.toFloat(), thickness)
                 val y = child.bottom + (gap - thickness) / 2f
-                canvas.drawRect(left, y, right, y + thickness, dividerPaint)
+                canvas.drawRect(center - halfWidth, y, center + halfWidth, y + thickness, dividerPaint)
             }
         }
     }
