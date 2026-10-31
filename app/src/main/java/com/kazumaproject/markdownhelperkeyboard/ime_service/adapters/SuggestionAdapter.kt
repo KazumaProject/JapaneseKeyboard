@@ -415,6 +415,7 @@ class SuggestionAdapter internal constructor(
     private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showCharacterIndicators: Boolean = false
+    private var showCharacterTypeLabels: Boolean = true
     private var characterStyles = CandidateIndicatorStyles()
 
     /** A side-panel presentation only; candidate strings and click actions stay unchanged. */
@@ -490,6 +491,7 @@ class SuggestionAdapter internal constructor(
         candidateDividerVerticalMarginDp = source.candidateDividerVerticalMarginDp
         showCandidateYomiForLiveConversion = source.showCandidateYomiForLiveConversion
         setShowDictionaryCandidateLabels(source.showDictionaryCandidateLabels)
+        setShowCharacterTypeLabels(source.showCharacterTypeLabels)
         setShowCharacterIndicators(source.showCharacterIndicators)
         setCharacterIndicatorStyles(source.characterStyles)
         candidateEmptyDrawableColor = source.candidateEmptyDrawableColor
@@ -2284,6 +2286,12 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setShowCharacterTypeLabels(enabled: Boolean) {
+        if (showCharacterTypeLabels == enabled) return
+        showCharacterTypeLabels = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowDictionaryCandidateLabels(enabled: Boolean) {
         if (showDictionaryCandidateLabels == enabled) return
         showDictionaryCandidateLabels = enabled
@@ -2416,7 +2424,7 @@ class SuggestionAdapter internal constructor(
             displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition, styles = characterStyles
         )
         holder.typeText.text = candidateLabelPresentation(
-            holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterIndicators, displayedBody
+            holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterTypeLabels
         )
         holder.typeText.contentDescription = holder.typeText.text
         holder.typeText.maxLines = 1
