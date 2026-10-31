@@ -19,6 +19,20 @@
     <string name="keyboard_geometry_left">Left</string>
     <string name="keyboard_geometry_right">Right</string>
     <string name="keyboard_geometry_center">Center</string>
+    <string name="keyboard_geometry_candidate_width">Candidate width: %1$d%% of total</string>
+    <string name="keyboard_geometry_candidate_order">Candidate text direction</string>
+    <string name="keyboard_geometry_candidate_order_vertical">Vertical characters (columns adapt to width)</string>
+    <string name="keyboard_geometry_candidate_order_horizontal">Horizontal text</string>
+    <string name="keyboard_geometry_candidate_vertical_hint">Swipe horizontally for more candidates. Selecting a candidate inserts its full text.</string>
+    <string name="keyboard_geometry_candidate_long_display">Long vertical candidates</string>
+    <string name="keyboard_geometry_candidate_truncate">Shorten</string>
+    <string name="keyboard_geometry_candidate_wrap">Show the rest in the next column</string>
+    <string name="keyboard_geometry_candidate_spacing">Vertical candidate spacing: %1$d dp</string>
+    <string name="keyboard_geometry_candidate_spacing_hint">Adjusts spacing between candidates and between wrapped columns.</string>
+    <string name="keyboard_geometry_candidate_direction">Vertical candidate order</string>
+    <string name="keyboard_geometry_candidate_left_to_right">Left to right</string>
+    <string name="keyboard_geometry_candidate_right_to_left">Right to left</string>
+    <string name="keyboard_geometry_candidate_width_limited">Candidate width is limited to keep candidates and keys usable.</string>
     <string name="keyboard_geometry_reset">Reset</string>
     <string name="keyboard_geometry_preview">Layout preview</string>
     <string name="keyboard_geometry_preview_description">Display-only preview; it does not enter text.</string>
@@ -28,4 +42,8 @@
     <string name="keyboard_geometry_example_candidate">Candidate</string>
     <string name="keyboard_geometry_example_today">Today</string>
     <string name="keyboard_geometry_example_hello">Hello</string>
+    <string name="keyboard_geometry_example_conversion">Convert</string>
+    <string name="keyboard_geometry_example_japanese">Japanese</string>
+    <string name="keyboard_geometry_segment_editor">Show segment editor</string>
+    <string name="keyboard_geometry_segment_editor_hint">Select a segment and drag its handles to adjust boundaries. Long-press and drag a segment to reorder it.</string>
 </resources>

@@ -286,7 +286,7 @@
         android:label="@string/learn_dictionary_fragment_title" />
     <fragment
         android:id="@+id/keyboardSettingFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.KeyboardSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.UnifiedKeyboardSettingsFragment"
         android:label="@string/keyboard_size_setting_fragment_title"
         tools:layout="@layout/fragment_keyboard_setting">
         <action
@@ -401,7 +401,7 @@
     </fragment>
     <fragment
         android:id="@+id/keyboardSizeLandscapeFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_landscape_setting.KeyboardSizeLandscapeFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.UnifiedKeyboardSettingsFragment"
         android:label="@string/keyboard_size_landscape_title"
         tools:layout="@layout/fragment_keyboardsize_landscape">
         <action
@@ -615,7 +615,7 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SplitKeyboardPreferenceFragment"
         android:label="@string/split_keyboard_title" />
     <fragment android:id="@+id/keyboardGeometrySettingsFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.KeyboardGeometrySettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.UnifiedKeyboardSettingsFragment"
         android:label="@string/keyboard_geometry_title" />
     <fragment
         android:id="@+id/dictionaryBrowserFragment"

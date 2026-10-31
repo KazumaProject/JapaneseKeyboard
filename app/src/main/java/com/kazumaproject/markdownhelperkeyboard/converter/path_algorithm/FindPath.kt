@@ -1711,6 +1711,7 @@ class FindPath(
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         originalInput: String? = null,
+        forcedBoundaryPositions: Set<Int> = emptySet(),
     ): BunsetsuCandidateResult {
         cancellationCheck()
         val performanceState = sessionState?.takeIf { it.performanceProbeEnabled }
@@ -2046,7 +2047,9 @@ class FindPath(
                         startPosition = currentNode.sPos,
                     )
                     for (prevNode in prevNodes) {
-                        if (boundaryChecker != null) {
+                        // A user-specified split is authoritative even when the natural
+                        // segmenter would not place a boundary at this edge.
+                        if (boundaryChecker != null && currentNode.sPos !in forcedBoundaryPositions) {
                             val isEdge = prevNode.mozcNodeType == MozcNodeType.BOS ||
                                 currentNode.mozcNodeType == MozcNodeType.EOS
                             val result = boundaryChecker.check(prevNode, currentNode, isEdge)

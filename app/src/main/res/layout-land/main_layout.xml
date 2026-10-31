@@ -104,6 +104,16 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <com.kazumaproject.markdownhelperkeyboard.ime_service.SegmentCandidateBar
+            android:id="@+id/segment_candidate_bar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/suggestion_visibility"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
             android:layout_width="0dp"

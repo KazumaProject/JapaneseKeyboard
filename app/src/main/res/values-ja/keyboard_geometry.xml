@@ -19,6 +19,20 @@
     <string name="keyboard_geometry_left">左</string>
     <string name="keyboard_geometry_right">右</string>
     <string name="keyboard_geometry_center">中央</string>
+    <string name="keyboard_geometry_candidate_width">候補欄の幅（全体に対する割合）: %1$d%%</string>
+    <string name="keyboard_geometry_candidate_order">候補の文字の向き</string>
+    <string name="keyboard_geometry_candidate_order_vertical">縦並び（幅に応じて列数を調整）</string>
+    <string name="keyboard_geometry_candidate_order_horizontal">横書き</string>
+    <string name="keyboard_geometry_candidate_vertical_hint">候補は左右にスワイプして表示します。候補を選ぶと全文が入力されます。</string>
+    <string name="keyboard_geometry_candidate_long_display">長い縦書き候補</string>
+    <string name="keyboard_geometry_candidate_truncate">省略する</string>
+    <string name="keyboard_geometry_candidate_wrap">省略せず、次の列に続ける</string>
+    <string name="keyboard_geometry_candidate_spacing">縦書き候補の行間: %1$d dp</string>
+    <string name="keyboard_geometry_candidate_spacing_hint">候補の間と、折り返した列の間隔を変更します。</string>
+    <string name="keyboard_geometry_candidate_direction">縦並びの候補の順序</string>
+    <string name="keyboard_geometry_candidate_left_to_right">左から右</string>
+    <string name="keyboard_geometry_candidate_right_to_left">右から左</string>
+    <string name="keyboard_geometry_candidate_width_limited">候補欄やキーが狭くなりすぎないよう、幅を制限しています。</string>
     <string name="keyboard_geometry_reset">リセット</string>
     <string name="keyboard_geometry_preview">配置プレビュー</string>
     <string name="keyboard_geometry_preview_description">見た目の確認用です。文字入力はできません。</string>
@@ -28,4 +42,8 @@
     <string name="keyboard_geometry_example_candidate">候補</string>
     <string name="keyboard_geometry_example_today">今日</string>
     <string name="keyboard_geometry_example_hello">こんにちは</string>
+    <string name="keyboard_geometry_example_conversion">変換</string>
+    <string name="keyboard_geometry_example_japanese">日本語</string>
+    <string name="keyboard_geometry_segment_editor">文節の編集欄を表示</string>
+    <string name="keyboard_geometry_segment_editor_hint">文節を選び、ハンドルを動かして区切りを変更できます。文節を長押ししてドラッグすると並べ替えられます。</string>
 </resources>
