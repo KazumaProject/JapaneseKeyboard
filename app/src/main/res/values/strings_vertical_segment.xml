@@ -1,0 +1,17 @@
+<resources>
+    <string name="segment_select_description">Select segment %1$s, reading %2$s</string>
+    <string name="segment_range_description">Segment reading range %1$d–%2$d. Drag the boundary handles to adjust.</string>
+    <string name="segment_start_left">Move start boundary left</string>
+    <string name="segment_start_right">Move start boundary right</string>
+    <string name="segment_end_left">Move end boundary left</string>
+    <string name="segment_end_right">Move end boundary right</string>
+    <string name="segment_move_left">Move segment earlier</string>
+    <string name="segment_move_right">Move segment later</string>
+    <item name="segment_start_left" type="id" />
+    <item name="segment_start_right" type="id" />
+    <item name="segment_end_left" type="id" />
+    <item name="segment_end_right" type="id" />
+    <item name="segment_move_left" type="id" />
+    <item name="segment_move_right" type="id" />
+    <item name="segment_candidate_scroll" type="id" />
+</resources>
