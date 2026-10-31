@@ -8,8 +8,14 @@ import org.junit.Test
 
 class KeyboardLayoutEditStateTest {
 
+    @Test fun independentMarginKeepsItsOriginalPixelsUnlessMoved() {
+        val values = KeyboardLayoutEditValues.Normal(220, 100, 28, 0, 0, true, originalBottomMarginPx = 73)
+        assertEquals(73, KeyboardLayoutEditConstraints.independentBottomMarginPixels(values, 2.625f))
+        assertEquals(100, KeyboardLayoutEditConstraints.independentBottomMarginPixels(values.copy(bottomMarginDp = 38), 2.625f))
+    }
+
     @Test
-    fun targetFromModeTreatsOnlyTenKeyQwertyModesAsQwertyFamily() {
+    fun targetFromModeUsesIndependentGojuonAndCustomSlots() {
         assertEquals(
             KeyboardLayoutEditTarget.QwertyFamily,
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.TenKeyQWERTY),
@@ -23,9 +29,12 @@ class KeyboardLayoutEditStateTest {
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Default),
         )
         assertEquals(
-            KeyboardLayoutEditTarget.TenKeyFamily,
+            KeyboardLayoutEditTarget.Gojuon,
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Gojuon),
         )
+        assertEquals(KeyboardLayoutEditTarget.Custom, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Custom))
+        assertEquals(KeyboardLayoutEditTarget.TenKeyFamily, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Sumire))
+        assertEquals(KeyboardLayoutEditTarget.Custom, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Number, customNumberLayout = true))
         assertEquals(
             KeyboardLayoutEditTarget.TenKeyFamily,
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Number),
