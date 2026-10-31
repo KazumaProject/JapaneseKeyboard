@@ -15836,7 +15836,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (insertString.isEmpty()) {
                             forceNewLine(mainView)
                         } else {
-                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString, forceNewline = true)
                         }
                     }
 
@@ -16377,7 +16377,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (insertString.isEmpty()) {
                             forceNewLine(mainView)
                         } else {
-                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString, forceNewline = true)
                         }
                     }
 
@@ -16703,7 +16703,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (insertString.isEmpty()) {
                             forceNewLine(mainView)
                         } else {
-                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString, forceNewline = true)
                         }
                     }
 
@@ -29935,6 +29935,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resetFlagsKeySpace()
             return
         }
+        if (shouldKeepCustomPasswordComposingText()) {
+            setSpaceKeyActionEnglishAndNumberNotEmpty(
+                insertString,
+                resolveEmptySpaceForCurrentMode(isFlick, currentTenkeyInputMode(mainView))
+            )
+            resetFlagsKeySpace()
+            return
+        }
         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
             resetFlagsKeySpace()
             return
@@ -29987,6 +29995,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         clearZeroQueryAllState(refresh = false)
         if (dispatchDirectSpaceIfNeeded()) {
+            resetFlagsKeySpace()
+            return
+        }
+        if (shouldKeepCustomPasswordComposingText()) {
+            setSpaceKeyActionEnglishAndNumberNotEmpty(
+                insertString,
+                resolveEmptySpaceForCurrentMode(isFlick, currentFloatingKanaInputMode(floatingKeyboardLayoutBinding))
+            )
             resetFlagsKeySpace()
             return
         }
@@ -30411,12 +30427,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun shouldKeepCustomPasswordComposingText(): Boolean =
+        qwertyMode.value == TenKeyQWERTYMode.Custom &&
+            !isCustomLayoutRomajiMode && !isCustomLayoutDirectMode &&
+            showCandidateInPasswordPreference == true && currentInputType.isPassword()
+
+    private fun commitCustomPasswordComposingText(): Boolean {
+        if (!shouldKeepCustomPasswordComposingText()) return false
+        // Commit literally before utility conversion, even if the composing renderer is pending.
+        commitText(inputString.value + stringInTail.get(), 1)
+        finishInputEnterKey()
+        return true
+    }
+
     private fun handleNonEmptyInputEnterKey(
         suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String,
-        fromPhysicalKeyboard: Boolean = false
+        fromPhysicalKeyboard: Boolean = false,
+        forceNewline: Boolean = false
     ) {
         if (!fromPhysicalKeyboard) flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
+        if (commitCustomPasswordComposingText()) {
+            if (forceNewline) forceNewLine(mainView) else handleEmptyInputEnterKey(mainView)
+            return
+        }
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitVerticalSegmentSession()) return
         if (commitBunsetsuConversionSession()) {
@@ -30468,6 +30502,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
+        if (commitCustomPasswordComposingText()) {
+            handleEmptyInputEnterKeyFloating(floatingKeyboardLayoutBinding)
+            return
+        }
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
         if (commitVerticalSegmentSession()) return
         if (commitBunsetsuConversionSession()) {
@@ -31253,7 +31291,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             in passwordTypes -> {
-                if (showCandidateInPasswordPreference == true) {
+                // Keep the last letter editable for custom a/A keys while candidates stay hidden.
+                if (showCandidateInPasswordPreference == true && !shouldKeepCustomPasswordComposingText()) {
                     sendKeyChar(charToSend)
                 } else {
                     setCurrentInputCharacterContinuous(
