@@ -16,6 +16,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.DictionaryPreferenceFragment
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,7 +50,10 @@ class SettingsReclassificationInstrumentedTest {
         try {
             prefs.edit().putBoolean("live_conversion_preference", false)
                 .putBoolean("live_conversion_candidate_yomi_preference", true)
-                .putBoolean("composing_guide_text_enabled", false).commit()
+                .putBoolean("composing_guide_text_enabled", false)
+                .putBoolean("learn_dictionary_preference", false)
+                .putBoolean("user_dictionary_preference", false)
+                .putBoolean("enable_prediction_search_learn_dictionary_preference", true).commit()
             expansion.edit().putBoolean("settings_theme_text", false).commit()
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
                 lateinit var activity: MainActivity
@@ -93,6 +97,32 @@ class SettingsReclassificationInstrumentedTest {
                     assertTrue(host().navController.popBackStack())
                 }
                 await("Composing dependency did not refresh") { theme()?.findPreference<Preference>("composing_guide_text_size_setting")?.isEnabled == true }
+                ins.runOnMainSync {
+                    host().navController.navigate(R.id.conversionEnginePreferenceFragment, highlight("learn_prediction_preference"))
+                }
+                fun engine() = host().childFragmentManager.primaryNavigationFragment as? CommonPreferenceFragment
+                await("Prediction dictionaries did not load") {
+                    engine()?.findPreference<Preference>("learn_prediction_preference") != null
+                }
+                ins.runOnMainSync {
+                    assertFalse(engine()!!.findPreference<Preference>("learn_prediction_preference")!!.isEnabled)
+                    assertFalse(engine()!!.findPreference<Preference>("user_dictionary_prefix_match_number")!!.isEnabled)
+                    assertTrue(engine()!!.findPreference<Preference>("settings_engine_enable_learning_dictionary_link")!!.isVisible)
+                    host().navController.navigate(R.id.dictionaryPreferenceFragment, highlight("learn_dictionary_preference"))
+                }
+                fun dictionary() = host().childFragmentManager.primaryNavigationFragment as? DictionaryPreferenceFragment
+                await("Dictionary settings did not load") {
+                    dictionary()?.findPreference<SwitchPreferenceCompat>("learn_dictionary_preference") != null
+                }
+                ins.runOnMainSync {
+                    dictionary()!!.findPreference<SwitchPreferenceCompat>("learn_dictionary_preference")!!.isChecked = true
+                    dictionary()!!.findPreference<SwitchPreferenceCompat>("user_dictionary_preference")!!.isChecked = true
+                    assertTrue(host().navController.popBackStack())
+                }
+                await("Dictionary dependencies did not refresh") {
+                    engine()?.findPreference<Preference>("learn_prediction_preference")?.isEnabled == true &&
+                        engine()?.findPreference<Preference>("user_dictionary_prefix_match_number")?.isEnabled == true
+                }
             }
         } finally {
             fun restore(target: android.content.SharedPreferences, values: Map<String, *>) {

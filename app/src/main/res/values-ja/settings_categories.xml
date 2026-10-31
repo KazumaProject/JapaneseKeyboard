@@ -55,4 +55,8 @@
     <string name="settings_engine_candidates_summary">ローマ字、記号、絵文字、日付、計算、AI</string>
     <string name="settings_engine_search_title">変換探索の調整</string>
     <string name="settings_engine_search_summary">N-Best、探索幅</string>
+    <string name="settings_engine_enable_learning_dictionary">学習辞書を有効にする</string>
+    <string name="settings_engine_enable_learning_dictionary_summary">学習した単語を予測に使うには、辞書設定で学習辞書を有効にしてください。</string>
+    <string name="settings_engine_enable_user_dictionary">ユーザー辞書を有効にする</string>
+    <string name="settings_engine_enable_user_dictionary_summary">登録した単語を予測に使うには、辞書設定でユーザー辞書を有効にしてください。</string>
 </resources>
