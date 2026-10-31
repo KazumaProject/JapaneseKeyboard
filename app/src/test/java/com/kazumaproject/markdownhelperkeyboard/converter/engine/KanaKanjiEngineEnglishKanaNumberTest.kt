@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import org.junit.Assert.assertEquals
@@ -38,6 +40,14 @@ class KanaKanjiEngineEnglishKanaNumberTest {
             isAccessible = true
             set(engine, englishEngine)
         }
+    }
+
+    @Test
+    fun kanaFormsHaveDistinctTypesAndNoopConversionsAreNotMislabeled() {
+        val candidates = engine.getCandidatesEnglishKana("ぺ")
+        assertTrue(candidates.any { it.string == "ペ" && it.type == CANDIDATE_TYPE_KATAKANA })
+        assertTrue(candidates.any { it.string == "ﾍﾟ" && it.type == CANDIDATE_TYPE_HALF_WIDTH_KATAKANA })
+        assertTrue(engine.getCandidatesEnglishKana("ABC").take(3).all { it.type == 1.toByte() })
     }
 
     @Test

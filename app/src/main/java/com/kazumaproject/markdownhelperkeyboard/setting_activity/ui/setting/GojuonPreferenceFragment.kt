@@ -10,6 +10,10 @@ class GojuonPreferenceFragment : AsyncPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_gojuon
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        findPreference<Preference>("gojuon_layout_size_position_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.keyboardGeometrySettingsFragment, Bundle().apply { putString("geometryKeyboard", "GOJUON") })
+            true
+        }
         findPreference<Preference>("gojuon_keyboard_size_preference")?.setOnPreferenceClickListener {
             navigateSafely(R.id.gojuonSizeSettingsFragment)
             true

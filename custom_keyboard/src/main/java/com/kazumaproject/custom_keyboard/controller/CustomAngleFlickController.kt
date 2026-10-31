@@ -5,6 +5,7 @@ import android.content.Context
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
@@ -344,6 +345,7 @@ class CustomAngleFlickController(
         }
         popupWindow.width = popupView.preferredWidth
         popupWindow.height = popupView.preferredHeight
+        popupView.rotation = keyAnchor.rotation
 
         val location = getLocationRelativeToWindowAnchor(keyAnchor, windowAnchor)
 
@@ -374,8 +376,9 @@ class CustomAngleFlickController(
     }
 
     private fun calculateDirection(currentX: Float, currentY: Float): CircularFlickDirection {
-        val dx = currentX - initialTouchX
-        val dy = currentY - initialTouchY
+        val (dx, dy) = KeyboardGeometryMath.localDelta(
+            currentX - initialTouchX, currentY - initialTouchY, anchorView?.rotation ?: 0f
+        )
         val config = activeGestureConfig ?: gestureConfigSource.snapshot()
         if (
             !FlickGestureMath.isThresholdCrossed(

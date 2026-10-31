@@ -13,6 +13,11 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
+        findPreference<Preference>("sumire_geometry_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.keyboardGeometrySettingsFragment, Bundle().apply { putString("geometryKeyboard", "SUMIRE") })
+            true
+        }
+
         val sumireKeyboardSizePreference =
             findPreference<Preference>("sumire_keyboard_size_preference")
 

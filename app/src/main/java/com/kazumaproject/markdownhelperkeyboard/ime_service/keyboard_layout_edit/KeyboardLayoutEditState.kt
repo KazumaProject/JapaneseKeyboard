@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit
 
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import kotlin.math.roundToInt
 
 sealed interface KeyboardLayoutEditState {
     data object Disabled : KeyboardLayoutEditState
@@ -20,17 +21,17 @@ enum class KeyboardLayoutEditSurface {
 
 enum class KeyboardLayoutEditTarget {
     TenKeyFamily,
-    QwertyFamily;
+    QwertyFamily,
+    Gojuon,
+    Custom;
 
     companion object {
-        fun from(mode: TenKeyQWERTYMode): KeyboardLayoutEditTarget {
-            return if (mode == TenKeyQWERTYMode.TenKeyQWERTY ||
-                mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
-            ) {
-                QwertyFamily
-            } else {
-                TenKeyFamily
-            }
+        fun from(mode: TenKeyQWERTYMode, customNumberLayout: Boolean = false): KeyboardLayoutEditTarget = when (mode) {
+            TenKeyQWERTYMode.TenKeyQWERTY, TenKeyQWERTYMode.TenKeyQWERTYRomaji -> QwertyFamily
+            TenKeyQWERTYMode.Gojuon -> Gojuon
+            TenKeyQWERTYMode.Custom -> Custom
+            TenKeyQWERTYMode.Number -> if (customNumberLayout) Custom else TenKeyFamily
+            else -> TenKeyFamily
         }
     }
 }
@@ -54,6 +55,9 @@ sealed interface KeyboardLayoutEditValues {
         val marginStartDp: Int,
         val marginEndDp: Int,
         val positionIsEnd: Boolean,
+        // Independent slots store bottom margins in pixels; retain the original so an
+        // unrelated edit does not quantize that value after converting it to dp.
+        val originalBottomMarginPx: Int? = null,
     ) : KeyboardLayoutEditValues
 
     data class Floating(
@@ -79,6 +83,13 @@ object KeyboardLayoutEditConstraints {
     const val DefaultHeightDp = 220
     const val DefaultWidthPercent = 100
     const val DefaultMarginDp = 0
+
+    fun independentBottomMarginPixels(values: KeyboardLayoutEditValues.Normal, density: Float): Int {
+        require(density > 0f && density.isFinite())
+        val original = values.originalBottomMarginPx
+        return if (original != null && values.bottomMarginDp == (original / density).roundToInt()) original
+        else (values.bottomMarginDp * density).roundToInt().coerceAtLeast(0)
+    }
 
     fun normalizeNormalForDraft(
         values: KeyboardLayoutEditValues.Normal,
