@@ -17,6 +17,7 @@ data class KeyboardGeometryPreference(
     val sideCandidateRightToLeft: Boolean = false,
     val sideCandidateWrapLongText: Boolean = false,
     val sideCandidateSpacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
+    val sideCandidateVerticalSpacingDp: Int = SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP,
     val centerCandidateSpacingDp: Int = 0,
 )
 
@@ -27,6 +28,8 @@ object SideCandidateSizing {
     const val DEFAULT_PERCENT = 25
     const val DEFAULT_SPACING_DP = 4
     const val MAX_SPACING_DP = 32
+    const val DEFAULT_VERTICAL_SPACING_DP = 12
+    const val MAX_VERTICAL_SPACING_DP = 48
 
     fun width(surfaceWidth: Int, density: Float, percent: Int): Int {
         if (surfaceWidth < (256f * density).toInt()) return 0
@@ -91,6 +94,8 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
             sideCandidateWrapLongText = runCatching { preferences.getBoolean("${p}_candidate_wrap_long_text", false) }.getOrDefault(false),
             sideCandidateSpacingDp = int("candidate_spacing_dp", SideCandidateSizing.DEFAULT_SPACING_DP)
                 .coerceIn(0, SideCandidateSizing.MAX_SPACING_DP),
+            sideCandidateVerticalSpacingDp = int("candidate_vertical_spacing_dp", SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP)
+                .coerceIn(0, SideCandidateSizing.MAX_VERTICAL_SPACING_DP),
             centerCandidateSpacingDp = int("center_candidate_spacing_dp", 0)
                 .coerceIn(0, SideCandidateSizing.MAX_SPACING_DP),
         )
@@ -113,6 +118,7 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
             .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft)
             .putBoolean("${p}_candidate_wrap_long_text", preference.sideCandidateWrapLongText)
             .putInt("${p}_candidate_spacing_dp", preference.sideCandidateSpacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP))
+            .putInt("${p}_candidate_vertical_spacing_dp", preference.sideCandidateVerticalSpacingDp.coerceIn(0, SideCandidateSizing.MAX_VERTICAL_SPACING_DP))
             .putInt("${p}_center_candidate_spacing_dp", preference.centerCandidateSpacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP)).apply()
     }
 

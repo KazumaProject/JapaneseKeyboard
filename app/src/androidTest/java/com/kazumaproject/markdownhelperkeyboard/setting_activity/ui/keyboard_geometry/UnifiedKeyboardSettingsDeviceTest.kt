@@ -66,6 +66,8 @@ class UnifiedKeyboardSettingsDeviceTest {
             prefs.edit()
                 .putString("keyboard_geometry_tenkey_portrait_candidates", "TOP")
                 .putBoolean("keyboard_geometry_tenkey_portrait_candidate_wrap_long_text", false)
+                .putInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 4)
+                .putInt("keyboard_geometry_tenkey_portrait_candidate_vertical_spacing_dp", 12)
                 .commit()
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
                 await { var ready = false; scenario.onActivity { ready = it.isSettingsContentReady }; ready }
@@ -95,12 +97,36 @@ class UnifiedKeyboardSettingsDeviceTest {
                     longDisplay.check(2)
                     val spacing = root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)
                     assertTrue(spacing.isShown)
+                    val verticalSpacing = root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_vertical_spacing)
+                    assertTrue(verticalSpacing.isShown)
+                    assertEquals(12, verticalSpacing.progress)
+                    assertEquals(48, verticalSpacing.max)
                 }
                 await {
                     var ready = false
-                    instrumentation.runOnMainSync { ready = (page?.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)?.width ?: 0) > 0 }
+                    instrumentation.runOnMainSync {
+                        ready = (page?.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)?.width ?: 0) > 0 &&
+                            (page?.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_vertical_spacing)?.width ?: 0) > 0
+                    }
                     ready
                 }
+                instrumentation.runOnMainSync {
+                    val spacing = requireNotNull(page).findViewById<SeekBar>(R.id.keyboard_geometry_candidate_vertical_spacing)
+                    spacing.requestRectangleOnScreen(android.graphics.Rect(0, -80, spacing.width, spacing.height * 5), true)
+                }
+                SystemClock.sleep(300)
+                val image = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                val file = java.io.File(context.getExternalFilesDir(null), "candidate-vertical-spacing-settings.png")
+                java.io.FileOutputStream(file).use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                image.recycle()
+                instrumentation.runOnMainSync {
+                    val spacing = requireNotNull(page).findViewById<SeekBar>(R.id.keyboard_geometry_candidate_vertical_spacing)
+                    val x = spacing.width * .75f; val y = spacing.height / 2f
+                    touch(spacing, MotionEvent.ACTION_DOWN, x, y)
+                    touch(spacing, MotionEvent.ACTION_UP, x, y)
+                }
+                assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_vertical_spacing_dp", 12) > 12)
+                assertEquals(4, prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 4))
                 instrumentation.runOnMainSync {
                     val spacing = requireNotNull(page).findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)
                     val x = spacing.width * .75f; val y = spacing.height / 2f
@@ -119,6 +145,7 @@ class UnifiedKeyboardSettingsDeviceTest {
                     assertNull(root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_order))
                     assertNull(root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_long_display))
                     assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing))
+                    assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_vertical_spacing))
                 }
             }
         } finally { restore(prefs, original) }

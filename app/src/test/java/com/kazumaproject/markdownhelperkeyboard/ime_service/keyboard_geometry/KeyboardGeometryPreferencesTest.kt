@@ -34,10 +34,11 @@ class KeyboardGeometryPreferencesTest {
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateWrapLongText)
         assertEquals(SideCandidateSizing.DEFAULT_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateSpacingDp)
+        assertEquals(12, store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalSpacingDp)
         val configured = KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.LEFT,
             sideCandidateWidthPercent = 40, sideCandidateVerticalText = true, sideCandidateRightToLeft = true,
             sideCandidateWrapLongText = true,
-            sideCandidateSpacingDp = 16)
+            sideCandidateSpacingDp = 16, sideCandidateVerticalSpacingDp = 24)
         store.save(GeometryKeyboard.TENKEY, false, configured)
         assertEquals(configured, store.read(GeometryKeyboard.TENKEY, false))
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, true))
@@ -46,12 +47,14 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, false))
         prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 999)
             .putInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 999)
+            .putInt("keyboard_geometry_tenkey_portrait_candidate_vertical_spacing_dp", 999)
             .putString("keyboard_geometry_tenkey_portrait_candidate_vertical_text", "invalid")
             .putString("keyboard_geometry_tenkey_portrait_candidate_right_to_left", "invalid").commit()
         assertEquals(SideCandidateSizing.MAX_PERCENT, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
         assertEquals(SideCandidateSizing.MAX_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateSpacingDp)
+        assertEquals(SideCandidateSizing.MAX_VERTICAL_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalSpacingDp)
     }
 
     @Test fun sideWidthPreservesTheDefaultAndProtectsBothRegions() {
@@ -169,12 +172,13 @@ class KeyboardGeometryPreferencesTest {
         val offsets = Rect()
         decoration.getItemOffsets(offsets, View(context), recycler, RecyclerView.State())
         assertEquals((4 * density).roundToInt(), offsets.right)
-        assertEquals((4 * density).roundToInt(), offsets.bottom)
-        host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true, spacingDp = 20)
+        assertEquals((12 * density).roundToInt(), offsets.bottom)
+        host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true,
+            spacingDp = 20, verticalSpacingDp = 30)
         offsets.setEmpty()
         decoration.getItemOffsets(offsets, View(context), recycler, RecyclerView.State())
         assertEquals((20 * density).roundToInt(), offsets.left)
-        assertEquals((20 * density).roundToInt(), offsets.bottom)
+        assertEquals((30 * density).roundToInt(), offsets.bottom)
         assertEquals(0, offsets.right)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = true)
         assertTrue(recycler.layoutManager is SideCandidateFlowLayoutManager)

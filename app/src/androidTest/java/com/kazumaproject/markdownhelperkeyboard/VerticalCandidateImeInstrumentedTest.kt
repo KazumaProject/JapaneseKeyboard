@@ -172,9 +172,12 @@ class VerticalCandidateImeInstrumentedTest {
     @Test fun rightToLeftVerticalCandidatesRespondToSpacingAndShowDividers() =
         verifyRegularVerticalCandidates(side = "RIGHT", rightToLeft = true)
 
-    private fun verifyRegularVerticalCandidates(side: String, rightToLeft: Boolean) =
-        withKeyboard(side = side, sideWidthPercent = 50, rightToLeft = rightToLeft) {
-            softKey(com.kazumaproject.tenkey.R.id.key_1)
+    @Test fun sumireVerticalCandidatesRespondToSpacingAndShowDividers() =
+        verifyRegularVerticalCandidates(side = "LEFT", rightToLeft = false, sumire = true)
+
+    private fun verifyRegularVerticalCandidates(side: String, rightToLeft: Boolean, sumire: Boolean = false) =
+        withKeyboard(side = side, sideWidthPercent = 50, rightToLeft = rightToLeft, sumire = sumire) {
+            if (sumire) tapSumireA() else softKey(com.kazumaproject.tenkey.R.id.key_1)
             fun candidates(): androidx.recyclerview.widget.RecyclerView? =
                 android.view.inspector.WindowInspector.getGlobalWindowViews()
                     .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
@@ -191,7 +194,7 @@ class VerticalCandidateImeInstrumentedTest {
                 adapter.suggestions = words.map { com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate(it, 1, 1u, 0) }
             }
             val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
-            val key = "keyboard_geometry_tenkey_portrait_candidate_spacing_dp"
+            val key = "keyboard_geometry_${if (sumire) "sumire" else "tenkey"}_portrait_candidate_vertical_spacing_dp"
             fun gaps(): Pair<Int, Int>? {
                 var result: Pair<Int, Int>? = null
                 instrumentation.runOnMainSync {
@@ -208,10 +211,14 @@ class VerticalCandidateImeInstrumentedTest {
                 }
                 return result
             }
+            if (!rightToLeft && !sumire) {
+                await("default vertical spacing") { gaps()?.second?.let { it > 0 } == true }
+                screenshot("vertical-default-spacing.png")
+            }
             check(prefs.edit().putInt(key, 0).commit())
             var compact: Pair<Int, Int>? = null
             await("compact vertical candidates") { gaps()?.also { compact = it } != null }
-            if (!rightToLeft) screenshot("vertical-compact.png")
+            if (!rightToLeft && !sumire) screenshot("vertical-compact.png")
             check(prefs.edit().putInt(key, 24).commit())
             var observed: Pair<Int, Int>? = null
             await("normal candidates use the new spacing") {
@@ -220,7 +227,7 @@ class VerticalCandidateImeInstrumentedTest {
                     android.util.Log.i("CandidateSpacingTest", "side=$side compact=$compact expanded=$expanded")
                     observed = expanded
                 }
-                expanded != null && expanded.first > compact!!.first && expanded.second > compact!!.second
+                expanded != null && expanded.first == compact!!.first && expanded.second > compact!!.second
             }
             var lineY = 0
             var backgroundY = 0
@@ -252,7 +259,7 @@ class VerticalCandidateImeInstrumentedTest {
             assertTrue("The divider should be centered under the text",
                 kotlin.math.abs((linePixels.first() + linePixels.last()) / 2f - textCenter) <= 2f)
             bitmap.recycle()
-            screenshot(if (rightToLeft) "vertical-candidates-rtl.png" else "vertical-candidates.png")
+            if (!sumire) screenshot(if (rightToLeft) "vertical-candidates-rtl.png" else "vertical-candidates.png")
         }
 
     @Test fun wrappedLongCandidateScrollsAndCommitsItsFullText() = withKeyboard(wrapLongText = true) {
@@ -553,6 +560,7 @@ class VerticalCandidateImeInstrumentedTest {
             "keyboard_geometry_${geometry}_${orientation}_candidate_right_to_left" to rightToLeft,
             "keyboard_geometry_${geometry}_${orientation}_candidate_wrap_long_text" to wrapLongText,
             "keyboard_geometry_${geometry}_${orientation}_candidate_spacing_dp" to 4,
+            "keyboard_geometry_${geometry}_${orientation}_candidate_vertical_spacing_dp" to 12,
             "keyboard_floating_preference" to floating,
             "allow_fullscreen_mode_preference" to false,
             "keyboard_skin_id" to "default",

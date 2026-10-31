@@ -20758,6 +20758,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             floatingGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
                 config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp,
+                verticalSpacingDp = config.sideCandidateVerticalSpacingDp,
                 horizontalSpacingDp = if (type == GeometryKeyboard.QWERTY) config.centerCandidateSpacingDp else 0)
             floatBinding!!.root.fallbackTouchExclusion = { x, y -> floatingGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         } else {
@@ -20769,6 +20770,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             dockedGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
                 config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp,
+                verticalSpacingDp = config.sideCandidateVerticalSpacingDp,
                 horizontalSpacingDp = if (type == GeometryKeyboard.QWERTY) config.centerCandidateSpacingDp else 0)
             main.root.fallbackTouchExclusion = { x, y -> dockedGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         }

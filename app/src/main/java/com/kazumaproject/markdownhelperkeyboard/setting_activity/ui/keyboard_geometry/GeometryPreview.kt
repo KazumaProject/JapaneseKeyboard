@@ -220,7 +220,8 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
                 val density = resources.displayMetrics.density
                 val columns = SideCandidateSizing.columnCount(model.candidateSideWidth.roundToInt(), density, paint.textSize)
                 val inset = SideCandidateSizing.horizontalInset(model.candidateSideWidth.roundToInt(), density).toFloat()
-                val cellWidth = (model.candidateSideWidth - 2 * inset) / columns
+                val cellWidth = SideCandidateSizing.columnWidth(model.candidateSideWidth.roundToInt(), density, paint.textSize).toFloat()
+                val columnStep = cellWidth + value.sideCandidateSpacingDp * density
                 var top = model.chromeHeight
                 var column = 0
                 val verticalExamples = examples + listOf(
@@ -236,14 +237,16 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
                     if (column >= columns) break
                     val columnWidth = characters.maxOfOrNull { paint.measureText(it) } ?: 0f
                     val textHeight = characters.size * paint.fontSpacing
-                    val physicalColumn = if (value.sideCandidateRightToLeft) columns - 1 - column else column
-                    val cx = left + inset + physicalColumn * cellWidth + 5f * density + columnWidth / 2f
+                    val cellLeft = if (value.sideCandidateRightToLeft)
+                        left + model.candidateSideWidth - inset - cellWidth - column * columnStep
+                    else left + inset + column * columnStep
+                    val cx = cellLeft + 5f * density + columnWidth / 2f
                     var baseline = top + (itemHeight - textHeight) / 2f - paint.fontMetrics.ascent
                     for (character in characters) {
                         canvas.drawText(character, cx, baseline, paint)
                         baseline += paint.fontSpacing
                     }
-                    top += itemHeight + value.sideCandidateSpacingDp * density
+                    top += itemHeight + value.sideCandidateVerticalSpacingDp * density
                 }
             } else if (value.candidates == GeometryCandidatePlacement.CENTER) {
                 val cx = left + model.candidateSideWidth / 2f

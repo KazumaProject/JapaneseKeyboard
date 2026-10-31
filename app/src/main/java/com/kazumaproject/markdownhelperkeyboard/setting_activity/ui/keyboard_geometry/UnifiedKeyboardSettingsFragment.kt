@@ -484,6 +484,33 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 check(if (geometry.sideCandidateWrapLongText) 2 else 1)
                 setOnCheckedChangeListener { _, id -> saveGeometry(geometry.copy(sideCandidateWrapLongText = id == 2)) }
             }
+            val verticalSpacingLabel = TextView(ctx).apply {
+                text = getString(R.string.keyboard_geometry_candidate_vertical_spacing, geometry.sideCandidateVerticalSpacingDp)
+                setPadding(0, dp(8), 0, 0)
+                isVisible = geometry.sideCandidateVerticalText
+            }
+            val verticalSpacing = SeekBar(ctx).apply {
+                id = R.id.keyboard_geometry_candidate_vertical_spacing
+                max = SideCandidateSizing.MAX_VERTICAL_SPACING_DP
+                progress = geometry.sideCandidateVerticalSpacingDp
+                contentDescription = verticalSpacingLabel.text
+                isVisible = geometry.sideCandidateVerticalText
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
+                        if (!fromUser) return
+                        verticalSpacingLabel.text = getString(R.string.keyboard_geometry_candidate_vertical_spacing, value)
+                        contentDescription = verticalSpacingLabel.text
+                        saveGeometry(geometry.copy(sideCandidateVerticalSpacingDp = value))
+                    }
+                    override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+                })
+            }
+            val verticalSpacingHint = TextView(ctx).apply {
+                setText(R.string.keyboard_geometry_candidate_vertical_spacing_hint)
+                textSize = 13f
+                isVisible = geometry.sideCandidateVerticalText
+            }
             val spacingLabel = TextView(ctx).apply {
                 text = getString(R.string.keyboard_geometry_candidate_spacing, geometry.sideCandidateSpacingDp)
                 setPadding(0, dp(8), 0, 0)
@@ -520,18 +547,24 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 direction.isVisible = it == 2
                 longCandidateLabel.isVisible = it == 2
                 longCandidateDisplay.isVisible = it == 2
+                verticalSpacingLabel.isVisible = it == 2
+                verticalSpacing.isVisible = it == 2
+                verticalSpacingHint.isVisible = it == 2
                 spacingLabel.isVisible = it == 2
                 spacing.isVisible = it == 2
                 spacingHint.isVisible = it == 2
             }
             body.addView(verticalHint)
+            body.addView(verticalSpacingLabel)
+            body.addView(verticalSpacing)
+            body.addView(verticalSpacingHint)
+            body.addView(spacingLabel)
+            body.addView(spacing)
+            body.addView(spacingHint)
             body.addView(directionLabel)
             body.addView(direction)
             body.addView(longCandidateLabel)
             body.addView(longCandidateDisplay)
-            body.addView(spacingLabel)
-            body.addView(spacing)
-            body.addView(spacingHint)
         }
         body.addView(MaterialButton(ctx, null, MaterialR.attr.materialButtonOutlinedStyle).apply { isAllCaps = false; setText(R.string.keyboard_layout_reset_shape); setOnClickListener {
             geometryTarget()?.let { geometries.reset(it, landscape) }; loadValues(); updatePreview(); buildBody()

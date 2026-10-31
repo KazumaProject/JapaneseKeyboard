@@ -94,6 +94,7 @@ internal class GeometryCandidateHost(
     private var horizontalScroll: HorizontalScrollView? = null
     private var verticalSpacingApplied = false
     private var verticalSpacingPx = 0
+    private var verticalColumnSpacingPx = 0
     private var verticalSpacingRightToLeft = false
     private var horizontalSpacingApplied = false
     private var horizontalSpacingPx = 0
@@ -102,7 +103,7 @@ internal class GeometryCandidateHost(
         override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
             // Keep room for the separator even when the selected spacing is zero.
             outRect.bottom = maxOf(verticalSpacingPx, parent.resources.displayMetrics.density.roundToInt().coerceAtLeast(1))
-            if (verticalSpacingRightToLeft) outRect.left = verticalSpacingPx else outRect.right = verticalSpacingPx
+            if (verticalSpacingRightToLeft) outRect.left = verticalColumnSpacingPx else outRect.right = verticalColumnSpacingPx
         }
 
         override fun onDrawOver(canvas: Canvas, parent: RecyclerView, state: RecyclerView.State) {
@@ -148,6 +149,7 @@ internal class GeometryCandidateHost(
     fun show(
         bounds: Rect, verticalText: Boolean = false, rightToLeft: Boolean = false, wrapLongText: Boolean = false,
         spacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
+        verticalSpacingDp: Int = SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP,
         horizontalSpacingDp: Int = 0,
     ) {
         if (bounds.width() <= 0 || bounds.height() <= 0) { detach(); return }
@@ -173,10 +175,13 @@ internal class GeometryCandidateHost(
         var columnWidth = 0
         if (verticalText) {
             updateHorizontalSpacing(0)
-            val spacing = (spacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP) * root.resources.displayMetrics.density).roundToInt()
-            val spacingChanged = verticalSpacingPx != spacing
+            val density = root.resources.displayMetrics.density
+            val spacing = (verticalSpacingDp.coerceIn(0, SideCandidateSizing.MAX_VERTICAL_SPACING_DP) * density).roundToInt()
+            val columnSpacing = (spacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP) * density).roundToInt()
+            val spacingChanged = verticalSpacingPx != spacing || verticalColumnSpacingPx != columnSpacing
             if (spacingChanged || verticalSpacingRightToLeft != rightToLeft) {
                 verticalSpacingPx = spacing
+                verticalColumnSpacingPx = columnSpacing
                 verticalSpacingRightToLeft = rightToLeft
                 if (verticalSpacingApplied) {
                     if (recycler.isComputingLayout) recycler.post { if (verticalSpacingApplied) recycler.invalidateItemDecorations() }
@@ -210,7 +215,7 @@ internal class GeometryCandidateHost(
             }
         }
         adapter?.setSideCandidateVerticalText(verticalText, columnWidth, bounds.height(), bounds.width() - 2 * recycler.paddingLeft,
-            wrapLongText = wrapLongText, rightToLeft = rightToLeft, spacingDp = spacingDp)
+            wrapLongText = wrapLongText, rightToLeft = rightToLeft, spacingDp = spacingDp, verticalSpacingDp = verticalSpacingDp)
         val container = panel ?: return
         val params = (container.layoutParams as? FrameLayout.LayoutParams) ?: FrameLayout.LayoutParams(bounds.width(), bounds.height())
         if (params.width != bounds.width() || params.height != bounds.height() || params.leftMargin != bounds.left || params.topMargin != bounds.top || params.gravity != (Gravity.TOP or Gravity.LEFT)) {
