@@ -8,6 +8,8 @@ import android.view.MotionEvent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
+import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,6 +20,30 @@ class SumireIndependentMultiTouchTestActivity : SumireNearestKeyTestActivity()
 
 @RunWith(AndroidJUnit4::class)
 class SumireIndependentMultiTouchInstrumentedTest {
+    @Test fun curvedKeysCanBeTappedInNormalAndFloatingPositions() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.context,
+            SumireIndependentMultiTouchTestActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as SumireIndependentMultiTouchTestActivity
+        try {
+            for (floating in listOf(false, true)) for (hand in KeyboardCurveHand.entries) {
+                instrumentation.runOnMainSync {
+                    activity.configure(100, floating)
+                    activity.keyboard.setSumireGeometry(KeyboardGeometry(curveDegrees = 20, hand = hand))
+                }
+                instrumentation.waitForIdleSync()
+                lateinit var bounds: Rect
+                instrumentation.runOnMainSync { bounds = activity.keyBounds("あ") }
+                val time = SystemClock.uptimeMillis()
+                for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                    val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, bounds.exactCenterX(), bounds.exactCenterY(), 0)
+                    try { assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true)) } finally { event.recycle() }
+                    instrumentation.waitForIdleSync()
+                }
+                assertEquals("floating=$floating hand=$hand", listOf(KeyAction.Text("あ")), activity.actions.toList())
+            }
+        } finally { instrumentation.runOnMainSync { activity.finish() } }
+    }
+
     @Test fun generatedSumireLayoutCommitsInReleaseOrderAtBothSizesAndWindowPositions() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val activity = instrumentation.startActivitySync(Intent(instrumentation.context,
