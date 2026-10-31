@@ -4066,6 +4066,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
+        // A result that was already waiting when a new editor connected must not be
+        // inserted later after the user moved to a different field.
+        val resultWasPending = mushroomResult != null
+        mainHandler.post { consumeMushroomResult(rejectChangedEditor = resultWasPending) }
     }
 
     private fun startKanaKanjiConversionSession(backend: ConversionBackend) {
@@ -24967,6 +24971,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var mushroomTarget: MushroomTarget? = null
     private var mushroomResult: String? = null
+    private var mushroomPluginPackage: String? = null
     private data class MushroomEditor(
         val token: android.os.IBinder?,
         val packageName: String?,
@@ -25007,9 +25012,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mushroomTarget = target
         mushroomEditor = currentMushroomEditor()
         mushroomResult = null
+        mushroomPluginPackage = null
         val receiver = object : ResultReceiver(mainHandler) {
             override fun onReceiveResult(code: Int, data: Bundle?) {
                 if (mushroomTarget !== target) return
+                if (code == MushroomActivity.RESULT_CHOSEN) {
+                    mushroomPluginPackage = data?.getString(MushroomActivity.EXTRA_PLUGIN_PACKAGE)
+                    if (mushroomResult != null) mainHandler.post { consumeMushroomResult() }
+                    return
+                }
                 if (code == android.app.Activity.RESULT_OK) {
                     mushroomResult = data?.getString(MushroomActivity.REPLACE_KEY)
                     if (mushroomResult == null) mushroomTarget = null
@@ -25042,18 +25053,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun consumeMushroomResult() {
+    private fun consumeMushroomResult(rejectChangedEditor: Boolean = false) {
         val result = mushroomResult ?: return
         val target = mushroomTarget ?: return
-        if (!isInputViewActive || currentMushroomEditor() != mushroomEditor) return
+        if (!currentInputStarted) return
+        if (currentMushroomEditor() != mushroomEditor) {
+            // The selected plugin may itself have an editor while it returns its result.
+            val currentPackage = currentInputEditorInfo?.packageName
+            val pluginPackage = mushroomPluginPackage
+            val otherThanPlugin = pluginPackage != null && currentPackage != null && currentPackage != pluginPackage
+            val isPluginEditor = pluginPackage != null && currentPackage == pluginPackage
+            if (!isPluginEditor && (rejectChangedEditor || otherThanPlugin) && currentInputEditorInfo?.inputType?.let {
+                    it != android.text.InputType.TYPE_NULL
+                } == true) {
+                mushroomTarget = null
+                mushroomResult = null
+                mushroomEditor = null
+                mushroomPluginPackage = null
+                showToastMessage(getString(R.string.mushroom_target_changed))
+            }
+            return
+        }
+        val canReconnect = (mushroomEditor?.fieldId ?: 0) > 0 && mushroomEditor?.token != null
         mushroomTarget = null
         mushroomResult = null
-        val canReconnect = (mushroomEditor?.fieldId ?: 0) > 0 && mushroomEditor?.token != null
+        mushroomEditor = null
+        mushroomPluginPackage = null
         val applied = target.apply(currentInputConnection, result, sameEditorAfterRestart = canReconnect) {
             commitText(it, 1)
         }
         if (!applied) {
             showToastMessage(getString(R.string.mushroom_target_changed))
+        } else if (!isInputViewShown) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                requestShowSelf(0)
+            } else {
+                val token = window?.window?.attributes?.token
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                @Suppress("DEPRECATION")
+                imm.showSoftInputFromInputMethod(token, 0)
+            }
         }
     }
 
