@@ -16,7 +16,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.AttrRes
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
@@ -185,7 +184,6 @@ class SettingHomeFragment : Fragment() {
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
             isClickable = true
             isFocusable = true
-            foreground = selectableItemBackground(context)
             contentDescription = listOf(title, summary, valueText)
                 .filter { !it.isNullOrBlank() }
                 .joinToString(". ")
@@ -304,7 +302,6 @@ class SettingHomeFragment : Fragment() {
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
             isClickable = true
             isFocusable = true
-            foreground = selectableItemBackground(context)
             contentDescription = "$title. $summary"
             setOnClickListener { navigateTo(destination) }
         }
@@ -522,12 +519,6 @@ class SettingHomeFragment : Fragment() {
         val imm = ContextCompat.getSystemService(requireContext(), InputMethodManager::class.java)
         return imm?.enabledInputMethodList?.any { it.packageName == requireContext().packageName }
     }
-
-    private fun selectableItemBackground(context: Context) =
-        TypedValue().let { value ->
-            context.theme.resolveAttribute(android.R.attr.selectableItemBackground, value, true)
-            AppCompatResources.getDrawable(context, value.resourceId)
-        }
 
     private fun resolveColor(@AttrRes attr: Int): Int {
         val value = TypedValue()
