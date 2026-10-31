@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -45,6 +46,11 @@ import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
+import com.kazumaproject.core.ui.geometry.KeyboardGeometry
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryGroup
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryItem
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
+import com.kazumaproject.core.ui.geometry.KeyboardViewGeometry
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
@@ -104,6 +110,142 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 ) : ConstraintLayout(context, attrs, defStyleAttr), KeyboardFontAware {
 
     private val binding: QwertyLayoutBinding
+
+    private var geometry = KeyboardGeometry()
+    private var geometryBaseHeight = 0
+    private var effectiveSplitGap = 0f
+    private var splitSpaceView: QWERTYButton? = null
+    private var mirroredSpaceBackground: Drawable? = null
+    private var requestedGlideMode = false
+    private var geometryHeightListener: ((Int) -> Unit)? = null
+    private var lastRequiredGeometryHeight = 0
+
+    /** Geometry is opt-in; the original view and input path are retained for the default. */
+    fun setKeyboardGeometry(value: KeyboardGeometry, baseHeightPx: Int = 0, onRequiredHeight: ((Int) -> Unit)? = null) {
+        val normalized = value.normalized()
+        if ((geometry.isDefault && normalized.isDefault) || (geometry == normalized && geometryBaseHeight == baseHeightPx)) {
+            geometry = normalized
+            geometryBaseHeight = baseHeightPx
+            geometryHeightListener = onRequiredHeight
+            return
+        }
+        // A decode may still be running after the finger was lifted. Cancel it when
+        // the key geometry changes so it cannot commit against stale coordinates.
+        cancelQwertyGlideCandidate(notify = glideStarted || requestedGlideMode)
+        if (normalized.isDefault && !geometry.isDefault) {
+            KeyboardViewGeometry.reset(mappedViews().map { KeyboardGeometryItem(it, KeyboardGeometryGroup.SINGLE) })
+        }
+        geometry = normalized
+        geometryBaseHeight = baseHeightPx
+        geometryHeightListener = onRequiredHeight
+        lastRequiredGeometryHeight = 0
+        if (geometry.splitPercent > 0) ensureSplitSpace() else removeSplitSpace()
+        requestLayout()
+    }
+
+    fun effectiveSplitGapPx(): Float = effectiveSplitGap
+
+    private fun isSpaceKey(view: View) = view === binding.keySpace || view === splitSpaceView
+    private fun mappedKey(view: View?): QWERTYKey? = when {
+        view == null -> null
+        view === splitSpaceView -> QWERTYKey.QWERTYKeySpace
+        else -> qwertyButtonMap[view]
+    }
+    private fun mappedViews(): List<View> = qwertyButtonMap.keys.toList() + listOfNotNull(splitSpaceView)
+
+    private fun ensureSplitSpace() {
+        if (splitSpaceView != null) return
+        val mirror = QWERTYButton(context).apply {
+            id = View.generateViewId()
+            visibility = View.INVISIBLE
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        addView(mirror, LayoutParams(1, 1))
+        splitSpaceView = mirror
+    }
+
+    private fun removeSplitSpace() {
+        splitSpaceView?.let(::removeView)
+        splitSpaceView = null
+        mirroredSpaceBackground = null
+        effectiveSplitGap = 0f
+        refreshEffectiveGlideMode()
+    }
+
+    private fun syncSplitSpace(mirror: QWERTYButton) {
+        val source = binding.keySpace
+        if (!android.text.TextUtils.equals(mirror.text, source.text)) mirror.text = source.text
+        if (mirror.textColors != source.textColors) mirror.setTextColor(source.textColors)
+        if (mirror.textSize != source.textSize) mirror.setTextSize(TypedValue.COMPLEX_UNIT_PX, source.textSize)
+        if (mirror.typeface != source.typeface) mirror.typeface = source.typeface
+        if (mirror.gravity != source.gravity) mirror.gravity = source.gravity
+        mirror.contentDescription = source.contentDescription ?: source.text
+        if (mirroredSpaceBackground !== source.background) {
+            mirroredSpaceBackground = source.background
+            mirror.background = source.background?.constantState?.newDrawable(resources)?.mutate()
+        }
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val requested = MeasureSpec.getSize(heightMeasureSpec)
+        if (!geometry.isDefault && geometryBaseHeight > 0 && requested > geometryBaseHeight) {
+            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(geometryBaseHeight, MeasureSpec.EXACTLY))
+            setMeasuredDimension(measuredWidth, requested)
+        } else super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        val base = if (!geometry.isDefault && geometryBaseHeight > 0 && height > geometryBaseHeight) geometryBaseHeight else height
+        super.onLayout(changed, left, top, right, top + base)
+        if (geometry.isDefault) return
+        val mirror = splitSpaceView
+        val gap = KeyboardGeometryMath.effectiveSplitGap(width.toFloat(), geometry.splitPercent, 24f * resources.displayMetrics.density)
+        if (mirror != null) {
+            mirror.visibility = if (gap > 0f) View.VISIBLE else View.INVISIBLE
+            if (gap > 0f) {
+                val original = binding.keySpace
+                mirror.measure(MeasureSpec.makeMeasureSpec(original.width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(original.height, MeasureSpec.EXACTLY))
+                mirror.layout(original.left, original.top, original.right, original.bottom)
+                syncSplitSpace(mirror)
+            }
+        }
+        val leftLetters = setOf(
+            R.id.key_q, R.id.key_w, R.id.key_e, R.id.key_r, R.id.key_t,
+            R.id.key_a, R.id.key_s, R.id.key_d, R.id.key_f, R.id.key_g,
+            R.id.key_z, R.id.key_x, R.id.key_c, R.id.key_v,
+            R.id.key_1, R.id.key_2, R.id.key_3, R.id.key_4, R.id.key_5,
+        )
+        val rightLetters = setOf(
+            R.id.key_y, R.id.key_u, R.id.key_i, R.id.key_o, R.id.key_p,
+            R.id.key_h, R.id.key_j, R.id.key_k, R.id.key_l,
+            R.id.key_b, R.id.key_n, R.id.key_m,
+            R.id.key_6, R.id.key_7, R.id.key_8, R.id.key_9, R.id.key_0,
+        )
+        val items = mappedViews().filter { it.isVisible && it.width > 0 && it.height > 0 }.map { view ->
+            val original = if (view === mirror) binding.keySpace else view
+            val bounds = RectF(original.left.toFloat(), original.top.toFloat(), original.right.toFloat(), original.bottom.toFloat())
+            val group = when {
+                isSpaceKey(view) && gap <= 0f -> KeyboardGeometryGroup.SINGLE
+                view === binding.keySpace -> { bounds.right = bounds.centerX(); KeyboardGeometryGroup.LEFT }
+                view === mirror -> { bounds.left = bounds.centerX(); KeyboardGeometryGroup.RIGHT }
+                view.id in leftLetters -> KeyboardGeometryGroup.LEFT
+                view.id in rightLetters -> KeyboardGeometryGroup.RIGHT
+                bounds.centerX() < width / 2f -> KeyboardGeometryGroup.LEFT
+                else -> KeyboardGeometryGroup.RIGHT
+            }
+            KeyboardGeometryItem(view, group, bounds)
+        }
+        val result = KeyboardViewGeometry.apply(this, items, geometry, qwerty = true, baselineHeight = base.toFloat())
+        if (effectiveSplitGap != result.splitGapPx) {
+            effectiveSplitGap = result.splitGapPx
+            refreshEffectiveGlideMode()
+        }
+        val required = kotlin.math.ceil(result.requiredHeightPx.toDouble()).toInt().coerceAtLeast(base)
+        if (required != lastRequiredGeometryHeight) {
+            lastRequiredGeometryHeight = required
+            post { geometryHeightListener?.invoke(required) }
+        }
+    }
 
     // --- Dynamic Margin Variables (in dp) ---
     private var keyVerticalMarginDp: Float = 5f
@@ -273,7 +415,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun isIndependentExclusiveKey(view: View): Boolean =
-        (view === binding.keyShift && qwertyMode.value != QWERTYMode.Default) || qwertyButtonMap[view] in setOf(
+        (view === binding.keyShift && qwertyMode.value != QWERTYMode.Default) || mappedKey(view) in setOf(
             QWERTYKey.QWERTYKeySwitchDefaultLayout,
             QWERTYKey.QWERTYKeySwitchMode,
             QWERTYKey.QWERTYKeyEmoji,
@@ -1444,11 +1586,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun setQwertyGlideInputMode(enabled: Boolean) {
+        requestedGlideMode = enabled
+        refreshEffectiveGlideMode()
+    }
+
+    private fun refreshEffectiveGlideMode() {
+        val enabled = requestedGlideMode && effectiveSplitGap <= 0f
         if (qwertyGlideInputMode == enabled) return
         qwertyGlideInputMode = enabled
-        if (!enabled) {
-            cancelQwertyGlideCandidate(notify = false)
-        }
+        if (!enabled) cancelQwertyGlideCandidate(notify = requestedGlideMode || glideStarted)
     }
 
     fun setQwertyGlideInputListener(listener: QwertyGlideInputListener?) {
@@ -1469,12 +1615,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 else -> zRowLetterViews.indexOf(view)
             }
             val ch = view.text?.firstOrNull()?.lowercaseChar() ?: ('a' + index)
+            val (centerX, centerY) = if (geometry.isDefault) {
+                (view.left + view.width / 2f) to (view.top + view.height / 2f)
+            } else KeyboardViewGeometry.centerInParent(view)
             QwertyKeyProximity(
                 char = ch,
-                centerX = view.left + view.width / 2f,
-                centerY = view.top + view.height / 2f,
-                width = view.width.toFloat(),
-                height = view.height.toFloat(),
+                centerX = centerX,
+                centerY = centerY,
+                width = view.width * view.scaleX,
+                height = view.height * view.scaleY,
                 rowIndex = row,
                 columnIndex = column,
                 neighborChars = emptyList()
@@ -1614,7 +1763,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 // second key while this gesture can replace the keyboard view is unsafe.
                 val hasActiveKeyboardSwitch = existingPointerIds.any { pointerId ->
                     val view = pointerButtonMap[pointerId] ?: return@any false
-                    qwertyButtonMap[view] == QWERTYKey.QWERTYKeySwitchDefaultLayout
+                    mappedKey(view) == QWERTYKey.QWERTYKeySwitchDefaultLayout
                 }
                 if (hasActiveKeyboardSwitch) {
                     suppressedPointerIds.add(newPointerId)
@@ -1880,7 +2029,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             } else {
                 toggleShift()
             }
-        } else if (view.id == binding.keyDelete.id || view.id == binding.keySpace.id) {
+        } else if (view.id == binding.keyDelete.id || isSpaceKey(view)) {
             /** empty body **/
         } else {
             disableShift()
@@ -2064,6 +2213,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun isInsideQwertyGlideGestureArea(x: Float, y: Float): Boolean {
         val keys = getVisibleQwertyLetterViews()
         if (keys.isEmpty()) return false
+        if (!geometry.isDefault) {
+            val bounds = keys.map { key ->
+                val rect = RectF(0f, 0f, key.width.toFloat(), key.height.toFloat())
+                key.matrix.mapRect(rect)
+                rect.offset(key.left.toFloat(), key.top.toFloat())
+                rect
+            }
+            val horizontalPadding = keySideMarginDp * resources.displayMetrics.density * 3f
+            val verticalPadding = keyVerticalMarginDp * resources.displayMetrics.density * 3f
+            return x in (bounds.minOf { it.left } - horizontalPadding)..(bounds.maxOf { it.right } + horizontalPadding) &&
+                y in (bounds.minOf { it.top } - verticalPadding)..(bounds.maxOf { it.bottom } + verticalPadding)
+        }
         val left = keys.minOf { it.left }.toFloat() - keySideMarginDp * resources.displayMetrics.density * 3f
         val right = keys.maxOf { it.right }.toFloat() + keySideMarginDp * resources.displayMetrics.density * 3f
         val top = keys.minOf { it.top }.toFloat() - keyVerticalMarginDp * resources.displayMetrics.density * 3f
@@ -2220,7 +2381,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         val view = findButtonUnder(x.toInt(), y.toInt())
         view?.let {
-            val qwertyKey = qwertyButtonMap[it]
+            val qwertyKey = mappedKey(it)
             qwertyKey?.let { key ->
                 qwertyKeyListener?.onPressedQWERTYKey(key)
             }
@@ -2238,7 +2399,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            if (it.id != binding.keySpace.id &&
+            if (!isSpaceKey(it) &&
                 it.id != binding.keyDelete.id &&
                 it.id != binding.keyShift.id &&
                 it.id != binding.key123.id &&
@@ -2361,7 +2522,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             return
         }
 
-        val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+        val qwertyKey = mappedKey(view) ?: QWERTYKey.QWERTYKeyNotSelect
         when (qwertyKey) {
             QWERTYKey.QWERTYKeyCursorLeft,
             QWERTYKey.QWERTYKeyCursorRight,
@@ -2422,7 +2583,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun handleUpFlick(previousView: View) {
-        val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        val qwertyKey = mappedKey(previousView) ?: QWERTYKey.QWERTYKeyNotSelect
         getNumberKeyFlickUpChar(qwertyKey)?.let { charToInsert ->
             qwertyKeyListener?.onFlickUPQWERTYKey(
                 qwertyKey = qwertyKey,
@@ -2443,7 +2604,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun handleDownFlick(previousView: View) {
         if (previousView !is QWERTYButton) return
-        val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        val qwertyKey = mappedKey(previousView) ?: QWERTYKey.QWERTYKeyNotSelect
         getNumberKeyFlickDownChar(qwertyKey)?.let { charToInsert ->
             qwertyKeyListener?.onFlickDownQWERTYKey(qwertyKey = qwertyKey, character = charToInsert)
             return
@@ -2490,7 +2651,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         if (independentMultiTouchForCurrentGesture) {
             val start = pointerStartCoords[pointerId] ?: return
-            if (detectFlickDirection(x, y, start.first, start.second, flickThreshold) != FlickDirection.NONE) {
+            val (dx, dy) = KeyboardGeometryMath.localDelta(x - start.first, y - start.second, previousView?.rotation ?: 0f)
+            if (detectFlickDirection(dx, dy, 0f, 0f, flickThreshold) != FlickDirection.NONE) {
                 cancelLongPressForPointer(pointerId)
             }
             return
@@ -2512,7 +2674,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 pointerButtonMap.put(pointerId, it)
                 pointerStartCoords.put(pointerId, Pair(x, y))
 
-                if (it.id != binding.keySpace.id &&
+                if (!isSpaceKey(it) &&
                     it.id != binding.keyDelete.id &&
                     it.id != binding.keyShift.id &&
                     it.id != binding.key123.id &&
@@ -2539,7 +2701,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         val (startX, startY) = pointerStartCoords[pointerId] ?: return false
         val previousView = pointerButtonMap[pointerId]
-        return when (detectFlickDirection(x, y, startX, startY, flickThreshold)) {
+        val (dx, dy) = KeyboardGeometryMath.localDelta(x - startX, y - startY, previousView?.rotation ?: 0f)
+        return when (detectFlickDirection(dx, dy, 0f, 0f, flickThreshold)) {
             FlickDirection.UP -> {
                 when {
                     enableDeleteUpFlick &&
@@ -2550,7 +2713,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         true
                     }
 
-                    previousView?.id == binding.keySpace.id &&
+                    previousView?.let(::isSpaceKey) == true &&
                         (romajiModeState.value || englishSpaceUpFlickEnabled) -> {
                         applyCommonFlickEffects(pointerId, previousView)
                         if (if (romajiModeState.value) spaceUpFlickEnabled else englishSpaceUpFlickEnabled) {
@@ -2635,7 +2798,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     ) {
         for (i in 0 until pointerButtonMap.size()) {
             val view = pointerButtonMap.valueAt(i) ?: continue
-            val key = qwertyButtonMap[view] ?: continue
+            val key = mappedKey(view) ?: continue
             qwertyKeyTouchCancelListener?.onQwertyKeyTouchCanceled(key, reason)
         }
     }
@@ -2645,7 +2808,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         reason: KeyTouchCancelReason
     ) {
         val view = pointerButtonMap[pointerId] ?: return
-        val key = qwertyButtonMap[view] ?: return
+        val key = mappedKey(view) ?: return
         qwertyKeyTouchCancelListener?.onQwertyKeyTouchCanceled(key, reason)
     }
 
@@ -2794,6 +2957,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun findButtonUnder(x: Int, y: Int): View? {
+        if (!geometry.isDefault) {
+            if (effectiveSplitGap > 0f && x >= (width - effectiveSplitGap) / 2f && x < (width + effectiveSplitGap) / 2f) return null
+            val views = mappedViews().filter { it.isVisible && it.width > 0 && it.height > 0 }
+            views.firstOrNull { KeyboardViewGeometry.containsParentPoint(it, x.toFloat(), y.toFloat()) }?.let { return it }
+            return views.minByOrNull { view ->
+                val (cx, cy) = KeyboardViewGeometry.centerInParent(view)
+                (x - cx) * (x - cx) + (y - cy) * (y - cy)
+            }
+        }
         var nearestView: View? = null
         var minDistSquared = Int.MAX_VALUE
         for (i in 0 until childCount) {
@@ -2845,6 +3017,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     ): QwertyGlideKeyClassifier.KeyHit {
         val letterViews = getVisibleQwertyLetterViews()
         val letterViewSet = letterViews.toSet()
+        if (!geometry.isDefault) {
+            if (letterViews.any { KeyboardViewGeometry.containsParentPoint(it, x, y) }) return QwertyGlideKeyClassifier.KeyHit.LETTER
+            if (mappedViews().any { it.isVisible && it !in letterViewSet && KeyboardViewGeometry.containsParentPoint(it, x, y) }) return QwertyGlideKeyClassifier.KeyHit.NON_GLIDE_KEY
+            return QwertyGlideKeyClassifier.KeyHit.NONE
+        }
         val letterRects = letterViews.map { it.toQwertyGlideKeyRect() }
         val nonLetterRects = qwertyButtonMap.keys
             .filter { it.isVisible && it !in letterViewSet }
@@ -2873,6 +3050,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * 返す。
      */
     private fun findExactQwertyGlideLetterViewUnder(x: Float, y: Float): QWERTYButton? {
+        if (!geometry.isDefault) return getVisibleQwertyLetterViews().firstOrNull { KeyboardViewGeometry.containsParentPoint(it, x, y) }
         val xi = x.toInt()
         val yi = y.toInt()
         return getVisibleQwertyLetterViews().firstOrNull { key ->
@@ -2883,6 +3061,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
+        splitSpaceView?.takeIf { it.isVisible }?.let(::syncSplitSpace)
         super.dispatchDraw(canvas)
         if (glideTrailPoints.size < 2) return
         glideTrailPath.reset()
@@ -2973,7 +3152,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             delay(longPressTimeout)
             val currentView = pointerButtonMap[pointerId]
             if (currentView == view) {
-                val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+                val qwertyKey = mappedKey(view) ?: QWERTYKey.QWERTYKeyNotSelect
                 val info = getVariationInfo(qwertyKey)
                 val hasVariations = info != null && !info.variations.isNullOrEmpty()
                 val isSpecialLongPressKey = qwertyKey in longPressEnabledKeys
@@ -3111,7 +3290,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         isCursorMode = enabled
         if (enabled) {
             cursorPointerId = (0 until pointerButtonMap.size()).map { pointerButtonMap.keyAt(it) }
-                .firstOrNull { pointerButtonMap[it]?.id == binding.keySpace.id }
+                .firstOrNull { pointerButtonMap[it]?.let(::isSpaceKey) == true }
             cursorPointerId?.let { pointerStartCoords[it] }?.let { position ->
                 cursorInitialX = position.first
                 cursorInitialY = position.second
