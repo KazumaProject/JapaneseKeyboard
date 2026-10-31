@@ -18,6 +18,33 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class CandidateCharacterIndicatorPreferenceTest {
+    @Test fun characterLabelsDefaultOnAndBothScreensUseTheSameIndependentSwitch() {
+        val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        prefs.edit().clear().commit()
+        AppPreference.init(context)
+        assertTrue(AppPreference.candidate_character_type_labels_preference)
+        assertTrue(ImePreferencesSnapshot.from(AppPreference).showCharacterTypeLabels)
+        for (xml in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
+            val manager = PreferenceManager(context)
+            val screen = manager.inflateFromResource(context, xml, null)
+            manager.setPreferences(screen)
+            val toggle = requireNotNull(screen.findPreference<SwitchPreferenceCompat>(AppPreference.CANDIDATE_CHARACTER_TYPE_LABELS_KEY))
+            assertNull(toggle.dependency)
+            screen.onAttached()
+            assertTrue(toggle.isChecked)
+            toggle.isChecked = false
+            assertFalse(AppPreference.candidate_character_type_labels_preference)
+            assertFalse(ImePreferencesSnapshot.from(AppPreference).showCharacterTypeLabels)
+            assertFalse(AppPreference.candidate_character_type_indicators_preference)
+            toggle.isChecked = true
+            screen.onDetached()
+        }
+        for (scope in listOf(SettingSearchScope.NEW_HOME, SettingSearchScope.LEGACY_TABS)) {
+            assertTrue(SettingSearchIndex.searchable(context, scope).any { it.key == AppPreference.CANDIDATE_CHARACTER_TYPE_LABELS_KEY })
+        }
+    }
+
     @Test fun bothScreensPersistTheSameIndependentDefaultOffSwitchAndExposeItInSearch() {
         val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)

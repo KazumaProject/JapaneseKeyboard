@@ -162,4 +162,5 @@ internal fun getLocationRelativeToOverlayHost(
     overlayHost.getLocationOnScreen(hostLocationScratch)
     outLocation[0] = keyLocationScratch[0] - hostLocationScratch[0]
     outLocation[1] = keyLocationScratch[1] - hostLocationScratch[1]
+    adjustPopupAnchorForTransform(keyAnchor, outLocation)
 }
