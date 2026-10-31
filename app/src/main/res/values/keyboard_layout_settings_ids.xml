@@ -1,0 +1,20 @@
+<resources>
+    <item name="keyboard_geometry_candidate_width" type="id" />
+    <item name="keyboard_geometry_segment_editor" type="id" />
+    <item name="keyboard_geometry_candidate_order" type="id" />
+    <item name="keyboard_geometry_candidate_direction" type="id" />
+    <item name="keyboard_geometry_candidate_long_display" type="id" />
+    <item name="keyboard_geometry_candidate_spacing" type="id" />
+    <item name="keyboard_geometry_candidate_placement" type="id" />
+    <item name="keyboard_layout_preview" type="id" />
+    <item name="keyboard_layout_handles" type="id" />
+    <item name="keyboard_layout_type_selector" type="id" />
+    <item name="keyboard_layout_orientation_selector" type="id" />
+    <item name="keyboard_layout_tab_selector" type="id" />
+    <item name="keyboard_layout_custom_selector" type="id" />
+    <item name="keyboard_layout_size_input" type="id" />
+    <item name="keyboard_layout_edit_size" type="id" />
+    <item name="keyboard_layout_edit_position" type="id" />
+    <item name="keyboard_layout_edit_done" type="id" />
+    <item name="keyboard_layout_more" type="id" />
+</resources>
