@@ -66,7 +66,8 @@ class FlickKeyboardSizeSettingsFragment : Fragment(R.layout.fragment_flick_keybo
                 keyboard.setFlickGuideTextSizeSp(values.guide)
                 keyboard.setFlickGuideMaxCodePoints(AppPreference.flick_guide_max_characters_preference ?: 1)
                 keyboard.setKeyboard(if (isSumire) KeyboardDefaultLayouts.createFinalLayout(mode,
-                    emptyMap(), AppPreference.sumire_input_method, AppPreference.sumire_keyboard_style)
+                    emptyMap(), AppPreference.sumire_input_method, AppPreference.sumire_keyboard_style,
+                    highlightSelectedMode = AppPreference.sumire_mode_key_highlight_preference)
                     else KeyboardDefaultLayouts.defaultLayout())
             },
             reset = { mode ->
