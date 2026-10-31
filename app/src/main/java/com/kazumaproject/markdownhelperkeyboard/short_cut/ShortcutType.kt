@@ -140,7 +140,7 @@ enum class ShortcutType(
     ),
     CLIP_BOARD(
         "clip_board",
-        com.kazumaproject.core.R.drawable.clip_board,
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.shortcut_clip_board,
         description = "クリップボード"
     )
     ;
