@@ -33,6 +33,10 @@ import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import com.kazumaproject.core.ui.geometry.KeyboardGeometry
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryGroup
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryItem
+import com.kazumaproject.core.ui.geometry.KeyboardViewGeometry
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
@@ -225,6 +229,52 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val canonicalGuideLabels =
         IdentityHashMap<AutoSizeButton, AutoSizeButton.FlickGuideLabels>()
     private var currentLayout: KeyboardLayout? = null
+
+    // Used only for the built-in Sumire layout. User-defined layouts keep the legacy path.
+    private var geometry = KeyboardGeometry()
+    private var geometryBaseHeight = 0
+    private var geometryHeightListener: ((Int) -> Unit)? = null
+    private var lastRequiredGeometryHeight = 0
+
+    fun setSumireGeometry(value: KeyboardGeometry, baseHeightPx: Int = 0, onRequiredHeight: ((Int) -> Unit)? = null) {
+        val next = value.copy(splitPercent = 0).normalized()
+        if ((geometry.isDefault && next.isDefault) || (geometry == next && geometryBaseHeight == baseHeightPx)) {
+            geometry = next
+            geometryBaseHeight = baseHeightPx
+            geometryHeightListener = onRequiredHeight
+            return
+        }
+        cancelTrackedTouchState()
+        if (next.isDefault && !geometry.isDefault) {
+            KeyboardViewGeometry.reset(keyInfos.map { KeyboardGeometryItem(it.view, KeyboardGeometryGroup.SINGLE) })
+        }
+        geometry = next
+        geometryBaseHeight = baseHeightPx
+        geometryHeightListener = onRequiredHeight
+        lastRequiredGeometryHeight = 0
+        requestLayout()
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val requested = MeasureSpec.getSize(heightMeasureSpec)
+        if (!geometry.isDefault && geometryBaseHeight > 0 && requested > geometryBaseHeight) {
+            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(geometryBaseHeight, MeasureSpec.EXACTLY))
+            setMeasuredDimension(measuredWidth, requested)
+        } else super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        val base = if (!geometry.isDefault && geometryBaseHeight > 0 && height > geometryBaseHeight) geometryBaseHeight else height
+        super.onLayout(changed, left, top, right, top + base)
+        if (geometry.isDefault) return
+        val items = keyInfos.map { KeyboardGeometryItem(it.view, KeyboardGeometryGroup.SINGLE) }
+        val result = KeyboardViewGeometry.apply(this, items, geometry, qwerty = false, baselineHeight = base.toFloat())
+        val required = kotlin.math.ceil(result.requiredHeightPx.toDouble()).toInt().coerceAtLeast(base)
+        if (required != lastRequiredGeometryHeight) {
+            lastRequiredGeometryHeight = required
+            post { geometryHeightListener?.invoke(required) }
+        }
+    }
     private var keyHitTestMode = KeyHitTestMode.KEY_BOUNDS
     val activeKeyHitTestMode: KeyHitTestMode
         get() = keyHitTestMode
@@ -2972,7 +3022,14 @@ class FlickKeyboardView @JvmOverloads constructor(
         val localOffsetX: Float = 0f,
         val localOffsetY: Float = 0f,
         val displayScaleX: Float = 1f,
-        val displayScaleY: Float = 1f
+        val displayScaleY: Float = 1f,
+        val inverseKeyMatrix: Matrix? = null,
+        val ownerOriginX: Float = 0f,
+        val ownerOriginY: Float = 0f,
+        val ownerScaleX: Float = 1f,
+        val ownerScaleY: Float = 1f,
+        val keyLeft: Int = 0,
+        val keyTop: Int = 0,
     )
 
     private val motionTargets = mutableMapOf<Int, MotionTarget>()
@@ -3063,6 +3120,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun findTargetView(displayX: Float, displayY: Float): MotionTarget? {
+        if (!geometry.isDefault) return findGeometryTarget(displayX, displayY)
         when (keyHitTestMode) {
             KeyHitTestMode.NEAREST_KEY -> return findNearestKeyTarget(displayX, displayY)
             KeyHitTestMode.NEAREST_KEY_IN_KEY_CELLS ->
@@ -3092,6 +3150,33 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         return null
+    }
+
+    private fun findGeometryTarget(displayX: Float, displayY: Float): MotionTarget? {
+        if (!displayX.isFinite() || !displayY.isFinite() || visibility != View.VISIBLE || !isEnabled) return null
+        val location = IntArray(2).also(::getLocationOnScreen)
+        val (sx, sy) = displayScale()
+        if (sx <= 0f || sy <= 0f) return null
+        val x = (displayX - location[0]) / sx
+        val y = (displayY - location[1]) / sy
+        if (x < 0f || x >= width || y < 0f || y >= height) return null
+        val views = keyInfos.map { it.view }.filter { it.visibility == View.VISIBLE && it.isEnabled && it.width > 0 && it.height > 0 }
+        val hit = views.firstOrNull { KeyboardViewGeometry.containsParentPoint(it, x, y) }
+        val selected = hit ?: if (keyHitTestMode == KeyHitTestMode.NEAREST_KEY) views.minByOrNull { key ->
+            val (cx, cy) = KeyboardViewGeometry.centerInParent(key)
+            (x - cx) * (x - cx) + (y - cy) * (y - cy)
+        } else null
+        selected ?: return null
+        val inverse = Matrix()
+        if (!selected.matrix.invert(inverse)) return null
+        val local = KeyboardViewGeometry.parentToLocal(selected, x, y) ?: return null
+        return MotionTarget(
+            view = selected, displayOriginX = 0f, displayOriginY = 0f,
+            localOffsetX = if (hit == null) local.first.coerceIn(0f, selected.width - 1f) - local.first else 0f,
+            localOffsetY = if (hit == null) local.second.coerceIn(0f, selected.height - 1f) - local.second else 0f,
+            inverseKeyMatrix = inverse, ownerOriginX = location[0].toFloat(), ownerOriginY = location[1].toFloat(),
+            ownerScaleX = sx, ownerScaleY = sy, keyLeft = selected.left, keyTop = selected.top,
+        )
     }
 
     /**
@@ -3200,10 +3285,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         )
         // A fixed local translation admits a margin-origin touch without changing raw screen
         // coordinates or movement deltas. Re-clamping MOVE would distort/cancel flick gestures.
-        childEvent.offsetLocation(
-            (displayX - target.displayOriginX) / target.displayScaleX + target.localOffsetX - displayX,
-            (displayY - target.displayOriginY) / target.displayScaleY + target.localOffsetY - displayY
-        )
+        val inverse = target.inverseKeyMatrix
+        if (inverse != null) {
+            val point = floatArrayOf(
+                (displayX - target.ownerOriginX) / target.ownerScaleX - target.keyLeft,
+                (displayY - target.ownerOriginY) / target.ownerScaleY - target.keyTop,
+            )
+            inverse.mapPoints(point)
+            childEvent.offsetLocation(point[0] + target.localOffsetX - displayX, point[1] + target.localOffsetY - displayY)
+        } else {
+            childEvent.offsetLocation(
+                (displayX - target.displayOriginX) / target.displayScaleX + target.localOffsetX - displayX,
+                (displayY - target.displayOriginY) / target.displayScaleY + target.localOffsetY - displayY
+            )
+        }
         target.view.dispatchTouchEvent(childEvent)
         childEvent.recycle()
     }

@@ -1,14 +1,18 @@
 <resources>
     <string name="candidate_character_indicators_title">Distinguish candidate character forms</string>
-    <string name="candidate_character_indicators_summary">Underline katakana, full-width and half-width characters without adding labels. Hiragana stays undecorated. Works independently of live conversion.</string>
+    <string name="candidate_character_indicators_summary">Underline katakana, full-width, half-width and half-width katakana characters independently of the character labels. Hiragana stays undecorated.</string>
+    <string name="candidate_character_type_labels_title">Show candidate character labels</string>
+    <string name="candidate_character_type_labels_summary">Label katakana, full-width, half-width and half-width katakana conversion candidates independently of underlines.</string>
     <string name="candidate_character_hiragana">Hira</string>
     <string name="candidate_character_katakana">Kana</string>
     <string name="candidate_character_full_width">Full</string>
     <string name="candidate_character_half_width">Half</string>
     <string name="candidate_character_half_katakana">Half kana</string>
     <string name="candidate_label_partial">[Part]</string>
-    <string name="candidate_label_half_width">[Half]</string>
-    <string name="candidate_label_full_width">[Full]</string>
+    <string name="candidate_label_katakana">[カナ]</string>
+    <string name="candidate_label_half_katakana">[半カナ]</string>
+    <string name="candidate_label_half_width">[半]</string>
+    <string name="candidate_label_full_width">[全]</string>
     <string name="candidate_label_date">[Date]</string>
     <string name="candidate_label_reading">[Read]</string>
     <string name="candidate_label_user">[User]</string>
