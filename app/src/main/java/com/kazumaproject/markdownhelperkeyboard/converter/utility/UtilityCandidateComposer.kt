@@ -4,6 +4,7 @@ import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_TEX
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_UNICODE
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UTILITY_LITERAL
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -123,7 +124,8 @@ object UtilityCandidateComposer {
     private fun Candidate.isFullWidthCandidate(): Boolean =
         type == 22.toByte() ||
             type == 30.toByte() ||
-            (type == 21.toByte() && string.isAllFullWidthNumericSymbol())
+            ((type == 21.toByte() || type == CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL) &&
+                string.isAllFullWidthNumericSymbol())
 
     private fun distinctFormulaCandidates(candidates: List<Candidate>): List<Candidate> {
         val emittedTexts = mutableSetOf<String>()

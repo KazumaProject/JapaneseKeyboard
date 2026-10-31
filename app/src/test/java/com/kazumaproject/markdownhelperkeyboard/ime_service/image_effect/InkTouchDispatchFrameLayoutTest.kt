@@ -66,6 +66,30 @@ class InkTouchDispatchFrameLayoutTest {
         assertTrue(child.received)
     }
 
+    @Test
+    fun excludedOverlayUsesCurrentRootCoordinatesForTheWholeGesture() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val root = InkTouchDispatchFrameLayout(context)
+        val keyboard = RecordingChildView(context)
+        val candidate = RecordingChildView(context)
+        val actions = mutableListOf<Int>()
+        root.addView(keyboard, FrameLayout.LayoutParams(100, 100))
+        root.addView(candidate, FrameLayout.LayoutParams(20, 20).apply { leftMargin = 40; topMargin = 40 })
+        root.measure(View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY))
+        root.layout(0, 0, 100, 100)
+        root.fallbackTouchTargetProvider = { keyboard }
+        root.fallbackTouchExclusion = { x, y -> x in 40f..60f && y in 40f..60f }
+        candidate.onEvent = { actions += it.actionMasked }
+        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+            val event = MotionEvent.obtain(0L, 1L, action, 50f, 50f, 0)
+            // Raw coordinates stay at (50, 50), while local coordinates belong to a stale layout.
+            event.offsetLocation(100f, 100f)
+            try { assertTrue(root.dispatchTouchEvent(event)) } finally { event.recycle() }
+        }
+        assertEquals(listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP), actions)
+        assertTrue(!keyboard.received)
+    }
+
     private fun event(): MotionEvent {
         return MotionEvent.obtain(
             0L,
@@ -88,10 +112,12 @@ class InkTouchDispatchFrameLayoutTest {
     private class RecordingChildView(context: Context) : View(context) {
         var received = false
         var onDispatch: (() -> Unit)? = null
+        var onEvent: ((MotionEvent) -> Unit)? = null
 
         override fun dispatchTouchEvent(event: MotionEvent): Boolean {
             received = true
             onDispatch?.invoke()
+            onEvent?.invoke(event)
             return true
         }
     }
