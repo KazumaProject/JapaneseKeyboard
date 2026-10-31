@@ -32,6 +32,7 @@ class FloatingCandidateListAdapter(
     private var candidateTextSizeSp: Float = 14f
     private var candidateTextColor: Int? = null
     private var showCharacterIndicators = false
+    private var showCharacterTypeLabels = true
     private var characterStyles = CandidateIndicatorStyles()
 
     fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
@@ -44,6 +45,12 @@ class FloatingCandidateListAdapter(
     fun setShowCharacterIndicators(enabled: Boolean) {
         if (showCharacterIndicators == enabled) return
         showCharacterIndicators = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setShowCharacterTypeLabels(enabled: Boolean) {
+        if (showCharacterTypeLabels == enabled) return
+        showCharacterTypeLabels = enabled
         notifyItemRangeChanged(0, itemCount)
     }
 
@@ -132,7 +139,7 @@ class FloatingCandidateListAdapter(
             if (candidateTextColor != null) textView.setTextColor(requireNotNull(candidateTextColor))
             else textView.setTextColor(defaultTextColors)
             (textView as CandidateCharacterTextView).setCharacterIndicators(item.word, showCharacterIndicators, selected = selected, styles = characterStyles)
-            val label = if (showCharacterIndicators) item.characterLabel else item.label
+            val label = if (showCharacterTypeLabels) item.characterLabel else item.label
             labelView.text = label
             labelView.visibility = if (label.isEmpty()) View.GONE else View.VISIBLE
             labelView.setTextColor(textView.currentTextColor)
@@ -166,11 +173,12 @@ class FloatingCandidateListAdapter(
             val textColor = candidateTextColor
                 ?: ContextCompat.getColor(itemView.context, com.kazumaproject.core.R.color.keyboard_icon_color)
             formulaView.setFormulaTextColor(textColor)
+            val labelContext = japaneseCandidateLabelContext(itemView.context)
             badgeView.text = when (item.candidateType) {
-                CANDIDATE_TYPE_FORMULA_TEX -> itemView.context.getString(R.string.candidate_badge_formula_tex)
-                CANDIDATE_TYPE_FORMULA_UNICODE -> itemView.context.getString(R.string.candidate_badge_formula_unicode)
-                CANDIDATE_TYPE_CALCULATION -> itemView.context.getString(R.string.candidate_badge_calculation)
-                CANDIDATE_TYPE_UNIT_CONVERSION -> itemView.context.getString(R.string.candidate_badge_unit_conversion)
+                CANDIDATE_TYPE_FORMULA_TEX -> labelContext.getString(R.string.candidate_badge_formula_tex)
+                CANDIDATE_TYPE_FORMULA_UNICODE -> labelContext.getString(R.string.candidate_badge_formula_unicode)
+                CANDIDATE_TYPE_CALCULATION -> labelContext.getString(R.string.candidate_badge_calculation)
+                CANDIDATE_TYPE_UNIT_CONVERSION -> labelContext.getString(R.string.candidate_badge_unit_conversion)
                 else -> ""
             }
             badgeView.setTextColor(textColor)

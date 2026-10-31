@@ -232,6 +232,8 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.Clipb
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FULL_WIDTH_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_SYMBOL
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_TEX
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FORMULA_UNICODE
@@ -1062,12 +1064,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 runOnMainThread {
                     val styles = appPreference.candidateIndicatorStyles
                     val enabled = appPreference.candidate_character_type_indicators_preference
+                    val showLabels = appPreference.candidate_character_type_labels_preference
                     listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach {
                         it.setShowCharacterIndicators(enabled)
+                        it.setShowCharacterTypeLabels(showLabels)
                         it.setCharacterIndicatorStyles(styles)
                     }
                     if (this::listAdapter.isInitialized) {
                         listAdapter.setShowCharacterIndicators(enabled)
+                        listAdapter.setShowCharacterTypeLabels(showLabels)
                         listAdapter.setCharacterIndicatorStyles(styles)
                     }
                 }
@@ -3365,6 +3370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             pageSize = PAGE_SIZE,
         ).apply {
             setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference)
+            setShowCharacterTypeLabels(appPreference.candidate_character_type_labels_preference)
             setCharacterIndicatorStyles(appPreference.candidateIndicatorStyles)
         }
         listAdapter.onSuggestionClicked = suggestionClick@ { suggestion: CandidateItem ->
@@ -4357,11 +4363,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ngramRuleScorerManager.setEnabled(preferences.customNgramDictionaryEnabled)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setShowCharacterIndicators(preferences.showCharacterIndicators)
+            adapter.setShowCharacterTypeLabels(preferences.showCharacterTypeLabels)
             adapter.setCharacterIndicatorStyles(preferences.appearance.candidateIndicatorStyles)
             adapter.setShowDictionaryCandidateLabels(preferences.showDictionaryCandidateLabels)
         }
         if (this::listAdapter.isInitialized) {
             listAdapter.setShowCharacterIndicators(preferences.showCharacterIndicators)
+            listAdapter.setShowCharacterTypeLabels(preferences.showCharacterTypeLabels)
             listAdapter.setCharacterIndicatorStyles(preferences.appearance.candidateIndicatorStyles)
         }
         suppressHentaiganaCandidates = preferences.suppressHentaiganaCandidates
@@ -20209,11 +20217,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         formulaFallbackText = commitText,
         label = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.candidateLabelPresentation(
             this@IMEService, this, appPreference.show_dictionary_candidate_labels_preference,
-            false, displayWord
+            false
         ).toString(),
         characterLabel = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.candidateLabelPresentation(
             this@IMEService, this, appPreference.show_dictionary_candidate_labels_preference,
-            true, displayWord
+            true
         ).toString(),
     )
 
@@ -22509,10 +22517,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val templateCandidates = getLegacyUserTemplateCandidates(input)
         val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
-        val candidates = (templateCandidates + result.candidates + romajiCandidates).filter {
+        val filteredCandidates = (templateCandidates + result.candidates + romajiCandidates).filter {
             it.length.toInt() == input.length &&
                 !NgWordMatcher.matchesAny(input, it.string, ngWords)
-        }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        }.withoutHentaiganaCandidatesIfNeeded()
+        val candidates = CandidateDisplayMerger.merge(
+            filteredCandidates, mergeDictionaryCategories = false, separateMacroActions = false
+        )
         val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
             candidateOrderOverrideRepository.applyOrderFromSnapshot(
                 input = input,
@@ -27253,6 +27264,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             11,
             12,
             13,
+            CANDIDATE_TYPE_FULL_WIDTH_SYMBOL.toInt(),
+            CANDIDATE_TYPE_HALF_WIDTH_SYMBOL.toInt(),
             14,
             28,
             30,
@@ -28922,7 +28935,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 learnRepository = null,
             ).candidates
         }
-        return engineCandidates.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+        return CandidateDisplayMerger.merge(
+            engineCandidates.withoutHentaiganaCandidatesIfNeeded(),
+            mergeDictionaryCategories = false,
+            separateMacroActions = false,
+        )
     }
 
     private suspend fun queryKanaKanjiCore(
