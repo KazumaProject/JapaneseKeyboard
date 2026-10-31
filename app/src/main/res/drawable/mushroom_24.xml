@@ -1,5 +1,6 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#000000"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="@color/keyboard_icon_color">
+    <path android:fillColor="@color/keyboard_icon_color"
         android:pathData="M12,2C6.48,2 2,6.48 2,12v2h7v4a3,3 0,0 0,6 0v-4h7v-2C22,6.48 17.52,2 12,2zM12,4c4.42,0 8,3.58 8,8H4c0,-4.42 3.58,-8 8,-8zM11,14h2v4a1,1 0,0 1,-2 0z" />
 </vector>
