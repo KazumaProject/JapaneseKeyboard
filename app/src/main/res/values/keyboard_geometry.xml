@@ -29,6 +29,7 @@
     <string name="keyboard_geometry_candidate_wrap">Show the rest in the next column</string>
     <string name="keyboard_geometry_candidate_spacing">Vertical candidate spacing: %1$d dp</string>
     <string name="keyboard_geometry_candidate_spacing_hint">Adjusts spacing between candidates and between wrapped columns.</string>
+    <string name="keyboard_geometry_center_candidate_spacing">Center candidate row spacing: %1$d dp</string>
     <string name="keyboard_geometry_candidate_direction">Vertical candidate order</string>
     <string name="keyboard_geometry_candidate_left_to_right">Left to right</string>
     <string name="keyboard_geometry_candidate_right_to_left">Right to left</string>

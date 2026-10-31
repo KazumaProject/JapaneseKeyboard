@@ -105,6 +105,7 @@ class KeyboardGeometryPreferencesTest {
             KeyboardGeometry(splitPercent = 20, curveDegrees = 15, hand = KeyboardCurveHand.LEFT, autoHeight = false,
                 curveDirection = KeyboardCurveDirection.UP),
             GeometryCandidatePlacement.CENTER,
+            centerCandidateSpacingDp = 18,
         )
         store.save(GeometryKeyboard.QWERTY, true, configured)
         assertEquals(configured, store.read(GeometryKeyboard.QWERTY, true))
@@ -112,6 +113,8 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.SUMIRE, true))
         store.reset(GeometryKeyboard.QWERTY, true)
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.QWERTY, true))
+        prefs.edit().putInt("keyboard_geometry_qwerty_landscape_center_candidate_spacing_dp", 999).commit()
+        assertEquals(SideCandidateSizing.MAX_SPACING_DP, store.read(GeometryKeyboard.QWERTY, true).centerCandidateSpacingDp)
     }
 
     @Test fun absentOrInvalidCurveDirectionKeepsTheExistingDirection() {
@@ -174,13 +177,17 @@ class KeyboardGeometryPreferencesTest {
         assertEquals((20 * density).roundToInt(), offsets.bottom)
         assertEquals(0, offsets.right)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = true)
-        assertSame(flow, recycler.layoutManager)
+        assertTrue(recycler.layoutManager is SideCandidateFlowLayoutManager)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = false)
         assertTrue(recycler.parent is android.widget.HorizontalScrollView)
         assertFalse(recycler.layoutManager is SideCandidateFlowLayoutManager)
         assertEquals(originalDecorations, recycler.itemDecorationCount)
-        host.show(Rect(0, 0, (80 * density).toInt(), 260), allowHorizontalScroll = false)
-        assertFalse(recycler.parent is android.widget.HorizontalScrollView)
+        host.show(Rect(0, 0, (80 * density).toInt(), 260), horizontalSpacingDp = 20)
+        assertTrue(recycler.parent is android.widget.HorizontalScrollView)
+        assertEquals(originalDecorations + 1, recycler.itemDecorationCount)
+        val centerOffsets = Rect()
+        recycler.getItemDecorationAt(originalDecorations).getItemOffsets(centerOffsets, View(context), recycler, RecyclerView.State())
+        assertEquals((20 * density).roundToInt(), centerOffsets.bottom)
         host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true)
         assertEquals(View.LAYOUT_DIRECTION_RTL, (recycler.layoutManager as SideCandidateFlowLayoutManager).layoutDirection)
         assertTrue(host.detach())

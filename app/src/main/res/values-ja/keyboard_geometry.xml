@@ -29,6 +29,7 @@
     <string name="keyboard_geometry_candidate_wrap">省略せず、次の列に続ける</string>
     <string name="keyboard_geometry_candidate_spacing">縦書き候補の行間: %1$d dp</string>
     <string name="keyboard_geometry_candidate_spacing_hint">候補の間と、折り返した列の間隔を変更します。</string>
+    <string name="keyboard_geometry_center_candidate_spacing">中央の候補の行間: %1$d dp</string>
     <string name="keyboard_geometry_candidate_direction">縦並びの候補の順序</string>
     <string name="keyboard_geometry_candidate_left_to_right">左から右</string>
     <string name="keyboard_geometry_candidate_right_to_left">右から左</string>

@@ -439,11 +439,19 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
             GeometryCandidatePlacement.TOP -> 1; GeometryCandidatePlacement.CENTER -> 2; GeometryCandidatePlacement.LEFT -> 3; GeometryCandidatePlacement.RIGHT -> 4
         }, viewId = R.id.keyboard_geometry_candidate_placement) {
             val oldSide = geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)
+            val oldCenter = geometry.candidates == GeometryCandidatePlacement.CENTER
             val placement = when (it) {
                 2 -> GeometryCandidatePlacement.CENTER; 3 -> GeometryCandidatePlacement.LEFT; 4 -> GeometryCandidatePlacement.RIGHT; else -> GeometryCandidatePlacement.TOP
             }
             saveGeometry(geometry.copy(candidates = placement))
-            if (oldSide != (placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT))) buildBody()
+            if (oldSide != (placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) ||
+                (type == PreviewKeyboard.QWERTY && oldCenter != (placement == GeometryCandidatePlacement.CENTER))) buildBody()
+        }
+        if (type == PreviewKeyboard.QWERTY && geometry.candidates == GeometryCandidatePlacement.CENTER) {
+            slider(R.string.keyboard_geometry_center_candidate_spacing, geometry.centerCandidateSpacingDp,
+                SideCandidateSizing.MAX_SPACING_DP, viewId = R.id.keyboard_geometry_center_candidate_spacing) {
+                saveGeometry(geometry.copy(centerCandidateSpacingDp = it))
+            }
         }
         if (type != PreviewKeyboard.QWERTY && geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
             slider(R.string.keyboard_geometry_candidate_width, geometry.sideCandidateWidthPercent,

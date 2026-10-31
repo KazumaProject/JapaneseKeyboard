@@ -3,6 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Matrix
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.drawable.ColorDrawable
 import android.content.Context
 import android.util.TypedValue
 import android.view.Gravity
@@ -12,11 +15,13 @@ import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.content.ContextCompat
 import com.kazumaproject.android.flexbox.AlignItems
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexWrap
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.R
 import kotlin.math.roundToInt
 
 /** Maps a keyboard-local rectangle through floating-panel scaling into its host. */
@@ -88,10 +93,39 @@ internal class GeometryCandidateHost(
     private var verticalSpacingApplied = false
     private var verticalSpacingPx = 0
     private var verticalSpacingRightToLeft = false
+    private var horizontalSpacingApplied = false
+    private var horizontalSpacingPx = 0
+    private val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val verticalSpacing = object : RecyclerView.ItemDecoration() {
         override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
-            outRect.bottom = verticalSpacingPx
+            // Keep room for the separator even when the selected spacing is zero.
+            outRect.bottom = maxOf(verticalSpacingPx, parent.resources.displayMetrics.density.roundToInt().coerceAtLeast(1))
             if (verticalSpacingRightToLeft) outRect.left = verticalSpacingPx else outRect.right = verticalSpacingPx
+        }
+
+        override fun onDrawOver(canvas: Canvas, parent: RecyclerView, state: RecyclerView.State) {
+            val density = parent.resources.displayMetrics.density
+            val thickness = density.coerceAtLeast(1f)
+            val inset = 8f * density
+            for (i in 0 until parent.childCount) {
+                val child = parent.getChildAt(i)
+                if (child.findViewById<View>(R.id.suggestion_item_text_view) == null &&
+                    child.findViewById<View>(R.id.zero_query_item_text_view) == null) continue
+                val divider = child.findViewById<View>(R.id.candidate_divider)
+                dividerPaint.color = (divider?.background as? ColorDrawable)?.color
+                    ?: ContextCompat.getColor(parent.context, com.kazumaproject.core.R.color.sub_text_color)
+                val left = child.left + inset
+                val right = child.right - inset
+                if (right <= left) continue
+                val gap = maxOf(verticalSpacingPx.toFloat(), thickness)
+                val y = child.bottom + (gap - thickness) / 2f
+                canvas.drawRect(left, y, right, y + thickness, dividerPaint)
+            }
+        }
+    }
+    private val horizontalSpacing = object : RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+            outRect.bottom = horizontalSpacingPx
         }
     }
     val attached: Boolean get() = panel != null
@@ -99,7 +133,7 @@ internal class GeometryCandidateHost(
     fun show(
         bounds: Rect, verticalText: Boolean = false, rightToLeft: Boolean = false, wrapLongText: Boolean = false,
         spacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
-        allowHorizontalScroll: Boolean = true,
+        horizontalSpacingDp: Int = 0,
     ) {
         if (bounds.width() <= 0 || bounds.height() <= 0) { detach(); return }
         if (!attached) {
@@ -119,12 +153,14 @@ internal class GeometryCandidateHost(
             root.addView(container)
             panel = container
         }
-        updateHorizontalScroll(allowHorizontalScroll && !verticalText)
+        updateHorizontalScroll(!verticalText)
         val adapter = recycler.adapter as? SuggestionAdapter
         var columnWidth = 0
         if (verticalText) {
+            updateHorizontalSpacing(0)
             val spacing = (spacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP) * root.resources.displayMetrics.density).roundToInt()
-            if (verticalSpacingPx != spacing || verticalSpacingRightToLeft != rightToLeft) {
+            val spacingChanged = verticalSpacingPx != spacing
+            if (spacingChanged || verticalSpacingRightToLeft != rightToLeft) {
                 verticalSpacingPx = spacing
                 verticalSpacingRightToLeft = rightToLeft
                 if (verticalSpacingApplied) {
@@ -142,16 +178,13 @@ internal class GeometryCandidateHost(
             val textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, adapter?.sideCandidateTextSizeSp() ?: 14f, metrics)
             columnWidth = SideCandidateSizing.columnWidth(bounds.width(), metrics.density, textSize)
             val current = recycler.layoutManager as? SideCandidateFlowLayoutManager
-            if (current == null) {
+            if (current == null || current.rightToLeft != rightToLeft || spacingChanged) {
+                // Flexbox caches its line sizes; a fresh manager also starts at the first
+                // candidate correctly in both left-to-right and right-to-left layouts.
                 recycler.layoutManager = SideCandidateFlowLayoutManager(root.context, rightToLeft)
-            } else {
-                if (current.rightToLeft != rightToLeft) {
-                    current.rightToLeft = rightToLeft
-                    current.scrollToPosition(0)
-                    current.requestLayout()
-                }
             }
         } else {
+            updateHorizontalSpacing(horizontalSpacingDp)
             if (recycler.paddingLeft != 0 || recycler.paddingRight != 0) recycler.setPadding(0, 0, 0, 0)
             if (verticalSpacingApplied) {
                 recycler.removeItemDecoration(verticalSpacing)
@@ -172,6 +205,26 @@ internal class GeometryCandidateHost(
             container.layoutParams = params
         }
         container.visibility = View.VISIBLE
+    }
+
+    private fun updateHorizontalSpacing(spacingDp: Int) {
+        val spacing = (spacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP) *
+            root.resources.displayMetrics.density).roundToInt()
+        if (horizontalSpacingPx != spacing) {
+            horizontalSpacingPx = spacing
+            if (horizontalSpacingApplied) {
+                if (recycler.isComputingLayout) recycler.post {
+                    if (horizontalSpacingApplied) recycler.invalidateItemDecorations()
+                } else recycler.invalidateItemDecorations()
+            }
+        }
+        if (spacing > 0 && !horizontalSpacingApplied) {
+            recycler.addItemDecoration(horizontalSpacing)
+            horizontalSpacingApplied = true
+        } else if (spacing == 0 && horizontalSpacingApplied) {
+            recycler.removeItemDecoration(horizontalSpacing)
+            horizontalSpacingApplied = false
+        }
     }
 
     private fun updateHorizontalScroll(enabled: Boolean) {
@@ -214,6 +267,10 @@ internal class GeometryCandidateHost(
         if (verticalSpacingApplied) {
             recycler.removeItemDecoration(verticalSpacing)
             verticalSpacingApplied = false
+        }
+        if (horizontalSpacingApplied) {
+            recycler.removeItemDecoration(horizontalSpacing)
+            horizontalSpacingApplied = false
         }
         (recycler.parent as? ViewGroup)?.removeView(recycler)
         root.removeView(container)
