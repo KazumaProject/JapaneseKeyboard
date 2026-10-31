@@ -15,6 +15,7 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
 
     private var keyboardTouchEffectMotionEventListener: ((MotionEvent) -> Unit)? = null
     private var fallbackTouchTarget: View? = null
+    private var excludedTouchSequence = false
     private val rootLocationOnScreen = IntArray(2)
     private val targetLocationOnScreen = IntArray(2)
     private var fallbackTargetScreenX = 0
@@ -37,6 +38,9 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
      */
     var fallbackTouchTargetProvider: (() -> View?)? = null
 
+    /** An overlay may own a region within the keyboard target (for example candidates). */
+    var fallbackTouchExclusion: ((Float, Float) -> Boolean)? = null
+
     var touchEffectMotionEventListener: ((MotionEvent) -> Unit)?
         get() = keyboardTouchEffectMotionEventListener
         set(value) {
@@ -57,6 +61,24 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
                 keyboardTouchEffectMotionEventListener?.invoke(ev)
             }.onFailure {
                 Timber.w(it, "Keyboard touch effect forwarding failed.")
+            }
+        }
+
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+            excludedTouchSequence = fallbackTouchExclusion?.invoke(ev.rawX, ev.rawY) == true
+            if (excludedTouchSequence) clearFallbackTarget()
+        }
+        if (excludedTouchSequence) {
+            // The IME window can move between event creation and child dispatch.
+            // Keep the entire candidate gesture in the root's current coordinates.
+            getLocationOnScreen(rootLocationOnScreen)
+            val adjusted = MotionEvent.obtain(ev)
+            adjusted.offsetLocation(ev.rawX - ev.x - rootLocationOnScreen[0], ev.rawY - ev.y - rootLocationOnScreen[1])
+            return try {
+                super.dispatchTouchEvent(adjusted)
+            } finally {
+                adjusted.recycle()
+                if (ev.actionMasked == MotionEvent.ACTION_UP || ev.actionMasked == MotionEvent.ACTION_CANCEL) excludedTouchSequence = false
             }
         }
 
