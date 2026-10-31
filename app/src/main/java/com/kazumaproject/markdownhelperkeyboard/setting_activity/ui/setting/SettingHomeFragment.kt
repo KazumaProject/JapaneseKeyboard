@@ -150,6 +150,7 @@ class SettingHomeFragment : Fragment() {
                     width = 0
                     height = ViewGroup.LayoutParams.WRAP_CONTENT
                     columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    setGravity(Gravity.FILL)
                     setMargins(dp(4), dp(4), dp(4), dp(4))
                 }
             )
