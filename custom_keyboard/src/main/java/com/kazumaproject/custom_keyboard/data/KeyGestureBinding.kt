@@ -49,7 +49,8 @@ fun automaticDoubleTapPolicy(
  */
 fun KeyData.effectiveDoubleTapBinding(normalAction: KeyAction?): DoubleTapBinding? =
     doubleTapBinding
-        ?.takeIf { supportsDoubleTap }
+        // Every tap on a modifier must toggle it, including two rapid taps.
+        ?.takeIf { supportsDoubleTap && normalAction != KeyAction.CtrlLock && normalAction != KeyAction.AltLock }
         ?.let { binding ->
             binding.copy(
                 policy = automaticDoubleTapPolicy(
