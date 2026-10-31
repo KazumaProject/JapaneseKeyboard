@@ -1089,8 +1089,8 @@ class KeyboardRepository @Inject constructor(
             is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_24px
             KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
             KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
-            KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-            KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
             KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
             KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock_outline
             KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
@@ -1113,7 +1113,7 @@ class KeyboardRepository @Inject constructor(
             KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.DeleteAfterCursor -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
-            else -> null
+            else -> KeyActionMapper.iconResIdForAction(action)
         }
     }
 

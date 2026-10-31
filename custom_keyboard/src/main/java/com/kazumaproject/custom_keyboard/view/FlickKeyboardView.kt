@@ -282,6 +282,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var keyboardRenderRevision: Int = 0
     private var renderedKeyboardRenderRevision: Int = -1
     private var keyCharacterCase: KeyCharacterCase = KeyCharacterCase.AS_DEFINED
+    private var ctrlLocked = false
+    private var altLocked = false
     private var sumireSpecialKeyActionResolver:
             ((String, String, KeyData, SumireSpecialKeyDirection) -> ResolvedSumireSpecialKeyAction)? =
         null
@@ -789,6 +791,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 )
             }
         }
+        keyInfos.forEach(::refreshModifierKeyPresentation)
         renderedKeyboardRenderRevision = keyboardRenderRevision
         controllerRebindPending = false
     }
@@ -877,6 +880,79 @@ class FlickKeyboardView @JvmOverloads constructor(
         info.view = newView
         info.keyData = newKeyData
         info.controller = newController
+        refreshModifierKeyPresentation(info)
+    }
+
+    /** Keep modifier state in the IME; the view only renders it and suppresses text previews. */
+    fun setSoftwareModifierState(ctrl: Boolean, alt: Boolean) {
+        if (ctrlLocked != ctrl || altLocked != alt) cancelTextPreview()
+        ctrlLocked = ctrl
+        altLocked = alt
+        keyInfos.forEach(::refreshModifierKeyPresentation)
+    }
+
+    private fun modifierFlickPresentation(flick: FlickAction): FlickAction {
+        if (flick !is FlickAction.Action) return flick
+        val resource = when (flick.action) {
+            KeyAction.CtrlLock -> if (ctrlLocked) com.kazumaproject.core.R.drawable.custom_key_ctrl_locked
+                else com.kazumaproject.core.R.drawable.custom_key_ctrl
+            KeyAction.AltLock -> if (altLocked) com.kazumaproject.core.R.drawable.custom_key_alt_locked
+                else com.kazumaproject.core.R.drawable.custom_key_alt
+            else -> return flick
+        }
+        return flick.copy(drawableResId = resource)
+    }
+
+    private fun refreshModifierKeyPresentation(info: KeyInfo) {
+        val locked = when (info.keyData.action) {
+            KeyAction.CtrlLock -> ctrlLocked
+            KeyAction.AltLock -> altLocked
+            else -> return
+        }
+        val button = info.view as? AppCompatImageButton ?: return
+        if (KeyIconResolver.hasIconOverride(info.keyData)) {
+            KeyIconResolver.setImage(button, info.keyData)
+            if (locked) {
+                val base = button.drawable
+                val badge = androidx.appcompat.content.res.AppCompatResources.getDrawable(
+                    context, com.kazumaproject.core.R.drawable.custom_key_modifier_badge
+                )?.mutate()
+                if (base != null && badge != null) {
+                    badge.setTint(resolveKeyVisualPalette(info.keyData).textColor)
+                    button.setImageDrawable(android.graphics.drawable.LayerDrawable(arrayOf(base, badge)))
+                }
+            }
+        } else {
+            val icon = when (info.keyData.action) {
+                KeyAction.CtrlLock -> if (locked) com.kazumaproject.core.R.drawable.custom_key_ctrl_locked
+                    else com.kazumaproject.core.R.drawable.custom_key_ctrl
+                else -> if (locked) com.kazumaproject.core.R.drawable.custom_key_alt_locked
+                    else com.kazumaproject.core.R.drawable.custom_key_alt
+            }
+            KeyboardFontGlyphDrawable.setImageResource(button, icon, keyboardFontSnapshot)
+        }
+        applyImageButtonTint(button, info.keyData)
+        button.contentDescription = if (locked) context.getString(
+            com.kazumaproject.custom_keyboard.R.string.modifier_locked, info.keyData.label
+        ) else info.keyData.label
+        updateImageButtonMatrix(button, info.keyData)
+    }
+
+    /** Includes tap, flick, circular, double-tap, and active Sumire overrides. */
+    fun hasConfiguredAction(action: KeyAction): Boolean {
+        val layout = currentLayout ?: return false
+        if (layout.keys.any { key ->
+                key.action == action || key.doubleTapBinding?.action == action ||
+                    key.dynamicStates.orEmpty().any { it.action == action } ||
+                    (key.isSpecialKey && SumireSpecialKeyDirection.entries.any { direction ->
+                        (resolveSumireSpecialKeyOverride(key, direction) as? ResolvedSumireSpecialKeyAction.Action)?.action == action
+                    })
+            }) return true
+        return layout.flickKeyMaps.values.flatten().any { map ->
+            map.values.any { (it as? FlickAction.Action)?.action == action }
+        } || layout.circularFlickKeyMaps.values.flatten().any { map ->
+            map.values.any { (it as? FlickAction.Action)?.action == action }
+        }
     }
 
     fun updateKeyIconByAction(action: KeyAction, @DrawableRes drawableResId: Int) {
@@ -1803,6 +1879,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ).apply {
                         setPopupOverlayHostProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
+                        setActionDisplayTransform(::modifierFlickPresentation)
                         applyPopupViewStyleSet(
                             popupViewStyleSet.directional,
                             popupViewStyleSet.cross
@@ -2931,7 +3008,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun canPreviewText(keyData: KeyData, action: KeyAction.Text): Boolean {
-        return !keyData.isSpecialKey && keyData.effectiveDoubleTapBinding(action) == null
+        return !ctrlLocked && !altLocked && !keyData.isSpecialKey && keyData.effectiveDoubleTapBinding(action) == null
     }
 
     private fun textOutputFromFlickAction(action: FlickAction?): String? {
