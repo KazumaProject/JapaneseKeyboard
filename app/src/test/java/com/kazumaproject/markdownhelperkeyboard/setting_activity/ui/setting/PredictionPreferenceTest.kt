@@ -140,13 +140,8 @@ class PredictionPreferenceTest {
                 newSettings.first { it.key == key }.category,
             )
         }
-        DICTIONARY_KEYS.forEach { key ->
-            assertEquals(
-                SettingCategory.DICTIONARY,
-                newSettings.first { it.key == key }.category,
-            )
-        }
-        assertTrue(CONVERSION_KEYS.none { it in DICTIONARY_KEYS })
+        assertEquals(SettingCategory.DICTIONARY, newSettings.first { it.key == "learn_dictionary_preference" }.category)
+        assertEquals(SettingCategory.DICTIONARY, newSettings.first { it.key == "user_dictionary_preference" }.category)
     }
 
     @Test
@@ -194,10 +189,11 @@ class PredictionPreferenceTest {
             "symbol_candidate_enable_preference",
             "emoji_candidate_enable_preference",
             "emoticon_candidate_enable_preference",
-        )
-        val DICTIONARY_KEYS = listOf(
-            "user_dictionary_prediction_candidate_limit_preference",
+            "enable_prediction_search_learn_dictionary_preference",
+            "learn_prediction_preference",
             "learn_dictionary_prediction_candidate_limit_preference",
+            "user_dictionary_prefix_match_number",
+            "user_dictionary_prediction_candidate_limit_preference",
         )
     }
 }

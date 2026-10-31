@@ -8,36 +8,36 @@
         android:summary="@string/settings_common_selection_summary">
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="keyboard_selection_preference"
-                    android:summary="@string/keyboard_selection_summary"
-                    android:title="@string/keyboard_selection_preference_title" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_selection_preference"
+            android:summary="@string/keyboard_selection_summary"
+            android:title="@string/keyboard_selection_preference_title" />
 
         <SwitchPreferenceCompat
-                    android:key="save_last_used_keyboard"
-                    android:title="@string/save_last_used_keyboard_title"
-                    app:defaultValue="false"
-                    app:summary="@string/save_last_used_keyboard_summey" />
+            android:key="save_last_used_keyboard"
+            android:title="@string/save_last_used_keyboard_title"
+            app:defaultValue="false"
+            app:summary="@string/save_last_used_keyboard_summey" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="landscape_force_qwerty_preference"
-                    android:title="@string/landscape_force_qwerty_preference_title"
-                    app:summary="@string/landscape_force_qwerty_preference_summary" />
+            android:defaultValue="false"
+            android:key="landscape_force_qwerty_preference"
+            android:title="@string/landscape_force_qwerty_preference_title"
+            app:summary="@string/landscape_force_qwerty_preference_summary" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:dependency="landscape_force_qwerty_preference"
-                    android:key="landscape_force_qwerty_romaji_preference"
-                    android:summaryOff="@string/landscape_force_qwerty_romaji_preference_summary_off"
-                    android:summaryOn="@string/landscape_force_qwerty_romaji_preference_summary_on"
-                    android:title="@string/landscape_force_qwerty_romaji_preference_title" />
+            android:defaultValue="false"
+            android:dependency="landscape_force_qwerty_preference"
+            android:key="landscape_force_qwerty_romaji_preference"
+            android:summaryOff="@string/landscape_force_qwerty_romaji_preference_summary_off"
+            android:summaryOn="@string/landscape_force_qwerty_romaji_preference_summary_on"
+            android:title="@string/landscape_force_qwerty_romaji_preference_title" />
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="custom_romaji_preference"
-                    android:title="@string/custom_romaji_title"
-                    app:summary="@string/custom_romaji_summary" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="custom_romaji_preference"
+            android:title="@string/custom_romaji_title"
+            app:summary="@string/custom_romaji_summary" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -47,44 +47,44 @@
         android:summary="@string/settings_common_size_summary">
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="keyboard_screen_preference"
-                    android:summary="@string/keyboard_screen_preference_summary"
-                    android:title="@string/keyboard_screen_size_preference_title" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_screen_preference"
+            android:summary="@string/keyboard_screen_preference_summary"
+            android:title="@string/keyboard_screen_size_preference_title" />
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="keyboard_screen_landscape_preference"
-                    android:summary="@string/keyboard_screen_preference_summary"
-                    android:title="@string/keyboard_screen_landscape_size_preference_title" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_screen_landscape_preference"
+            android:summary="@string/keyboard_screen_preference_summary"
+            android:title="@string/keyboard_screen_landscape_size_preference_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="@bool/config_allow_fullscreen_mode"
-                    android:key="allow_fullscreen_mode_preference"
-                    android:summary="@string/allow_fullscreen_mode_preference_summary"
-                    android:title="@string/allow_fullscreen_mode_preference_title" />
+            android:defaultValue="@bool/config_allow_fullscreen_mode"
+            android:key="allow_fullscreen_mode_preference"
+            android:summary="@string/allow_fullscreen_mode_preference_summary"
+            android:title="@string/allow_fullscreen_mode_preference_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="keyboard_floating_preference"
-                    android:summary="@string/keyboard_floating_preference_summary"
-                    android:title="@string/keyboard_floating_preference_title" />
+            android:defaultValue="false"
+            android:key="keyboard_floating_preference"
+            android:summary="@string/keyboard_floating_preference_summary"
+            android:title="@string/keyboard_floating_preference_title" />
 
         <ListPreference
-                    android:key="floating_keyboard_hide_button_position"
-                    android:dependency="keyboard_floating_preference"
-                    android:defaultValue="bottom_left"
-                    android:title="@string/floating_keyboard_hide_button_position_title"
-                    android:entries="@array/floating_keyboard_hide_button_position_labels"
-                    android:entryValues="@array/floating_keyboard_hide_button_position_values"
-                    app:useSimpleSummaryProvider="true" />
+            android:key="floating_keyboard_hide_button_position"
+            android:dependency="keyboard_floating_preference"
+            android:defaultValue="bottom_left"
+            android:title="@string/floating_keyboard_hide_button_position_title"
+            android:entries="@array/floating_keyboard_hide_button_position_labels"
+            android:entryValues="@array/floating_keyboard_hide_button_position_values"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
-                    android:key="floating_keyboard_show_edit_button"
-                    android:dependency="keyboard_floating_preference"
-                    android:defaultValue="true"
-                    android:title="@string/floating_keyboard_show_edit_button_title"
-                    android:summary="@string/floating_keyboard_show_edit_button_summary" />
+            android:key="floating_keyboard_show_edit_button"
+            android:dependency="keyboard_floating_preference"
+            android:defaultValue="true"
+            android:title="@string/floating_keyboard_show_edit_button_title"
+            android:summary="@string/floating_keyboard_show_edit_button_summary" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -94,68 +94,68 @@
         android:summary="@string/settings_common_touch_summary">
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="flick_input_only_preference"
-                    android:summaryOff="@string/flick_input_only_summary_off"
-                    android:summaryOn="@string/flick_input_only_summary_on"
-                    android:title="@string/flick_input_only_title" />
+            android:defaultValue="false"
+            android:key="flick_input_only_preference"
+            android:summaryOff="@string/flick_input_only_summary_off"
+            android:summaryOn="@string/flick_input_only_summary_on"
+            android:title="@string/flick_input_only_title" />
 
         <SeekBarPreference
-                    android:defaultValue="1000"
-                    android:dependency=""
-                    android:key="time_same_pronounce_typing_preference"
-                    android:max="1000"
-                    android:title="@string/time_same_pronounce_typing_title"
-                    app:min="1"
-                    app:showSeekBarValue="true"
-                    app:summary="@string/time_same_pronounce_typing_summary" />
+            android:defaultValue="1000"
+            android:dependency=""
+            android:key="time_same_pronounce_typing_preference"
+            android:max="1000"
+            android:title="@string/time_same_pronounce_typing_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/time_same_pronounce_typing_summary" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="flick_editor_preview_preference"
-                    android:summaryOff="@string/flick_editor_preview_summary_off"
-                    android:summaryOn="@string/flick_editor_preview_summary_on"
-                    android:title="@string/flick_editor_preview_title" />
+            android:defaultValue="false"
+            android:key="flick_editor_preview_preference"
+            android:summaryOff="@string/flick_editor_preview_summary_off"
+            android:summaryOn="@string/flick_editor_preview_summary_on"
+            android:title="@string/flick_editor_preview_title" />
 
         <SeekBarPreference
-                    android:defaultValue="0"
-                    android:dependency="flick_editor_preview_preference"
-                    android:key="flick_editor_preview_delay_ms"
-                    android:max="500"
-                    android:title="@string/flick_editor_preview_delay_title"
-                    android:summary="@string/flick_editor_preview_delay_summary"
-                    app:min="0"
-                    app:seekBarIncrement="5"
-                    app:showSeekBarValue="true" />
+            android:defaultValue="0"
+            android:dependency="flick_editor_preview_preference"
+            android:key="flick_editor_preview_delay_ms"
+            android:max="500"
+            android:title="@string/flick_editor_preview_delay_title"
+            android:summary="@string/flick_editor_preview_delay_summary"
+            app:min="0"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
 
         <SeekBarPreference
-                    android:defaultValue="100"
-                    android:key="flick_sensitivity_preference"
-                    android:max="200"
-                    android:title="@string/flick_sensitivity_title"
-                    app:min="1"
-                    app:seekBarIncrement="5"
-                    app:showSeekBarValue="true" />
+            android:defaultValue="100"
+            android:key="flick_sensitivity_preference"
+            android:max="200"
+            android:title="@string/flick_sensitivity_title"
+            app:min="1"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
 
         <ListPreference
-                    android:defaultValue="radial"
-                    android:dialogTitle="@string/flick_threshold_shape_title"
-                    android:entries="@array/flick_threshold_shape_entries"
-                    android:entryValues="@array/flick_threshold_shape_values"
-                    android:key="flick_threshold_shape_preference"
-                    android:title="@string/flick_threshold_shape_title"
-                    app:useSimpleSummaryProvider="true" />
+            android:defaultValue="radial"
+            android:dialogTitle="@string/flick_threshold_shape_title"
+            android:entries="@array/flick_threshold_shape_entries"
+            android:entryValues="@array/flick_threshold_shape_values"
+            android:key="flick_threshold_shape_preference"
+            android:title="@string/flick_threshold_shape_title"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
-                    android:key="independent_multi_touch_preference"
-                    android:defaultValue="false"
-                    android:title="@string/independent_multi_touch_title"
-                    android:summary="@string/independent_multi_touch_summary" />
+            android:key="independent_multi_touch_preference"
+            android:defaultValue="false"
+            android:title="@string/independent_multi_touch_title"
+            android:summary="@string/independent_multi_touch_summary" />
 
         <Preference
-                    android:key="long_press_timeout_preference"
-                    android:summary="@string/long_press_timeout_preference_summary"
-                    android:title="@string/long_press_timeout_preference_title" />
+            android:key="long_press_timeout_preference"
+            android:summary="@string/long_press_timeout_preference_summary"
+            android:title="@string/long_press_timeout_preference_title" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -165,75 +165,75 @@
         android:summary="@string/settings_common_editing_summary">
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="delete_key_flick_left_preference"
-                    android:summary="@string/delete_key_left_summary"
-                    android:title="@string/delete_key_left_flick_title" />
+            android:defaultValue="true"
+            android:key="delete_key_flick_left_preference"
+            android:summary="@string/delete_key_left_summary"
+            android:title="@string/delete_key_left_flick_title" />
 
         <Preference
-                    android:dependency="delete_key_flick_left_preference"
-                    android:key="delete_key_flick_left_targets_preference"
-                    android:summary="@string/delete_key_flick_targets_summary"
-                    android:title="@string/delete_key_flick_targets_title" />
+            android:dependency="delete_key_flick_left_preference"
+            android:key="delete_key_flick_left_targets_preference"
+            android:summary="@string/delete_key_flick_targets_summary"
+            android:title="@string/delete_key_flick_targets_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="delete_key_flick_up_preference"
-                    android:summary="@string/delete_key_up_summary"
-                    android:title="@string/delete_key_up_flick_title" />
+            android:defaultValue="false"
+            android:key="delete_key_flick_up_preference"
+            android:summary="@string/delete_key_up_summary"
+            android:title="@string/delete_key_up_flick_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="delete_key_flick_down_preference"
-                    android:summary="@string/delete_key_down_summary"
-                    android:title="@string/delete_key_down_flick_title" />
+            android:defaultValue="false"
+            android:key="delete_key_flick_down_preference"
+            android:summary="@string/delete_key_down_summary"
+            android:title="@string/delete_key_down_flick_title" />
 
         <Preference
-                    android:key="cursor_move_after_commit_target_pairs_preference"
-                    android:summary="@string/cursor_move_target_pairs_summary"
-                    android:title="@string/cursor_move_target_pairs_title" />
+            android:key="cursor_move_after_commit_target_pairs_preference"
+            android:summary="@string/cursor_move_target_pairs_summary"
+            android:title="@string/cursor_move_target_pairs_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="undo_enable_preference"
-                    android:summary="@string/undo_enable_summary"
-                    android:title="@string/undo_enable_title" />
+            android:defaultValue="false"
+            android:key="undo_enable_preference"
+            android:summary="@string/undo_enable_summary"
+            android:title="@string/undo_enable_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="space_key_preference"
-                    android:summary="@string/space_key_summary"
-                    android:title="@string/space_key_title" />
+            android:defaultValue="false"
+            android:key="space_key_preference"
+            android:summary="@string/space_key_summary"
+            android:title="@string/space_key_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="custom_direct_mode_space_hankaku_preference"
-                    android:summary="@string/custom_direct_mode_space_hankaku_summary"
-                    android:title="@string/custom_direct_mode_space_hankaku_title" />
+            android:defaultValue="true"
+            android:key="custom_direct_mode_space_hankaku_preference"
+            android:summary="@string/custom_direct_mode_space_hankaku_summary"
+            android:title="@string/custom_direct_mode_space_hankaku_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="conversion_key_swipe_cursor_move_preference"
-                    android:summary="@string/pref_summary_space_longpress_cursor"
-                    android:title="@string/pref_title_space_longpress_cursor" />
+            android:defaultValue="false"
+            android:key="conversion_key_swipe_cursor_move_preference"
+            android:summary="@string/pref_summary_space_longpress_cursor"
+            android:title="@string/pref_title_space_longpress_cursor" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="henkan_delete_key_action_preference"
-                    android:summaryOff="@string/henkan_delete_key_action_summary_off"
-                    android:summaryOn="@string/henkan_delete_key_action_summary_on"
-                    android:title="@string/henkan_delete_key_action_title" />
+            android:defaultValue="true"
+            android:key="henkan_delete_key_action_preference"
+            android:summaryOff="@string/henkan_delete_key_action_summary_off"
+            android:summaryOn="@string/henkan_delete_key_action_summary_on"
+            android:title="@string/henkan_delete_key_action_title" />
 
         <SwitchPreferenceCompat
-                    android:key="floating_cursor_enabled"
-                    android:defaultValue="false"
-                    android:title="@string/floating_cursor_enabled"
-                    android:summary="@string/floating_cursor_summary" />
+            android:key="floating_cursor_enabled"
+            android:defaultValue="false"
+            android:title="@string/floating_cursor_enabled"
+            android:summary="@string/floating_cursor_summary" />
 
         <Preference
-                    android:key="floating_cursor_reset"
-                    android:persistent="false"
-                    android:title="@string/floating_cursor_reset" />
+            android:key="floating_cursor_reset"
+            android:persistent="false"
+            android:title="@string/floating_cursor_reset" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -243,92 +243,92 @@
         android:summary="@string/settings_common_candidates_summary">
 
         <SwitchPreferenceCompat
-                    android:key="composing_guide_text_enabled"
-                    android:defaultValue="false"
-                    android:title="@string/composing_guide_text_title" />
+            android:key="composing_guide_text_enabled"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_text_title" />
 
         <SwitchPreferenceCompat
-                    android:key="composing_guide_enabled"
-                    android:defaultValue="false"
-                    android:title="@string/composing_guide_title"
-                    android:summary="@string/composing_guide_summary" />
+            android:key="composing_guide_enabled"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_title"
+            android:summary="@string/composing_guide_summary" />
 
         <ListPreference
-                    android:key="composing_guide_scroll_direction"
-                    android:dependency="composing_guide_enabled"
-                    android:defaultValue="vertical"
-                    android:title="@string/composing_guide_scroll_direction"
-                    android:entries="@array/composing_guide_scroll_labels"
-                    android:entryValues="@array/composing_guide_scroll_values"
-                    app:useSimpleSummaryProvider="true" />
+            android:key="composing_guide_scroll_direction"
+            android:dependency="composing_guide_enabled"
+            android:defaultValue="vertical"
+            android:title="@string/composing_guide_scroll_direction"
+            android:entries="@array/composing_guide_scroll_labels"
+            android:entryValues="@array/composing_guide_scroll_values"
+            app:useSimpleSummaryProvider="true" />
 
         <ListPreference
-                    android:key="composing_guide_display_mode"
-                    android:defaultValue="integrated"
-                    android:title="@string/composing_guide_display_mode"
-                    android:entries="@array/composing_guide_display_labels"
-                    android:entryValues="@array/composing_guide_display_values"
-                    app:useSimpleSummaryProvider="true" />
+            android:key="composing_guide_display_mode"
+            android:defaultValue="integrated"
+            android:title="@string/composing_guide_display_mode"
+            android:entries="@array/composing_guide_display_labels"
+            android:entryValues="@array/composing_guide_display_values"
+            app:useSimpleSummaryProvider="true" />
 
         <Preference
-                    android:key="composing_guide_text_reset"
-                    android:title="@string/composing_guide_text_reset" />
+            android:key="composing_guide_text_reset"
+            android:title="@string/composing_guide_text_reset" />
 
         <Preference
-                    android:key="composing_guide_candidates_reset"
-                    android:title="@string/composing_guide_candidates_reset" />
+            android:key="composing_guide_candidates_reset"
+            android:title="@string/composing_guide_candidates_reset" />
 
         <Preference
-                    android:key="composing_guide_integrated_reset"
-                    android:title="@string/composing_guide_integrated_reset" />
+            android:key="composing_guide_integrated_reset"
+            android:title="@string/composing_guide_integrated_reset" />
 
         <SwitchPreferenceCompat
-                    android:key="candidate_tab_visibility_preference"
-                    android:title="@string/candidate_tab"
-                    app:defaultValue="false"
-                    app:summary="@string/candidate_tab_summary" />
+            android:key="candidate_tab_visibility_preference"
+            android:title="@string/candidate_tab"
+            app:defaultValue="false"
+            app:summary="@string/candidate_tab_summary" />
 
         <Preference
-                    android:dependency="candidate_tab_visibility_preference"
-                    android:key="candidate_tab_order_preference"
-                    android:title="@string/candidate_tab_order_preference_title"
-                    app:summary="@string/candidate_tab_order_preference_summary" />
+            android:dependency="candidate_tab_visibility_preference"
+            android:key="candidate_tab_order_preference"
+            android:title="@string/candidate_tab_order_preference_title"
+            app:summary="@string/candidate_tab_order_preference_summary" />
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="candidate_view_height_setting_fragment_preference"
-                    android:title="@string/candidate_height_preference_title"
-                    app:summary="@string/candidate_height_preference_sumary" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="candidate_view_height_setting_fragment_preference"
+            android:title="@string/candidate_height_preference_title"
+            app:summary="@string/candidate_height_preference_sumary" />
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="candidate_view_height_landscape_setting_fragment_preference"
-                    android:title="@string/candidate_height_landscape_preference_title"
-                    app:summary="@string/candidate_height_preference_sumary" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="candidate_view_height_landscape_setting_fragment_preference"
+            android:title="@string/candidate_height_landscape_preference_title"
+            app:summary="@string/candidate_height_preference_sumary" />
 
         <ListPreference
-                    android:defaultValue="1"
-                    android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
-                    android:entries="@array/candidate_column_entries"
-                    android:entryValues="@array/candidate_column_values"
-                    android:key="candidate_column_preference"
-                    android:summary="@string/preference_summary_num_column_conversion"
-                    android:title="@string/preference_title_num_columns_conversion" />
+            android:defaultValue="1"
+            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
+            android:entries="@array/candidate_column_entries"
+            android:entryValues="@array/candidate_column_values"
+            android:key="candidate_column_preference"
+            android:summary="@string/preference_summary_num_column_conversion"
+            android:title="@string/preference_title_num_columns_conversion" />
 
         <ListPreference
-                    android:defaultValue="1"
-                    android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
-                    android:entries="@array/candidate_column_entries_landscape"
-                    android:entryValues="@array/candidate_column_values_landscape"
-                    android:key="candidate_column_landscape_preference"
-                    android:summary="@string/preference_summary_num_column_conversion"
-                    android:title="@string/preference_title_num_columns_conversion_landscape" />
+            android:defaultValue="1"
+            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
+            android:entries="@array/candidate_column_entries_landscape"
+            android:entryValues="@array/candidate_column_values_landscape"
+            android:key="candidate_column_landscape_preference"
+            android:summary="@string/preference_summary_num_column_conversion"
+            android:title="@string/preference_title_num_columns_conversion_landscape" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="stabilize_candidate_strip_height_preference"
-                    android:title="@string/stabilize_candidate_strip_height_title"
-                    android:summary="@string/stabilize_candidate_strip_height_summary" />
+            android:defaultValue="false"
+            android:key="stabilize_candidate_strip_height_preference"
+            android:title="@string/stabilize_candidate_strip_height_title"
+            android:summary="@string/stabilize_candidate_strip_height_summary" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -338,64 +338,64 @@
         android:summary="@string/settings_common_clipboard_summary">
 
         <SwitchPreferenceCompat
-                    android:key="shortcut_toolbar_visibility_preference"
-                    android:title="@string/shortcut_toolbar_title"
-                    app:defaultValue="false"
-                    app:summary="@string/shortcut_toolbar_summary" />
+            android:key="shortcut_toolbar_visibility_preference"
+            android:title="@string/shortcut_toolbar_title"
+            app:defaultValue="false"
+            app:summary="@string/shortcut_toolbar_summary" />
 
         <SwitchPreferenceCompat
-                    android:dependency="shortcut_toolbar_visibility_preference"
-                    android:key="shortcut_toolbar_integrated_in_suggestion_preference"
-                    android:title="@string/shortcut_toolbar_integrated_in_suggestion_title"
-                    app:defaultValue="false"
-                    app:summary="@string/shortcut_toolbar_integrated_in_suggestion_summary" />
+            android:dependency="shortcut_toolbar_visibility_preference"
+            android:key="shortcut_toolbar_integrated_in_suggestion_preference"
+            android:title="@string/shortcut_toolbar_integrated_in_suggestion_title"
+            app:defaultValue="false"
+            app:summary="@string/shortcut_toolbar_integrated_in_suggestion_summary" />
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="shortcut_toolbar_item_preference"
-                    android:title="@string/shortcut_toolbar_preference_title"
-                    app:summary="@string/shortcut_toolbar_preference_summary" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="shortcut_toolbar_item_preference"
+            android:title="@string/shortcut_toolbar_preference_title"
+            app:summary="@string/shortcut_toolbar_preference_summary" />
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="shortcut_toolbar_size_setting_fragment_preference"
-                    android:title="@string/shortcut_toolbar_size_title"
-                    app:summary="@string/shortcut_toolbar_size_summary" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="shortcut_toolbar_size_setting_fragment_preference"
+            android:title="@string/shortcut_toolbar_size_title"
+            app:summary="@string/shortcut_toolbar_size_summary" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="clipboard_preview_enable_preference"
-                    android:summary="@string/pref_clipboard_preview_summary"
-                    android:title="@string/pref_clipboard_preview_title" />
+            android:defaultValue="true"
+            android:key="clipboard_preview_enable_preference"
+            android:summary="@string/pref_clipboard_preview_summary"
+            android:title="@string/pref_clipboard_preview_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:dependency="clipboard_preview_enable_preference"
-                    android:key="clipboard_preview_tap_delete_preference"
-                    android:summary="@string/pref_clipboard_tap_delete_summary"
-                    android:title="@string/pref_clipboard_tap_delete_title" />
+            android:defaultValue="false"
+            android:dependency="clipboard_preview_enable_preference"
+            android:key="clipboard_preview_tap_delete_preference"
+            android:summary="@string/pref_clipboard_tap_delete_summary"
+            android:title="@string/pref_clipboard_tap_delete_title" />
 
         <Preference
-                    android:icon="@drawable/outline_border_color_24"
-                    android:key="clipboard_history_preference_fragment"
-                    android:title="@string/clipboard_history_fragment_title"
-                    app:summary="@string/clipboard_history_fragment_summary" />
+            android:icon="@drawable/outline_border_color_24"
+            android:key="clipboard_history_preference_fragment"
+            android:title="@string/clipboard_history_fragment_title"
+            app:summary="@string/clipboard_history_fragment_summary" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="clipboard_delete_unpinned_after_hours_preference"
-                    android:title="@string/pref_clipboard_delete_unpinned_after_hours_title"
-                    app:summary="@string/pref_clipboard_delete_unpinned_after_hours_summary" />
+            android:defaultValue="false"
+            android:key="clipboard_delete_unpinned_after_hours_preference"
+            android:title="@string/pref_clipboard_delete_unpinned_after_hours_title"
+            app:summary="@string/pref_clipboard_delete_unpinned_after_hours_summary" />
 
         <SeekBarPreference
-                    android:defaultValue="1"
-                    android:dependency="clipboard_delete_unpinned_after_hours_preference"
-                    android:key="clipboard_unpinned_retention_hours_preference"
-                    android:max="72"
-                    android:title="@string/pref_clipboard_unpinned_retention_hours_title"
-                    app:min="1"
-                    app:showSeekBarValue="true"
-                    app:summary="@string/pref_clipboard_unpinned_retention_hours_summary" />
+            android:defaultValue="1"
+            android:dependency="clipboard_delete_unpinned_after_hours_preference"
+            android:key="clipboard_unpinned_retention_hours_preference"
+            android:max="72"
+            android:title="@string/pref_clipboard_unpinned_retention_hours_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/pref_clipboard_unpinned_retention_hours_summary" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -405,22 +405,22 @@
         android:summary="@string/settings_common_symbols_summary">
 
         <ListPreference
-                    android:defaultValue="EMOJI"
-                    android:dialogTitle="@string/symbol_mode_dialog_title"
-                    android:entries="@array/symbol_mode_entries"
-                    android:entryValues="@array/symbol_mode_values"
-                    android:key="symbol_mode_preference"
-                    android:summary="@string/symbol_mode_summary"
-                    android:title="@string/symbol_mode_title" />
+            android:defaultValue="EMOJI"
+            android:dialogTitle="@string/symbol_mode_dialog_title"
+            android:entries="@array/symbol_mode_entries"
+            android:entryValues="@array/symbol_mode_values"
+            android:key="symbol_mode_preference"
+            android:summary="@string/symbol_mode_summary"
+            android:title="@string/symbol_mode_title" />
 
         <ListPreference
-                    android:defaultValue="default"
-                    android:dialogTitle="@string/default_emoji_skin_tone_dialog_title"
-                    android:entries="@array/default_emoji_skin_tone_entries"
-                    android:entryValues="@array/default_emoji_skin_tone_values"
-                    android:key="default_emoji_skin_tone_preference"
-                    android:summary="@string/default_emoji_skin_tone_summary"
-                    android:title="@string/default_emoji_skin_tone_title" />
+            android:defaultValue="default"
+            android:dialogTitle="@string/default_emoji_skin_tone_dialog_title"
+            android:entries="@array/default_emoji_skin_tone_entries"
+            android:entryValues="@array/default_emoji_skin_tone_values"
+            android:key="default_emoji_skin_tone_preference"
+            android:summary="@string/default_emoji_skin_tone_summary"
+            android:title="@string/default_emoji_skin_tone_title" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -430,38 +430,38 @@
         android:summary="@string/settings_common_feedback_summary">
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="vibration_preference"
-                    android:summaryOff="@string/vibration_summary_off"
-                    android:summaryOn="@string/vibration_summary_on"
-                    android:title="@string/vibration_title" />
+            android:defaultValue="true"
+            android:key="vibration_preference"
+            android:summaryOff="@string/vibration_summary_off"
+            android:summaryOn="@string/vibration_summary_on"
+            android:title="@string/vibration_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="key_sound_preference"
-                    android:summaryOff="@string/key_sound_summary_off"
-                    android:summaryOn="@string/key_sound_summary_on"
-                    android:title="@string/key_sound_title" />
+            android:defaultValue="false"
+            android:key="key_sound_preference"
+            android:summaryOff="@string/key_sound_summary_off"
+            android:summaryOn="@string/key_sound_summary_on"
+            android:title="@string/key_sound_title" />
 
         <SeekBarPreference
-                    android:defaultValue="0"
-                    android:dependency="key_sound_preference"
-                    android:key="key_sound_volume_percent_preference"
-                    android:max="100"
-                    android:title="@string/key_sound_volume_title"
-                    app:min="0"
-                    app:showSeekBarValue="true"
-                    app:summary="@string/key_sound_volume_summary" />
+            android:defaultValue="0"
+            android:dependency="key_sound_preference"
+            android:key="key_sound_volume_percent_preference"
+            android:max="100"
+            android:title="@string/key_sound_volume_title"
+            app:min="0"
+            app:showSeekBarValue="true"
+            app:summary="@string/key_sound_volume_summary" />
 
         <ListPreference
-                    android:defaultValue="@string/vibration_default"
-                    android:dependency="vibration_preference"
-                    android:dialogTitle="@string/vibration_timing_dialog_title"
-                    android:entries="@array/vibration_options"
-                    android:entryValues="@array/vibration_values"
-                    android:key="vibration_timing"
-                    android:summary="@string/vibration_timing_summary"
-                    android:title="@string/vibration_timing_title" />
+            android:defaultValue="@string/vibration_default"
+            android:dependency="vibration_preference"
+            android:dialogTitle="@string/vibration_timing_dialog_title"
+            android:entries="@array/vibration_options"
+            android:entryValues="@array/vibration_values"
+            android:key="vibration_timing"
+            android:summary="@string/vibration_timing_summary"
+            android:title="@string/vibration_timing_title" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -471,42 +471,42 @@
         android:summary="@string/settings_common_privacy_summary">
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="inline_suggestion_enabled_preference"
-                    android:summaryOff="@string/inline_suggestion_enabled_summary_off"
-                    android:summaryOn="@string/inline_suggestion_enabled_summary_on"
-                    android:title="@string/inline_suggestion_enabled_title" />
+            android:defaultValue="true"
+            android:key="inline_suggestion_enabled_preference"
+            android:summaryOff="@string/inline_suggestion_enabled_summary_off"
+            android:summaryOn="@string/inline_suggestion_enabled_summary_on"
+            android:title="@string/inline_suggestion_enabled_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="hide_candidate_password_preference"
-                    android:summaryOff="@string/hide_candidate_password_summary_off"
-                    android:summaryOn="@string/hide_candidate_password_summary_on"
-                    android:title="@string/hide_candidate_password_title" />
+            android:defaultValue="true"
+            android:key="hide_candidate_password_preference"
+            android:summaryOff="@string/hide_candidate_password_summary_off"
+            android:summaryOn="@string/hide_candidate_password_summary_on"
+            android:title="@string/hide_candidate_password_title" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="incognito_mode_detection_preference"
-                    android:summaryOff="@string/incognito_mode_detection_summary_off"
-                    android:summaryOn="@string/incognito_mode_detection_summary_on"
-                    android:title="@string/incognito_mode_detection_title"
-                    app:iconSpaceReserved="false" />
+            android:defaultValue="true"
+            android:key="incognito_mode_detection_preference"
+            android:summaryOff="@string/incognito_mode_detection_summary_off"
+            android:summaryOn="@string/incognito_mode_detection_summary_on"
+            android:title="@string/incognito_mode_detection_title"
+            app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
-                    android:defaultValue="true"
-                    android:key="show_learned_candidates_in_incognito_preference"
-                    android:summaryOff="@string/show_learned_candidates_in_incognito_summary_off"
-                    android:summaryOn="@string/show_learned_candidates_in_incognito_summary_on"
-                    android:title="@string/show_learned_candidates_in_incognito_title"
-                    app:iconSpaceReserved="false" />
+            android:defaultValue="true"
+            android:key="show_learned_candidates_in_incognito_preference"
+            android:summaryOff="@string/show_learned_candidates_in_incognito_summary_off"
+            android:summaryOn="@string/show_learned_candidates_in_incognito_summary_on"
+            android:title="@string/show_learned_candidates_in_incognito_title"
+            app:iconSpaceReserved="false" />
 
         <ListPreference
-                    android:defaultValue="default"
-                    android:entries="@array/type_null_input_behavior_entries"
-                    android:entryValues="@array/type_null_input_behavior_values"
-                    android:key="type_null_input_behavior_preference"
-                    android:summary="%s"
-                    android:title="@string/type_null_input_behavior_title" />
+            android:defaultValue="default"
+            android:entries="@array/type_null_input_behavior_entries"
+            android:entryValues="@array/type_null_input_behavior_values"
+            android:key="type_null_input_behavior_preference"
+            android:summary="%s"
+            android:title="@string/type_null_input_behavior_title" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
@@ -516,29 +516,29 @@
         android:summary="@string/settings_common_app_summary">
 
         <SwitchPreferenceCompat
-                    android:defaultValue="false"
-                    android:key="app_setting_language_preference"
-                    android:summaryOff="@string/app_language_summary_off"
-                    android:summaryOn="@string/app_language_summary_on"
-                    android:title="@string/language_display_title" />
+            android:defaultValue="false"
+            android:key="app_setting_language_preference"
+            android:summaryOff="@string/app_language_summary_off"
+            android:summaryOn="@string/app_language_summary_on"
+            android:title="@string/language_display_title" />
 
         <Preference
-                    android:key="pref_backup_export"
-                    android:summary="@string/pref_backup_export_summary"
-                    android:title="@string/pref_backup_export_title" />
+            android:key="pref_backup_export"
+            android:summary="@string/pref_backup_export_summary"
+            android:title="@string/pref_backup_export_title" />
 
         <Preference
-                    android:key="pref_backup_import"
-                    android:summary="@string/pref_backup_import_summary"
-                    android:title="@string/pref_backup_import_title" />
+            android:key="pref_backup_import"
+            android:summary="@string/pref_backup_import_summary"
+            android:title="@string/pref_backup_import_title" />
 
         <Preference
-                    android:key="preference_open_source"
-                    android:title="@string/open_source_libraries_title" />
+            android:key="preference_open_source"
+            android:title="@string/open_source_libraries_title" />
 
         <Preference
-                    android:key="app_version_preference"
-                    android:title="@string/app_version_title" />
+            android:key="app_version_preference"
+            android:title="@string/app_version_title" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
