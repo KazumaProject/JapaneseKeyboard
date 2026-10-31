@@ -1031,7 +1031,6 @@ object AppPreference {
                 appContext.codeCacheDir.setReadOnly()
                 isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
                 loadedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-                com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences.migrate(preferences)
                 migrateCandidateHeightDefaultsIfNeeded()
                 removeUnsafeLegacyGemmaHandwritingPrompt()
                 migratePredictionLookaheadPreferenceIfNeeded()
@@ -5279,7 +5278,6 @@ object AppPreference {
         }
         migrateSumireKeymapGuideModesIfNeeded()
         migrateGojuonKeyboardTypeIfNeeded()
-        com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences.migrate(preferences)
         return backup.shortcutIds
     }
 
