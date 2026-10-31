@@ -24,6 +24,7 @@ internal class FloatingKeyboardPanel(
     private val binding: FloatingKeyboardLayoutBinding,
     onEdit: () -> Unit,
     private val onPosition: (Int, Int, Boolean) -> Unit,
+    private val onChromeChanged: () -> Unit = {},
 ) : FloatingPanelFrame(binding.root.context, onEdit) {
     var editCallbacks = KeyboardLayoutEditOverlayView.Callbacks()
     private var gesture: ComposingGuideGesture? = null
@@ -94,6 +95,7 @@ internal class FloatingKeyboardPanel(
         }
         binding.floatingHideKeyboardBtn.imageTintList = ColorStateList.valueOf(colors.icon)
         requestLayout()
+        if (isAttachedToWindow) binding.suggestionViewParent.post { onChromeChanged() }
     }
 
     /** Reapply the latest chrome settings after a temporarily relocated candidate list returns. */

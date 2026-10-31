@@ -116,6 +116,7 @@ class KeyboardGeometryDeviceTest {
                 .putString("keyboard_geometry_${geometryName}_portrait_curve_direction", if (reverse) "UP" else "DOWN")
                 .putString("keyboard_geometry_${geometryName}_portrait_candidates", side)
                 .putBoolean("keyboard_geometry_${geometryName}_portrait_candidate_vertical_text", expanded || chromeMode != 0)
+                .putBoolean("keyboard_geometry_${geometryName}_portrait_segment_editor", false)
                 .putBoolean("flick_input_only_preference", true)
                 .commit())
             shell("ime enable $targetIme")

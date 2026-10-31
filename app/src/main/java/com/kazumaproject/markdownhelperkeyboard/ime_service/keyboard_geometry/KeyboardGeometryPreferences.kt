@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
+import kotlin.math.roundToInt
 
 enum class GeometryKeyboard { QWERTY, TENKEY, SUMIRE }
 enum class GeometryCandidatePlacement { TOP, LEFT, RIGHT, CENTER }
@@ -14,6 +15,9 @@ data class KeyboardGeometryPreference(
     val sideCandidateWidthPercent: Int = SideCandidateSizing.DEFAULT_PERCENT,
     val sideCandidateVerticalText: Boolean = false,
     val sideCandidateRightToLeft: Boolean = false,
+    val sideCandidateWrapLongText: Boolean = false,
+    val sideCandidateSpacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
+    val showSegmentEditor: Boolean = true,
 )
 
 /** Size rules only; settings previews and IME views remain separate. */
@@ -21,6 +25,8 @@ object SideCandidateSizing {
     const val MIN_PERCENT = 15
     const val MAX_PERCENT = 50
     const val DEFAULT_PERCENT = 25
+    const val DEFAULT_SPACING_DP = 4
+    const val MAX_SPACING_DP = 32
 
     fun width(surfaceWidth: Int, density: Float, percent: Int): Int {
         if (surfaceWidth < (256f * density).toInt()) return 0
@@ -32,10 +38,21 @@ object SideCandidateSizing {
 
     /** Leave at least 64 dp per candidate, or more for unusually large text. */
     fun columnCount(candidateWidth: Int, density: Float, textSizePx: Float): Int {
-        val minimumColumnWidth = maxOf(64f * density, textSizePx * 1.2f + 24f * density, 1f)
+        val minimumColumnWidth = minimumColumnWidth(density, textSizePx)
         val usableWidth = (candidateWidth - 2 * horizontalInset(candidateWidth, density)).coerceAtLeast(0)
         return (usableWidth / minimumColumnWidth).toInt().coerceAtLeast(1)
     }
+
+    /** Keep the default gaps within the panel and let larger gaps move columns apart. */
+    fun columnWidth(candidateWidth: Int, density: Float, textSizePx: Float): Int {
+        val usableWidth = (candidateWidth - 2 * horizontalInset(candidateWidth, density)).coerceAtLeast(0)
+        val columns = columnCount(candidateWidth, density, textSizePx)
+        val defaultGap = (DEFAULT_SPACING_DP * density).roundToInt()
+        return minOf(minimumColumnWidth(density, textSizePx).toInt(), usableWidth / columns - defaultGap).coerceAtLeast(1)
+    }
+
+    private fun minimumColumnWidth(density: Float, textSizePx: Float): Float =
+        maxOf(64f * density, textSizePx * 1.2f + 24f * density, 1f)
 
     /** Preserve at least a 48 dp target when the candidate area is very narrow. */
     fun horizontalInset(candidateWidth: Int, density: Float): Int =
@@ -71,6 +88,10 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
                 .coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT),
             sideCandidateVerticalText = runCatching { preferences.getBoolean("${p}_candidate_vertical_text", false) }.getOrDefault(false),
             sideCandidateRightToLeft = runCatching { preferences.getBoolean("${p}_candidate_right_to_left", false) }.getOrDefault(false),
+            sideCandidateWrapLongText = runCatching { preferences.getBoolean("${p}_candidate_wrap_long_text", false) }.getOrDefault(false),
+            sideCandidateSpacingDp = int("candidate_spacing_dp", SideCandidateSizing.DEFAULT_SPACING_DP)
+                .coerceIn(0, SideCandidateSizing.MAX_SPACING_DP),
+            showSegmentEditor = runCatching { preferences.getBoolean("${p}_segment_editor", true) }.getOrDefault(true),
         )
     }
 
@@ -88,7 +109,10 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
             .putBoolean("${p}_auto_height", value.autoHeight).putString("${p}_candidates", placement.name)
             .putInt("${p}_candidate_width_percent", preference.sideCandidateWidthPercent.coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT))
             .putBoolean("${p}_candidate_vertical_text", preference.sideCandidateVerticalText)
-            .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft).apply()
+            .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft)
+            .putBoolean("${p}_candidate_wrap_long_text", preference.sideCandidateWrapLongText)
+            .putInt("${p}_candidate_spacing_dp", preference.sideCandidateSpacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP))
+            .putBoolean("${p}_segment_editor", preference.showSegmentEditor).apply()
     }
 
     fun reset(keyboard: GeometryKeyboard, landscape: Boolean) = save(keyboard, landscape, KeyboardGeometryPreference())
