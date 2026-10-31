@@ -77,6 +77,7 @@ import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
+import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.QWERTYMode
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
@@ -2649,9 +2650,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val y = event.getY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
 
-        if (independentMultiTouchForCurrentGesture) {
-            val start = pointerStartCoords[pointerId] ?: return
-            val (dx, dy) = KeyboardGeometryMath.localDelta(x - start.first, y - start.second, previousView?.rotation ?: 0f)
+        val start = pointerStartCoords[pointerId]
+        val (dx, dy) = start?.let {
+            KeyboardGeometryMath.localDelta(x - it.first, y - it.second, previousView?.rotation ?: 0f)
+        } ?: (0f to 0f)
+        val isVerticalCursorGesture = isCursorKey(previousView) && start != null && abs(dy) >= abs(dx)
+        if (independentMultiTouchForCurrentGesture || isVerticalCursorGesture) {
+            if (start == null) return
+            // Keep a vertical cursor gesture on its original key even after crossing its bounds.
+            // Like independent multi-touch, it is classified once at release.
             if (detectFlickDirection(dx, dy, 0f, 0f, flickThreshold) != FlickDirection.NONE) {
                 cancelLongPressForPointer(pointerId)
             }
@@ -2695,6 +2702,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun isCursorKey(view: View?): Boolean =
+        view === binding.cursorLeft || view === binding.cursorRight
+
     private fun tryHandleFlickAt(pointerId: Int, x: Float, y: Float): Boolean {
         if (suppressedPointerIds.contains(pointerId) || isPointerLocked(pointerId)) return false
         if (flickLockedPointers.contains(pointerId)) return true
@@ -2702,7 +2712,22 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val (startX, startY) = pointerStartCoords[pointerId] ?: return false
         val previousView = pointerButtonMap[pointerId]
         val (dx, dy) = KeyboardGeometryMath.localDelta(x - startX, y - startY, previousView?.rotation ?: 0f)
-        return when (detectFlickDirection(dx, dy, 0f, 0f, flickThreshold)) {
+        val direction = detectFlickDirection(dx, dy, 0f, 0f, flickThreshold)
+        if (previousView != null && isCursorKey(previousView)) {
+            val gesture = when (direction) {
+                FlickDirection.UP -> GestureType.FlickTop
+                FlickDirection.DOWN -> GestureType.FlickBottom
+                else -> null
+            }
+            if (gesture != null) {
+                applyCommonFlickEffects(pointerId, previousView)
+                qwertyButtonMap[previousView]?.let { key ->
+                    qwertyKeyListener?.onCursorFlickQWERTYKey(key, gesture)
+                }
+                return true
+            }
+        }
+        return when (direction) {
             FlickDirection.UP -> {
                 when {
                     enableDeleteUpFlick &&
