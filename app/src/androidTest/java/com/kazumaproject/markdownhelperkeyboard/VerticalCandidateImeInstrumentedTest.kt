@@ -19,182 +19,243 @@ import org.junit.runner.RunWith
 /** Exercises the shipped IME, its composing spans, native touch routing and candidate window. */
 @androidx.test.filters.SdkSuppress(minSdkVersion = 29)
 @RunWith(AndroidJUnit4::class)
-class VerticalSegmentImeInstrumentedTest {
+class VerticalCandidateImeInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val automation get() = instrumentation.uiAutomation
     private lateinit var host: EditorHost
 
-    @Test fun liveBoundaryEditKeepsComposingAndSurvivesFurtherInput() = withKeyboard(live = true) {
-        typeSentence()
-        await("live converted text") { text().contains("明日") }
-        assertComposing()
-        await("first segment") { rangeNode(0, 4) != null }
-        assertBarWithinKeyboard(R.id.keyboard_view)
-        dragFirstBoundaryLeft()
-        await("changed boundary") { rangeNode(0, 3) != null }
-        await("new candidate applied") { segmentLabels().isNotEmpty() && text() == segmentLabels().joinToString("") }
-        assertComposing()
-        softKey(com.kazumaproject.tenkey.R.id.key_1)
-        await("boundary retained after typing") { rangeNode(0, 3) != null && segmentReadings().joinToString("").endsWith("あ") }
-        await("first candidate after typing") { text() == segmentLabels().joinToString("") }
-        assertComposing()
-        val expected = text()
-        softKey(com.kazumaproject.tenkey.R.id.key_enter)
-        await { text() == expected }
-        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
-    }
+    @Test fun horizontalCandidatesScrollInBothDirectionsOnTheLeft() =
+        verifyHorizontalSideCandidates(floating = false, side = "LEFT")
 
-    @Test fun enterImmediatelyAfterBoundaryEditCommitsTheWholeSentence() = withKeyboard(live = true) {
-        typeSentence()
-        await("first segment") { rangeNode(0, 4) != null }
-        assertTrue(rangeNode(0, 4)!!.performAction(R.id.segment_end_left))
-        softKey(com.kazumaproject.tenkey.R.id.key_enter)
-        await("whole sentence committed") {
-            var start = 0
-            host.onActivity { start = BaseInputConnection.getComposingSpanStart(it.editText.text) }
-            text().isNotEmpty() && start == -1
-        }
-        assertFalse(text().contains("\n"))
-    }
+    @Test fun horizontalCandidatesScrollInBothDirectionsOnTheRight() =
+        verifyHorizontalSideCandidates(floating = false, side = "RIGHT")
 
-    @Test fun candidateAndSegmentSelectionRemainUncommitted() = withKeyboard {
-        typeSentence()
-        await("segment preview") { segmentLabels().isNotEmpty() }
-        val label = segmentLabels().joinToString("")
-        instrumentation.runOnMainSync {
-            val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
-                .first { it.isShown && it.childCount > 0 }
-            assertTrue("whole candidate not clickable", recycler.getChildAt(0).performClick())
-        }
-        awaitText(label)
-        assertComposing()
-        val first = allNodes().firstOrNull { it.contentDescription?.toString()?.startsWith("文節「") == true && it.isClickable }
-            ?: allNodes().firstOrNull { it.contentDescription?.toString()?.startsWith("Select segment") == true && it.isClickable }
-        assertNotNull(first)
-        val before = segmentLabels()
-        assertTrue(first!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
-        // A tap during the transition must not commit a stale whole-sentence candidate.
-        instrumentation.runOnMainSync {
-            val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
-                .first { it.isShown && it.childCount > 0 }
-            recycler.getChildAt(0).performClick()
-        }
-        assertComposing()
-        await("focused segment candidates") {
-            var ready = false
-            instrumentation.runOnMainSync {
-                val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
+    @Test fun floatingHorizontalCandidatesScrollInBothDirections() =
+        verifyHorizontalSideCandidates(floating = true, side = "LEFT")
+
+    @Test fun sumireHorizontalCandidatesScrollInBothDirections() =
+        verifyHorizontalSideCandidates(floating = false, side = "RIGHT", sumire = true)
+
+    @Test fun landscapeHorizontalCandidatesScrollInBothDirections() =
+        verifyHorizontalSideCandidates(floating = false, side = "RIGHT", landscape = true)
+
+    @Test fun qwertyCenterCandidatesScrollInBothDirections() =
+        verifyHorizontalSideCandidates(floating = false, side = "CENTER", qwerty = true)
+
+    @Test fun floatingQwertyCenterCandidatesScrollInBothDirections() =
+        verifyHorizontalSideCandidates(floating = true, side = "CENTER", qwerty = true)
+
+    private fun verifyHorizontalSideCandidates(
+        floating: Boolean, side: String, sumire: Boolean = false, landscape: Boolean = false, qwerty: Boolean = false,
+    ) = withKeyboard(floating = floating, side = side, sumire = sumire, landscape = landscape,
+        verticalText = false, qwerty = qwerty) {
+            if (qwerty) softKey(com.kazumaproject.qwerty_keyboard.R.id.key_h)
+            else if (sumire) tapSumireA() else softKey(com.kazumaproject.tenkey.R.id.key_1)
+            fun candidates(): androidx.recyclerview.widget.RecyclerView? =
+                android.view.inspector.WindowInspector.getGlobalWindowViews()
                     .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
-                    .firstOrNull { it.isShown }
-                val adapter = recycler?.adapter as? com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
-                val firstText = recycler?.findViewHolderForAdapterPosition(0)?.itemView
-                    ?.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
-                ready = adapter?.suggestions?.firstOrNull()?.string == before.first() &&
-                    firstText?.contentDescription?.toString() == before.first()
+                    .firstOrNull { it.isShown && it.parent is android.widget.HorizontalScrollView }
+
+            await("horizontal side candidates") {
+                var ready = false
+                instrumentation.runOnMainSync { ready = candidates()?.childCount?.let { it > 0 } == true }
+                ready
             }
-            ready
-        }
-        instrumentation.runOnMainSync {
-            val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
-                .first { it.isShown }
-            recycler.scrollToPosition(1)
-        }
-        await("segment alternatives") {
-            var ready = false
+            val values = List(40) { index ->
+                val word = when {
+                    index == 25 -> "特に長い変換候補".repeat(30)
+                    qwerty -> listOf("横にスワイプすると候補の続きを確認できます",
+                        "長い変換候補の末尾も表示できます",
+                        "候補を選ぶと全文が入力されます",
+                        "縦方向にも候補をスクロールできます")[index % 4]
+                    else -> "長い変換候補".repeat(12)
+                }
+                com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate("$index$word", 1, 1u, 0)
+            }
             instrumentation.runOnMainSync {
-                val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                    .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
-                    .firstOrNull { it.isShown && (it.adapter?.itemCount ?: 0) > 1 }
-                ready = recycler?.findViewHolderForAdapterPosition(1) != null
+                (candidates()!!.adapter as com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter)
+                    .suggestions = values
             }
-            ready
+            await("long candidate") {
+                var ready = false
+                instrumentation.runOnMainSync {
+                    val list = candidates()
+                    val text = list?.findViewHolderForAdapterPosition(0)?.itemView
+                        ?.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
+                    ready = text?.text?.toString()?.contains(values[0].string) == true &&
+                        (list?.parent as? android.widget.HorizontalScrollView)?.canScrollHorizontally(1) == true
+                }
+                ready
+            }
+            if (qwerty) {
+                fun rowGap(): Int? {
+                    var gap: Int? = null
+                    instrumentation.runOnMainSync {
+                        val list = candidates()
+                        val first = list?.findViewHolderForAdapterPosition(0)?.itemView
+                        val second = list?.findViewHolderForAdapterPosition(1)?.itemView
+                        if (first != null && second != null) gap = second.top - first.bottom
+                    }
+                    return gap
+                }
+                var initialGap = 0
+                await("center candidate rows") { rowGap()?.also { initialGap = it } != null }
+                val orientation = if (landscape) "landscape" else "portrait"
+                check(PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext).edit()
+                    .putInt("keyboard_geometry_qwerty_${orientation}_center_candidate_spacing_dp", 20).commit())
+                await("center row spacing") { rowGap()?.let { it > initialGap } == true }
+            }
+            val panel = android.graphics.Rect()
+            instrumentation.runOnMainSync {
+                val scroll = candidates()!!.parent as android.widget.HorizontalScrollView
+                val location = IntArray(2).also(scroll::getLocationOnScreen)
+                panel.set(location[0], location[1], location[0] + scroll.width, location[1] + scroll.height)
+            }
+            drag(panel.right - 8f, panel.centerY().toFloat(), panel.left + 8f, panel.centerY().toFloat())
+            await("horizontal swipe") {
+                var moved = false
+                instrumentation.runOnMainSync { moved = (candidates()!!.parent as android.widget.HorizontalScrollView).scrollX > 0 }
+                moved
+            }
+            if (qwerty && !floating) screenshot("qwerty-center.png")
+            // Let the horizontal fling settle before starting a gesture on the other axis.
+            SystemClock.sleep(1000)
+            instrumentation.runOnMainSync {
+                val scroll = candidates()!!.parent as android.widget.HorizontalScrollView
+                val location = IntArray(2).also(scroll::getLocationOnScreen)
+                panel.set(location[0], location[1], location[0] + scroll.width, location[1] + scroll.height)
+            }
+            drag(panel.centerX().toFloat(), panel.bottom - 8f, panel.centerX().toFloat(), panel.top + 8f)
+            await("vertical swipe") {
+                var moved = false
+                instrumentation.runOnMainSync {
+                    moved = (candidates()!!.layoutManager as androidx.recyclerview.widget.LinearLayoutManager)
+                        .findFirstVisibleItemPosition() > 0
+                }
+                moved
+            }
+            instrumentation.runOnMainSync { candidates()!!.scrollToPosition(25) }
+            await("later long candidate") {
+                var ready = false
+                instrumentation.runOnMainSync {
+                    val text = candidates()?.findViewHolderForAdapterPosition(25)?.itemView
+                        ?.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
+                    ready = text?.text?.toString()?.contains(values[25].string) == true
+                }
+                ready
+            }
+            val visible = android.graphics.Rect()
+            instrumentation.runOnMainSync {
+                val list = candidates()!!
+                val scroll = list.parent as android.widget.HorizontalScrollView
+                scroll.scrollTo(list.width, 0)
+                val item = list.findViewHolderForAdapterPosition(25)!!.itemView
+                val text = item.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)
+                assertEquals("The later candidate must not be truncated", text.length(), text.layout.getLineEnd(0))
+                assertTrue("The entire later candidate must fit in its text view",
+                    text.width >= text.layout.getLineWidth(0))
+                val location = IntArray(2).also(text::getLocationOnScreen)
+                assertTrue("The end of the later candidate must be visible",
+                    text.getLocalVisibleRect(visible))
+                visible.offset(location[0], location[1])
+                assertTrue("The end of the later candidate is clipped",
+                    visible.right >= location[0] + text.width - 2)
+            }
+            tapAt(visible.centerX().toFloat(), visible.centerY().toFloat())
+            awaitText(values[25].string)
+            host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
         }
-        instrumentation.runOnMainSync {
-            val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
-                .first { it.isShown && it.findViewHolderForAdapterPosition(1) != null }
-            assertTrue(recycler.findViewHolderForAdapterPosition(1)!!.itemView.performClick())
-        }
-        await("only selected segment changed") {
-            val after = segmentLabels()
-            after.size == before.size && after.first() != before.first() && after.drop(1) == before.drop(1)
-        }
-        assertEquals(segmentLabels().joinToString(""), text())
-        assertComposing()
-        softKey(com.kazumaproject.tenkey.R.id.key_enter)
-        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
-    }
 
-    @Test fun draggingSegmentMovesItsReadingAndTextWithoutCommitting() = withKeyboard {
-        typeSentence()
-        await("segments available") { segmentLabels().size >= 2 }
-        val before = segmentLabels()
-        fun cards() = allNodes().filter {
-            it.isLongClickable && (it.contentDescription?.toString()?.startsWith("文節「") == true ||
-                it.contentDescription?.toString()?.startsWith("Select segment") == true)
-        }
-        val nodes = cards()
-        val source = android.graphics.Rect().also(nodes[1]::getBoundsInScreen)
-        val target = android.graphics.Rect().also(nodes[0]::getBoundsInScreen)
-        drag(source.centerX().toFloat(), source.centerY().toFloat(), target.centerX().toFloat(),
-            target.centerY().toFloat(), android.view.ViewConfiguration.getLongPressTimeout().toLong() + 200)
-        await("segment reordered") { segmentLabels().take(2) == listOf(before[1], before[0]) }
-        assertComposing()
-        val expected = segmentLabels().joinToString("")
-        assertEquals(expected, text())
-        softKey(com.kazumaproject.tenkey.R.id.key_enter)
-        host.onActivity { assertEquals(-1, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
-    }
+    @Test fun regularVerticalCandidatesRespondToSpacingAndShowDividers() =
+        verifyRegularVerticalCandidates(side = "LEFT", rightToLeft = false)
 
-    @Test fun disabledEditorLeavesVerticalCandidatesInTheirOriginalMode() = withKeyboard(show = false) {
-        typeSentence()
-        SystemClock.sleep(1000)
-        assertFalse(segmentBarVisible())
-        instrumentation.runOnMainSync {
-            val recycler = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
-                .first { it.isShown && it.childCount > 0 }
-            assertTrue(recycler.getChildAt(0).performClick())
-        }
-        await("candidate committed") {
-            var start = 0
-            host.onActivity { start = BaseInputConnection.getComposingSpanStart(it.editText.text) }
-            start == -1
-        }
-    }
+    @Test fun rightToLeftVerticalCandidatesRespondToSpacingAndShowDividers() =
+        verifyRegularVerticalCandidates(side = "RIGHT", rightToLeft = true)
 
-    @Test fun floatingKeyboardAndSumireShowEditor() {
-        withKeyboard(floating = true, live = true) {
-            typeSentence()
-            await("floating segment bar") { segmentBarVisible() }
-            assertBarWithinKeyboard(R.id.keyboard_view_floating)
-            assertComposing()
-        }
-        withKeyboard(sumire = true, live = true) {
-            tapSumireA()
-            await("sumire segment bar") { segmentBarVisible() }
-            assertBarWithinKeyboard(R.id.custom_layout_default)
-            assertComposing()
-        }
-    }
-
-    @Test fun rightSideLandscapeCandidatesShowEditor() = withKeyboard(live = true, landscape = true, side = "RIGHT") {
-        softKey(com.kazumaproject.tenkey.R.id.key_1)
-        if (text().isEmpty()) {
-            host.onActivity { it.requestImeForEditor() }
-            SystemClock.sleep(500)
+    private fun verifyRegularVerticalCandidates(side: String, rightToLeft: Boolean) =
+        withKeyboard(side = side, sideWidthPercent = 50, rightToLeft = rightToLeft) {
             softKey(com.kazumaproject.tenkey.R.id.key_1)
+            fun candidates(): androidx.recyclerview.widget.RecyclerView? =
+                android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
+                    .firstOrNull { it.isShown && it.layoutManager is
+                        com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager }
+            await("vertical candidates") {
+                var ready = false
+                instrumentation.runOnMainSync { ready = candidates()?.childCount?.let { it > 0 } == true }
+                ready
+            }
+            val words = listOf("明日", "明後日", "朝", "晴れ", "今日", "予定", "天気", "気温", "東京", "散歩", "公園", "旅行")
+            instrumentation.runOnMainSync {
+                val adapter = candidates()!!.adapter as com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+                adapter.suggestions = words.map { com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate(it, 1, 1u, 0) }
+            }
+            val prefs = PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext)
+            val key = "keyboard_geometry_tenkey_portrait_candidate_spacing_dp"
+            fun gaps(): Pair<Int, Int>? {
+                var result: Pair<Int, Int>? = null
+                instrumentation.runOnMainSync {
+                    val list = candidates() ?: return@runOnMainSync
+                    val flow = list.layoutManager as com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateFlowLayoutManager
+                    val first = flow.findViewByPosition(0)
+                    val below = flow.findViewByPosition(1)
+                    val nextColumn = flow.flexLines.firstOrNull()?.itemCount?.let(flow::findViewByPosition)
+                    if (first != null && below != null && nextColumn != null &&
+                        first.left == below.left && nextColumn.left != first.left &&
+                        first.findViewById<android.widget.TextView>(R.id.suggestion_item_text_view)?.text.toString().contains("明")) {
+                        result = kotlin.math.abs(nextColumn.left - first.left) to (below.top - first.bottom)
+                    }
+                }
+                return result
+            }
+            check(prefs.edit().putInt(key, 0).commit())
+            var compact: Pair<Int, Int>? = null
+            await("compact vertical candidates") { gaps()?.also { compact = it } != null }
+            if (!rightToLeft) screenshot("vertical-compact.png")
+            check(prefs.edit().putInt(key, 24).commit())
+            var observed: Pair<Int, Int>? = null
+            await("normal candidates use the new spacing") {
+                val expanded = gaps()
+                if (observed != expanded) {
+                    android.util.Log.i("CandidateSpacingTest", "side=$side compact=$compact expanded=$expanded")
+                    observed = expanded
+                }
+                expanded != null && expanded.first > compact!!.first && expanded.second > compact!!.second
+            }
+            var lineY = 0
+            var backgroundY = 0
+            var textCenter = 0f
+            var scanLeft = 0
+            var scanRight = 0
+            var density = 1f
+            instrumentation.runOnMainSync {
+                val list = candidates()!!
+                val first = list.findViewHolderForAdapterPosition(0)!!.itemView
+                val origin = IntArray(2).also(list::getLocationOnScreen)
+                val text = first.findViewById<android.view.View>(R.id.suggestion_item_text_view)
+                val textOrigin = IntArray(2).also(text::getLocationOnScreen)
+                density = list.resources.displayMetrics.density
+                textCenter = textOrigin[0] + text.width / 2f
+                lineY = origin[1] + first.bottom + (24 * density / 2).toInt()
+                backgroundY = lineY + (3 * density).toInt()
+                scanLeft = origin[0] + first.left
+                scanRight = origin[0] + first.right - 1
+            }
+            val bitmap = requireNotNull(automation.takeScreenshot())
+            val linePixels = (scanLeft.coerceAtLeast(0)..scanRight.coerceAtMost(bitmap.width - 1)).filter { x ->
+                bitmap.getPixel(x, lineY) != bitmap.getPixel(x, backgroundY)
+            }
+            assertTrue("A short horizontal divider is drawn below an ordinary vertical candidate", linePixels.isNotEmpty())
+            val lineWidth = linePixels.last() - linePixels.first() + 1
+            assertTrue("The divider should be short, but was $lineWidth pixels", lineWidth <= 20 * density)
+            assertTrue("The divider should be visible", lineWidth >= 15 * density)
+            assertTrue("The divider should be centered under the text",
+                kotlin.math.abs((linePixels.first() + linePixels.last()) / 2f - textCenter) <= 2f)
+            bitmap.recycle()
+            screenshot(if (rightToLeft) "vertical-candidates-rtl.png" else "vertical-candidates.png")
         }
-        await("landscape input") { text().isNotEmpty() }
-        await("landscape segment bar") { segmentBarVisible() }
-        assertBarWithinKeyboard(R.id.keyboard_view)
-        assertComposing()
-    }
 
-    @Test fun wrappedLongCandidateScrollsAndCommitsItsFullText() = withKeyboard(show = false, wrapLongText = true) {
+    @Test fun wrappedLongCandidateScrollsAndCommitsItsFullText() = withKeyboard(wrapLongText = true) {
         softKey(com.kazumaproject.tenkey.R.id.key_1)
         await("side candidates") {
             var ready = false
@@ -308,16 +369,6 @@ class VerticalSegmentImeInstrumentedTest {
         SystemClock.sleep(180)
     }
 
-    private fun typeSentence() {
-        softKey(com.kazumaproject.tenkey.R.id.key_1)       // あ
-        softKey(com.kazumaproject.tenkey.R.id.key_3, -1)  // し
-        softKey(com.kazumaproject.tenkey.R.id.key_4)       // た
-        softKey(com.kazumaproject.tenkey.R.id.key_6)       // は
-        softKey(com.kazumaproject.tenkey.R.id.key_6)       // は
-        softKey(com.kazumaproject.tenkey.R.id.key_9, 1)   // れ
-        softKey(com.kazumaproject.tenkey.R.id.key_9, 0, -1) // る
-    }
-
     private fun tapSumireA() {
         var bounds: android.graphics.Rect? = null
         await("Sumire あ key") {
@@ -329,111 +380,18 @@ class VerticalSegmentImeInstrumentedTest {
                     }
                     return null
                 }
-                bounds = android.view.inspector.WindowInspector.getGlobalWindowViews().asReversed()
+                val key = android.view.inspector.WindowInspector.getGlobalWindowViews().asReversed()
                     .mapNotNull { it.findViewById<android.view.View>(R.id.custom_layout_default) }
                     .filter { it.isShown }.mapNotNull(::find).firstOrNull()
-                    ?.let {
-                        val location = IntArray(2).also(it::getLocationOnScreen)
-                        android.graphics.Rect(location[0], location[1], location[0] + it.width, location[1] + it.height)
-                    }
+                bounds = key?.let {
+                    val location = IntArray(2).also(it::getLocationOnScreen)
+                    android.graphics.Rect(location[0], location[1], location[0] + it.width, location[1] + it.height)
+                }
             }
             bounds != null && !bounds!!.isEmpty
         }
-        val area = bounds!!
-        drag(area.centerX().toFloat(), area.centerY().toFloat(), area.centerX().toFloat(), area.centerY().toFloat())
-        SystemClock.sleep(250)
+        tapAt(bounds!!.centerX().toFloat(), bounds!!.centerY().toFloat())
     }
-
-    private fun dragFirstBoundaryLeft() {
-        var location: IntArray? = null
-        instrumentation.runOnMainSync {
-            val description = instrumentation.targetContext.getString(R.string.segment_range_description, 0, 4)
-            fun find(view: android.view.View): android.view.View? {
-                if (view.contentDescription?.toString() == description) return view
-                if (view is android.view.ViewGroup) for (i in 0 until view.childCount) {
-                    find(view.getChildAt(i))?.let { return it }
-                }
-                return null
-            }
-            val rail = android.view.inspector.WindowInspector.getGlobalWindowViews().asReversed()
-                .mapNotNull(::find).first { it.isShown }
-            location = IntArray(2).also(rail::getLocationOnScreen)
-        }
-        val density = instrumentation.targetContext.resources.displayMetrics.density
-        val x = location!![0] + (16 + 4 * 26) * density
-        val y = location!![1] + 20 * density
-        drag(x, y, x - 26 * density, y)
-    }
-
-    private fun assertComposing() {
-        host.onActivity { assertEquals(0, BaseInputConnection.getComposingSpanStart(it.editText.text)) }
-    }
-
-    private fun segmentBar(): android.view.View? {
-        var result: android.view.View? = null
-        instrumentation.runOnMainSync {
-            result = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<android.view.View>(R.id.segment_candidate_bar) }
-                .firstOrNull { it.isShown }
-        }
-        return result
-    }
-    private fun segmentBarVisible() = segmentBar() != null
-
-    private fun assertBarWithinKeyboard(keyboardId: Int) {
-        await("segment bar aligned with keyboard") {
-            var aligned = false
-            instrumentation.runOnMainSync {
-                val windows = android.view.inspector.WindowInspector.getGlobalWindowViews()
-                val bar = windows.mapNotNull { it.findViewById<android.view.View>(R.id.segment_candidate_bar) }
-                    .firstOrNull { it.isShown }
-                val keyboard = windows.mapNotNull { it.findViewById<android.view.View>(keyboardId) }
-                    .firstOrNull { it.isShown }
-                val barRect = android.graphics.Rect()
-                val keyboardRect = android.graphics.Rect()
-                if (bar != null && keyboard != null && bar.getGlobalVisibleRect(barRect) && keyboard.getGlobalVisibleRect(keyboardRect)) {
-                    val tolerance = 2 * instrumentation.targetContext.resources.displayMetrics.density
-                    aligned = barRect.left >= keyboardRect.left - tolerance && barRect.right <= keyboardRect.right + tolerance
-                }
-            }
-            aligned
-        }
-    }
-
-    private fun segmentLabels(): List<String> {
-        val result = mutableListOf<String>()
-        instrumentation.runOnMainSync {
-            fun visit(view: android.view.View) {
-                if (view is android.widget.TextView && view.isLongClickable) result.add(view.text.toString())
-                if (view is android.view.ViewGroup) for (i in 0 until view.childCount) visit(view.getChildAt(i))
-            }
-            android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<android.view.View>(R.id.segment_candidate_bar) }
-                .firstOrNull { it.isShown }?.let(::visit)
-        }
-        return result
-    }
-
-    private fun segmentReadings(): List<String> {
-        val result = mutableListOf<String>()
-        instrumentation.runOnMainSync {
-            fun visit(view: android.view.View) {
-                if (view is android.widget.TextView && view.isLongClickable) {
-                    val description = view.contentDescription?.toString().orEmpty()
-                    val match = Regex("読み「(.+?)」|reading (.+)").find(description)
-                    match?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }?.let(result::add)
-                }
-                if (view is android.view.ViewGroup) for (i in 0 until view.childCount) visit(view.getChildAt(i))
-            }
-            android.view.inspector.WindowInspector.getGlobalWindowViews()
-                .mapNotNull { it.findViewById<android.view.View>(R.id.segment_candidate_bar) }
-                .firstOrNull { it.isShown }?.let(::visit)
-        }
-        return result
-    }
-
-    private fun rangeNode(start: Int, end: Int) =
-        findDescription(instrumentation.targetContext.getString(R.string.segment_range_description, start, end))
 
     private fun allNodes(): List<AccessibilityNodeInfo> {
         val nodes = mutableListOf<AccessibilityNodeInfo>()
@@ -443,12 +401,6 @@ class VerticalSegmentImeInstrumentedTest {
         }
         automation.windows.mapNotNull { it.root }.forEach(::visit)
         return nodes
-    }
-
-    private fun findDescription(value: String) = allNodes().firstOrNull { it.contentDescription?.toString() == value }
-    private fun clickDescription(value: String) {
-        await("content description [$value]") { findDescription(value) != null }
-        assertTrue("Could not click $value", findDescription(value)!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
     }
 
     private fun drag(x: Float, y: Float, endX: Float, endY: Float, holdMillis: Long = 0) {
@@ -576,26 +528,31 @@ class VerticalSegmentImeInstrumentedTest {
     }
 
     private fun withKeyboard(
-        floating: Boolean = false, live: Boolean = false, show: Boolean = true, sumire: Boolean = false,
-        landscape: Boolean = false, side: String = "LEFT", wrapLongText: Boolean = false, block: () -> Unit,
+        floating: Boolean = false, live: Boolean = false, sumire: Boolean = false, qwerty: Boolean = false,
+        landscape: Boolean = false, side: String = "LEFT", wrapLongText: Boolean = false,
+        verticalText: Boolean = true, sideWidthPercent: Int = 25, rightToLeft: Boolean = false,
+        block: () -> Unit,
     ) {
         automation.serviceInfo = automation.serviceInfo.apply {
             flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
         val context = instrumentation.targetContext
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val geometry = if (sumire) "sumire" else "tenkey"
+        val geometry = if (qwerty) "qwerty" else if (sumire) "sumire" else "tenkey"
         val orientation = if (landscape) "landscape" else "portrait"
         val values = mapOf<String, Any?>(
             "conversion_bunsetsu_separation_preference" to false,
             "conversion_bunsetsu_cursor_move_preference" to false,
             "candidate_order_override_enable_preference" to false,
-            "keyboard_order_preference" to if (sumire) "[\"SUMIRE\"]" else "[\"TENKEY\"]",
+            "keyboard_order_preference" to if (qwerty) "[\"QWERTY\"]" else if (sumire) "[\"SUMIRE\"]" else "[\"TENKEY\"]",
             "keyboard_geometry_${geometry}_${orientation}_candidates" to side,
-            "keyboard_geometry_${geometry}_${orientation}_candidate_vertical_text" to true,
+            "keyboard_geometry_${geometry}_${orientation}_split" to if (qwerty) 40 else 0,
+            "keyboard_geometry_${geometry}_${orientation}_candidate_width_percent" to sideWidthPercent,
+            "keyboard_geometry_${geometry}_${orientation}_center_candidate_spacing_dp" to 0,
+            "keyboard_geometry_${geometry}_${orientation}_candidate_vertical_text" to verticalText,
+            "keyboard_geometry_${geometry}_${orientation}_candidate_right_to_left" to rightToLeft,
             "keyboard_geometry_${geometry}_${orientation}_candidate_wrap_long_text" to wrapLongText,
             "keyboard_geometry_${geometry}_${orientation}_candidate_spacing_dp" to 4,
-            "keyboard_geometry_${geometry}_${orientation}_segment_editor" to show,
             "keyboard_floating_preference" to floating,
             "allow_fullscreen_mode_preference" to false,
             "keyboard_skin_id" to "default",
@@ -634,7 +591,12 @@ class VerticalSegmentImeInstrumentedTest {
             }
             host.onActivity { it.requestImeForEditor() }
             await("software keyboard") {
-                allNodes().any { it.contentDescription?.toString() == "delete_key" && it.isVisibleToUser } ||
+                var qwertyShown = false
+                if (qwerty) instrumentation.runOnMainSync {
+                    qwertyShown = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                        .any { it.findViewById<android.view.View>(if (floating) R.id.qwerty_view_floating else R.id.qwerty_view)?.isShown == true }
+                }
+                qwertyShown || allNodes().any { it.contentDescription?.toString() == "delete_key" && it.isVisibleToUser } ||
                     allNodes().any { it.text?.toString() == "あ" && it.isVisibleToUser }
             }
             block()

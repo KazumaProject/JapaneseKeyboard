@@ -63,7 +63,6 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navi
 import com.google.android.material.R as MaterialR
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -440,11 +439,19 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
             GeometryCandidatePlacement.TOP -> 1; GeometryCandidatePlacement.CENTER -> 2; GeometryCandidatePlacement.LEFT -> 3; GeometryCandidatePlacement.RIGHT -> 4
         }, viewId = R.id.keyboard_geometry_candidate_placement) {
             val oldSide = geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)
+            val oldCenter = geometry.candidates == GeometryCandidatePlacement.CENTER
             val placement = when (it) {
                 2 -> GeometryCandidatePlacement.CENTER; 3 -> GeometryCandidatePlacement.LEFT; 4 -> GeometryCandidatePlacement.RIGHT; else -> GeometryCandidatePlacement.TOP
             }
             saveGeometry(geometry.copy(candidates = placement))
-            if (oldSide != (placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT))) buildBody()
+            if (oldSide != (placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) ||
+                (type == PreviewKeyboard.QWERTY && oldCenter != (placement == GeometryCandidatePlacement.CENTER))) buildBody()
+        }
+        if (type == PreviewKeyboard.QWERTY && geometry.candidates == GeometryCandidatePlacement.CENTER) {
+            slider(R.string.keyboard_geometry_center_candidate_spacing, geometry.centerCandidateSpacingDp,
+                SideCandidateSizing.MAX_SPACING_DP, viewId = R.id.keyboard_geometry_center_candidate_spacing) {
+                saveGeometry(geometry.copy(centerCandidateSpacingDp = it))
+            }
         }
         if (type != PreviewKeyboard.QWERTY && geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
             slider(R.string.keyboard_geometry_candidate_width, geometry.sideCandidateWidthPercent,
@@ -504,19 +511,6 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 textSize = 13f
                 isVisible = geometry.sideCandidateVerticalText
             }
-            val segmentEditor = MaterialSwitch(ctx).apply {
-                id = R.id.keyboard_geometry_segment_editor
-                setText(R.string.keyboard_geometry_segment_editor)
-                isChecked = geometry.showSegmentEditor
-                isVisible = geometry.sideCandidateVerticalText
-                setOnCheckedChangeListener { _, checked -> saveGeometry(geometry.copy(showSegmentEditor = checked)) }
-            }
-            val segmentEditorHint = TextView(ctx).apply {
-                setText(R.string.keyboard_geometry_segment_editor_hint)
-                textSize = 13f
-                setPadding(0, 0, 0, dp(8))
-                isVisible = geometry.sideCandidateVerticalText
-            }
             choices(R.string.keyboard_geometry_candidate_order,
                 listOf(1 to R.string.keyboard_geometry_candidate_order_horizontal, 2 to R.string.keyboard_geometry_candidate_order_vertical),
                 if (geometry.sideCandidateVerticalText) 2 else 1, R.id.keyboard_geometry_candidate_order) {
@@ -529,11 +523,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 spacingLabel.isVisible = it == 2
                 spacing.isVisible = it == 2
                 spacingHint.isVisible = it == 2
-                segmentEditor.isVisible = it == 2
-                segmentEditorHint.isVisible = it == 2
             }
-            body.addView(segmentEditor)
-            body.addView(segmentEditorHint)
             body.addView(verticalHint)
             body.addView(directionLabel)
             body.addView(direction)

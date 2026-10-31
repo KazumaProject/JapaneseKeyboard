@@ -63,7 +63,10 @@ class UnifiedKeyboardSettingsDeviceTest {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
         try {
-            prefs.edit().putString("keyboard_geometry_tenkey_portrait_candidates", "TOP").commit()
+            prefs.edit()
+                .putString("keyboard_geometry_tenkey_portrait_candidates", "TOP")
+                .putBoolean("keyboard_geometry_tenkey_portrait_candidate_wrap_long_text", false)
+                .commit()
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
                 await { var ready = false; scenario.onActivity { ready = it.isSettingsContentReady }; ready }
                 scenario.onActivity { host(it).navController.navigate(R.id.keyboardGeometrySettingsFragment,
@@ -92,10 +95,6 @@ class UnifiedKeyboardSettingsDeviceTest {
                     longDisplay.check(2)
                     val spacing = root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)
                     assertTrue(spacing.isShown)
-                    val segmentEditor = root.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.keyboard_geometry_segment_editor)
-                    assertTrue(segmentEditor.isShown)
-                    assertTrue(segmentEditor.isChecked)
-                    segmentEditor.isChecked = false
                 }
                 await {
                     var ready = false
@@ -108,7 +107,6 @@ class UnifiedKeyboardSettingsDeviceTest {
                     touch(spacing, MotionEvent.ACTION_DOWN, x, y)
                     touch(spacing, MotionEvent.ACTION_UP, x, y)
                 }
-                assertFalse(prefs.getBoolean("keyboard_geometry_tenkey_portrait_segment_editor", true))
                 assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 25) > 25)
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", false))
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_right_to_left", false))
@@ -121,6 +119,62 @@ class UnifiedKeyboardSettingsDeviceTest {
                     assertNull(root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_order))
                     assertNull(root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_long_display))
                     assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing))
+                }
+            }
+        } finally { restore(prefs, original) }
+    }
+
+    @Test fun centerCandidateSpacingAppearsAndIsSavedForQwerty() {
+        AppPreference.init(context)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val original = prefs.all.toMap()
+        try {
+            prefs.edit()
+                .putString("keyboard_geometry_qwerty_portrait_candidates", "TOP")
+                .putInt("keyboard_geometry_qwerty_portrait_split", 40)
+                .putInt("keyboard_geometry_qwerty_portrait_center_candidate_spacing_dp", 0)
+                .commit()
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
+                await { var ready = false; scenario.onActivity { ready = it.isSettingsContentReady }; ready }
+                scenario.onActivity {
+                    host(it).navController.navigate(R.id.keyboardGeometrySettingsFragment,
+                        Bundle().apply { putString("geometryKeyboard", "QWERTY") })
+                }
+                var page: View? = null
+                await {
+                    scenario.onActivity { page = host(it).childFragmentManager.primaryNavigationFragment?.view }
+                    page?.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement) != null
+                }
+                instrumentation.runOnMainSync {
+                    val root = requireNotNull(page)
+                    assertNull(root.findViewById<SeekBar>(R.id.keyboard_geometry_center_candidate_spacing))
+                    root.findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement).check(2)
+                }
+                await {
+                    var ready = false
+                    instrumentation.runOnMainSync {
+                        ready = (page?.findViewById<SeekBar>(R.id.keyboard_geometry_center_candidate_spacing)?.width ?: 0) > 0
+                    }
+                    ready
+                }
+                instrumentation.runOnMainSync {
+                    val root = requireNotNull(page)
+                    val spacing = root.findViewById<SeekBar>(R.id.keyboard_geometry_center_candidate_spacing)
+                    val x = spacing.width * .75f
+                    val y = spacing.height / 2f
+                    touch(spacing, MotionEvent.ACTION_DOWN, x, y)
+                    touch(spacing, MotionEvent.ACTION_UP, x, y)
+                    spacing.requestRectangleOnScreen(android.graphics.Rect(0, 0, spacing.width, spacing.height), true)
+                }
+                assertTrue(prefs.getInt("keyboard_geometry_qwerty_portrait_center_candidate_spacing_dp", 0) > 0)
+                SystemClock.sleep(300)
+                val image = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                val file = java.io.File(context.getExternalFilesDir(null), "candidate-center-settings.png")
+                java.io.FileOutputStream(file).use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                image.recycle()
+                instrumentation.runOnMainSync {
+                    requireNotNull(page).findViewById<RadioGroup>(R.id.keyboard_geometry_candidate_placement).check(1)
+                    assertNull(requireNotNull(page).findViewById<SeekBar>(R.id.keyboard_geometry_center_candidate_spacing))
                 }
             }
         } finally { restore(prefs, original) }

@@ -10,7 +10,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.Ge
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidatePlacement
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidateHost
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.geometryBoundsInHost
-import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.alignSegmentBarToKeyboardBody
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreferences
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.SideCandidateSizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSize
@@ -1317,7 +1316,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             content = content
         )
         applyCandidateStripPresentation(presentation)
-        refreshVerticalSegmentEditor()
     }
 
     private fun isFullCandidateViewVisible(): Boolean {
@@ -4055,7 +4053,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         backspaceHistoryCoordinator.cancel()
         deletedBuffer.clear()
         if (!restarting) resetSoftwareModifiers()
-        if (!restarting) clearVerticalSegmentSession()
         cancelMorseInputs(clearPattern = true)
         floatingCursor?.stop()
         resetCursorInputSession()
@@ -6809,7 +6806,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         backspaceHistoryCoordinator.cancel()
         deletedBuffer.clear()
         resetSoftwareModifiers()
-        clearVerticalSegmentSession()
         cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
@@ -8893,8 +8889,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return it
         }
 
-        if (keyCode == KeyEvent.KEYCODE_ESCAPE && cancelVerticalSegmentSession()) return true
-
         if (isHenkan.get() && (keyCode == KeyEvent.KEYCODE_DEL ||
                     keyCode == KeyEvent.KEYCODE_FORWARD_DEL ||
                     keyCode == KeyEvent.KEYCODE_ESCAPE)
@@ -9198,9 +9192,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             PhysicalKeyboardShortcutAction.CANCEL -> {
-                if (cancelVerticalSegmentSession()) {
-                    // The reading remains in the editor; only the manual segmentation is cleared.
-                } else if (isBunsetsuCursorMoveSessionActive()) {
+                if (isBunsetsuCursorMoveSessionActive()) {
                     clearPhysicalCandidateCompositionSession("bunsetsu shortcut cancelled")
                     exitBunsetsuCursorMoveSessionToRawInput()
                 } else if (isHenkan.get()) {
@@ -9541,7 +9533,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             romajiConverter?.clear()
             return true
         }
-        if (commitVerticalSegmentSession() || commitBunsetsuConversionSession()) {
+        if (commitBunsetsuConversionSession()) {
             romajiConverter?.clear()
             return true
         }
@@ -20663,379 +20655,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return prefixScore + kanjiScore + typeBonus - duplicatePenalty
     }
 
-    private data class VerticalSegmentSession(
-        val reading: String,
-        val segments: List<BunsetsuSegmentState>,
-        val snapshot: BunsetsuConversionSnapshot?,
-        val forcedSplits: List<Int>? = null,
-        val focusedIndex: Int = -1,
-        val active: Boolean = false,
-        val pending: Boolean = false,
-        val revision: Long,
-    )
-
-    @Volatile private var verticalSegmentSession: VerticalSegmentSession? = null
-    private var verticalSegmentRevision = 0L
-    private var verticalSegmentJob: Job? = null
-    private var verticalPreserveMovedOnNextInput = false
-    private var verticalCommitPending = false
-
-    private fun isVerticalSegmentEditorConfigured(): Boolean {
-        val type = geometryKeyboardForCurrentMode() ?: return false
-        if (type == GeometryKeyboard.QWERTY || currentInputModeForSession != InputMode.ModeJapanese ||
-            !isInputViewActive || currentInputType.isPassword() || suppressSuggestions ||
-            splitController != null || splitLoadingJob?.isActive == true || floatingCandidateSurfaceActive ||
-            keyboardSymbolViewState.value.isShown) return false
-        val settings = keyboardGeometryPreferences.read(type,
-            resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
-        return settings.showSegmentEditor && settings.sideCandidateVerticalText &&
-            settings.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)
-    }
-
-    private fun clearVerticalSegmentSession() {
-        verticalSegmentRevision++
-        verticalSegmentJob?.cancel()
-        verticalSegmentJob = null
-        verticalSegmentSession = null
-        verticalPreserveMovedOnNextInput = false
-        verticalCommitPending = false
-    }
-
-    private fun updateVerticalSegmentsForInput(reading: String) {
-        val previous = verticalSegmentSession ?: return
-        if (reading.isEmpty()) { clearVerticalSegmentSession(); return }
-        if (previous.reading == reading) return
-        verticalSegmentJob?.cancel()
-        candidateRequestTracker.invalidate()
-        beginZenzRerankRequest()
-        verticalCommitPending = false
-        val splits = previous.forcedSplits?.let { remapSegmentBoundaries(previous.reading, reading, it) }
-        val ranges = (listOf(0) + splits.orEmpty() + reading.length).zipWithNext()
-        verticalSegmentSession = previous.copy(
-            reading = reading,
-            segments = ranges.map { (start, end) ->
-                BunsetsuSegmentState(reading.substring(start, end), reading.substring(start, end))
-            },
-            snapshot = null,
-            forcedSplits = splits,
-            focusedIndex = -1,
-            pending = splits != null,
-            revision = ++verticalSegmentRevision,
-        )
-    }
-
-    private fun verticalSegmentsForCandidate(
-        reading: String,
-        candidate: Candidate,
-        snapshot: BunsetsuConversionSnapshot,
-        forced: List<Int>? = null,
-    ): List<BunsetsuSegmentState> {
-        val path = snapshot.paths[candidate.string].orEmpty()
-        val legal = readingBoundaries(reading).toSet()
-        val splits = (forced ?: snapshot.candidateSplitPositions[candidate.string]
-            ?: if (snapshot.candidates.firstOrNull()?.string == candidate.string) snapshot.initialSplitPositions
-            else emptyList()).filter { it in 1 until reading.length && it in legal }.distinct().sorted()
-        val valid = path.isNotEmpty() && path.first().inputStart == 0 && path.last().inputEnd == reading.length &&
-            path.zipWithNext().all { (a, b) -> a.inputEnd == b.inputStart } &&
-            path.joinToString("") { it.output } == candidate.string &&
-            splits.all { split -> path.any { it.inputEnd == split } }
-        if (!valid) return listOf(BunsetsuSegmentState(reading, displayTextFromCandidate(candidate), hasConvertedDisplay = true))
-        return buildBunsetsuSegments(reading, splits, snapshot.copy(candidates = listOf(candidate)))
-    }
-
-    private fun refreshVerticalSegmentEditor() {
-        val main = mainLayoutBinding ?: return
-        val floating = floatingKeyboardBinding
-        val isFloating = isKeyboardFloatingMode == true && floating != null
-        val bar = if (isFloating) floating!!.segmentCandidateBar else main.segmentCandidateBar
-        val other = if (isFloating) main.segmentCandidateBar else floating?.segmentCandidateBar
-        val otherWasVisible = other?.isVisible == true
-        other?.isVisible = false
-        val reading = inputString.value
-        val hostAttached = if (isFloating) floatingGeometryCandidateHost?.attached == true
-            else dockedGeometryCandidateHost?.attached == true
-        val japaneseCandidates = candidateTabVisibility != true ||
-            candidateTabOrder.getOrNull(main.candidateTabLayout.selectedTabPosition) != CandidateTab.EISUKANA
-        val eligible = isVerticalSegmentEditorConfigured() && hostAttached && japaneseCandidates && reading.isNotEmpty() &&
-            !isFullCandidateViewVisible() && currentCandidateStripContent is CandidateStripContent.Candidates
-        var session = verticalSegmentSession?.takeIf { it.reading == reading }
-        val first = currentCandidateStripCandidates.firstOrNull()?.takeIf { candidate ->
-            candidate.length.toInt() >= reading.length && candidate.sourceId == null &&
-                candidate.presentation == null && candidate.commitText == candidate.string
-        }
-        val snapshot = latestBunsetsuConversionSnapshot?.takeIf { it.input == reading }
-        val needsPreview = session == null || (session.forcedSplits == null &&
-            (session.snapshot?.input != reading || (!session.active && first != null &&
-                session.segments.joinToString("") { it.displayText } != displayTextFromCandidate(first))))
-        if (eligible && needsPreview && snapshot != null && first != null) {
-            session = VerticalSegmentSession(reading, verticalSegmentsForCandidate(reading, first, snapshot),
-                snapshot, active = session?.active == true, revision = ++verticalSegmentRevision)
-            verticalSegmentSession = session
-        }
-        val wasVisible = bar.isVisible
-        bar.isVisible = eligible && session?.segments?.isNotEmpty() == true
-        if (bar.isVisible && session != null) {
-            bar.onFocusSegment = { index -> focusVerticalSegment(index) }
-            bar.onResizeSegment = { start, end -> resizeVerticalSegment(start, end) }
-            bar.onReorderSegment = { from, to -> reorderVerticalSegments(from, to) }
-            bar.bind(session.segments, session.focusedIndex.coerceAtLeast(0), resolveCandidatePanelColors().text)
-        }
-        if (wasVisible != bar.isVisible || otherWasVisible) {
-            if (isFloating) {
-                floating?.root?.requestLayout()
-                floatingKeyboardPanel?.requestLayout()
-            } else {
-                main.root.post { if (mainLayoutBinding === main) updateKeyboardLayout(main) }
-            }
-        }
-    }
-
-    private fun renderVerticalSegmentComposition() {
-        val session = verticalSegmentSession ?: return
-        if (session.reading != inputString.value || session.segments.isEmpty()) return
-        val text = session.segments.joinToString("") { it.displayText }
-        applyFirstSuggestion(Candidate(string = text, type = 1,
-            length = session.reading.length.toUByte(), score = 0))
-        refreshVerticalSegmentEditor()
-    }
-
-    private fun focusVerticalSegment(index: Int) {
-        val current = verticalSegmentSession ?: return
-        if (index !in current.segments.indices || verticalCommitPending) return
-        if (current.pending) {
-            verticalSegmentSession = current.copy(focusedIndex = index, active = true)
-            refreshVerticalSegmentEditor()
-            return
-        }
-        verticalSegmentJob?.cancel()
-        candidateRequestTracker.invalidate()
-        beginZenzRerankRequest()
-        val focused = current.copy(focusedIndex = index, active = true, revision = ++verticalSegmentRevision)
-        verticalSegmentSession = focused
-        suggestionClickNum = 0
-        renderVerticalSegmentComposition()
-        loadVerticalSegmentCandidates(focused)
-    }
-
-    private fun loadVerticalSegmentCandidates(requested: VerticalSegmentSession) {
-        val index = requested.focusedIndex
-        val segment = requested.segments.getOrNull(index) ?: return
-        verticalSegmentJob?.cancel()
-        verticalSegmentJob = scope.launch {
-            val candidates = queryBunsetsuConversion(segment.reading).candidates
-            val current = verticalSegmentSession ?: return@launch
-            if (current.revision != requested.revision || current.reading != inputString.value ||
-                current.focusedIndex != index) return@launch
-            val loaded = mergeBunsetsuCandidates(current.segments[index], candidates, ::displayTextFromCandidate)
-            val updated = current.segments.toMutableList().apply { this[index] = loaded }
-            verticalSegmentSession = current.copy(segments = updated)
-            setSuggestionAdaptersOnMain(loaded.candidates)
-            suggestionAdapter?.updateHighlightPosition(loaded.selectedIndex)
-            refreshVerticalSegmentEditor()
-        }
-    }
-
-    private fun resizeVerticalSegment(start: Int, end: Int) {
-        val current = verticalSegmentSession ?: return
-        if (verticalCommitPending || current.reading != inputString.value || start !in readingBoundaries(current.reading) ||
-            end !in readingBoundaries(current.reading) || start >= end) return
-        val changed = replaceSegmentRange(current.reading, current.segments, start, end)
-        val choices = segmentChoices(changed)
-        val splits = choices.dropLast(1).map { it.end }
-        verticalSegmentJob?.cancel()
-        candidateRequestTracker.invalidate()
-        beginZenzRerankRequest()
-        clearZenzLiveSlot("vertical segment boundary changed")
-        verticalSegmentSession = current.copy(segments = changed, forcedSplits = splits,
-            focusedIndex = choices.indexOfFirst { it.start == start && it.end == end },
-            active = true, pending = true, revision = ++verticalSegmentRevision)
-        suggestionClickNum = 0
-        refreshVerticalSegmentEditor()
-        requestCandidateRefresh(CandidateShowFlag.Updating, current.reading)
-    }
-
-    private fun reorderVerticalSegments(from: Int, to: Int) {
-        val current = verticalSegmentSession ?: return
-        if (current.pending || verticalCommitPending || from == to || from !in current.segments.indices ||
-            to !in current.segments.indices || current.reading != inputString.value) return
-        val moved = moveSegment(current.segments, from, to)
-        val reading = moved.joinToString("") { it.reading }
-        verticalSegmentJob?.cancel()
-        candidateRequestTracker.invalidate()
-        beginZenzRerankRequest()
-        clearZenzLiveSlot("vertical segments reordered")
-        verticalSegmentSession = current.copy(reading = reading, segments = moved, snapshot = null,
-            forcedSplits = segmentChoices(moved).dropLast(1).map { it.end }, focusedIndex = to,
-            active = true, revision = ++verticalSegmentRevision)
-        verticalPreserveMovedOnNextInput = true
-        _inputString.value = reading
-        renderVerticalSegmentComposition()
-        verticalSegmentSession?.let(::loadVerticalSegmentCandidates)
-    }
-
-    private fun isVerticalSegmentEditorVisible(): Boolean =
-        if (isKeyboardFloatingMode == true) floatingKeyboardBinding?.segmentCandidateBar?.isShown == true
-        else mainLayoutBinding?.segmentCandidateBar?.isShown == true
-
-    private fun handleVerticalSegmentCandidateClick(candidate: Candidate, reading: String): Boolean {
-        val current = verticalSegmentSession ?: return false
-        if (current.reading != reading || currentInputConnection == null) return false
-        // A focused segment can remain active while the bar is temporarily hidden, for example
-        // when candidates move back to the top. Its candidates must still update that segment.
-        if ((!isVerticalSegmentEditorConfigured() || !isVerticalSegmentEditorVisible()) &&
-            !(current.active && current.focusedIndex >= 0)) return false
-        if (current.pending || verticalCommitPending) return true
-        val index = current.focusedIndex
-        if (index >= 0) {
-            val segment = current.segments.getOrNull(index) ?: return true
-            val selected = segment.candidates.indexOf(candidate)
-            // The previous whole-sentence list can still be on screen while the segment
-            // candidates are loading or their asynchronous list diff is being applied.
-            // Never let such a tap fall through to the normal committing handler.
-            if (selected < 0) return true
-            val updated = current.segments.toMutableList().apply {
-                this[index] = segment.copy(displayText = displayTextFromCandidate(candidate),
-                    selectedIndex = selected, overrideDisplayCandidate = null, hasConvertedDisplay = true)
-            }
-            verticalSegmentSession = current.copy(segments = updated, active = true, revision = ++verticalSegmentRevision)
-            renderVerticalSegmentComposition()
-            suggestionAdapter?.updateHighlightPosition(selected)
-            return true
-        }
-        if (candidate.length.toInt() < reading.length || candidate.sourceId != null ||
-            candidate.presentation != null || candidate.commitText != candidate.string) return false
-        val snapshot = current.snapshot ?: latestBunsetsuConversionSnapshot?.takeIf { it.input == reading } ?: return false
-        verticalSegmentJob?.cancel()
-        candidateRequestTracker.invalidate()
-        beginZenzRerankRequest()
-        verticalSegmentSession = current.copy(
-            segments = verticalSegmentsForCandidate(reading, candidate, snapshot, current.forcedSplits),
-            snapshot = snapshot, active = true, revision = ++verticalSegmentRevision,
-        )
-        suggestionClickNum = 0
-        renderVerticalSegmentComposition()
-        return true
-    }
-
-    private fun cycleVerticalSegmentCandidate(suggestions: List<Candidate>): Boolean {
-        val current = verticalSegmentSession ?: return false
-        if (!isVerticalSegmentEditorConfigured() || !isVerticalSegmentEditorVisible() ||
-            current.reading != inputString.value) return false
-        if (current.pending || verticalCommitPending) return true
-        val index = current.focusedIndex
-        val candidates = if (index >= 0) current.segments.getOrNull(index)?.candidates.orEmpty() else suggestions
-        if (candidates.isEmpty()) return index >= 0
-        val next = if (index >= 0) {
-            (current.segments[index].selectedIndex + 1) % candidates.size
-        } else if (current.active) {
-            val currentText = current.segments.joinToString("") { it.displayText }
-            (candidates.indexOfFirst { displayTextFromCandidate(it) == currentText } + 1).coerceAtLeast(0) % candidates.size
-        } else 0
-        return handleVerticalSegmentCandidateClick(candidates[next], current.reading)
-    }
-
-    private suspend fun setCandidatesForVerticalSegments(
-        input: String, mode: CandidateQueryMode, token: CandidateRequestToken, requested: VerticalSegmentSession,
-    ) {
-        val splits = requested.forcedSplits ?: return
-        val result = try {
-            withContext(kanaKanjiConversionDispatcher) {
-                queryKanaKanjiCore(input, mode, learnedRepositoryForSuggestion(), splits)
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (failure: Exception) {
-            Timber.e(failure, "Constrained candidate query failed")
-            withContext(Dispatchers.Main.immediate) {
-                val current = verticalSegmentSession
-                if (current != null && current.revision == requested.revision &&
-                    shouldApplyCandidateResult(input, token)) {
-                    val segments = (listOf(0) + splits + input.length).zipWithNext().map { (start, end) ->
-                        val reading = input.substring(start, end)
-                        BunsetsuSegmentState(reading, reading)
-                    }
-                    verticalSegmentSession = current.copy(segments = segments, pending = false)
-                    applyRawComposingFallback(input)
-                    setSuggestionAdaptersOnMain(listOf(Candidate(input, 1, input.length.toUByte(), 30000)))
-                    if (verticalCommitPending) {
-                        verticalCommitPending = false
-                        commitVerticalSegmentSession()
-                    }
-                }
-            }
-            return
-        }
-        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
-        var candidates = result.candidates.filter { !NgWordMatcher.matchesAny(input, it.string, ngWords) }
-            .withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
-        if (appPreference.candidate_order_override_enable_preference == true) {
-            candidates = candidateOrderOverrideRepository.applyOrderFromSnapshot(
-                input = input, candidates = candidates, candidateSegmentsByString = result.candidateSegmentsByString)
-        }
-        if (candidates.isEmpty()) candidates = listOf(Candidate(input, 1, input.length.toUByte(), 30000))
-        if (shouldStartLiveConversion(input) && !hasConvertedKatakana) {
-            delayBeforeApplyingLiveConversion()
-            if (!shouldApplyCandidateResult(input, token)) return
-        }
-        withContext(Dispatchers.Main.immediate) {
-            val current = verticalSegmentSession ?: return@withContext
-            if (current.revision != requested.revision || current.reading != input ||
-                !shouldApplyCandidateResult(input, token)) return@withContext
-            val paths = result.candidateSegmentsByString.toMutableMap()
-            if (candidates.first().string == input && paths[input].isNullOrEmpty()) {
-                paths[input] = (listOf(0) + splits + input.length).zipWithNext().map { (start, end) ->
-                    CandidateConversionSegment(start, end, input.substring(start, end))
-                }
-            }
-            val snapshot = BunsetsuConversionSnapshot(input, candidates, paths,
-                listOf(splits), splits, candidates.associate { it.string to splits })
-            latestBunsetsuConversionSnapshot = snapshot
-            val segments = verticalSegmentsForCandidate(input, candidates.first(), snapshot, splits)
-            val updated = current.copy(segments = segments, snapshot = snapshot, pending = false,
-                focusedIndex = current.focusedIndex.coerceAtMost(segments.lastIndex))
-            verticalSegmentSession = updated
-            applyFirstSuggestion(candidates.first())
-            setSuggestionAdaptersOnMain(candidates)
-            if (verticalCommitPending) {
-                verticalCommitPending = false
-                commitVerticalSegmentSession()
-                return@withContext
-            }
-            if (updated.focusedIndex >= 0) loadVerticalSegmentCandidates(updated)
-            refreshVerticalSegmentEditor()
-        }
-    }
-
-    private fun cancelVerticalSegmentSession(): Boolean {
-        val current = verticalSegmentSession ?: return false
-        if (!current.active || current.reading != inputString.value) return false
-        candidateRequestTracker.invalidate()
-        beginZenzRerankRequest()
-        clearVerticalSegmentSession()
-        suggestionClickNum = 0
-        applyRawComposingFallback(current.reading)
-        requestCandidateRefresh(CandidateShowFlag.Updating, current.reading)
-        return true
-    }
-
-    private fun commitVerticalSegmentSession(): Boolean {
-        val current = verticalSegmentSession ?: return false
-        if (!current.active || current.reading != inputString.value || current.segments.isEmpty()) return false
-        if (current.pending) {
-            verticalCommitPending = true
-            return true
-        }
-        val tail = stringInTail.get()
-        bunsetsuConversionSession = BunsetsuConversionSession(
-            rawInput = current.reading + tail, conversionInput = current.reading,
-            segments = current.segments, generation = ++bunsetsuSessionGeneration,
-            conversionSnapshot = current.snapshot, tailText = tail,
-            focusedIndex = current.focusedIndex.coerceAtLeast(0),
-        )
-        clearVerticalSegmentSession()
-        return commitBunsetsuConversionSession()
-    }
-
     private val keyboardGeometryPreferences by lazy {
         KeyboardGeometryPreferences(androidx.preference.PreferenceManager.getDefaultSharedPreferences(this))
     }
@@ -21066,9 +20685,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isKeyboardFloatingMode == true) updateFloatingKeyboardSizeForMode(qwertyMode.value, true)
             else mainLayoutBinding?.let { updateKeyboardLayout(it) }
             refreshGeometryCandidates()
-            refreshVerticalSegmentEditor()
-            if (isVerticalSegmentEditorConfigured() && inputString.value.isNotEmpty() &&
-                verticalSegmentSession == null) requestCandidateRefresh(CandidateShowFlag.Updating)
         }
     }
     private val refreshLegacySizePreference = Runnable {
@@ -21084,7 +20700,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingGeometryCandidateHost?.detach()
         mainLayoutBinding?.root?.fallbackTouchExclusion = null
         floatingKeyboardBinding?.root?.fallbackTouchExclusion = null
-        refreshVerticalSegmentEditor()
     }
 
     private fun refreshGeometryCandidates() {
@@ -21142,9 +20757,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             floatingGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
-                config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp)
-            alignSegmentBarToKeyboardBody(floatBinding!!.segmentCandidateBar, body,
-                listOf(floatBinding.suggestionVisibility, floatBinding.floatingHideKeyboardBtn))
+                config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp,
+                horizontalSpacingDp = if (type == GeometryKeyboard.QWERTY) config.centerCandidateSpacingDp else 0)
             floatBinding!!.root.fallbackTouchExclusion = { x, y -> floatingGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         } else {
             floatingGeometryCandidateHost?.detach()
@@ -21154,11 +20768,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 dockedGeometryCandidateHost = GeometryCandidateHost(root, main.suggestionRecyclerView)
             }
             dockedGeometryCandidateHost?.show(bounds, type != GeometryKeyboard.QWERTY && config.sideCandidateVerticalText,
-                config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp)
-            alignSegmentBarToKeyboardBody(main.segmentCandidateBar, body, listOf(main.suggestionVisibility))
+                config.sideCandidateRightToLeft, config.sideCandidateWrapLongText, config.sideCandidateSpacingDp,
+                horizontalSpacingDp = if (type == GeometryKeyboard.QWERTY) config.centerCandidateSpacingDp else 0)
             main.root.fallbackTouchExclusion = { x, y -> dockedGeometryCandidateHost?.containsScreenPoint(x, y) == true }
         }
-        refreshVerticalSegmentEditor()
     }
 
     private fun geometryKeyboardForCurrentMode(): GeometryKeyboard? = geometryKeyboardForMode(qwertyMode.value)
@@ -21340,7 +20953,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateHeightDp = prefs.candidateHeight,
             emptyHeightDp = prefs.candidateEmptyHeight
         )
-        val resolvedCandidateStripHeightDp = if (
+        val candidateStripHeightDp = if (
             !floatingCandidateSurfaceActive && keyboardSkinId == KeyboardSkinId.CUPERTINO_CLASSIC
         ) {
             com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
@@ -21348,9 +20961,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             configuredCandidateStripHeightDp
         }
-        val candidateStripHeightDp = if (mainView.segmentCandidateBar.isVisible) {
-            maxOf(resolvedCandidateStripHeightDp, 84)
-        } else resolvedCandidateStripHeightDp
         // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
         // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
         val candidateTabHeightPx = if (floatingCandidateSurfaceActive) {
@@ -21372,14 +20982,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         val candidateAreaHeight = if (floatingCandidateSurfaceActive) 0 else applicationContext.dpToPx(candidateStripHeightDp)
-        val requestedHeight = geometryHeight(activeGeometryView, geometry, baseHeightPx, candidateAreaHeight + dockedCandidateChromeHeight)
-        val heightPx = if (mainView.segmentCandidateBar.isVisible && !isSymbol && !floatingCandidateSurfaceActive &&
-            isKeyboardFloatingMode != true) {
-            val available = FloatingWindowCoordinates(getSystemService(WindowManager::class.java)).safeArea(mainView.root).height()
-            val maximumBody = (available - candidateAreaHeight - dockedCandidateChromeHeight -
-                applicationContext.dpToPx(46)).coerceAtLeast(applicationContext.dpToPx(140))
-            minOf(requestedHeight, maximumBody)
-        } else requestedHeight
+        val heightPx = geometryHeight(activeGeometryView, geometry, baseHeightPx, candidateAreaHeight + dockedCandidateChromeHeight)
         val baseKeyboardHeight = heightPx + candidateAreaHeight
         val contentKeyboardHeight = if (floatingCandidateSurfaceActive) {
             heightPx
@@ -21409,8 +21012,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resolveDockedCandidateContainerHeightPx(
                 keyboardBodyHeightPx = heightPx,
                 emptyCandidateHeightPx = candidateHeightPx(prefs.candidateEmptyHeight),
-                activeCandidateHeightPx = maxOf(candidateHeightPx(prefs.candidateHeight),
-                    if (mainView.segmentCandidateBar.isVisible) applicationContext.dpToPx(84) else 0),
+                activeCandidateHeightPx = candidateHeightPx(prefs.candidateHeight),
                 candidateTabHeightPx = if (candidateTabVisibility == true) candidateTabHeightPx else 0,
                 shortcutToolbarHeightPx = if (independentToolbarEnabled) shortcutToolbarHeightPx() else 0,
                 bottomInsetPx = systemBottomInset
@@ -22233,12 +21835,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         defaultInputFinalizeJob?.cancel()
         defaultInputFinalizeJob = null
-        updateVerticalSegmentsForInput(string)
-        if (verticalPreserveMovedOnNextInput && verticalSegmentSession?.reading == string) {
-            verticalPreserveMovedOnNextInput = false
-            renderVerticalSegmentComposition()
-            return
-        }
         if (string.isNotEmpty()) {
             clearZeroQueryAllState(refresh = false)
             hasConvertedKatakana = false
@@ -22717,7 +22313,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         engineResult: BunsetsuCandidateResult?,
         candidateSegments: Map<String, List<CandidateConversionSegment>>,
     ) {
-        if ((bunsetsuSeparation != true && !isVerticalSegmentEditorConfigured()) || engineResult == null) {
+        if (bunsetsuSeparation != true || engineResult == null) {
             latestBunsetsuConversionSnapshot = null
             bunsetsuSplitPatterns = emptyList()
             bunsetsuPositionList = emptyList()
@@ -22734,7 +22330,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         latestBunsetsuConversionSnapshot = BunsetsuConversionSnapshot(
             input, mergedCandidates, candidateSegments, bunsetsuSplitPatterns,
-            bunsetsuPositionList.orEmpty(), engineResult.splitPatternByCandidateString,
+            bunsetsuPositionList.orEmpty(),
         )
     }
 
@@ -26703,7 +26299,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             return
         }
-        if (handleVerticalSegmentCandidateClick(candidate, insertString)) return
         if (candidate.type == CANDIDATE_TYPE_TEXT_MACRO) {
             candidate.sourceId?.let(::executeTextMacro)
             return
@@ -28499,13 +28094,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mode: CandidateQueryMode,
         token: CandidateRequestToken,
     ) {
-        val edited = verticalSegmentSession?.takeIf {
-            it.reading == input && it.forcedSplits != null && isVerticalSegmentEditorConfigured()
-        }
-        if (edited != null && mode != CandidateQueryMode.EISUKANA) {
-            setCandidatesForVerticalSegments(input, mode, token, edited)
-            return
-        }
         val context = zenzCorrectionContextForQuery(mode)
         val pending = context?.takeIf { ZenzInputPolicy.enabledMask(it.options) != 0 }?.let {
             PendingZenzReading(token, it, CompletableDeferred())
@@ -29275,7 +28863,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         mode: CandidateQueryMode,
         learnRepository: LearnRepository?,
-        forcedSplitPositions: List<Int>? = null,
     ): KanaKanjiQueryResult {
         val engine = awaitKanaKanjiEngineOrNull()
             ?: return KanaKanjiQueryResult(candidates = emptyList())
@@ -29298,7 +28885,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KanaKanjiQueryRequest(
                 input = input,
                 mode = mode,
-                bunsetsuSeparation = bunsetsuSeparation == true || isVerticalSegmentEditorConfigured(),
+                bunsetsuSeparation = bunsetsuSeparation == true,
                 n = nBest ?: 4,
                 enabledDictionaryCategories = enabledDictionaryCategories,
                 userDictionaryRepository = userDictionaryRepository,
@@ -29313,10 +28900,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 predictionConfig = predictionConfig,
                 collectCandidateSegments =
                     appPreference.candidate_order_override_enable_preference == true ||
-                        shouldUseBunsetsuCursorMoveSession() || shouldCollectCandidateRubySegments() ||
-                        isVerticalSegmentEditorConfigured() || forcedSplitPositions != null,
+                        shouldUseBunsetsuCursorMoveSession() || shouldCollectCandidateRubySegments(),
                 dateCandidateConfig = dateCandidateConfig,
-                forcedSplitPositions = forcedSplitPositions,
             )
         )
         if (BuildConfig.DEBUG) {
@@ -30256,7 +29841,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleJapaneseModeSpaceKey(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
     ) {
-        if (cycleVerticalSegmentCandidate(suggestions)) return
         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
             return
         }
@@ -30276,7 +29860,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleJapaneseModeSpaceKeyWithBunsetsu(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
     ) {
-        if (cycleVerticalSegmentCandidate(suggestions)) return
         if (shouldUseBunsetsuCursorMoveSession()) {
             scope.launch {
                 val activated = activateBunsetsuConversionSession(
@@ -30331,7 +29914,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         insertString: String
     ) {
-        if (cycleVerticalSegmentCandidate(suggestions)) return
         if (shouldUseBunsetsuCursorMoveSession()) {
             val mainView = mainLayoutBinding ?: return
             scope.launch {
@@ -30392,7 +29974,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         insertString: String
     ) {
-        if (cycleVerticalSegmentCandidate(suggestions)) return
         if (cycleFocusedBunsetsuCandidate(delta = 1, floatingKeyboardLayoutBinding)) {
             return
         }
@@ -30418,7 +29999,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!fromPhysicalKeyboard) flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
-        if (commitVerticalSegmentSession()) return
         if (commitBunsetsuConversionSession()) {
             return
         }
@@ -30469,7 +30049,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flushCustomScreenComposition()
         if (dispatchDirectEnterIfNeeded()) return
         if (commitExplicitUtilityCandidateOnEnter(suggestions, insertString)) return
-        if (commitVerticalSegmentSession()) return
         if (commitBunsetsuConversionSession()) {
             return
         }

@@ -44,8 +44,6 @@ data class KanaKanjiQueryRequest(
     val predictionConfig: PredictionConfig = PredictionConfig(),
     val collectCandidateSegments: Boolean = false,
     val dateCandidateConfig: DateCandidateConfig = DateCandidateConfig(),
-    /** Null uses automatic segmentation; an empty list requests one whole segment. */
-    val forcedSplitPositions: List<Int>? = null,
 )
 
 data class KanaKanjiQueryResult(
@@ -94,23 +92,7 @@ class KanaKanjiConversionSession(
         incrementalState?.beginQueryTransaction()
         try {
             val nBestCollector = NBestCandidateCollector(measureNBestSelection)
-            val result = if (request.forcedSplitPositions != null && request.mode != CandidateQueryMode.EISUKANA) {
-                val collector = request.newCandidateSegmentCollector()
-                engine.getCandidatesWithForcedBoundaries(
-                    input = request.input,
-                    splitPositions = request.forcedSplitPositions,
-                    n = request.n,
-                    enabledDictionaryCategories = request.enabledDictionaryCategories,
-                    userDictionaryRepository = request.userDictionaryRepository,
-                    learnRepository = request.learnRepository,
-                    isOmissionSearchEnable = request.omissionSearchEnabled,
-                    enableTypoCorrectionJapaneseFlick = request.typoCorrectionJapaneseFlickEnabled,
-                    typoCorrectionOffsetScore = request.typoCorrectionOffsetScore,
-                    omissionSearchOffsetScore = request.omissionSearchOffsetScore,
-                    beamWidth = request.beamWidth,
-                    candidateSegmentCollector = collector,
-                ).asQueryResult(collector)
-            } else when (request.mode) {
+            val result = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
                         input = request.input,
@@ -125,12 +107,17 @@ class KanaKanjiConversionSession(
             val composedResult = result.copy(
                 bestNBestCandidate = nBestCollector.best,
                 nBestSelectionNs = nBestCollector.selectionNs,
-                candidates = if (request.forcedSplitPositions != null) result.candidates else
-                    DateCandidateComposer.compose(request.input, result.candidates, request.dateCandidateConfig),
+                candidates = DateCandidateComposer.compose(
+                    request.input,
+                    result.candidates,
+                    request.dateCandidateConfig,
+                ),
                 bunsetsuResult = result.bunsetsuResult?.let { bunsetsuResult ->
-                    if (request.forcedSplitPositions != null) bunsetsuResult else bunsetsuResult.copy(
+                    bunsetsuResult.copy(
                         candidates = DateCandidateComposer.compose(
-                            request.input, bunsetsuResult.candidates, request.dateCandidateConfig,
+                            request.input,
+                            bunsetsuResult.candidates,
+                            request.dateCandidateConfig,
                         ),
                     )
                 },
