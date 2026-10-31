@@ -168,6 +168,7 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
             }
         }
 
+        bindCanonicalSettingLinks()
         applyLegacySearchResultFilterIfNeeded()
         val targetKey = arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
             ?.takeIf { it.isNotBlank() }

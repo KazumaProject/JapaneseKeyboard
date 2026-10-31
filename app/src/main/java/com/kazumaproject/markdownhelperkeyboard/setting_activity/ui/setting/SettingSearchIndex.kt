@@ -103,6 +103,7 @@ object SettingSearchIndex {
         R.id.zenzPreferenceFragment,
         R.id.gemmaPreferenceFragment,
         R.id.legacyCommonPreferenceFragment,
+        R.id.keyboardThemeFragment,
     )
 
     fun searchable(context: Context): List<SettingDestination> {
@@ -110,10 +111,9 @@ object SettingSearchIndex {
             SettingDestinations.management(context) +
             SettingDestinations.frequentCandidates(context)
         val xmlItems = preferenceXmlDestinations(context)
-        return (topLevel + xmlItems).distinctBy { destination ->
-            val targetId = SettingDestinations.destinationId(destination.destination)
-            "${destination.key}:${destination.category}:$targetId"
-        }
+        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment)
+        val official = xmlItems.filter { SettingDestinations.destinationId(it.destination) in officialIds }
+        return (official + topLevel + xmlItems).distinctBy { it.key }
     }
 
     fun searchable(
@@ -183,10 +183,7 @@ object SettingSearchIndex {
         val indicatorItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
-        return (listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { destination ->
-            val legacyTarget = destination.legacyTarget
-            "${legacyTarget?.tabKey}:${destination.key}:${legacyTarget?.destinationId}"
-        }
+        return (listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { it.key }
     }
 
     fun search(
@@ -239,13 +236,7 @@ object SettingSearchIndex {
             ?.takeIf { it.configuration == configuration }
             ?.let { return it.destinations }
 
-        val destinations = sources().flatMap { source ->
-            val items = readPreferenceXml(context, source)
-            // New settings routes must resolve to the operation screen, not its legacy duplicate.
-            if (source.xmlRes == R.xml.pref_common_legacy) {
-                items.filterNot { it.key == AppPreference.INDEPENDENT_MULTI_TOUCH_KEY }
-            } else items
-        }
+        val destinations = sources().flatMap { source -> readPreferenceXml(context, source) }
         destinationCache = DestinationCache(configuration, destinations)
         return destinations
     }
@@ -356,15 +347,16 @@ object SettingSearchIndex {
         }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
-        add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
+        add(PreferenceXmlSource(R.xml.pref_theme, R.id.keyboardThemeFragment, SettingCategory.KEYBOARD_DISPLAY))
+        add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
+        add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
         add(PreferenceXmlSource(R.xml.pref_split_keyboard, R.id.splitKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_voice_input, R.id.voiceInputPreferenceFragment, SettingCategory.VOICE_INPUT))
         add(PreferenceXmlSource(R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
-        add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_utility_candidate, R.id.utilityCandidatePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_dictionary, R.id.dictionaryPreferenceFragment, SettingCategory.DICTIONARY))
         add(PreferenceXmlSource(R.xml.pref_ai_conversion, R.id.aiConversionPreferenceFragment, SettingCategory.AI_CONVERSION))
@@ -422,18 +414,24 @@ object SettingSearchIndex {
         val parser = context.resources.getXml(source.xmlRes)
         return parser.use {
             buildList {
+                val headings = ArrayDeque<String>()
                 while (parser.eventType != XmlPullParser.END_DOCUMENT) {
                     if (parser.eventType == XmlPullParser.START_TAG) {
+                        if (parser.isPreferenceCategory()) headings.addLast(readTextAttribute(context, parser, "title"))
                         val key = parser.getAttributeValue(ANDROID_NS, "key")
                         if (
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
+                            !key.startsWith("setting_route_canonical_") &&
+                            !key.startsWith("settings_theme_enable_") &&
+                            !key.startsWith("settings_theme_unavailable_") &&
                             !parser.isPreferenceCategoryOrScreen()
                         ) {
                             val title = readTextAttribute(context, parser, "title")
                                 .ifBlank { key }
                             val summary = readSummary(context, parser)
-                            val destinationId =
+                            val isOfficial = source.xmlRes in setOf(R.xml.pref_common_legacy, R.xml.pref_theme, R.xml.pref_conversion_engine)
+                            val destinationId = if (isOfficial) source.destinationId else
                                 SettingDestinations.routeDestinationId(key) ?: source.destinationId
                             val highlightKey =
                                 key.takeIf {
@@ -446,22 +444,24 @@ object SettingSearchIndex {
                                     title = title,
                                     summary = summary,
                                     category = source.category,
-                                    keywords = buildKeywords(key, title, summary),
+                                    keywords = buildKeywords(key, title, summary) + headings,
                                     destinationId = destinationId,
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = highlightKey,
-                                    destinationType = readDestinationType(
+                                    destinationType = if (isOfficial) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
                                         context = context,
                                         parser = parser,
                                         key = key,
                                         destinationId = destinationId,
                                         highlightPreferenceKey = highlightKey,
                                     ),
+                                    location = headings.filter { it.isNotBlank() }.joinToString(" › ").ifBlank { null },
                                 )
                             )
                         }
                     }
+                    if (parser.eventType == XmlPullParser.END_TAG && parser.isPreferenceCategory() && headings.isNotEmpty()) headings.removeLast()
                     parser.next()
                 }
             }
@@ -476,13 +476,17 @@ object SettingSearchIndex {
         val location = context.getString(R.string.setting_search_legacy_location, source.tabTitle)
         return parser.use {
             buildList {
+                val headings = ArrayDeque<String>()
                 while (parser.eventType != XmlPullParser.END_DOCUMENT) {
                     if (parser.eventType == XmlPullParser.START_TAG) {
+                        if (parser.isPreferenceCategory()) headings.addLast(readTextAttribute(context, parser, "title"))
                         val key = parser.getAttributeValue(ANDROID_NS, "key")
                         if (
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
-                            !key.startsWith("setting_route_") &&
+                            (!key.startsWith("setting_route_") || key == "setting_route_utility_candidates") &&
+                            !key.startsWith("settings_theme_enable_") &&
+                            !key.startsWith("settings_theme_unavailable_") &&
                             !parser.isPreferenceCategoryOrScreen()
                         ) {
                             val title = readTextAttribute(context, parser, "title")
@@ -503,7 +507,7 @@ object SettingSearchIndex {
                                     title = title,
                                     summary = summary,
                                     category = source.category,
-                                    keywords = buildKeywords(key, title, summary),
+                                    keywords = buildKeywords(key, title, summary) + headings,
                                     destinationId = source.destinationId,
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
@@ -514,11 +518,12 @@ object SettingSearchIndex {
                                     ),
                                     legacyTarget = legacyTarget,
                                     searchScope = SettingSearchScope.LEGACY_TABS,
-                                    location = location,
+                                    location = (listOf(location) + headings.filter { it.isNotBlank() }).joinToString(" › "),
                                 )
                             )
                         }
                     }
+                    if (parser.eventType == XmlPullParser.END_TAG && parser.isPreferenceCategory() && headings.isNotEmpty()) headings.removeLast()
                     parser.next()
                 }
             }
@@ -529,6 +534,24 @@ object SettingSearchIndex {
         buildList {
             if (key == "shortcut_toolbar_integrated_in_suggestion_preference") {
                 add("shortcut_toolbar_visibility_preference")
+            }
+            if (key.startsWith("live_conversion_candidate_yomi_")) add("settings_theme_enable_live_conversion_link")
+            if (key == "composing_guide_show_live_reading" || key == "composing_guide_text_size_setting") add("settings_theme_enable_composing_guide_link")
+            if (key.startsWith("keyboard_touch_effect_") && key != "keyboard_touch_effect_type_preference") {
+                add("settings_theme_unavailable_effects")
+                add("keyboard_touch_effect_type_preference")
+            }
+            if (key.startsWith("theme_custom_") || key.startsWith("key_popup_")) {
+                add("theme_custom")
+                add("settings_theme_unavailable_colors")
+                add("settings_theme_unavailable_corners")
+            }
+            if (key.startsWith("theme_custom_border_")) add("theme_custom_border_enable")
+            if (key.startsWith("key_popup_")) add("key_popup_use_custom_color_preference")
+            if (key.startsWith("theme_custom_pre_edit_") || key.startsWith("theme_custom_post_edit_")) add("theme_custom_input_color_enable")
+            if (key.startsWith("liquid_glass_")) {
+                add("liquid_glass_preference")
+                add("settings_theme_unavailable_effects")
             }
             if (key.startsWith("keyboard_touch_effect_cinematic_wave_")) {
                 add("keyboard_touch_effect_type_preference")
@@ -783,6 +806,9 @@ object SettingSearchIndex {
             "PreferenceScreen" -> true
             else -> false
         }
+
+    private fun XmlResourceParser.isPreferenceCategory(): Boolean =
+        name.substringAfterLast('.') in setOf("PreferenceCategory", "CollapsiblePreferenceCategory")
 
     private fun buildKeywords(
         key: String,
