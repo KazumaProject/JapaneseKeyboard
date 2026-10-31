@@ -63,7 +63,10 @@ class UnifiedKeyboardSettingsDeviceTest {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
         try {
-            prefs.edit().putString("keyboard_geometry_tenkey_portrait_candidates", "TOP").commit()
+            prefs.edit()
+                .putString("keyboard_geometry_tenkey_portrait_candidates", "TOP")
+                .putBoolean("keyboard_geometry_tenkey_portrait_candidate_wrap_long_text", false)
+                .commit()
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
                 await { var ready = false; scenario.onActivity { ready = it.isSettingsContentReady }; ready }
                 scenario.onActivity { host(it).navController.navigate(R.id.keyboardGeometrySettingsFragment,
@@ -92,10 +95,6 @@ class UnifiedKeyboardSettingsDeviceTest {
                     longDisplay.check(2)
                     val spacing = root.findViewById<SeekBar>(R.id.keyboard_geometry_candidate_spacing)
                     assertTrue(spacing.isShown)
-                    val segmentEditor = root.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.keyboard_geometry_segment_editor)
-                    assertTrue(segmentEditor.isShown)
-                    assertTrue(segmentEditor.isChecked)
-                    segmentEditor.isChecked = false
                 }
                 await {
                     var ready = false
@@ -108,7 +107,6 @@ class UnifiedKeyboardSettingsDeviceTest {
                     touch(spacing, MotionEvent.ACTION_DOWN, x, y)
                     touch(spacing, MotionEvent.ACTION_UP, x, y)
                 }
-                assertFalse(prefs.getBoolean("keyboard_geometry_tenkey_portrait_segment_editor", true))
                 assertTrue(prefs.getInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 25) > 25)
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_vertical_text", false))
                 assertTrue(prefs.getBoolean("keyboard_geometry_tenkey_portrait_candidate_right_to_left", false))

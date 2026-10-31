@@ -9,9 +9,9 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.constraintlayout.widget.ConstraintLayout
 import com.kazumaproject.android.flexbox.AlignItems
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexWrap
@@ -31,36 +31,6 @@ internal fun geometryBoundsInHost(body: View, host: View, bounds: RectF): Rect? 
     bodyToScreen.mapRect(mapped)
     screenToHost.mapRect(mapped)
     return Rect(mapped.left.roundToInt(), mapped.top.roundToInt(), mapped.right.roundToInt(), mapped.bottom.roundToInt())
-}
-
-/** Keep the segment editor over the actual keys, leaving room for controls in the same row. */
-internal fun alignSegmentBarToKeyboardBody(bar: View, body: View, overlays: List<View>) {
-    val row = bar.parent as? ConstraintLayout ?: return
-    if (row.width <= 0 || body.width <= 0) return
-    val bodyBounds = geometryBoundsInHost(body, row, RectF(0f, 0f, body.width.toFloat(), body.height.toFloat())) ?: return
-    var left = bodyBounds.left.coerceIn(0, row.width)
-    var right = bodyBounds.right.coerceIn(left, row.width)
-    for (overlay in overlays) {
-        if (!overlay.isShown || overlay.width <= 0 || overlay.height <= 0) continue
-        val bounds = geometryBoundsInHost(overlay, row, RectF(0f, 0f, overlay.width.toFloat(), overlay.height.toFloat())) ?: continue
-        if (bounds.bottom <= 0 || bounds.top >= row.height || bounds.right <= left || bounds.left >= right) continue
-        if (bounds.centerX() < (left + right) / 2) left = maxOf(left, bounds.right)
-        else right = minOf(right, bounds.left)
-    }
-    right = right.coerceAtLeast(left)
-    val params = bar.layoutParams as? ConstraintLayout.LayoutParams ?: return
-    val rightMargin = row.width - right
-    if (params.leftToLeft == ConstraintLayout.LayoutParams.PARENT_ID &&
-        params.rightToRight == ConstraintLayout.LayoutParams.PARENT_ID &&
-        params.startToStart == ConstraintLayout.LayoutParams.UNSET && params.endToStart == ConstraintLayout.LayoutParams.UNSET &&
-        params.leftMargin == left && params.rightMargin == rightMargin) return
-    params.startToStart = ConstraintLayout.LayoutParams.UNSET
-    params.endToStart = ConstraintLayout.LayoutParams.UNSET
-    params.leftToLeft = ConstraintLayout.LayoutParams.PARENT_ID
-    params.rightToRight = ConstraintLayout.LayoutParams.PARENT_ID
-    params.leftMargin = left
-    params.rightMargin = rightMargin
-    bar.layoutParams = params
 }
 
 /** Flows candidates down each column, then scrolls between columns horizontally. */
@@ -114,6 +84,7 @@ internal class GeometryCandidateHost(
     private var originalClipToPadding = false
     private var originalPadding: Rect? = null
     private var panel: FrameLayout? = null
+    private var horizontalScroll: HorizontalScrollView? = null
     private var verticalSpacingApplied = false
     private var verticalSpacingPx = 0
     private var verticalSpacingRightToLeft = false
@@ -128,6 +99,7 @@ internal class GeometryCandidateHost(
     fun show(
         bounds: Rect, verticalText: Boolean = false, rightToLeft: Boolean = false, wrapLongText: Boolean = false,
         spacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
+        allowHorizontalScroll: Boolean = true,
     ) {
         if (bounds.width() <= 0 || bounds.height() <= 0) { detach(); return }
         if (!attached) {
@@ -147,6 +119,7 @@ internal class GeometryCandidateHost(
             root.addView(container)
             panel = container
         }
+        updateHorizontalScroll(allowHorizontalScroll && !verticalText)
         val adapter = recycler.adapter as? SuggestionAdapter
         var columnWidth = 0
         if (verticalText) {
@@ -201,6 +174,26 @@ internal class GeometryCandidateHost(
         container.visibility = View.VISIBLE
     }
 
+    private fun updateHorizontalScroll(enabled: Boolean) {
+        val container = panel ?: return
+        if (enabled && horizontalScroll == null) {
+            container.removeView(recycler)
+            val scroll = HorizontalScrollView(root.context).apply {
+                isFillViewport = true
+                isHorizontalScrollBarEnabled = true
+                addView(recycler, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+            container.addView(scroll, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            horizontalScroll = scroll
+        } else if (!enabled && horizontalScroll != null) {
+            val scroll = horizontalScroll ?: return
+            scroll.removeView(recycler)
+            container.removeView(scroll)
+            container.addView(recycler, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            horizontalScroll = null
+        }
+    }
+
     fun containsScreenPoint(x: Float, y: Float): Boolean {
         val view = panel ?: return false
         if (!view.isShown) return false
@@ -222,14 +215,14 @@ internal class GeometryCandidateHost(
             recycler.removeItemDecoration(verticalSpacing)
             verticalSpacingApplied = false
         }
-        container.removeView(recycler)
+        (recycler.parent as? ViewGroup)?.removeView(recycler)
         root.removeView(container)
         recycler.layoutManager = originalManager
         recycler.recycledViewPool.clear()
         recycler.clipToPadding = originalClipToPadding
         originalPadding?.let { recycler.setPadding(it.left, it.top, it.right, it.bottom) }
         parent?.addView(recycler, index.coerceIn(0, parent!!.childCount), originalParams)
-        panel = null; parent = null; originalParams = null; originalManager = null; originalPadding = null
+        panel = null; horizontalScroll = null; parent = null; originalParams = null; originalManager = null; originalPadding = null
         (recycler.adapter as? SuggestionAdapter)?.setSideCandidateVerticalText(false)
         onRestore()
         return true

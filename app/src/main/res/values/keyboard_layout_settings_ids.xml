@@ -1,6 +1,5 @@
 <resources>
     <item name="keyboard_geometry_candidate_width" type="id" />
-    <item name="keyboard_geometry_segment_editor" type="id" />
     <item name="keyboard_geometry_candidate_order" type="id" />
     <item name="keyboard_geometry_candidate_direction" type="id" />
     <item name="keyboard_geometry_candidate_long_display" type="id" />

@@ -116,7 +116,6 @@ class KeyboardGeometryDeviceTest {
                 .putString("keyboard_geometry_${geometryName}_portrait_curve_direction", if (reverse) "UP" else "DOWN")
                 .putString("keyboard_geometry_${geometryName}_portrait_candidates", side)
                 .putBoolean("keyboard_geometry_${geometryName}_portrait_candidate_vertical_text", expanded || chromeMode != 0)
-                .putBoolean("keyboard_geometry_${geometryName}_portrait_segment_editor", false)
                 .putBoolean("flick_input_only_preference", true)
                 .commit())
             shell("ime enable $targetIme")
@@ -290,7 +289,9 @@ class KeyboardGeometryDeviceTest {
                 val density = context.resources.displayMetrics.density
                 val available = context.resources.displayMetrics.widthPixels - (2 * marginDp * density).toInt()
                 val expectedWidth = available / 4
-                assertEquals("candidate width uses the available width after margins", expectedWidth.toFloat(), candidates.width.toFloat(), 2f)
+                val visibleBounds = Rect()
+                instrumentation.runOnMainSync { assertTrue(candidates.getGlobalVisibleRect(visibleBounds)) }
+                assertEquals("candidate width uses the available width after margins", expectedWidth.toFloat(), visibleBounds.width().toFloat(), 2f)
             }
             if (resizeSide) {
                 val density = context.resources.displayMetrics.density
