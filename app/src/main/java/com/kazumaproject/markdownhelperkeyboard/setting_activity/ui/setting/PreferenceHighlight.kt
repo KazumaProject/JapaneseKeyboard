@@ -12,12 +12,17 @@ internal fun PreferenceFragmentCompat.expandHighlightedPreferenceAncestors() {
         ?.takeIf { it.isNotBlank() }
         ?: arguments?.getString(LegacyPreferenceResultFilter.ARG_LEGACY_SEARCH_TARGET_KEY)
         ?: return
-    val target = findPreference<Preference>(targetKey)
-    if (target is CollapsiblePreferenceCategory) target.setExpanded(true, persist = false)
-    var parent = target?.parent
-    while (parent != null) {
-        if (parent is CollapsiblePreferenceCategory) parent.setExpanded(true, persist = false)
-        parent = parent.parent
+    val visited = mutableSetOf<String>()
+    var key: String? = targetKey
+    while (key != null && visited.add(key)) {
+        val target = findPreference<Preference>(key)
+        if (target is CollapsiblePreferenceCategory) target.setExpanded(true, persist = false)
+        var parent = target?.parent
+        while (parent != null) {
+            if (parent is CollapsiblePreferenceCategory) parent.setExpanded(true, persist = false)
+            parent = parent.parent
+        }
+        key = target?.dependency
     }
 }
 
@@ -27,12 +32,15 @@ internal fun PreferenceFragmentCompat.scrollToHighlightedPreferenceAfterLayout(v
         ?.takeIf { it.isNotBlank() }
         ?.let { preferenceKey ->
             view.post {
+                if (this.view !== view) return@post
                 runCatching {
                     scrollToPreference(preferenceKey)
-                    listView.postDelayed({
-                        val adapter = listView.adapter as? PreferenceGroupAdapter ?: return@postDelayed
+                    val list = listView
+                    list.postDelayed({
+                        if (this.view !== view) return@postDelayed
+                        val adapter = list.adapter as? PreferenceGroupAdapter ?: return@postDelayed
                         val position = adapter.getPreferenceAdapterPosition(preferenceKey)
-                        val item = listView.findViewHolderForAdapterPosition(position)?.itemView ?: return@postDelayed
+                        val item = list.findViewHolderForAdapterPosition(position)?.itemView ?: return@postDelayed
                         val color = MaterialColors.getColor(item, androidx.appcompat.R.attr.colorPrimary, 0xff6688aa.toInt())
                         val highlight = ColorDrawable(color).apply { alpha = 48; setBounds(0, 0, item.width, item.height) }
                         item.overlay.add(highlight)

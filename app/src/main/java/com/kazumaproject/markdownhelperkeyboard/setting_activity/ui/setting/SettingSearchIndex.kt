@@ -425,6 +425,7 @@ object SettingSearchIndex {
                             !key.startsWith("setting_route_canonical_") &&
                             !key.startsWith("settings_theme_enable_") &&
                             !key.startsWith("settings_theme_unavailable_") &&
+                            !key.startsWith("settings_engine_enable_") &&
                             !parser.isPreferenceCategoryOrScreen()
                         ) {
                             val title = readTextAttribute(context, parser, "title")
@@ -487,6 +488,7 @@ object SettingSearchIndex {
                             (!key.startsWith("setting_route_") || key == "setting_route_utility_candidates") &&
                             !key.startsWith("settings_theme_enable_") &&
                             !key.startsWith("settings_theme_unavailable_") &&
+                            !key.startsWith("settings_engine_enable_") &&
                             !parser.isPreferenceCategoryOrScreen()
                         ) {
                             val title = readTextAttribute(context, parser, "title")
@@ -537,6 +539,8 @@ object SettingSearchIndex {
             }
             if (key.startsWith("live_conversion_candidate_yomi_")) add("settings_theme_enable_live_conversion_link")
             if (key == "composing_guide_show_live_reading" || key == "composing_guide_text_size_setting") add("settings_theme_enable_composing_guide_link")
+            if (key in setOf("enable_prediction_search_learn_dictionary_preference", "learn_prediction_preference", "learn_dictionary_prediction_candidate_limit_preference")) add("settings_engine_enable_learning_dictionary_link")
+            if (key in setOf("user_dictionary_prefix_match_number", "user_dictionary_prediction_candidate_limit_preference")) add("settings_engine_enable_user_dictionary_link")
             if (key.startsWith("keyboard_touch_effect_") && key != "keyboard_touch_effect_type_preference") {
                 add("settings_theme_unavailable_effects")
                 add("keyboard_touch_effect_type_preference")

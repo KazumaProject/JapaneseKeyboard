@@ -55,4 +55,8 @@
     <string name="settings_engine_candidates_summary">Romaji, symbols, emoji, dates, calculations and AI</string>
     <string name="settings_engine_search_title">Conversion search</string>
     <string name="settings_engine_search_summary">N-Best and search width</string>
+    <string name="settings_engine_enable_learning_dictionary">Enable the learning dictionary</string>
+    <string name="settings_engine_enable_learning_dictionary_summary">Enable the learning dictionary in Dictionary settings to use learned words for prediction.</string>
+    <string name="settings_engine_enable_user_dictionary">Enable the user dictionary</string>
+    <string name="settings_engine_enable_user_dictionary_summary">Enable the user dictionary in Dictionary settings to use registered words for prediction.</string>
 </resources>
