@@ -1,6 +1,7 @@
 package com.kazumaproject.core.domain.listener
 
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
+import com.kazumaproject.core.domain.state.GestureType
 
 interface QWERTYKeyListener {
     fun onPressedQWERTYKey(
@@ -27,6 +28,20 @@ interface QWERTYKeyListener {
     ) = Unit
 
     fun onLongPressQWERTYKey(qwertyKey: QWERTYKey)
+
+    /**
+     * A vertical flick on [QWERTYKey.QWERTYKeyCursorLeft] or
+     * [QWERTYKey.QWERTYKeyCursorRight]. [gestureType] is FlickTop or FlickBottom.
+     * Listeners that do not need the starting key can use the existing up/down release callback.
+     */
+    fun onCursorFlickQWERTYKey(qwertyKey: QWERTYKey, gestureType: GestureType) {
+        val direction = when (gestureType) {
+            GestureType.FlickTop -> QWERTYKey.QWERTYKeyCursorUp
+            GestureType.FlickBottom -> QWERTYKey.QWERTYKeyCursorDown
+            else -> return
+        }
+        onReleasedQWERTYKey(direction, null, null)
+    }
 
     /**
      * QWERTYキーが上フリックされたときに呼び出されます。
