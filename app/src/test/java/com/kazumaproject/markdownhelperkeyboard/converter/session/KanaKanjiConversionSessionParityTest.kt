@@ -53,11 +53,14 @@ class KanaKanjiConversionSessionParityTest {
     }
 
     @Test
-    fun alphanumericInputKeepsHalfWidthUppercaseAcrossQueryModes() = runBlocking {
+    fun asciiInputKeepsHalfWidthUppercaseAcrossQueryModes() = runBlocking {
         for (backend in ConversionBackend.entries) for (bunsetsu in listOf(false, true)) {
             val session = KanaKanjiConversionSession(engine, backend)
             for (mode in CandidateQueryMode.entries) for (englishPrediction in listOf(false, true)) {
-                for (input in listOf("h8", "ab12", "8ab", "H8", "aB12")) {
+                for (input in listOf(
+                    "h8", "ab12", "8ab", "H8", "aB12",
+                    ":a", ":abc", "@ab", "#ab", "(abc)", "h-8", "a-b", "ab:", "a.b2", " ab", "ab c",
+                )) {
                     val result = session.query(request(input, mode, bunsetsu).copy(
                         predictionConfig = PredictionConfig(englishPredictionEnabled = englishPrediction),
                     ))
@@ -70,6 +73,9 @@ class KanaKanjiConversionSessionParityTest {
                         it.string == input.replaceFirstChar { char -> char.uppercaseChar() }
                     })
                     assertTrue("$context: original input", result.candidates.any { it.string == input })
+                    assertTrue("$context: full-width lowercase", result.candidates.any {
+                        it.string == input.toFullWidth().lowercase()
+                    })
                     assertTrue("$context: full-width uppercase", result.candidates.any {
                         it.string == input.toFullWidth().uppercase()
                     })
@@ -79,8 +85,8 @@ class KanaKanjiConversionSessionParityTest {
     }
 
     @Test
-    fun literalAlphanumericVariantsExcludeNumbersSymbolsAndJapaneseInput() {
-        for (input in listOf("", "1234", "h-8", "h８", "h8あ")) {
+    fun literalAsciiVariantsExcludeInputsWithoutAsciiLettersAndNonAsciiInput() {
+        for (input in listOf("", "1234", ":", ":123", "()", "h８", "h8あ", "é1", "a\n", "a\t", "a\u007f")) {
             val candidates = engine.getCandidatesEnglishKana(input)
             assertFalse("$input: $candidates", candidates.any { it.type == 29.toByte() })
         }
