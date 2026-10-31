@@ -33,7 +33,7 @@ import org.robolectric.util.ReflectionHelpers
 @Config(sdk = [35])
 class FlickPreviewDelayPreferenceTest {
     private lateinit var context: Context
-    private val resources = listOf(R.xml.pref_operation_feedback, R.xml.pref_common_legacy)
+    private val resources = listOf(R.xml.pref_common_legacy)
 
     @Before
     fun setUp() {
@@ -44,7 +44,7 @@ class FlickPreviewDelayPreferenceTest {
     }
 
     @Test
-    fun touchChangesInBothSettingsSynchronizeTheThumbLabelAndSavedDelay() {
+    fun touchChangesSynchronizeTheThumbLabelAndSavedDelay() {
         resources.forEach { xml ->
             val preference = inflateDelay(xml)
             val row = FrameLayout(preference.context)
@@ -74,7 +74,7 @@ class FlickPreviewDelayPreferenceTest {
     }
 
     @Test
-    fun openingEitherSettingsScreenNormalizesAnExistingNonStepValue() {
+    fun openingSettingsNormalizesAnExistingNonStepValue() {
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         resources.forEach { xml ->
             preferences.edit().putInt(FlickPreviewDelaySettings.KEY, 7).commit()
@@ -84,45 +84,11 @@ class FlickPreviewDelayPreferenceTest {
     }
 
     @Test
-    fun settingCardShowsTheNormalizedValueAndSavesTheSameStepsAndDefault() {
-        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
-        preferences.edit().putInt(FlickPreviewDelaySettings.KEY, 7).commit()
-        val controller = Robolectric.buildActivity(Activity::class.java).setup()
-        try {
-            val themed = ContextThemeWrapper(controller.get(), R.style.Theme_MarkdownKeyboard)
-            val editor = SettingCardEditorController(themed)
-            val destination = SettingSearchIndex.searchable(themed)
-                .first {
-                    it.key == FlickPreviewDelaySettings.KEY &&
-                        it.destination is SettingDestinationType.SeekBarPreference
-                }
-            assertEquals(5, (destination.destination as SettingDestinationType.SeekBarPreference).increment)
-            assertEquals("5", editor.currentValueLabel(destination))
-
-            assertTrue(editor.handleClick(destination) {})
-            shadowOf(Looper.getMainLooper()).idle()
-            val dialog = ShadowDialog.getLatestDialog() as AlertDialog
-            val slider = requireNotNull(findSeekBar(dialog.window!!.decorView))
-            assertEquals(1, slider.progress) // The dialog uses an index into 0, 5, 10, ...
-            slider.progress = 2
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
-            shadowOf(Looper.getMainLooper()).idle()
-            assertEquals(10, preferences.getInt(FlickPreviewDelaySettings.KEY, -1))
-            assertEquals(10, AppPreference.flick_editor_preview_delay_ms)
-            assertEquals("10", editor.currentValueLabel(destination))
-
-            assertTrue(editor.handleClick(destination) {})
-            shadowOf(Looper.getMainLooper()).idle()
-            val resetDialog = ShadowDialog.getLatestDialog() as AlertDialog
-            resetDialog.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
-            shadowOf(Looper.getMainLooper()).idle()
-            resetDialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
-            shadowOf(Looper.getMainLooper()).idle()
-            assertEquals(0, preferences.getInt(FlickPreviewDelaySettings.KEY, -1))
-            assertEquals(0, AppPreference.flick_editor_preview_delay_ms)
-        } finally {
-            controller.pause().stop().destroy()
-        }
+    fun settingCardOpensTheCanonicalEditor() {
+        val destination = SettingDestinations.frequentCandidates(context).first { it.key == FlickPreviewDelaySettings.KEY }
+        val navigation = destination.destination as SettingDestinationType.NavDestination
+        assertEquals(R.id.legacyCommonPreferenceFragment, navigation.destinationId)
+        assertEquals(FlickPreviewDelaySettings.KEY, navigation.highlightPreferenceKey)
     }
 
     private fun inflateDelay(xml: Int): SeekBarPreference {
@@ -133,13 +99,4 @@ class FlickPreviewDelayPreferenceTest {
             .also { it.configureFlickPreviewDelay() }
     }
 
-    private fun findSeekBar(view: View): SeekBar? {
-        if (view is SeekBar) return view
-        if (view is ViewGroup) {
-            for (index in 0 until view.childCount) {
-                findSeekBar(view.getChildAt(index))?.let { return it }
-            }
-        }
-        return null
-    }
 }
