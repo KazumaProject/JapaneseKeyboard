@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
-import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
 import android.view.ViewGroup
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -164,9 +163,8 @@ class StandardFlickInputController(
             }
 
             MotionEvent.ACTION_MOVE -> {
-                val (dx, dy) = KeyboardGeometryMath.localDelta(
-                    event.rawX - initialTouchX, event.rawY - initialTouchY, anchorView?.rotation ?: 0f
-                )
+                val dx = event.rawX - initialTouchX
+                val dy = event.rawY - initialTouchY
                 val direction = calculateDirection(dx, dy)
                 segmentedDrawable?.highlightDirection = direction
                 showPopup(direction)
@@ -179,9 +177,8 @@ class StandardFlickInputController(
 
             MotionEvent.ACTION_UP -> {
                 segmentedDrawable?.highlightDirection = null
-                val (dx, dy) = KeyboardGeometryMath.localDelta(
-                    event.rawX - initialTouchX, event.rawY - initialTouchY, anchorView?.rotation ?: 0f
-                )
+                val dx = event.rawX - initialTouchX
+                val dy = event.rawY - initialTouchY
                 val finalDirection = calculateDirection(dx, dy)
                 characterMap[finalDirection]?.let {
                     if (it.isNotEmpty()) {
@@ -236,7 +233,6 @@ class StandardFlickInputController(
         dismissSkinGuideImmediately()
 
         popupView.setFlickDirection(direction)
-        popupView.rotation = keyAnchor.rotation
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
         popupView.applyPopupViewStyle(popupStyle)
 
