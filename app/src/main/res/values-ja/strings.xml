@@ -251,7 +251,7 @@
     <string name="flick_editor_preview_summary_off">従来方式：指を離したときに文字を入力します</string>
     <string name="flick_editor_preview_summary_on">TenKey・Sumireで、選択中のタップ／フリック文字を入力欄に仮表示します</string>
     <string name="undo_enable_title">入力を元に戻せるようにする</string>
-    <string name="undo_enable_summary">元に戻す機能を無効にする</string>
+    <string name="undo_enable_summary">入力を元に戻すボタンを候補欄に表示します。</string>
     <string name="reconversion_preference_title">読みを戻す</string>
     <string name="reconversion_preference_summary">候補が空のときに「読みを戻す」ボタンを表示し、直前に確定した読みを PreEdit に戻せます。</string>
     <string name="reconversion_symbol">読みを戻す</string>
@@ -595,9 +595,9 @@
     <string name="open_source_libraries_title">使用した Open Source のライブラリ</string>
     <string name="app_version_title">アプリのバージョン</string>
 
-    <string name="learn_dictionary_prefix_match_summary">学習辞書に登録された単語を、前方 %1$d 文字一致で変換候補として表示します</string>
+    <string name="learn_dictionary_prefix_match_summary">読みを %1$d 文字以上入力すると、学習辞書の単語を予測候補に表示します</string>
 
-    <string name="user_dictionary_prefix_match_summary">ユーザー辞書に登録された単語を、前方 %1$d 文字一致で変換候補として表示します</string>
+    <string name="user_dictionary_prefix_match_summary">読みを %1$d 文字以上入力すると、ユーザー辞書の単語を予測候補に表示します</string>
 
     <string name="undo_enable_summary_on">確定した文字を削除したときに、元に戻せる機能を有効にします</string>
     <string name="undo_enable_summary_off">確定した文字を削除したときに、元に戻せる機能を無効にします</string>
