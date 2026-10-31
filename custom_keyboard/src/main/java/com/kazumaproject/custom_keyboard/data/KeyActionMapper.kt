@@ -172,6 +172,19 @@ object KeyActionMapper {
                 context.getString(R.string.action_move_cursor_right),
                 com.kazumaproject.core.R.drawable.baseline_arrow_right_24
             ),
+            DisplayAction(KeyAction.Tab, context.getString(R.string.action_tab), com.kazumaproject.core.R.drawable.keyboard_tab_24px),
+            DisplayAction(KeyAction.Escape, context.getString(R.string.action_escape)),
+            DisplayAction(KeyAction.Home, context.getString(R.string.action_home)),
+            DisplayAction(KeyAction.End, context.getString(R.string.action_end)),
+            DisplayAction(KeyAction.PageUp, context.getString(R.string.action_page_up)),
+            DisplayAction(KeyAction.PageDown, context.getString(R.string.action_page_down)),
+            DisplayAction(KeyAction.NextField, context.getString(R.string.action_next_field)),
+            DisplayAction(KeyAction.PreviousField, context.getString(R.string.action_previous_field)),
+            DisplayAction(KeyAction.SelectLeft, context.getString(R.string.action_select_left), com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24),
+            DisplayAction(KeyAction.SelectRight, context.getString(R.string.action_select_right), com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24),
+            DisplayAction(KeyAction.UndoLastDelete, context.getString(R.string.action_undo_last_delete), com.kazumaproject.core.R.drawable.undo_24px),
+            DisplayAction(KeyAction.CtrlLock, context.getString(R.string.action_ctrl), com.kazumaproject.core.R.drawable.custom_key_ctrl),
+            DisplayAction(KeyAction.AltLock, context.getString(R.string.action_alt), com.kazumaproject.core.R.drawable.custom_key_alt),
             DisplayAction(
                 KeyAction.SelectAll,
                 context.getString(R.string.action_select_all),
@@ -237,6 +250,12 @@ object KeyActionMapper {
             KeyAction.MoveCursorUp -> com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
             KeyAction.MoveCursorDown -> com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
             KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            KeyAction.Tab -> com.kazumaproject.core.R.drawable.keyboard_tab_24px
+            KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+            KeyAction.UndoLastDelete -> com.kazumaproject.core.R.drawable.undo_24px
+            KeyAction.CtrlLock -> com.kazumaproject.core.R.drawable.custom_key_ctrl
+            KeyAction.AltLock -> com.kazumaproject.core.R.drawable.custom_key_alt
             KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
             KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
             KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
@@ -266,6 +285,17 @@ object KeyActionMapper {
             is KeyAction.MoveCursorRight -> "MoveCursorRight"
             is KeyAction.SelectLeft -> "SelectLeft"
             is KeyAction.SelectRight -> "SelectRight"
+            is KeyAction.Tab -> "Tab"
+            is KeyAction.Escape -> "Escape"
+            is KeyAction.Home -> "Home"
+            is KeyAction.End -> "End"
+            is KeyAction.PageUp -> "PageUp"
+            is KeyAction.PageDown -> "PageDown"
+            is KeyAction.NextField -> "NextField"
+            is KeyAction.PreviousField -> "PreviousField"
+            is KeyAction.UndoLastDelete -> "UndoLastDelete"
+            is KeyAction.CtrlLock -> "CtrlLock"
+            is KeyAction.AltLock -> "AltLock"
             is KeyAction.SelectAll -> "SelectAll"
             is KeyAction.Cut -> "Cut"
             is KeyAction.Paste -> "Paste"
@@ -330,6 +360,17 @@ object KeyActionMapper {
             "MoveCursorRight" -> KeyAction.MoveCursorRight
             "SelectLeft" -> KeyAction.SelectLeft
             "SelectRight" -> KeyAction.SelectRight
+            "Tab" -> KeyAction.Tab
+            "Escape" -> KeyAction.Escape
+            "Home" -> KeyAction.Home
+            "End" -> KeyAction.End
+            "PageUp" -> KeyAction.PageUp
+            "PageDown" -> KeyAction.PageDown
+            "NextField" -> KeyAction.NextField
+            "PreviousField" -> KeyAction.PreviousField
+            "UndoLastDelete" -> KeyAction.UndoLastDelete
+            "CtrlLock" -> KeyAction.CtrlLock
+            "AltLock" -> KeyAction.AltLock
             "SelectAll" -> KeyAction.SelectAll
             "Cut" -> KeyAction.Cut
             "Paste" -> KeyAction.Paste

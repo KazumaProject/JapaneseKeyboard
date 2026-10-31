@@ -7,6 +7,7 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
+import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
@@ -140,7 +141,7 @@ class IMEServiceFloatingCursorRegressionTest {
         assertEquals(before, expectation())
     }
 
-    private fun checkVertical(key: QWERTYKey, keyCode: Int) = runTest {
+    private fun checkVertical(key: QWERTYKey, keyCode: Int, gesture: GestureType? = null) = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         ReflectionHelpers.getField<CoroutineScope>(service, "scope").cancel()
         ReflectionHelpers.setField(service, "scope", CoroutineScope(dispatcher + SupervisorJob()))
@@ -156,7 +157,11 @@ class IMEServiceFloatingCursorRegressionTest {
             ClassParameter.from(QWERTYKeyboardView::class.java, view),
             ClassParameter.from(MainLayoutBinding::class.java, mock<MainLayoutBinding>()))
         ReflectionHelpers.setField(service, "cursorSelectionMode", true)
-        requireNotNull(listener).onReleasedQWERTYKey(key, null, null)
+        if (gesture == null) {
+            requireNotNull(listener).onReleasedQWERTYKey(key, null, null)
+        } else {
+            requireNotNull(listener).onCursorFlickQWERTYKey(key, gesture)
+        }
         advanceUntilIdle()
         assertTrue(ReflectionHelpers.getField<Boolean>(service, "cursorSelectionMode"))
         val events = argumentCaptor<KeyEvent>()
@@ -171,4 +176,33 @@ class IMEServiceFloatingCursorRegressionTest {
 
     @Test fun qwertyCursorUpKeepsSelectionAndUsesBalancedShiftEvents() = checkVertical(QWERTYKey.QWERTYKeyCursorUp, KeyEvent.KEYCODE_DPAD_UP)
     @Test fun qwertyCursorDownKeepsSelectionAndUsesBalancedShiftEvents() = checkVertical(QWERTYKey.QWERTYKeyCursorDown, KeyEvent.KEYCODE_DPAD_DOWN)
+
+    @Test fun leftCursorFlickUpKeepsSelection() = checkVertical(QWERTYKey.QWERTYKeyCursorLeft, KeyEvent.KEYCODE_DPAD_UP, GestureType.FlickTop)
+    @Test fun leftCursorFlickDownKeepsSelection() = checkVertical(QWERTYKey.QWERTYKeyCursorLeft, KeyEvent.KEYCODE_DPAD_DOWN, GestureType.FlickBottom)
+    @Test fun rightCursorFlickUpKeepsSelection() = checkVertical(QWERTYKey.QWERTYKeyCursorRight, KeyEvent.KEYCODE_DPAD_UP, GestureType.FlickTop)
+    @Test fun rightCursorFlickDownKeepsSelection() = checkVertical(QWERTYKey.QWERTYKeyCursorRight, KeyEvent.KEYCODE_DPAD_DOWN, GestureType.FlickBottom)
+
+    @Test fun verticalCursorFlickPreservesTheStartingKeysPreeditBehavior() {
+        val view = mock<QWERTYKeyboardView>()
+        var listener: QWERTYKeyListener? = null
+        doAnswer { listener = it.getArgument(0); null }.whenever(view).setOnQWERTYKeyListener(any())
+        ReflectionHelpers.callInstanceMethod<Unit>(service, "configureQwertyView",
+            ClassParameter.from(QWERTYKeyboardView::class.java, view),
+            ClassParameter.from(MainLayoutBinding::class.java, mock<MainLayoutBinding>()))
+        val input = ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString")
+        val tail = ReflectionHelpers.getField<java.util.concurrent.atomic.AtomicReference<String>>(service, "stringInTail")
+        for (gesture in listOf(GestureType.FlickTop, GestureType.FlickBottom)) {
+            input.value = "ab"
+            tail.set("x")
+            requireNotNull(listener).onCursorFlickQWERTYKey(QWERTYKey.QWERTYKeyCursorLeft, gesture)
+            assertEquals("a", input.value)
+            assertEquals("bx", tail.get())
+
+            input.value = "ab"
+            tail.set("x")
+            requireNotNull(listener).onCursorFlickQWERTYKey(QWERTYKey.QWERTYKeyCursorRight, gesture)
+            assertEquals("abx", input.value)
+            assertEquals("", tail.get())
+        }
+    }
 }
