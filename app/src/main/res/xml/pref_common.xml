@@ -66,13 +66,10 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="@string/inline_suggestion_settings_category_title">
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="inline_suggestion_enabled_preference"
-            android:summaryOff="@string/inline_suggestion_enabled_summary_off"
-            android:summaryOn="@string/inline_suggestion_enabled_summary_on"
-            android:title="@string/inline_suggestion_enabled_title" />
+    <PreferenceCategory android:title="@string/settings_related_settings">
+        <Preference
+            android:key="setting_route_canonical_settings_common_privacy"
+            android:title="@string/settings_common_privacy_title"
+            android:summary="@string/settings_common_privacy_summary" />
     </PreferenceCategory>
-
 </PreferenceScreen>
