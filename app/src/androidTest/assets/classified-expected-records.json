@@ -1,426 +1,66 @@
 {
+  "character": {
+    "count": 6854,
+    "digestSum": "e149a7e338da1be29a44a08aa0155e72bfc4c05f7b681aaff0b904e31906c4bd",
+    "sample": {
+      "reading": "あかざあかね",
+      "surface": "赤座あかね"
+    }
+  },
+  "mythological_figure": {
+    "count": 3436,
+    "digestSum": "69e050cfa5faefdf917e5b98d2c66ab0969ce006031ca0ee9b6da4100181cc30",
+    "sample": {
+      "reading": "あくしゃ",
+      "surface": "アクシャ"
+    }
+  },
+  "place": {
+    "count": 45092,
+    "digestSum": "e15e70b67821958b31c54cfcf281a1bd16c1981f6a54bc707785a3773cc3ca54",
+    "sample": {
+      "reading": "かろけん",
+      "surface": "カロ県"
+    }
+  },
   "address": {
     "count": 152874,
     "digestSum": "69ff599adcb461fbc8ddd32fc053e6b5b95e5182476ee81d5afcd5a56514f6d0",
     "sample": {
-      "reading": "あいおいしあさひ",
-      "surface": "相生市旭"
+      "reading": "すえつね",
+      "surface": "末恒"
     }
   },
-  "agreement": {
-    "count": 424,
-    "digestSum": "a065657ceec7e1968781364cb0e71cc574abf1fcf0395c128c6040f9fee6ccbc",
+  "station": {
+    "count": 12760,
+    "digestSum": "cf4e38ccfad6bc14a8ac15c23740b609493d76b1027b849448ff910a2bb67964",
     "sample": {
-      "reading": "あるてみすごうい",
-      "surface": "アルテミス合意"
+      "reading": "あおえき",
+      "surface": "阿保駅"
     }
   },
-  "award": {
-    "count": 1163,
-    "digestSum": "c11548c23afd74df4cf69cdbfb818878430d048d6f72a77a977ecf3f45b86b82",
+  "facility/religious/shrine": {
+    "count": 3824,
+    "digestSum": "2adb1b789c0a86dc8f8af8028fbdcff5f4dfb0f16ce06af6c4ad74586cc36b59",
     "sample": {
-      "reading": "あいあんくろす",
-      "surface": "アイアンクロス"
+      "reading": "きたから",
+      "surface": "KITAcolor"
     }
   },
-  "character": {
-    "count": 6848,
-    "digestSum": "4ac1254025d4e11461b563565a47d7f77570d98253e8b87b9361a90ae9787781",
+  "facility/religious/temple": {
+    "count": 4005,
+    "digestSum": "04d02b5ad3d6284d4b258df2e6ef7be00682ff79eae8c7fa95437b2c824ecbad",
     "sample": {
-      "reading": "ああいいちろう",
-      "surface": "亜愛一郎"
-    }
-  },
-  "event/history/conflict": {
-    "count": 1534,
-    "digestSum": "66b4fc3ef045b8eb772271fb4ae0b513c8f0e7f375f90ba894b9fcf051ecf16c",
-    "sample": {
-      "reading": "あいざわじけん",
-      "surface": "相沢事件"
-    }
-  },
-  "event/incident/natural_disaster": {
-    "count": 456,
-    "digestSum": "4c93285f1d199ca8c689ce3e97642b33e4de47d330cccd947d36e99e0d0219c4",
-    "sample": {
-      "reading": "あいおんたいふう",
-      "surface": "アイオン台風"
-    }
-  },
-  "event/incident/social_issue_litigation": {
-    "count": 641,
-    "digestSum": "b7dbf59d966c5dccaa7735577f6291fd524af3a78dd941df1f4f9fe801fec7f3",
-    "sample": {
-      "reading": "あいづそうどう",
-      "surface": "会津騒動"
-    }
-  },
-  "event/occasion/exam_qualification": {
-    "count": 169,
-    "digestSum": "95ffd3401c2e38b532318f9cbe49441faebc7d8f4eb9317c6ad833b796594c76",
-    "sample": {
-      "reading": "あいおーあい",
-      "surface": "IOI"
-    }
-  },
-  "event/occasion/observance": {
-    "count": 802,
-    "digestSum": "68e2271b5b18ca90c92a029dd550fa41d7e95db58dacd3665fc3468c8993c048",
-    "sample": {
-      "reading": "あいさいのひ",
-      "surface": "愛妻の日"
-    }
-  },
-  "event/occasion/organized_event": {
-    "count": 4059,
-    "digestSum": "d403b00d12402e0b0ef6ec06dac8294d64a4c616e6fe11049a2f7452c1652955",
-    "sample": {
-      "reading": "あいしーゆーさい",
-      "surface": "ICU祭"
-    }
-  },
-  "facility/commercial/market": {
-    "count": 158,
-    "digestSum": "0eab9b2fb503b010811256687a05bd02fa6564a80b00036230722985846899b0",
-    "sample": {
-      "reading": "あだちしじょう",
-      "surface": "足立市場"
-    }
-  },
-  "facility/commercial/restaurant": {
-    "count": 542,
-    "digestSum": "12654fb744b2ebd5848b09e70f5991763c5b5dd358ee5a0f303c0b76b9a06d36",
-    "sample": {
-      "reading": "あいてむえひめ",
-      "surface": "アイテムえひめ"
-    }
-  },
-  "facility/commercial/shopping": {
-    "count": 1291,
-    "digestSum": "01594ee4256e3240d61d9f67dcb78a7eb1aca6609412aff4fa28c743e321517b",
-    "sample": {
-      "reading": "あくうぇるもーる",
-      "surface": "アクウェルモール"
-    }
-  },
-  "facility/cultural/art_museum": {
-    "count": 378,
-    "digestSum": "800ddfbe60a9008fb2d8690fb2f3073dac9ff79f2024cebf553b86e15b8244fb",
-    "sample": {
-      "reading": "うーびじゅつかん",
-      "surface": "Ў美術館"
-    }
-  },
-  "facility/cultural/library": {
-    "count": 750,
-    "digestSum": "be4cd3ba999ecbba87a1c4dc2e41db136d8c68d758e6dcbc8e346a17f10c5120",
-    "sample": {
-      "reading": "あけのとしょかん",
-      "surface": "明野図書館"
-    }
-  },
-  "facility/cultural/memorial": {
-    "count": 1183,
-    "digestSum": "7519a3d564ec3b01de2388ecbc37e087c4a4c00e9ab68087744804163a59e236",
-    "sample": {
-      "reading": "あいすのやかた",
-      "surface": "愛洲の館"
-    }
-  },
-  "facility/cultural/museum": {
-    "count": 1192,
-    "digestSum": "2bce6142f47e4800bf986ab51b610fd3fd0a0bfc4b89b98bfacca286b2e63023",
-    "sample": {
-      "reading": "あずまずし",
-      "surface": "あずまずし"
-    }
-  },
-  "facility/education/preschool": {
-    "count": 94,
-    "digestSum": "0e1cf589fbc20d7cfea86fd8e05095c4f74dcfe334d41223d68f8d0feb43af23",
-    "sample": {
-      "reading": "あさひようちえん",
-      "surface": "あさひ幼稚園"
-    }
-  },
-  "facility/education/research": {
-    "count": 80,
-    "digestSum": "946f4c1731dc59aa2d1068922876ebbb5bde166214e0eea7b104fa5f99b2827e",
-    "sample": {
-      "reading": "いなあさひざ",
-      "surface": "伊那旭座"
-    }
-  },
-  "facility/education/school": {
-    "count": 603,
-    "digestSum": "3db4dca74a94bb12682555bb1383475739712eec72bc1016c9aa8bb8f7bdb8d9",
-    "sample": {
-      "reading": "あいのうがくえん",
-      "surface": "愛農学園"
-    }
-  },
-  "facility/education/university": {
-    "count": 63,
-    "digestSum": "22318de404f5d357880bc3613092662b45668d8be86abf87288abd37c92a2942",
-    "sample": {
-      "reading": "おおさかたわー",
-      "surface": "大阪タワー"
-    }
-  },
-  "facility/entertainment/amusement": {
-    "count": 141,
-    "digestSum": "be11fcd3f06caeab1bea836475ef9156d3b47f5f579997fa6bd350d740956e9a",
-    "sample": {
-      "reading": "あすけじんや",
-      "surface": "足助陣屋"
-    }
-  },
-  "facility/entertainment/cinema": {
-    "count": 149,
-    "digestSum": "a96a30fe8bb960121c657f1d1027d133463265bf0d8d3ca83c66fcbd1e38d5d4",
-    "sample": {
-      "reading": "あいしてぃしねま",
-      "surface": "アイシティシネマ"
-    }
-  },
-  "facility/entertainment/live_venue": {
-    "count": 147,
-    "digestSum": "b00ca7ab2f7407423cd4b23833a6b77baa4971c457e9d2d967c2345ce8f338c9",
-    "sample": {
-      "reading": "かめいどてんじん",
-      "surface": "亀戸天神"
-    }
-  },
-  "facility/entertainment/theater": {
-    "count": 415,
-    "digestSum": "53b05e9e7f4c59240e7370f1361f2c5244fafaeea8d17000f8549b05324a89eb",
-    "sample": {
-      "reading": "あいおいざ",
-      "surface": "相生座"
-    }
-  },
-  "facility/healthcare/care": {
-    "count": 95,
-    "digestSum": "9f8c5d209c2ab3530b1d90dcfc4bf63134770b57ebab96cf1902f89fc7957bb9",
-    "sample": {
-      "reading": "いけだけぼしょ",
-      "surface": "池田家墓所"
-    }
-  },
-  "facility/healthcare/clinic": {
-    "count": 59,
-    "digestSum": "4886ee3c856d21aadac1418667a9daa892839e1dfb6e2dfaedd0517ebf15561b",
-    "sample": {
-      "reading": "えがわてい",
-      "surface": "江川亭"
-    }
-  },
-  "facility/healthcare/hospital": {
-    "count": 1013,
-    "digestSum": "8ddde3fd21200486e8047e2a09bcad8a02afcb254d17ac7cbe9abd72c27cddd6",
-    "sample": {
-      "reading": "あきたびょういん",
-      "surface": "あきた病院"
-    }
-  },
-  "facility/heritage/archaeological_site": {
-    "count": 232,
-    "digestSum": "31283366876651fe25980f111e7648ec13a9fa4f512c14201a8f2b595ea0fa1f",
-    "sample": {
-      "reading": "ああいせっくつ",
-      "surface": "アアイ石窟"
-    }
-  },
-  "facility/heritage/castle": {
-    "count": 1528,
-    "digestSum": "f4d18b3567db14e4d8d69f9d0b16da343ac5f8031d74ef59b72a763146e1cdf2",
-    "sample": {
-      "reading": "あいづむら",
-      "surface": "会津村"
-    }
-  },
-  "facility/heritage/historic_residence": {
-    "count": 504,
-    "digestSum": "2d257bbcad7ebe1c961a3e763f7c71311999341f114ed30ce012afc6fa527c9b",
-    "sample": {
-      "reading": "あいづぶけやしき",
-      "surface": "会津武家屋敷"
-    }
-  },
-  "facility/hospitality/hot_spring": {
-    "count": 638,
-    "digestSum": "8480bbaae564216538c1d9e4f159afe3e292ff4e1f5f48cc4ec31a884ef27676",
-    "sample": {
-      "reading": "あいおおんせん",
-      "surface": "秋穂温泉"
-    }
-  },
-  "facility/hospitality/hotel": {
-    "count": 803,
-    "digestSum": "a6b5e9be8c45deaa2d1085d414d9390ad751d0bbf62435c38131f2faae646000",
-    "sample": {
-      "reading": "あおいほてる",
-      "surface": "葵ホテル"
-    }
-  },
-  "facility/hospitality/inn": {
-    "count": 118,
-    "digestSum": "798846e3ca60832e2160468bd10ee089ed5557d4b20f446ce439f03a15b96f4f",
-    "sample": {
-      "reading": "あさまさんそう",
-      "surface": "あさま山荘"
-    }
-  },
-  "facility/industrial/communications": {
-    "count": 517,
-    "digestSum": "a8211398853d9b1ec65da00bd818489c5133ab1741d0f19f069f2e606090df54",
-    "sample": {
-      "reading": "あすてぃとくしま",
-      "surface": "アスティとくしま"
-    }
-  },
-  "facility/industrial/factory": {
-    "count": 391,
-    "digestSum": "5b3005b96de118f90911b11df504dc320bf00fa98b1b8ffab39011234084229a",
-    "sample": {
-      "reading": "あきうこうざん",
-      "surface": "秋保鉱山"
-    }
-  },
-  "facility/industrial/logistics": {
-    "count": 97,
-    "digestSum": "7c00a000a894424d1aa3f5c0c58dcf219fb131f5760f3eaf0214bf2c8578dbea",
-    "sample": {
-      "reading": "あきたかもつえき",
-      "surface": "秋田貨物駅"
-    }
-  },
-  "facility/industrial/power": {
-    "count": 432,
-    "digestSum": "f51fcac9302c16d605faf2a0a0c19884f9b1a45a7c3342cba934dff403d3f419",
-    "sample": {
-      "reading": "あいえすえす",
-      "surface": "ISS"
-    }
-  },
-  "facility/infrastructure/bridge": {
-    "count": 1469,
-    "digestSum": "6b3ab455ae745fa4177970634592a545108d9bf13f3e96668a86d069f5e7b394",
-    "sample": {
-      "reading": "あいかわばし",
-      "surface": "相川橋"
-    }
-  },
-  "facility/infrastructure/dam": {
-    "count": 93,
-    "digestSum": "a948c857443d127d56b5685e165d3fa89f705f474e9ca96087feb77d738760fc",
-    "sample": {
-      "reading": "いわぐまいぜき",
-      "surface": "岩熊井堰"
-    }
-  },
-  "facility/infrastructure/tunnel": {
-    "count": 371,
-    "digestSum": "ad722c128d282b7a973facb16233d6e164f98f83fd429b5c0c80c2ae77ff9766",
-    "sample": {
-      "reading": "あいもととんねる",
-      "surface": "愛本トンネル"
-    }
-  },
-  "facility/infrastructure/water_control": {
-    "count": 107,
-    "digestSum": "7adb7d62abb2ba57838ab6bacd5a24676d6d9bd563bd3d19f446ff33cd5e93e9",
-    "sample": {
-      "reading": "あさしおすいもん",
-      "surface": "朝潮水門"
-    }
-  },
-  "facility/military/base": {
-    "count": 348,
-    "digestSum": "661269d53d249f3301431899313faa03e72643e872b9c8918ee1eb0316f1b819",
-    "sample": {
-      "reading": "あさみやごてん",
-      "surface": "朝宮御殿"
-    }
-  },
-  "facility/military/garrison": {
-    "count": 16,
-    "digestSum": "c027258aaa42ea39059882266c3eb95c84ee261d18233e9ccd09747db3dc6159",
-    "sample": {
-      "reading": "ありまますいけ",
-      "surface": "有馬ます池"
-    }
-  },
-  "facility/military/training_ground": {
-    "count": 40,
-    "digestSum": "768701d1e4381300e1a88ece3dd4f48b48333a4202b8baada1c8d5705496afb8",
-    "sample": {
-      "reading": "みらいーら",
-      "surface": "みらいーら"
-    }
-  },
-  "facility/public/government": {
-    "count": 541,
-    "digestSum": "507032895be4dd059fd573e0bf521ca01cd0fad2db35791c6017f0c0757e244e",
-    "sample": {
-      "reading": "あだちくやくしょ",
-      "surface": "足立区役所"
-    }
-  },
-  "facility/public/judicial": {
-    "count": 137,
-    "digestSum": "81144935544546c94ae0b3874ee3a0de6959a59f9df0242824949f32e8c9973f",
-    "sample": {
-      "reading": "あきたけいむしょ",
-      "surface": "秋田刑務所"
-    }
-  },
-  "facility/public/police_fire": {
-    "count": 1299,
-    "digestSum": "63b3ae1e117ac6d565ca77fbfbf543cca6a454c3de432805b0fb921f1a82a30c",
-    "sample": {
-      "reading": "あそけいさつしょ",
-      "surface": "阿蘇警察署"
-    }
-  },
-  "facility/public/postal": {
-    "count": 1626,
-    "digestSum": "39956aa7442db8781f117bbc7112a1a332f3579361ba7a7b3e800d63865d6d92",
-    "sample": {
-      "reading": "くっくらひるがの",
-      "surface": "クックラひるがの"
-    }
-  },
-  "facility/recreation/outdoor_nature": {
-    "count": 236,
-    "digestSum": "5296e335aabd695cc7190e31231029e8dd20a549575f9d532147bb2c4a4fe271",
-    "sample": {
-      "reading": "あさひしぜんかん",
-      "surface": "Asahi自然観"
-    }
-  },
-  "facility/recreation/park_garden": {
-    "count": 1567,
-    "digestSum": "158e813c67e3ce1fe9f0d1370be30292f18b9e30f35e92c13d8fff5694b840b5",
-    "sample": {
-      "reading": "あいあいらんど",
-      "surface": "あいあいらんど"
-    }
-  },
-  "facility/recreation/zoo_aquarium": {
-    "count": 155,
-    "digestSum": "1d6114ad698e94f60236448c6489a1253d22b0b372677c59793f77e4b898449b",
-    "sample": {
-      "reading": "かいげんいん",
-      "surface": "開元院"
+      "reading": "うゆうじ",
+      "surface": "烏尤寺"
     }
   },
   "facility/religious/church": {
     "count": 368,
     "digestSum": "80a8b9541b49ec72a5c4b43ac83f4597673a166f500dfe308c4320863f2128a5",
     "sample": {
-      "reading": "あさくさもすく",
-      "surface": "浅草モスク"
+      "reading": "かとりしゃ",
+      "surface": "香取社"
     }
   },
   "facility/religious/monastery": {
@@ -431,68 +71,180 @@
       "surface": "西方尼院"
     }
   },
-  "facility/religious/shrine": {
-    "count": 3824,
-    "digestSum": "2adb1b789c0a86dc8f8af8028fbdcff5f4dfb0f16ce06af6c4ad74586cc36b59",
+  "facility/education/school": {
+    "count": 603,
+    "digestSum": "3db4dca74a94bb12682555bb1383475739712eec72bc1016c9aa8bb8f7bdb8d9",
     "sample": {
-      "reading": "あえくにじんじゃ",
-      "surface": "敢国神社"
+      "reading": "ぎうんいん",
+      "surface": "義雲院"
     }
   },
-  "facility/religious/temple": {
-    "count": 4005,
-    "digestSum": "04d02b5ad3d6284d4b258df2e6ef7be00682ff79eae8c7fa95437b2c824ecbad",
+  "facility/education/preschool": {
+    "count": 94,
+    "digestSum": "0e1cf589fbc20d7cfea86fd8e05095c4f74dcfe334d41223d68f8d0feb43af23",
     "sample": {
-      "reading": "あいぜんいん",
-      "surface": "愛染院"
+      "reading": "ちばようちえん",
+      "surface": "千葉幼稚園"
     }
   },
-  "facility/residential/condominium": {
-    "count": 409,
-    "digestSum": "493d1f1b335be28f9211705f902ca0f620118d2830f974c7eeb87a56df5c3400",
+  "facility/education/university": {
+    "count": 63,
+    "digestSum": "22318de404f5d357880bc3613092662b45668d8be86abf87288abd37c92a2942",
     "sample": {
-      "reading": "あいないだて",
-      "surface": "相内館"
+      "reading": "ごこくいん",
+      "surface": "護国院"
     }
   },
-  "facility/residential/housing_complex": {
-    "count": 120,
-    "digestSum": "d720204bc6e961ab6317b739b58b499de3ba67d5d2b1eba13ff4793b4d2e6f7c",
+  "facility/education/research": {
+    "count": 80,
+    "digestSum": "946f4c1731dc59aa2d1068922876ebbb5bde166214e0eea7b104fa5f99b2827e",
     "sample": {
-      "reading": "あけのだんち",
-      "surface": "明野団地"
+      "reading": "いなっせ",
+      "surface": "いなっせ"
     }
   },
-  "facility/residential/mixed_use_building": {
-    "count": 91,
-    "digestSum": "b5a0b25063180690c35b7944d390059afac0a00e3d6911008dda3ee620d87490",
+  "facility/healthcare/hospital": {
+    "count": 1013,
+    "digestSum": "8ddde3fd21200486e8047e2a09bcad8a02afcb254d17ac7cbe9abd72c27cddd6",
     "sample": {
-      "reading": "いしのくら",
-      "surface": "石の蔵"
+      "reading": "じきしんあん",
+      "surface": "直心庵"
     }
   },
-  "facility/sports/aquatic": {
-    "count": 11,
-    "digestSum": "4c2fdfb2a2f193cb0f39923b8f8ba81130d3d29852dbc04286c482655cfc74d2",
+  "facility/healthcare/clinic": {
+    "count": 59,
+    "digestSum": "4886ee3c856d21aadac1418667a9daa892839e1dfb6e2dfaedd0517ebf15561b",
     "sample": {
-      "reading": "あるかさーる",
-      "surface": "アルカサール"
+      "reading": "えがわてい",
+      "surface": "江川亭"
     }
   },
-  "facility/sports/golf": {
-    "count": 47,
-    "digestSum": "a5e11835e46442e7b7cda908d386537479c688c1472beeaee1f15470cc18d70d",
+  "facility/healthcare/care": {
+    "count": 95,
+    "digestSum": "9f8c5d209c2ab3530b1d90dcfc4bf63134770b57ebab96cf1902f89fc7957bb9",
     "sample": {
-      "reading": "あじふぃにし",
-      "surface": "味フィ西"
+      "reading": "きたから",
+      "surface": "キタカラ"
+    }
+  },
+  "facility/public/government": {
+    "count": 541,
+    "digestSum": "507032895be4dd059fd573e0bf521ca01cd0fad2db35791c6017f0c0757e244e",
+    "sample": {
+      "reading": "いぬたま",
+      "surface": "いぬたま"
+    }
+  },
+  "facility/public/police_fire": {
+    "count": 1299,
+    "digestSum": "63b3ae1e117ac6d565ca77fbfbf543cca6a454c3de432805b0fb921f1a82a30c",
+    "sample": {
+      "reading": "いしかわじんや",
+      "surface": "石河陣屋"
+    }
+  },
+  "facility/public/judicial": {
+    "count": 137,
+    "digestSum": "81144935544546c94ae0b3874ee3a0de6959a59f9df0242824949f32e8c9973f",
+    "sample": {
+      "reading": "ほごぼう",
+      "surface": "保護房"
+    }
+  },
+  "facility/public/postal": {
+    "count": 1626,
+    "digestSum": "39956aa7442db8781f117bbc7112a1a332f3579361ba7a7b3e800d63865d6d92",
+    "sample": {
+      "reading": "べちのうしょ",
+      "surface": "別納所"
+    }
+  },
+  "facility/cultural/museum": {
+    "count": 1193,
+    "digestSum": "d8188c8c2a33a50ce2f87ae7ea89ca0b3fbdcc16406c50c8780fbc8c7e901238",
+    "sample": {
+      "reading": "うしてんじん",
+      "surface": "牛天神"
+    }
+  },
+  "facility/cultural/art_museum": {
+    "count": 378,
+    "digestSum": "800ddfbe60a9008fb2d8690fb2f3073dac9ff79f2024cebf553b86e15b8244fb",
+    "sample": {
+      "reading": "えろーら",
+      "surface": "エローラ"
+    }
+  },
+  "facility/cultural/library": {
+    "count": 750,
+    "digestSum": "be4cd3ba999ecbba87a1c4dc2e41db136d8c68d758e6dcbc8e346a17f10c5120",
+    "sample": {
+      "reading": "ほんぽーと",
+      "surface": "ほんぽーと"
+    }
+  },
+  "facility/cultural/memorial": {
+    "count": 1183,
+    "digestSum": "7519a3d564ec3b01de2388ecbc37e087c4a4c00e9ab68087744804163a59e236",
+    "sample": {
+      "reading": "えくらほーる",
+      "surface": "エクラホール"
+    }
+  },
+  "facility/entertainment/theater": {
+    "count": 415,
+    "digestSum": "53b05e9e7f4c59240e7370f1361f2c5244fafaeea8d17000f8549b05324a89eb",
+    "sample": {
+      "reading": "あぶあぶ",
+      "surface": "ABAB"
+    }
+  },
+  "facility/entertainment/cinema": {
+    "count": 149,
+    "digestSum": "a96a30fe8bb960121c657f1d1027d133463265bf0d8d3ca83c66fcbd1e38d5d4",
+    "sample": {
+      "reading": "がんじゃ",
+      "surface": "頑者"
+    }
+  },
+  "facility/entertainment/live_venue": {
+    "count": 148,
+    "digestSum": "3e25941742efb0a4c36f758b581d9891bb79314631a918cd1f203ef120a7cb41",
+    "sample": {
+      "reading": "しぶちか",
+      "surface": "しぶちか"
+    }
+  },
+  "facility/entertainment/amusement": {
+    "count": 141,
+    "digestSum": "be11fcd3f06caeab1bea836475ef9156d3b47f5f579997fa6bd350d740956e9a",
+    "sample": {
+      "reading": "とうげき",
+      "surface": "東劇"
+    }
+  },
+  "facility/sports/stadium": {
+    "count": 624,
+    "digestSum": "f6f31ad7a6f326d57b31cc1feb42af4dc50e16107eb0aff35902bd74d906808b",
+    "sample": {
+      "reading": "よこすた",
+      "surface": "横スタ"
     }
   },
   "facility/sports/gymnasium": {
     "count": 450,
     "digestSum": "0caaf70de0aac1398dfef072ec1fc58b73bed77e2ae902d2816aea5b9e9531e4",
     "sample": {
-      "reading": "いのきどうじょう",
-      "surface": "猪木道場"
+      "reading": "ときわざ",
+      "surface": "ときわ座"
+    }
+  },
+  "facility/sports/golf": {
+    "count": 47,
+    "digestSum": "a5e11835e46442e7b7cda908d386537479c688c1472beeaee1f15470cc18d70d",
+    "sample": {
+      "reading": "ならふぁ",
+      "surface": "ならファ"
     }
   },
   "facility/sports/ski": {
@@ -503,28 +255,92 @@
       "surface": "スターシティ"
     }
   },
-  "facility/sports/stadium": {
-    "count": 624,
-    "digestSum": "f6f31ad7a6f326d57b31cc1feb42af4dc50e16107eb0aff35902bd74d906808b",
+  "facility/sports/aquatic": {
+    "count": 11,
+    "digestSum": "4c2fdfb2a2f193cb0f39923b8f8ba81130d3d29852dbc04286c482655cfc74d2",
     "sample": {
-      "reading": "あさぎりありーな",
-      "surface": "朝霧アリーナ"
+      "reading": "ぷーるぴあ",
+      "surface": "ぷーるぴあ"
+    }
+  },
+  "facility/commercial/shopping": {
+    "count": 1300,
+    "digestSum": "b26ecb9ed0dd1ec7bbfb66eeee457520a9be097713a98387a18559f1f62bc6f9",
+    "sample": {
+      "reading": "きくのま",
+      "surface": "菊の間"
+    }
+  },
+  "facility/commercial/restaurant": {
+    "count": 542,
+    "digestSum": "12654fb744b2ebd5848b09e70f5991763c5b5dd358ee5a0f303c0b76b9a06d36",
+    "sample": {
+      "reading": "きつねむら",
+      "surface": "キツネ村"
+    }
+  },
+  "facility/commercial/market": {
+    "count": 158,
+    "digestSum": "0eab9b2fb503b010811256687a05bd02fa6564a80b00036230722985846899b0",
+    "sample": {
+      "reading": "おおたこ",
+      "surface": "大たこ"
+    }
+  },
+  "facility/hospitality/hotel": {
+    "count": 803,
+    "digestSum": "a6b5e9be8c45deaa2d1085d414d9390ad751d0bbf62435c38131f2faae646000",
+    "sample": {
+      "reading": "あるますたわー",
+      "surface": "アルマスタワー"
+    }
+  },
+  "facility/hospitality/inn": {
+    "count": 118,
+    "digestSum": "798846e3ca60832e2160468bd10ee089ed5557d4b20f446ce439f03a15b96f4f",
+    "sample": {
+      "reading": "ゆのはなごや",
+      "surface": "湯の花小屋"
+    }
+  },
+  "facility/hospitality/hot_spring": {
+    "count": 638,
+    "digestSum": "8480bbaae564216538c1d9e4f159afe3e292ff4e1f5f48cc4ec31a884ef27676",
+    "sample": {
+      "reading": "すしはん",
+      "surface": "すし半"
     }
   },
   "facility/transport/airport": {
     "count": 463,
     "digestSum": "628b4dd5b799f849c3581b6718399e3999dac32a1513dfc3dc5a604b1760be8f",
     "sample": {
-      "reading": "あぐにくうこう",
-      "surface": "粟国空港"
+      "reading": "えうあくうこう",
+      "surface": "エウア空港"
     }
   },
   "facility/transport/harbor": {
     "count": 704,
     "digestSum": "d83b5169e8fdbc96a1dc86278524228bb8c6d96c707fe2153282c8eac26f80ed",
     "sample": {
-      "reading": "あいおいこう",
-      "surface": "相生港"
+      "reading": "ねじめこう",
+      "surface": "根占港"
+    }
+  },
+  "facility/transport/railway_facility": {
+    "count": 550,
+    "digestSum": "0efe2cc79beed7d09d45a87c8ee8e96e560190edc4be9244a0355af5f135f781",
+    "sample": {
+      "reading": "うずらや",
+      "surface": "うずら屋"
+    }
+  },
+  "facility/transport/road_facility": {
+    "count": 1638,
+    "digestSum": "ff56afc62353b741053a9e4bf51bd59f18fe9e056428c6b8a7ed325162e71746",
+    "sample": {
+      "reading": "ちちぶしやかた",
+      "surface": "秩父氏館"
     }
   },
   "facility/transport/parking": {
@@ -535,244 +351,164 @@
       "surface": "風の街"
     }
   },
-  "facility/transport/railway_facility": {
-    "count": 550,
-    "digestSum": "0efe2cc79beed7d09d45a87c8ee8e96e560190edc4be9244a0355af5f135f781",
+  "facility/infrastructure/bridge": {
+    "count": 1469,
+    "digestSum": "6b3ab455ae745fa4177970634592a545108d9bf13f3e96668a86d069f5e7b394",
     "sample": {
-      "reading": "あいちきかんく",
-      "surface": "愛知機関区"
+      "reading": "あでばし",
+      "surface": "安諦橋"
     }
   },
-  "facility/transport/road_facility": {
-    "count": 1638,
-    "digestSum": "ff56afc62353b741053a9e4bf51bd59f18fe9e056428c6b8a7ed325162e71746",
+  "facility/infrastructure/tunnel": {
+    "count": 371,
+    "digestSum": "ad722c128d282b7a973facb16233d6e164f98f83fd429b5c0c80c2ae77ff9766",
     "sample": {
-      "reading": "あいなでいりぐち",
-      "surface": "藍那出入口"
+      "reading": "いとくいん",
+      "surface": "医徳院"
     }
   },
-  "initiative": {
-    "count": 1061,
-    "digestSum": "7c712a94c34ad1be497a8280d0a3ed81dbfc9682de05890095527cfcb92ca69a",
+  "facility/infrastructure/dam": {
+    "count": 93,
+    "digestSum": "a948c857443d127d56b5685e165d3fa89f705f474e9ca96087feb77d738760fc",
     "sample": {
-      "reading": "あかりのもりびと",
-      "surface": "燈の守り人"
+      "reading": "はたせぎ",
+      "surface": "波田堰"
     }
   },
-  "lineage": {
-    "count": 2019,
-    "digestSum": "50cf329bb98757091c88d6393f1e458b521ac10f233c1efedec60a0023ece8b8",
+  "facility/infrastructure/water_control": {
+    "count": 107,
+    "digestSum": "7adb7d62abb2ba57838ab6bacd5a24676d6d9bd563bd3d19f446ff33cd5e93e9",
     "sample": {
-      "reading": "あいあこすちょう",
-      "surface": "アイアコス朝"
+      "reading": "ほりかわ",
+      "surface": "ほり川"
     }
   },
-  "media_demographic/audience/josei": {
-    "count": 355,
-    "digestSum": "2073b70f9d2cb1b6601355a3f817d811cdb15aa828069cbd1fd5b0f978ee27a8",
+  "facility/industrial/factory": {
+    "count": 391,
+    "digestSum": "5b3005b96de118f90911b11df504dc320bf00fa98b1b8ffab39011234084229a",
     "sample": {
-      "reading": "あいすふぉれすと",
-      "surface": "アイスフォレスト"
+      "reading": "えるてにえんて",
+      "surface": "エルテニエンテ"
     }
   },
-  "media_demographic/audience/kids": {
-    "count": 549,
-    "digestSum": "401e399fc494003efb3fcd3b8ac18d100de84fa6a452e1d1f00fc97e59b87ed5",
+  "facility/industrial/power": {
+    "count": 432,
+    "digestSum": "f51fcac9302c16d605faf2a0a0c19884f9b1a45a7c3342cba934dff403d3f419",
     "sample": {
-      "reading": "あいぜんまこと",
-      "surface": "愛染マコト"
+      "reading": "おにのま",
+      "surface": "鬼の間"
     }
   },
-  "media_demographic/audience/seinen": {
-    "count": 1732,
-    "digestSum": "81c27f48adcdaafbcaf3c338b1a1a20da3c00b5d702c693f49f7c4b005675a2a",
+  "facility/industrial/logistics": {
+    "count": 97,
+    "digestSum": "7c00a000a894424d1aa3f5c0c58dcf219fb131f5760f3eaf0214bf2c8578dbea",
     "sample": {
-      "reading": "ああいいちろう",
-      "surface": "亜愛一郎"
+      "reading": "でわのき",
+      "surface": "出羽柵"
     }
   },
-  "media_demographic/audience/shojo": {
-    "count": 826,
-    "digestSum": "59f58683a2d08a3fd72f0c6080236074ffa280ba7f58c3c52cefda7e160c9721",
+  "facility/industrial/communications": {
+    "count": 517,
+    "digestSum": "a8211398853d9b1ec65da00bd818489c5133ab1741d0f19f069f2e606090df54",
     "sample": {
-      "reading": "あいからはじまる",
-      "surface": "アイからはじまる"
+      "reading": "えんらく",
+      "surface": "延楽"
     }
   },
-  "media_demographic/audience/shonen": {
-    "count": 4120,
-    "digestSum": "ab175d9e897dcf0398197e5787a9f655b2ebc8e74e8f38bfc0b1b0ead6e71b50",
+  "facility/recreation/park_garden": {
+    "count": 1567,
+    "digestSum": "158e813c67e3ce1fe9f0d1370be30292f18b9e30f35e92c13d8fff5694b840b5",
     "sample": {
-      "reading": "ああいちろう",
-      "surface": "ああ一郎"
+      "reading": "えこすた",
+      "surface": "エコスタ"
     }
   },
-  "media_demographic/audience/unspecified": {
-    "count": 5100,
-    "digestSum": "9727ff97acabdb9323a36db43e6b3027abce5142c497a139ab45f8dd6969e467",
+  "facility/recreation/zoo_aquarium": {
+    "count": 155,
+    "digestSum": "1d6114ad698e94f60236448c6489a1253d22b0b372677c59793f77e4b898449b",
     "sample": {
-      "reading": "あいおいあおい",
-      "surface": "相生あおい"
+      "reading": "すきでん",
+      "surface": "主基殿"
     }
   },
-  "mythological_figure": {
-    "count": 3436,
-    "digestSum": "69e050cfa5faefdf917e5b98d2c66ab0969ce006031ca0ee9b6da4100181cc30",
+  "facility/recreation/outdoor_nature": {
+    "count": 236,
+    "digestSum": "5296e335aabd695cc7190e31231029e8dd20a549575f9d532147bb2c4a4fe271",
     "sample": {
-      "reading": "あいえーてーす",
-      "surface": "アイエーテース"
+      "reading": "こうみぼう",
+      "surface": "広味坊"
     }
   },
-  "organization": {
-    "count": 47510,
-    "digestSum": "6029c531458a50a4fb31d6cfa275d46a87145b9d4c4eddedc47a4b349e3ca2e9",
+  "facility/heritage/castle": {
+    "count": 1528,
+    "digestSum": "f4d18b3567db14e4d8d69f9d0b16da343ac5f8031d74ef59b72a763146e1cdf2",
     "sample": {
-      "reading": "あいあいえふ",
-      "surface": "IIF"
+      "reading": "にっかもん",
+      "surface": "日華門"
     }
   },
-  "place": {
-    "count": 45090,
-    "digestSum": "0f58021241e60484b801bb5b0740b753288baa816540b5eeebd871bc0d5ee015",
+  "facility/heritage/archaeological_site": {
+    "count": 232,
+    "digestSum": "31283366876651fe25980f111e7648ec13a9fa4f512c14201a8f2b595ea0fa1f",
     "sample": {
-      "reading": "あいあいみさき",
-      "surface": "愛逢岬"
+      "reading": "いーたー",
+      "surface": "ITER"
     }
   },
-  "product": {
-    "count": 10135,
-    "digestSum": "efa955cafdad4760b702366fe5bb32aa440e221708b4d021743f971f1f4ee040",
+  "facility/heritage/historic_residence": {
+    "count": 504,
+    "digestSum": "2d257bbcad7ebe1c961a3e763f7c71311999341f114ed30ce012afc6fa527c9b",
     "sample": {
-      "reading": "あいあいえす",
-      "surface": "IIS"
+      "reading": "きっちんなんかい",
+      "surface": "キッチン南海"
     }
   },
-  "station": {
-    "count": 12759,
-    "digestSum": "0872b8a12c72c5b770dd2a970452ce816667f1e64f161a870e0d5671e809f953",
+  "facility/residential/housing_complex": {
+    "count": 120,
+    "digestSum": "d720204bc6e961ab6317b739b58b499de3ba67d5d2b1eba13ff4793b4d2e6f7c",
     "sample": {
-      "reading": "あいかわえき",
-      "surface": "合川駅"
+      "reading": "しがだんち",
+      "surface": "志賀団地"
     }
   },
-  "term/general/food_drink_cooking": {
-    "count": 4077,
-    "digestSum": "16fbd0d41fa6a6feec1ca8224a8bebe9cd2897eb9f23447f0b9c5b2ec59515c0",
+  "facility/residential/condominium": {
+    "count": 409,
+    "digestSum": "493d1f1b335be28f9211705f902ca0f620118d2830f974c7eeb87a56df5c3400",
     "sample": {
-      "reading": "あいがな",
-      "surface": "鮎河菜"
+      "reading": "あいのら",
+      "surface": "アイノラ"
     }
   },
-  "term/general/internet_slang_culture": {
-    "count": 574,
-    "digestSum": "1da7c962fbca31e080e6888ee8f16d124577c128867cb26d4e7f5d0e301928a5",
+  "facility/residential/mixed_use_building": {
+    "count": 94,
+    "digestSum": "e16f93e70a1312cd02afce62bd5327d1aef26e1714a3a87fda418b20227428f2",
     "sample": {
-      "reading": "あいしーせつぞく",
-      "surface": "IC接続"
+      "reading": "くずだて",
+      "surface": "くず館"
     }
   },
-  "term/general/neologisms_trends_youth_language": {
-    "count": 485,
-    "digestSum": "5cbb90b3f607ec0c8509ea7ff6d9e50b2223f6e6878be1999febf276e08ea109",
+  "facility/military/base": {
+    "count": 348,
+    "digestSum": "661269d53d249f3301431899313faa03e72643e872b9c8918ee1eb0316f1b819",
     "sample": {
-      "reading": "あいこら",
-      "surface": "アイコラ"
+      "reading": "なはきち",
+      "surface": "那覇基地"
     }
   },
-  "term/general/other_general": {
-    "count": 20494,
-    "digestSum": "f785b6d59d5d553a58561da1cc1192ab34decc7b7bbf9c72e63e4dab7064e4c5",
+  "facility/military/garrison": {
+    "count": 16,
+    "digestSum": "c027258aaa42ea39059882266c3eb95c84ee261d18233e9ccd09747db3dc6159",
     "sample": {
-      "reading": "ああしまーる",
-      "surface": "アアシマール"
+      "reading": "いすたな",
+      "surface": "イスタナ"
     }
   },
-  "term/general/products_daily_goods": {
-    "count": 1157,
-    "digestSum": "ae6d20f640dee5c4ff2114bb322c20ed3fa1e485044b644672ae6349b82a9792",
+  "facility/military/training_ground": {
+    "count": 40,
+    "digestSum": "768701d1e4381300e1a88ece3dd4f48b48333a4202b8baada1c8d5705496afb8",
     "sample": {
-      "reading": "あいおいのまつ",
-      "surface": "相生の松"
-    }
-  },
-  "term/specialist/chemistry_life_sciences": {
-    "count": 27562,
-    "digestSum": "f3d6bdde8d8aaebc3b3b061cff80fe633c61263b964e89a7b505a2ede44fa942",
-    "sample": {
-      "reading": "あいあーしぇっけ",
-      "surface": "アイアーシェッケ"
-    }
-  },
-  "term/specialist/culture_arts_sports": {
-    "count": 5360,
-    "digestSum": "0db0f8b55d1bdaeb12d706be0bc78e70dab2cf0e9844ecdc92ec355800414544",
-    "sample": {
-      "reading": "あいおりすじん",
-      "surface": "アイオリス人"
-    }
-  },
-  "term/specialist/earth_environment_resources": {
-    "count": 2109,
-    "digestSum": "0c9612e2abdf790b17f33d6eb85940e1ac1142922b75587fcf31b87f9344f26e",
-    "sample": {
-      "reading": "あいくちにつば",
-      "surface": "匕首に鍔"
-    }
-  },
-  "term/specialist/economics_management": {
-    "count": 5897,
-    "digestSum": "70c0cd8496404a5c3833a1836b65ac81dc90df39f4ead8d5a6fd349f151130c4",
-    "sample": {
-      "reading": "あいおーぴーえす",
-      "surface": "IOPS"
-    }
-  },
-  "term/specialist/engineering_technology": {
-    "count": 3524,
-    "digestSum": "f5a6da8c435231af9b7d3ef700352cef6783c43ea26932b359d17761efc30f35",
-    "sample": {
-      "reading": "あいあんかーてん",
-      "surface": "アイアンカーテン"
-    }
-  },
-  "term/specialist/humanities_social_sciences": {
-    "count": 17874,
-    "digestSum": "7d9280add3c3d26e86f9895bd17bd4fb67161c023b9867486e78ac8da98fb1d4",
-    "sample": {
-      "reading": "あいえむでぃー",
-      "surface": "IMD"
-    }
-  },
-  "term/specialist/information_communications": {
-    "count": 6087,
-    "digestSum": "190e861e55e84028f8d485fcdb710b2d43e83cc1540ff66ff5a0ffdd6acc025a",
-    "sample": {
-      "reading": "あいあいえす",
-      "surface": "IIS"
-    }
-  },
-  "term/specialist/law_politics": {
-    "count": 5693,
-    "digestSum": "e3d8953da3ee9694fd29b2905623b554fb4f8659cbe1446da782482a137a9d19",
-    "sample": {
-      "reading": "あいゆうせいど",
-      "surface": "隘勇制度"
-    }
-  },
-  "term/specialist/mathematics_physics": {
-    "count": 4171,
-    "digestSum": "ecb057bb3e00743e6050b07b6e310d13f9b30911f041ef9bef33ce4412598f47",
-    "sample": {
-      "reading": "あいこさすろん",
-      "surface": "アイコサスロン"
-    }
-  },
-  "term/specialist/transport_safety_defense": {
-    "count": 4050,
-    "digestSum": "1f97d772be7df2b30a21f721886749352731d3fabfe4db22e11db6072a311b97",
-    "sample": {
-      "reading": "あいすよっと",
-      "surface": "アイスヨット"
+      "reading": "みらいーら",
+      "surface": "みらいーら"
     }
   },
   "transport_route": {
@@ -783,228 +519,508 @@
       "surface": "阿阿線"
     }
   },
+  "organization": {
+    "count": 47518,
+    "digestSum": "753627ff6bc5cae6b21f1bb3cfb8bcf09f4bdf87af7b2bb2be5ab0404f05de49",
+    "sample": {
+      "reading": "のべるず",
+      "surface": "NOVELS"
+    }
+  },
+  "lineage": {
+    "count": 2019,
+    "digestSum": "50cf329bb98757091c88d6393f1e458b521ac10f233c1efedec60a0023ece8b8",
+    "sample": {
+      "reading": "あきしのうじ",
+      "surface": "秋篠氏"
+    }
+  },
+  "product": {
+    "count": 10162,
+    "digestSum": "cc72256dfa3c0bdef33c4c8e1f0727f72eaf0975250d6404a4a83276bba54d40",
+    "sample": {
+      "reading": "ぽたぽたやき",
+      "surface": "ぽたぽた焼"
+    }
+  },
   "vehicle": {
     "count": 2580,
     "digestSum": "abe9df9ed271f0046752a614722e56ca52d6b0aff414489b46496d70657c4e2e",
     "sample": {
-      "reading": "あいおわきゅう",
-      "surface": "アイオワ級"
+      "reading": "あくせら",
+      "surface": "AXELA"
     }
   },
-  "work_anime": {
-    "count": 1091,
-    "digestSum": "e3d6eb51dfbfb0e24afc64d593efc03cb49c757f8ca46868d524971bac3b9cef",
+  "event/occasion/organized_event": {
+    "count": 4412,
+    "digestSum": "c7bdcba5139d1c1359f6f13a0bcf347e4e40b304ba416368f1ba72d1990b04ec",
     "sample": {
-      "reading": "ああはりまなだ",
-      "surface": "ああ播磨灘"
+      "reading": "あまはげ",
+      "surface": "あまはげ"
     }
   },
-  "work_book": {
-    "count": 7659,
-    "digestSum": "464246338f893fec757a8bbdc30f7413d48f032a8329a39870371e7d8c3d7a26",
+  "event/occasion/observance": {
+    "count": 901,
+    "digestSum": "a8c9d464e04de5286aeccc8a9882b8ed5804b4512f0d51f18b5879ab31a54833",
     "sample": {
-      "reading": "ああのむぎとうげ",
-      "surface": "あゝ野麦峠"
+      "reading": "あにわら",
+      "surface": "アニワラ"
     }
   },
-  "work_film": {
-    "count": 6504,
-    "digestSum": "11d0a605be34a776333ca0dce460bb3d0f8230a8a26c94af8c7157a5ddfa9e96",
+  "event/occasion/exam_qualification": {
+    "count": 182,
+    "digestSum": "7fe841aa4b04ea4a51b48d0e58572910ed72a7a5a7724d0ee215e2fb020608ec",
     "sample": {
-      "reading": "ああかいぐん",
-      "surface": "あゝ海軍"
+      "reading": "あいおーあい",
+      "surface": "IOI"
+    }
+  },
+  "event/incident/natural_disaster": {
+    "count": 482,
+    "digestSum": "b9b45333f8ae38de85890d42318ba52b1ec3d3e181d11fff150af499f99f6057",
+    "sample": {
+      "reading": "るびーかいぎ",
+      "surface": "Ruby会議"
+    }
+  },
+  "event/incident/social_issue_litigation": {
+    "count": 783,
+    "digestSum": "e6e747f4e171bf7cbbe2737290bc8b847246a1a702cd8647b2d554016ccd4bf1",
+    "sample": {
+      "reading": "おきひき",
+      "surface": "御木曳"
+    }
+  },
+  "event/history/conflict": {
+    "count": 1762,
+    "digestSum": "f2140f9bad7c7008abe94df48789cfb752b7361201be5e25ed9267c419f59a7f",
+    "sample": {
+      "reading": "えきべんきねんび",
+      "surface": "駅弁記念日"
+    }
+  },
+  "award": {
+    "count": 1163,
+    "digestSum": "c11548c23afd74df4cf69cdbfb818878430d048d6f72a77a977ecf3f45b86b82",
+    "sample": {
+      "reading": "きおうい",
+      "surface": "棋王位"
+    }
+  },
+  "agreement": {
+    "count": 426,
+    "digestSum": "e8c60def681d0054395bc79d0f0bdbbec0afe33a703c76711b800e7b451fa919",
+    "sample": {
+      "reading": "あんくろす",
+      "surface": "UNCLOS"
+    }
+  },
+  "initiative": {
+    "count": 1063,
+    "digestSum": "69b0f66a0728f763c1847d81e9f2efda6f02263171e3254f0008e92498c0b5e2",
+    "sample": {
+      "reading": "くるみん",
+      "surface": "くるみん"
+    }
+  },
+  "term/general/products_daily_goods": {
+    "count": 1157,
+    "digestSum": "ae6d20f640dee5c4ff2114bb322c20ed3fa1e485044b644672ae6349b82a9792",
+    "sample": {
+      "reading": "あけがい",
+      "surface": "朱貝"
+    }
+  },
+  "term/general/food_drink_cooking": {
+    "count": 4077,
+    "digestSum": "16fbd0d41fa6a6feec1ca8224a8bebe9cd2897eb9f23447f0b9c5b2ec59515c0",
+    "sample": {
+      "reading": "あじさい",
+      "surface": "味狭藍"
+    }
+  },
+  "term/general/internet_slang_culture": {
+    "count": 579,
+    "digestSum": "2d72b330ba4cbb9e9d86493309e6ab225430837409730c469c974cc41b81dd71",
+    "sample": {
+      "reading": "あちぇけ",
+      "surface": "アチェケ"
+    }
+  },
+  "term/general/neologisms_trends_youth_language": {
+    "count": 487,
+    "digestSum": "dd8dd097eac0f87feb21d8693e3ba5977a373d35284363c6b8ed47dcbe8ccc3f",
+    "sample": {
+      "reading": "おれっこ",
+      "surface": "オレっ娘"
+    }
+  },
+  "term/general/other_general": {
+    "count": 20499,
+    "digestSum": "296ed2c4c3cbac880d438bcca1812b76c39bbfe147f8c816a21013da473912d7",
+    "sample": {
+      "reading": "あいやや",
+      "surface": "あいやや"
+    }
+  },
+  "term/specialist/information_communications": {
+    "count": 6092,
+    "digestSum": "936236ed6ceb0618e84226089f9a1e0f450c32734e6fae5a95e09eaa15aaf0fe",
+    "sample": {
+      "reading": "あいじつり",
+      "surface": "I字吊り"
+    }
+  },
+  "term/specialist/mathematics_physics": {
+    "count": 4174,
+    "digestSum": "0fbb5814261e5b2f5a84cca9cb7ad28e9d45b9e8ba91796df345b45cc9d7e2c4",
+    "sample": {
+      "reading": "あれふすう",
+      "surface": "アレフ数"
+    }
+  },
+  "term/specialist/chemistry_life_sciences": {
+    "count": 27570,
+    "digestSum": "b8ac06775cdabc3200b3e75c8fb7a8739cb0704bae94e3bcb5300777db758c19",
+    "sample": {
+      "reading": "あかひめ",
+      "surface": "赤姫"
+    }
+  },
+  "term/specialist/engineering_technology": {
+    "count": 3525,
+    "digestSum": "16405db6209f1bded833df75cd9cf271e9d1f372b610f4e429052ce0ba9def55",
+    "sample": {
+      "reading": "あおひげ",
+      "surface": "青髭"
+    }
+  },
+  "term/specialist/earth_environment_resources": {
+    "count": 2114,
+    "digestSum": "d0332e3bdc88dca875011434dd70a5b2a8092fa7d4a5b082a46fa3f05d58342d",
+    "sample": {
+      "reading": "あなはぜ",
+      "surface": "孔鯊"
+    }
+  },
+  "term/specialist/economics_management": {
+    "count": 5909,
+    "digestSum": "98073e5584527337d75650204fedabd196a9da6984651fe1a3deaded5a60e303",
+    "sample": {
+      "reading": "あいずごよう",
+      "surface": "会津五葉"
+    }
+  },
+  "term/specialist/law_politics": {
+    "count": 5719,
+    "digestSum": "5e915c57e30d7784cb8e898ec2bd298ea545199b86b7ea8d87789ed92ae6332f",
+    "sample": {
+      "reading": "ぎいんせき",
+      "surface": "議院石"
+    }
+  },
+  "term/specialist/humanities_social_sciences": {
+    "count": 17913,
+    "digestSum": "1db067d944bc9627d7ad324106d2f6d2e3cc77f354e0d0d0ca783dcc8fee317c",
+    "sample": {
+      "reading": "あかあかざ",
+      "surface": "赤藜"
+    }
+  },
+  "term/specialist/culture_arts_sports": {
+    "count": 5416,
+    "digestSum": "808ee56bb262da6f036f16b13cd4543275a7d901839eaf72a13abe732401db8f",
+    "sample": {
+      "reading": "あくめー",
+      "surface": "アクメー"
+    }
+  },
+  "term/specialist/transport_safety_defense": {
+    "count": 4063,
+    "digestSum": "ec532ce4355e5fa06b24446ecc1a28dfcd71bb4a905b6e6a8d2544780997413e",
+    "sample": {
+      "reading": "あこうぎし",
+      "surface": "赤穂義士"
     }
   },
   "work_franchise": {
-    "count": 850,
-    "digestSum": "bb090ecec84c05fba164f14e23af8727a0e38790f18474391ed453cfd47ff39b",
+    "count": 851,
+    "digestSum": "5ab7a471e65587458b87bf46d83a63405b819547e1f639244d302ebd8231a783",
     "sample": {
-      "reading": "あいどるぶしょう",
-      "surface": "IDOL舞SHOW"
-    }
-  },
-  "work_game": {
-    "count": 3159,
-    "digestSum": "f955a6568c682b2bc810cdf64d8cb68ff24b56336237cd377edda8d3ccd5c8d3",
-    "sample": {
-      "reading": "あいおん",
-      "surface": "AION"
+      "reading": "ひとりっぷ",
+      "surface": "ひとりっぷ"
     }
   },
   "work_manga": {
-    "count": 5085,
-    "digestSum": "970256f919a7caa3cfafa1d04fa7680554235c1ed1fd5f98742514f02ae48ea6",
+    "count": 5093,
+    "digestSum": "1fd7cf3cca2b171787edb3f2b07315758aab32ae0f47ad61e948ea52b6f88974",
     "sample": {
-      "reading": "ああいちろう",
-      "surface": "ああ一郎"
+      "reading": "あきそら",
+      "surface": "あきそら"
     }
   },
-  "work_music": {
-    "count": 10342,
-    "digestSum": "6eb93c6ba44ab897468c9e3777578cfcb691aa38b3a9706238c31e538868235a",
+  "work_anime": {
+    "count": 1092,
+    "digestSum": "75fe99943c43862aed988123b061d1abb8ed3250591d57dd25ba1efd8abd0af6",
     "sample": {
-      "reading": "ぁまのじゃく",
-      "surface": "ぁまのじゃく"
+      "reading": "あいどるじへん",
+      "surface": "アイドル事変"
     }
   },
-  "work_other": {
-    "count": 2683,
-    "digestSum": "0793fb440dd57a2b1fbf6e24199e67b268ec33c336c0fd37690c83f1ef33c88b",
+  "media_demographic/audience/shonen": {
+    "count": 4126,
+    "digestSum": "27cabaa828e9087cf710463b903b3442edf07ffdf3643c6df36a8a6a52da99d2",
     "sample": {
-      "reading": "ああまきのしらべ",
-      "surface": "あゝ真希の調べ"
+      "reading": "あかかげ",
+      "surface": "赤影"
     }
   },
-  "work_periodical": {
-    "count": 1811,
-    "digestSum": "4e7be1ddd731f671474d1c888b4cdb7a2010fc6ef6e003893ac56d58a10146b1",
+  "media_demographic/audience/seinen": {
+    "count": 1735,
+    "digestSum": "2f8ddf20c706dccaa215b1c38ddad9b3eeb321a744f65a07fab56a37d0e7b766",
     "sample": {
-      "reading": "あいぎにっぽう",
-      "surface": "愛岐日報"
+      "reading": "あきそら",
+      "surface": "あきそら"
+    }
+  },
+  "media_demographic/audience/shojo": {
+    "count": 826,
+    "digestSum": "59f58683a2d08a3fd72f0c6080236074ffa280ba7f58c3c52cefda7e160c9721",
+    "sample": {
+      "reading": "ういらぶ",
+      "surface": "ういらぶ"
+    }
+  },
+  "media_demographic/audience/josei": {
+    "count": 356,
+    "digestSum": "492825670843ce16c033b04ad74b73b417492168ac18410c327c88308d76949f",
+    "sample": {
+      "reading": "あざつかい",
+      "surface": "痣使い"
+    }
+  },
+  "media_demographic/audience/kids": {
+    "count": 549,
+    "digestSum": "401e399fc494003efb3fcd3b8ac18d100de84fa6a452e1d1f00fc97e59b87ed5",
+    "sample": {
+      "reading": "てれくま",
+      "surface": "てれくま"
+    }
+  },
+  "media_demographic/audience/mixed": {
+    "count": 0,
+    "digestSum": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sample": {
+      "reading": "",
+      "surface": ""
+    }
+  },
+  "media_demographic/audience/unspecified": {
+    "count": 5105,
+    "digestSum": "f57a7d87a8fcb07520d3c8433d78644c616b375ef829a7e5d8395bbba79151c3",
+    "sample": {
+      "reading": "あいばゆみ",
+      "surface": "相葉夕美"
+    }
+  },
+  "media_demographic/resolution/source_unverified": {
+    "count": 0,
+    "digestSum": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sample": {
+      "reading": "",
+      "surface": ""
+    }
+  },
+  "work_film": {
+    "count": 6506,
+    "digestSum": "c8379b5bc9e94832927cfff3cbeec2f889d6995ee793cfbbb73075935bdc6776",
+    "sample": {
+      "reading": "あいびき",
+      "surface": "逢びき"
     }
   },
   "work_program": {
-    "count": 9310,
-    "digestSum": "b555044997544cdb1138369304e250f43d49fe99e653973fde8ac3d472d65246",
+    "count": 9320,
+    "digestSum": "393b58487a79e731c1ba882d5a49972ca1a588008d5cb66f9842e7c80d6d602b",
     "sample": {
-      "reading": "ああかあさん",
-      "surface": "ああ母さん"
+      "reading": "あたらしーの",
+      "surface": "アタラシーノ"
+    }
+  },
+  "work_book": {
+    "count": 7664,
+    "digestSum": "2f6383ed63bb3a5ebf50ae35f349865f629dcc029c51a99e9b16920035d161af",
+    "sample": {
+      "reading": "あわぬかい",
+      "surface": "合わぬ貝"
+    }
+  },
+  "work_game": {
+    "count": 3167,
+    "digestSum": "35274c902be3a248b4c3729a86d81e3b2ad1c3969caf730c30162de84d165925",
+    "sample": {
+      "reading": "あじとつー",
+      "surface": "AZITO2"
+    }
+  },
+  "work_music": {
+    "count": 10352,
+    "digestSum": "7e28c26515b85a6c578cb420b574cfb8a906bc991dccfb089ae99c7b59c2c131",
+    "sample": {
+      "reading": "あいをくれ",
+      "surface": "アイヲクレ"
     }
   },
   "work_stage": {
     "count": 571,
     "digestSum": "6227a16e88f751f6bb2ba0ac1b8ccdf7c0c5fd9689420c81b0242afa74b4e5b3",
     "sample": {
-      "reading": "あいおいじし",
-      "surface": "相生獅子"
+      "reading": "あにかえる",
+      "surface": "兄帰る"
+    }
+  },
+  "work_periodical": {
+    "count": 1811,
+    "digestSum": "4e7be1ddd731f671474d1c888b4cdb7a2010fc6ef6e003893ac56d58a10146b1",
+    "sample": {
+      "reading": "あおきし",
+      "surface": "青騎士"
+    }
+  },
+  "work_other": {
+    "count": 2689,
+    "digestSum": "0120572d248e26d32c9235bb07feb6dbb687ad743dca0ceec3e6bf4fe5df34f1",
+    "sample": {
+      "reading": "かざむき",
+      "surface": "風夢記"
     }
   },
   "kampo": {
     "count": 434,
     "digestSum": "c120d0306bcc8dc9cb3c595a46d50b3b046c0b80fcdd405859cad0dd48d95376",
     "sample": {
-      "reading": "あせんやく",
-      "surface": "阿仙薬"
+      "reading": "うずとう",
+      "surface": "烏頭湯"
     }
   },
   "medical": {
     "count": 92683,
     "digestSum": "7403b0075aba72a8b38ce4a6b9eb0f787e4487b1b80e762d82724cdddb18c62d",
     "sample": {
-      "reading": "あいあいぴー",
-      "surface": "ＩＩＰ"
+      "reading": "うしつつう",
+      "surface": "右膝痛風"
     }
   },
   "person/surname_origin_unconfirmed": {
-    "count": 24182,
-    "digestSum": "0cf47339c67c75c4eae05dc82be35e386f58f0893aaf160f09b53b6134324319",
+    "count": 23820,
+    "digestSum": "4b3ed66073bb656b29963f0dfa811876d6a5cdf22b1c2ef4fa32721f334aa4a5",
     "sample": {
-      "reading": "あいえだ",
-      "surface": "相枝"
+      "reading": "そうくら",
+      "surface": "惣倉"
     }
   },
   "person/given_name_origin_unconfirmed": {
-    "count": 4332,
-    "digestSum": "e90824cbb9addf67d7735252531fd41523a71c655eb023be3121c111b7d1f62c",
+    "count": 4247,
+    "digestSum": "c07fd8b89dca83d0852b9f9eac7411398e6acf1eaf7a255da2918a01d7acfc7e",
     "sample": {
-      "reading": "おかそよ",
-      "surface": "岡素世"
+      "reading": "おおみちとせ",
+      "surface": "おおみちとせ"
     }
   },
   "person/personal_name_origin_unconfirmed": {
-    "count": 93668,
-    "digestSum": "93416fcef75b4e38fb8fb07067436fb9c16f0c8792d751c992637fddef021159",
+    "count": 91922,
+    "digestSum": "a256704608c056fad08944914266cd46370387de25ed52579b2b2d90b032b788",
     "sample": {
-      "reading": "ああろん",
-      "surface": "アアロン"
+      "reading": "あいかりお",
+      "surface": "愛香梨央"
     }
   },
   "person/actor": {
-    "count": 6591,
-    "digestSum": "5ef0603abeb8dfb7c0d595bb74b67b5db87c0d11bc8327c5eedb73d5435da9ec",
+    "count": 6486,
+    "digestSum": "cd0d973445ccfd028c15f2777a8753b8aa81aae549fa16b05670d238ca8a1305",
     "sample": {
-      "reading": "あべべに",
-      "surface": "阿部紅"
+      "reading": "さたにこ",
+      "surface": "サタニコ"
     }
   },
   "person/voice_actor": {
-    "count": 663,
-    "digestSum": "b4aa91987c47890561a1bc4b0cec30475c69129cc5fa13824c372649842d7c36",
+    "count": 661,
+    "digestSum": "92aa7e2fc3cbe4607dcf71abd4194a174ac9e473b5ad26bf2ac1d465cdf942d7",
     "sample": {
-      "reading": "くぼさえ",
-      "surface": "久保咲瑛"
+      "reading": "ちだみやこ",
+      "surface": "千田ミヤコ"
     }
   },
   "person/musician": {
-    "count": 1255,
-    "digestSum": "ada3953c95568af04beef4f85f22a8489f6f604a56f67e4bfd877ffdc50601c3",
+    "count": 1256,
+    "digestSum": "9e878da341666daeb14ebe807e0bf3caad9b39f742bbbe2329678993791ed81f",
     "sample": {
-      "reading": "あいがみ",
-      "surface": "藍上"
+      "reading": "ゆりうすあざる",
+      "surface": "ユリウス・アザル"
     }
   },
   "person/idol": {
     "count": 156,
     "digestSum": "c7664b7ff2b3f011cbf7430106b5efbb8923c008d788a5469798a3ca648be149",
     "sample": {
-      "reading": "しがりく",
-      "surface": "志賀李玖"
+      "reading": "かいはるか",
+      "surface": "甲斐はるか"
     }
   },
   "person/comedian": {
     "count": 1749,
     "digestSum": "e262419bcc3d728d0384090e0dd9156c073cc093507ed4068adde11692b3c939",
     "sample": {
-      "reading": "あおやま",
-      "surface": "あおやま"
+      "reading": "あべいちろ",
+      "surface": "安部一路"
     }
   },
   "person/broadcaster": {
-    "count": 1519,
-    "digestSum": "2c301ee3ff8104c880ee89c47cb3db82488dc5e3775c8ae38c5083e33b8ba0af",
+    "count": 1518,
+    "digestSum": "dc6114c770dfb839f2d45b4766d57492a6ed6c45a9f1254f7de4e802f28b8159",
     "sample": {
-      "reading": "あいばん",
-      "surface": "IVAN"
+      "reading": "しぇいら",
+      "surface": "SHEILA"
     }
   },
   "person/online_creator": {
-    "count": 137,
-    "digestSum": "b75acfd3fa9e6cfb18f0e8204c6c8eefd40b107326f8c8c847159244498891e1",
+    "count": 136,
+    "digestSum": "40ea4a9f6326ba46a5b1c9eb5624c6d8dcd7eff093b9557d834e6233aba222d7",
     "sample": {
-      "reading": "ぁぃぁぃ",
-      "surface": "ぁぃぁぃ"
+      "reading": "こくにい",
+      "surface": "こく兄"
     }
   },
   "person/sports": {
-    "count": 7709,
-    "digestSum": "039ece00ac426dc01e38c8961c970d7e898fbbc93b3cd3a3e1a33e9b902f84cd",
+    "count": 7802,
+    "digestSum": "f1cf4affae2075b5a428daf75f69c6b56d7d12774f2ff461b12562df29f1edc5",
     "sample": {
-      "reading": "あくせる",
-      "surface": "明世流"
+      "reading": "あいだなお",
+      "surface": "会田奈生"
     }
   },
   "person/competitive_games": {
     "count": 1184,
     "digestSum": "87d7a382d4d7f21e5d1111a5e2d98c9a1bb3640c4e0b2acecbe8aab9fb7acc45",
     "sample": {
-      "reading": "ありむら",
-      "surface": "有邑"
+      "reading": "こいけはやと",
+      "surface": "小池ハヤト"
     }
   },
   "person/writer": {
-    "count": 1156,
-    "digestSum": "0cf8b1d0144781f51d36015598deeacffaab79dde7a3b273b7b7adf3febcfc16",
+    "count": 1157,
+    "digestSum": "0c1df90a4f4c3ffdcc22442007ca32c21bdb75b161539c41fcb68c18ac4e62d5",
     "sample": {
       "reading": "かしえん",
       "surface": "夏之炎"
     }
   },
   "person/manga_illustration": {
-    "count": 215,
-    "digestSum": "c28081d59f614fb9ad3402413a8ed32d7839e1d2e10b817ddb74ace7caf2bd4a",
+    "count": 214,
+    "digestSum": "afe2f77169e62b70652c7175639cff13a57a582b62693447070efc6d09e39165",
     "sample": {
-      "reading": "かなへい",
-      "surface": "カナヘイ"
+      "reading": "じゅりさきほ",
+      "surface": "樹理咲穂"
     }
   },
   "person/film_game_creator": {
@@ -1016,131 +1032,115 @@
     }
   },
   "person/art_design": {
-    "count": 936,
-    "digestSum": "edf404175090510db18b6dbd1b2e7a9649f4b335290c8369819c13c3ba909678",
+    "count": 937,
+    "digestSum": "f76c875de1004dff650fc490c13b4863540e249e4616c997345651e6472f74f8",
     "sample": {
-      "reading": "たばいも",
-      "surface": "束芋"
+      "reading": "かさいやすし",
+      "surface": "葛西康"
     }
   },
   "person/performing_arts": {
     "count": 300,
     "digestSum": "1540a5ac68e1890dcd8375d4feda90c8491e1ec0a2358027862113f4feb3d5aa",
     "sample": {
-      "reading": "かおるこ",
-      "surface": "香瑠鼓"
+      "reading": "まきあさみ",
+      "surface": "牧阿佐美"
     }
   },
   "person/science_education": {
-    "count": 7764,
-    "digestSum": "bfe1a7541ae5ad457a74b1078940be9041562f4d1f1f43ea48fb5a5eb8a37729",
+    "count": 7639,
+    "digestSum": "c8c291f36c55d4cce43b4309371850a32c8525abdff68ac5fa995f3c985dbe8d",
     "sample": {
-      "reading": "あいしゃ",
-      "surface": "AISHA"
+      "reading": "あいそうおう",
+      "surface": "哀荘王"
     }
   },
   "person/politics_public": {
-    "count": 1593,
-    "digestSum": "0a289feee28de8be95b9fef3775a6b65c9a62291a446026176dc17120b8004c2",
+    "count": 1594,
+    "digestSum": "c279f2d76d2c2477aba390b31fae6985298e9f2ce462b51e41e7a791ee2ad9de",
     "sample": {
-      "reading": "かしゅう",
-      "surface": "賈秀"
+      "reading": "ちばこう",
+      "surface": "千葉皓"
     }
   },
   "person/business": {
-    "count": 4033,
-    "digestSum": "0fdbad2343efc71d37c5b17b22feebb100f26006a4abc997f83ea5e8e165d370",
+    "count": 4012,
+    "digestSum": "3d3f2ce66ae3495c00fa2823d9b2e795ddf3e1fb5fc4e20ce0e2a91615c7f11a",
     "sample": {
-      "reading": "かじまき",
-      "surface": "鍜治真起"
+      "reading": "やまずみいさお",
+      "surface": "山住勲"
     }
   },
   "person/royalty_nobility": {
-    "count": 288,
-    "digestSum": "97d9738646c5b776f54a38f6f0cb36a3fdca102aeb4f00acda25df0bd6bc0549",
+    "count": 287,
+    "digestSum": "f7bcbefe6532a57f2c198e73a406158c4939f133472f3cac7da003296b013bcb",
     "sample": {
-      "reading": "あきひめ",
-      "surface": "阿喜姫"
+      "reading": "じょうおう",
+      "surface": "襄王"
     }
   },
   "person/other_identified": {
-    "count": 5011,
-    "digestSum": "ae4be990f86fc6acf7bf66ed62e38a54eb4a65c53c4a03b45d4274d216ffca29",
+    "count": 5001,
+    "digestSum": "36b28469080e0681d640fab43f30ea81c4b7bf1ef9c0117645e698ebf6bdab00",
     "sample": {
-      "reading": "かじゆり",
-      "surface": "加治友理"
+      "reading": "いこまかよこ",
+      "surface": "生駒佳与子"
     }
   },
   "person/thought": {
-    "count": 267,
-    "digestSum": "21ce8ae36574cf1a261a69fd4a695bb08ded3c57349b777f6feb13b958a9fd0a",
+    "count": 365,
+    "digestSum": "bb98d7488d374be298217d176db002b6676c51ef31be10c14b90233a0d0c753b",
     "sample": {
-      "reading": "いふぁん",
-      "surface": "李滉"
+      "reading": "りたくこう",
+      "surface": "李沢厚"
     }
   },
   "person/surname_origin_japanese": {
-    "count": 24980,
-    "digestSum": "3d0259f20e9182f4b3f0e3c74e78c5c4e3cb64446f311a32dfe5193b635f0aaa",
+    "count": 24627,
+    "digestSum": "25c19d5a2be2c1379decaca75cc77d446dab799ab628e33e2439ecb97d234563",
     "sample": {
-      "reading": "あさづま",
-      "surface": "淺妻"
+      "reading": "あいきょう",
+      "surface": "哀姜"
     }
   },
   "person/surname_origin_foreign": {
-    "count": 67,
-    "digestSum": "4a50db2802291dbab4141f70a3e7a818ebf31d43e07c984526514dd25b1e4eeb",
+    "count": 64,
+    "digestSum": "2c127e7056cfd172e1d8219237e79eaa2f805374a1ffa2a63e9ebc198c97bf2a",
     "sample": {
-      "reading": "あふたる",
-      "surface": "アフタル"
+      "reading": "きゃっしゅまん",
+      "surface": "キャッシュマン"
     }
   },
   "person/given_name_origin_japanese": {
-    "count": 2286,
-    "digestSum": "3c3e55c85a2a229599876cf18dd8b72e4481ca23620b009fdaf4c1698c9b11d7",
+    "count": 2249,
+    "digestSum": "cd379c34c6b463a5c57e2193ca61e2aa83e2e1b668bea12132ca490192dca23e",
     "sample": {
-      "reading": "おかかな",
-      "surface": "岡佳奈"
+      "reading": "おがたさき",
+      "surface": "緒方咲"
     }
   },
   "person/given_name_origin_foreign": {
     "count": 48,
     "digestSum": "9587b7302e6e3bb15cab933885022fd567ee7970aa2893aeeb9a422548811af6",
     "sample": {
-      "reading": "いぇすい",
-      "surface": "イェスイ"
+      "reading": "くいんてぃっるす",
+      "surface": "クインティッルス"
     }
   },
   "person/personal_name_origin_japanese": {
-    "count": 74601,
-    "digestSum": "bcb08286457e06ddc4428cee8ad6b359fb6f58e43e2caed55c153db729e90da3",
+    "count": 73178,
+    "digestSum": "5ce807bc4fc6596131b85070c04d00e277bb50bbaea6a16c07655fcf461e1995",
     "sample": {
-      "reading": "あいころ",
-      "surface": "あいころ"
+      "reading": "あいかわいち",
+      "surface": "会川いち"
     }
   },
   "person/personal_name_origin_foreign": {
-    "count": 2388,
-    "digestSum": "2dfe30bbca46b8b3de279b2db369c57786e17752a525c0b036aa55fa2a4c965a",
+    "count": 2359,
+    "digestSum": "83a95946027a4ad9b7fa3ab776a57d088845d44aa784903205256908c530a2a8",
     "sample": {
-      "reading": "あーべる",
-      "surface": "Abel"
-    }
-  },
-  "media_demographic/audience/mixed": {
-    "count": 0,
-    "digestSum": "0000000000000000000000000000000000000000000000000000000000000000",
-    "sample": {
-      "reading": "",
-      "surface": ""
-    }
-  },
-  "media_demographic/resolution/source_unverified": {
-    "count": 0,
-    "digestSum": "0000000000000000000000000000000000000000000000000000000000000000",
-    "sample": {
-      "reading": "",
-      "surface": ""
+      "reading": "ありたっく",
+      "surface": "アリタック"
     }
   }
 }
