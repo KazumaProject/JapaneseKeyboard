@@ -468,9 +468,14 @@ object SettingDestinations {
         }
         val xmlDestinations = SettingSearchIndex.destinationsForKeys(
             context = context,
-            keys = frequentCandidatePreferenceKeys,
+            keys = (manualDestinations.map { it.key } + frequentCandidatePreferenceKeys).distinct(),
         )
-        return (manualDestinations + xmlDestinations).distinctBy { it.key }
+        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment)
+        val officialByKey = xmlDestinations.filter { destinationId(it.destination) in officialIds }.associateBy { it.key }
+        val resolvedManual = manualDestinations.map { old ->
+            officialByKey[old.key]?.copy(category = old.category, iconRes = old.iconRes, keywords = old.keywords + officialByKey.getValue(old.key).keywords) ?: old
+        }
+        return (resolvedManual + xmlDestinations).distinctBy { it.key }
     }
 
     private val frequentCandidatePreferenceKeys = listOf(

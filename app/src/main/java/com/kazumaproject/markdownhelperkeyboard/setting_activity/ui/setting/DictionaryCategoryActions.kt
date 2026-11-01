@@ -31,7 +31,6 @@ internal class DictionaryCategoryActions(
                     isPersistent = false
                     isIconSpaceReserved = false
                     order = -1
-                    isVisible = group.isExpanded
                     setOnPreferenceClickListener {
                         MaterialAlertDialogBuilder(context)
                             .setTitle(group.title)
@@ -48,6 +47,7 @@ internal class DictionaryCategoryActions(
                     }
                 }
                 group.addPreference(action)
+                action.conditionVisible = true
                 actions += action to categories
             }
             return categories

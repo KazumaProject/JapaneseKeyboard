@@ -2,188 +2,26 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="@string/category_flick_input_title">
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="flick_input_only_preference"
-            android:summaryOff="@string/flick_input_only_summary_off"
-            android:summaryOn="@string/flick_input_only_summary_on"
-            android:title="@string/flick_input_only_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="flick_editor_preview_preference"
-            android:summaryOff="@string/flick_editor_preview_summary_off"
-            android:summaryOn="@string/flick_editor_preview_summary_on"
-            android:title="@string/flick_editor_preview_title" />
-
-        <SeekBarPreference
-            android:defaultValue="0"
-            android:dependency="flick_editor_preview_preference"
-            android:key="flick_editor_preview_delay_ms"
-            android:max="500"
-            android:title="@string/flick_editor_preview_delay_title"
-            android:summary="@string/flick_editor_preview_delay_summary"
-            app:min="0"
-            app:seekBarIncrement="5"
-            app:showSeekBarValue="true" />
-
-        <SeekBarPreference
-            android:defaultValue="100"
-            android:key="flick_sensitivity_preference"
-            android:max="200"
-            android:title="@string/flick_sensitivity_title"
-            app:min="1"
-            app:seekBarIncrement="5"
-            app:showSeekBarValue="true" />
-
-        <ListPreference
-            android:defaultValue="radial"
-            android:dialogTitle="@string/flick_threshold_shape_title"
-            android:entries="@array/flick_threshold_shape_entries"
-            android:entryValues="@array/flick_threshold_shape_values"
-            android:key="flick_threshold_shape_preference"
-            android:title="@string/flick_threshold_shape_title"
-            app:useSimpleSummaryProvider="true" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/independent_multi_touch_category_title">
-        <SwitchPreferenceCompat
-            android:key="independent_multi_touch_preference"
-            android:defaultValue="false"
-            android:title="@string/independent_multi_touch_title"
-            android:summary="@string/independent_multi_touch_summary" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/category_function_title">
-
+    <PreferenceCategory android:title="@string/settings_related_settings">
         <Preference
-            android:key="long_press_timeout_preference"
-            android:summary="@string/long_press_timeout_preference_summary"
-            android:title="@string/long_press_timeout_preference_title" />
-
-        <SeekBarPreference
-            android:defaultValue="1000"
-            android:dependency=""
-            android:key="time_same_pronounce_typing_preference"
-            android:max="1000"
-            android:title="@string/time_same_pronounce_typing_title"
-            app:min="1"
-            app:showSeekBarValue="true"
-            app:summary="@string/time_same_pronounce_typing_summary" />
-
-        <SwitchPreferenceCompat
-            android:key="save_last_used_keyboard"
-            android:title="@string/save_last_used_keyboard_title"
-            app:defaultValue="false"
-            app:summary="@string/save_last_used_keyboard_summey" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/setting_category_operation_keys_title">
-
-        <ListPreference
-            android:defaultValue="deferred"
-            android:dialogTitle="@string/delete_long_press_conversion_behavior_title"
-            android:entries="@array/delete_long_press_conversion_behavior_entries"
-            android:entryValues="@array/delete_long_press_conversion_behavior_values"
-            android:key="delete_long_press_conversion_behavior"
-            android:title="@string/delete_long_press_conversion_behavior_title"
-            app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="delete_key_flick_left_preference"
-            android:summary="@string/delete_key_left_summary"
-            android:title="@string/delete_key_left_flick_title" />
-
+            android:key="setting_route_canonical_settings_common_editing"
+            android:title="@string/settings_common_editing_title"
+            android:summary="@string/settings_common_editing_summary" />
         <Preference
-            android:dependency="delete_key_flick_left_preference"
-            android:key="delete_key_flick_left_targets_preference"
-            android:summary="@string/delete_key_flick_targets_summary"
-            android:title="@string/delete_key_flick_targets_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="delete_key_flick_up_preference"
-            android:summary="@string/delete_key_up_summary"
-            android:title="@string/delete_key_up_flick_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="delete_key_flick_down_preference"
-            android:summary="@string/delete_key_down_summary"
-            android:title="@string/delete_key_down_flick_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="undo_enable_preference"
-            android:summary="@string/undo_enable_summary"
-            android:title="@string/undo_enable_title" />
-
+            android:key="setting_route_canonical_settings_common_feedback"
+            android:title="@string/settings_common_feedback_title"
+            android:summary="@string/settings_common_feedback_summary" />
         <Preference
-            android:key="cursor_move_after_commit_target_pairs_preference"
-            android:summary="@string/cursor_move_target_pairs_summary"
-            android:title="@string/cursor_move_target_pairs_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="conversion_key_swipe_cursor_move_preference"
-            android:summary="@string/pref_summary_space_longpress_cursor"
-            android:title="@string/pref_title_space_longpress_cursor" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="space_key_preference"
-            android:summary="@string/space_key_summary"
-            android:title="@string/space_key_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="custom_direct_mode_space_hankaku_preference"
-            android:summary="@string/custom_direct_mode_space_hankaku_summary"
-            android:title="@string/custom_direct_mode_space_hankaku_title" />
-
+            android:key="setting_route_canonical_settings_common_selection"
+            android:title="@string/settings_common_selection_title"
+            android:summary="@string/settings_common_selection_summary" />
+        <Preference
+            android:key="setting_route_canonical_settings_common_touch"
+            android:title="@string/settings_common_touch_title"
+            android:summary="@string/settings_common_touch_summary" />
+        <Preference
+            android:key="setting_route_canonical_settings_engine_conversion"
+            android:title="@string/settings_engine_conversion_title"
+            android:summary="@string/settings_engine_conversion_summary" />
     </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/category_vibration_title">
-
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="vibration_preference"
-            android:summaryOff="@string/vibration_summary_off"
-            android:summaryOn="@string/vibration_summary_on"
-            android:title="@string/vibration_title" />
-
-        <ListPreference
-            android:defaultValue="@string/vibration_default"
-            android:dependency="vibration_preference"
-            android:dialogTitle="@string/vibration_timing_dialog_title"
-            android:entries="@array/vibration_options"
-            android:entryValues="@array/vibration_values"
-            android:key="vibration_timing"
-            android:summary="@string/vibration_timing_summary"
-            android:title="@string/vibration_timing_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="key_sound_preference"
-            android:summaryOff="@string/key_sound_summary_off"
-            android:summaryOn="@string/key_sound_summary_on"
-            android:title="@string/key_sound_title" />
-
-        <SeekBarPreference
-            android:defaultValue="0"
-            android:dependency="key_sound_preference"
-            android:key="key_sound_volume_percent_preference"
-            android:max="100"
-            android:title="@string/key_sound_volume_title"
-            app:min="0"
-            app:showSeekBarValue="true"
-            app:summary="@string/key_sound_volume_summary" />
-
-    </PreferenceCategory>
-
 </PreferenceScreen>

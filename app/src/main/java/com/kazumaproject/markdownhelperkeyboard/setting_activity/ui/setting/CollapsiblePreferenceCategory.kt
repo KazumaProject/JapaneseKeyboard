@@ -4,8 +4,10 @@ import android.content.Context
 import android.util.AttributeSet
 import android.widget.TextView
 import androidx.preference.PreferenceCategory
+import androidx.preference.Preference
 import androidx.preference.PreferenceViewHolder
 import com.kazumaproject.markdownhelperkeyboard.R
+import java.util.IdentityHashMap
 
 /** A heading that hides its children without changing any dictionary selection. */
 class CollapsiblePreferenceCategory @JvmOverloads constructor(
@@ -13,6 +15,9 @@ class CollapsiblePreferenceCategory @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : PreferenceCategory(context, attrs) {
     private var expansionInitialized = false
+    private val intrinsicVisibility = IdentityHashMap<Preference, Boolean>()
+    private var description: CharSequence? = null
+    private var descriptionCaptured = false
     var isExpanded: Boolean = false
         private set
 
@@ -40,16 +45,29 @@ class CollapsiblePreferenceCategory @JvmOverloads constructor(
     }
 
     fun setExpanded(expanded: Boolean, persist: Boolean = true) {
+        if (!descriptionCaptured) { description = summary; descriptionCaptured = true }
         expansionInitialized = true
         isExpanded = expanded
         if (persist) {
             context.getSharedPreferences(STATE_PREFERENCES, Context.MODE_PRIVATE)
                 .edit().putBoolean(key, expanded).apply()
         }
-        for (index in 0 until preferenceCount) getPreference(index).isVisible = expanded
-        summary = context.getString(if (expanded) R.string.classified_group_expanded else R.string.classified_group_collapsed)
+        for (index in 0 until preferenceCount) {
+            val child = getPreference(index)
+            val visibleByCondition = intrinsicVisibility.getOrPut(child) { child.isVisible }
+            child.isVisible = expanded && visibleByCondition
+        }
+        val state = context.getString(if (expanded) R.string.classified_group_expanded else R.string.classified_group_collapsed)
+        summary = description?.takeIf { it.isNotBlank() }?.let { "$it · $state" } ?: state
         notifyChanged()
     }
+
+    internal fun setChildConditionVisible(child: Preference, visible: Boolean) {
+        intrinsicVisibility[child] = visible
+        child.isVisible = visible && isExpanded
+    }
+
+    internal fun childConditionVisible(child: Preference): Boolean = intrinsicVisibility[child] ?: child.isVisible
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
@@ -62,3 +80,11 @@ class CollapsiblePreferenceCategory @JvmOverloads constructor(
         const val STATE_PREFERENCES = "dictionary_settings_expansion"
     }
 }
+
+/** Keep a preference's own condition separate from its containing heading's state. */
+internal var Preference.conditionVisible: Boolean
+    get() = (parent as? CollapsiblePreferenceCategory)?.childConditionVisible(this) ?: isVisible
+    set(value) {
+        val category = parent as? CollapsiblePreferenceCategory
+        if (category == null) isVisible = value else category.setChildConditionVisible(this, value)
+    }
