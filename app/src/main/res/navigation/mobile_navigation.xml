@@ -381,9 +381,8 @@
         android:label="@string/ng_word_fragment_title" />
     <fragment
         android:id="@+id/keyCandidateLetterSizeFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.key_candidate_letter_size.KeyCandidateLetterSizeFragment"
-        android:label="@string/fragment_key_candidate_letter_size_title"
-        tools:layout="@layout/fragment_key_candidate_letter_size" />
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.CandidateDisplayPreferenceFragment"
+        android:label="@string/candidate_display_title" />
     <fragment
         android:id="@+id/candidateViewHeightSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.CandidateViewHeightSettingFragment"
@@ -614,6 +613,12 @@
     <fragment android:id="@+id/splitKeyboardPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SplitKeyboardPreferenceFragment"
         android:label="@string/split_keyboard_title" />
+    <fragment android:id="@+id/candidateDisplayPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.CandidateDisplayPreferenceFragment"
+        android:label="@string/candidate_display_title" />
+    <fragment android:id="@+id/qwertyGapFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.QwertyGapFragment"
+        android:label="@string/qwerty_gap_title" />
     <fragment android:id="@+id/keyboardGeometrySettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.UnifiedKeyboardSettingsFragment"
         android:label="@string/keyboard_geometry_title" />

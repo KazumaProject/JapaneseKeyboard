@@ -55,6 +55,25 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(SideCandidateSizing.MAX_VERTICAL_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalSpacingDp)
     }
 
+    @Test fun candidateAndGapEditsAndResetsKeepTheirOwnSavedValues() {
+        val prefs = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("geometry_scoped_settings", Context.MODE_PRIVATE)
+        prefs.edit().clear().commit()
+        val store = KeyboardGeometryPreferences(prefs)
+        store.saveQwertyGap(false, 30)
+        store.saveCandidateDisplay(GeometryKeyboard.QWERTY, false, KeyboardGeometryPreference(sideCandidateWidthPercent = 40))
+        assertEquals(30, store.read(GeometryKeyboard.QWERTY, false).geometry.splitPercent)
+        store.resetCandidateDisplay(GeometryKeyboard.QWERTY, false)
+        assertEquals(30, store.read(GeometryKeyboard.QWERTY, false).geometry.splitPercent)
+        val side = KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.RIGHT, sideCandidateWidthPercent = 40, sideCandidateVerticalText = true)
+        store.saveCandidateDisplay(GeometryKeyboard.TENKEY, false, side)
+        store.saveQwertyGap(false, 0)
+        assertEquals(side, store.read(GeometryKeyboard.TENKEY, false))
+        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, true))
+        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.SUMIRE, false))
+        store.resetCandidateDisplay(GeometryKeyboard.TENKEY, false)
+        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, false))
+    }
+
     @Test fun sideWidthPreservesTheDefaultAndProtectsBothRegions() {
         assertEquals(0, SideCandidateSizing.width(255, 1f, 25))
         assertEquals(64, SideCandidateSizing.width(256, 1f, 25))

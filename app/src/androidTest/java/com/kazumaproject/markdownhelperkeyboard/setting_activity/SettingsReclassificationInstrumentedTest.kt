@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.CandidateDisplayPreferenceFragment
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.DictionaryPreferenceFragment
@@ -61,12 +62,12 @@ class SettingsReclassificationInstrumentedTest {
                 await("Settings home not ready") { activity.isSettingsContentReady }
                 fun host() = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
                 fun theme() = host().childFragmentManager.primaryNavigationFragment as? KeyboardThemeFragment
+                fun candidate() = host().childFragmentManager.primaryNavigationFragment as? CandidateDisplayPreferenceFragment
                 fun highlight(key: String) = Bundle().apply { putString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY, key) }
-                ins.runOnMainSync { host().navController.navigate(R.id.keyboardThemeFragment, highlight("live_conversion_candidate_yomi_preference")) }
-                await("Theme did not load") { theme()?.findPreference<Preference>("live_conversion_candidate_yomi_preference") != null && theme()?.listView?.adapter != null }
+                ins.runOnMainSync { host().navController.navigate(R.id.candidateDisplayPreferenceFragment, highlight("live_conversion_candidate_yomi_preference")) }
+                await("Candidate settings did not load") { candidate()?.findPreference<Preference>("live_conversion_candidate_yomi_preference") != null && candidate()?.listView?.adapter != null }
                 ins.runOnMainSync {
-                    val current = theme()!!
-                    assertTrue(current.findPreference<CollapsiblePreferenceCategory>("settings_theme_text")!!.isExpanded)
+                    val current = candidate()!!
                     assertFalse(current.findPreference<Preference>("live_conversion_candidate_yomi_preference")!!.isEnabled)
                     assertTrue(current.findPreference<Preference>("settings_theme_enable_live_conversion_link")!!.isVisible)
                     assertFalse(expansion.getBoolean("settings_theme_text", false))
@@ -81,10 +82,16 @@ class SettingsReclassificationInstrumentedTest {
                     engine.findPreference<SwitchPreferenceCompat>("live_conversion_preference")!!.isChecked = true
                     assertTrue(host().navController.popBackStack())
                 }
-                await("Theme dependency did not refresh") { theme()?.findPreference<Preference>("live_conversion_candidate_yomi_preference")?.isEnabled == true }
+                await("Candidate dependency did not refresh") { candidate()?.findPreference<Preference>("live_conversion_candidate_yomi_preference")?.isEnabled == true }
                 ins.runOnMainSync {
-                    assertTrue(theme()!!.findPreference<SwitchPreferenceCompat>("live_conversion_candidate_yomi_preference")!!.isChecked)
-                    assertFalse(theme()!!.findPreference<Preference>("settings_theme_enable_live_conversion_link")!!.isVisible)
+                    assertTrue(candidate()!!.findPreference<SwitchPreferenceCompat>("live_conversion_candidate_yomi_preference")!!.isChecked)
+                    assertFalse(candidate()!!.findPreference<Preference>("settings_theme_enable_live_conversion_link")!!.isVisible)
+                    host().navController.navigate(R.id.keyboardThemeFragment, highlight("composing_guide_text_size_setting"))
+                }
+                await("Theme did not load") { theme()?.findPreference<Preference>("composing_guide_text_size_setting") != null && theme()?.listView?.adapter != null }
+                ins.runOnMainSync {
+                    assertTrue(theme()!!.findPreference<CollapsiblePreferenceCategory>("settings_theme_text")!!.isExpanded)
+                    assertFalse(expansion.getBoolean("settings_theme_text", false))
                     host().navController.navigate(R.id.legacyCommonPreferenceFragment, highlight("composing_guide_text_enabled"))
                 }
                 await("Common screen did not load") {
