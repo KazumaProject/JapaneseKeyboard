@@ -39,18 +39,59 @@ class VerticalCandidateImeInstrumentedTest {
     @Test fun landscapeHorizontalCandidatesScrollInBothDirections() =
         verifyHorizontalSideCandidates(floating = false, side = "RIGHT", landscape = true)
 
-    @Test fun qwertyCenterCandidatesScrollInBothDirections() =
-        verifyHorizontalSideCandidates(floating = false, side = "CENTER", qwerty = true)
+    @Test fun legacyQwertyCenterCandidatesFallBackToTheTop() = verifyQwertyCandidatesStayAboveKeys(floating = false)
 
-    @Test fun floatingQwertyCenterCandidatesScrollInBothDirections() =
-        verifyHorizontalSideCandidates(floating = true, side = "CENTER", qwerty = true)
+    @Test fun legacyFloatingQwertyCenterCandidatesFallBackToTheTop() = verifyQwertyCandidatesStayAboveKeys(floating = true)
+
+    private fun verifyQwertyCandidatesStayAboveKeys(floating: Boolean) =
+        withKeyboard(floating = floating, side = "CENTER", qwerty = true, verticalText = false) {
+            val keyBounds = android.graphics.Rect()
+            await("visible QWERTY h key") {
+                allNodes().firstOrNull { it.text?.toString() == "h" && it.isVisibleToUser }?.let {
+                    it.getBoundsInScreen(keyBounds)
+                    !keyBounds.isEmpty
+                } == true
+            }
+            if (floating) {
+                tapAt(keyBounds.exactCenterX(), keyBounds.exactCenterY())
+            } else {
+                var point: Pair<Float, Float>? = null
+                instrumentation.runOnMainSync {
+                    val key = android.view.inspector.WindowInspector.getGlobalWindowViews().asReversed()
+                        .mapNotNull { it.findViewById<android.view.View>(com.kazumaproject.qwerty_keyboard.R.id.key_h) }
+                        .first { it.isShown }
+                    val parent = key.parent as android.view.View
+                    val location = IntArray(2).also(parent::getLocationOnScreen)
+                    val center = com.kazumaproject.core.ui.geometry.KeyboardViewGeometry.centerInParent(key)
+                    point = (location[0] + center.first) to (location[1] + center.second)
+                }
+                tapAt(point!!.first, point!!.second)
+            }
+            await("QWERTY candidates above keyboard") {
+                var valid = false
+                instrumentation.runOnMainSync {
+                    val roots = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    val keyboardId = if (floating) R.id.qwerty_view_floating else R.id.qwerty_view
+                    for (root in roots) {
+                        val keyboard = root.findViewById<android.view.View>(keyboardId)
+                        val candidates = root.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view)
+                        if (keyboard?.isShown == true && candidates?.isShown == true && candidates.childCount > 0) {
+                            val candidatePosition = IntArray(2).also(candidates::getLocationOnScreen)
+                            val keyboardPosition = IntArray(2).also(keyboard::getLocationOnScreen)
+                            valid = candidatePosition[1] + candidates.height <= keyboardPosition[1] + 4
+                            if (valid) break
+                        }
+                    }
+                }
+                valid
+            }
+        }
 
     private fun verifyHorizontalSideCandidates(
-        floating: Boolean, side: String, sumire: Boolean = false, landscape: Boolean = false, qwerty: Boolean = false,
+        floating: Boolean, side: String, sumire: Boolean = false, landscape: Boolean = false,
     ) = withKeyboard(floating = floating, side = side, sumire = sumire, landscape = landscape,
-        verticalText = false, qwerty = qwerty) {
-            if (qwerty) softKey(com.kazumaproject.qwerty_keyboard.R.id.key_h)
-            else if (sumire) tapSumireA() else softKey(com.kazumaproject.tenkey.R.id.key_1)
+        verticalText = false) {
+            if (sumire) tapSumireA() else softKey(com.kazumaproject.tenkey.R.id.key_1)
             fun candidates(): androidx.recyclerview.widget.RecyclerView? =
                 android.view.inspector.WindowInspector.getGlobalWindowViews()
                     .mapNotNull { it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.suggestion_recycler_view) }
@@ -64,10 +105,6 @@ class VerticalCandidateImeInstrumentedTest {
             val values = List(40) { index ->
                 val word = when {
                     index == 25 -> "特に長い変換候補".repeat(30)
-                    qwerty -> listOf("横にスワイプすると候補の続きを確認できます",
-                        "長い変換候補の末尾も表示できます",
-                        "候補を選ぶと全文が入力されます",
-                        "縦方向にも候補をスクロールできます")[index % 4]
                     else -> "長い変換候補".repeat(12)
                 }
                 com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate("$index$word", 1, 1u, 0)
@@ -87,24 +124,6 @@ class VerticalCandidateImeInstrumentedTest {
                 }
                 ready
             }
-            if (qwerty) {
-                fun rowGap(): Int? {
-                    var gap: Int? = null
-                    instrumentation.runOnMainSync {
-                        val list = candidates()
-                        val first = list?.findViewHolderForAdapterPosition(0)?.itemView
-                        val second = list?.findViewHolderForAdapterPosition(1)?.itemView
-                        if (first != null && second != null) gap = second.top - first.bottom
-                    }
-                    return gap
-                }
-                var initialGap = 0
-                await("center candidate rows") { rowGap()?.also { initialGap = it } != null }
-                val orientation = if (landscape) "landscape" else "portrait"
-                check(PreferenceManager.getDefaultSharedPreferences(instrumentation.targetContext).edit()
-                    .putInt("keyboard_geometry_qwerty_${orientation}_center_candidate_spacing_dp", 20).commit())
-                await("center row spacing") { rowGap()?.let { it > initialGap } == true }
-            }
             val panel = android.graphics.Rect()
             instrumentation.runOnMainSync {
                 val scroll = candidates()!!.parent as android.widget.HorizontalScrollView
@@ -117,7 +136,6 @@ class VerticalCandidateImeInstrumentedTest {
                 instrumentation.runOnMainSync { moved = (candidates()!!.parent as android.widget.HorizontalScrollView).scrollX > 0 }
                 moved
             }
-            if (qwerty && !floating) screenshot("qwerty-center.png")
             // Let the horizontal fling settle before starting a gesture on the other axis.
             SystemClock.sleep(1000)
             instrumentation.runOnMainSync {

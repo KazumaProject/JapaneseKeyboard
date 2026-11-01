@@ -242,6 +242,10 @@
         android:title="@string/settings_common_candidates_title"
         android:summary="@string/settings_common_candidates_summary">
 
+
+
+        <Preference android:key="setting_route_candidate_display" android:title="@string/candidate_display_title" android:summary="@string/candidate_display_summary" />
+
         <SwitchPreferenceCompat
             android:key="composing_guide_text_enabled"
             android:defaultValue="false"
@@ -281,54 +285,6 @@
         <Preference
             android:key="composing_guide_integrated_reset"
             android:title="@string/composing_guide_integrated_reset" />
-
-        <SwitchPreferenceCompat
-            android:key="candidate_tab_visibility_preference"
-            android:title="@string/candidate_tab"
-            app:defaultValue="false"
-            app:summary="@string/candidate_tab_summary" />
-
-        <Preference
-            android:dependency="candidate_tab_visibility_preference"
-            android:key="candidate_tab_order_preference"
-            android:title="@string/candidate_tab_order_preference_title"
-            app:summary="@string/candidate_tab_order_preference_summary" />
-
-        <Preference
-            android:icon="@drawable/outline_border_color_24"
-            android:key="candidate_view_height_setting_fragment_preference"
-            android:title="@string/candidate_height_preference_title"
-            app:summary="@string/candidate_height_preference_sumary" />
-
-        <Preference
-            android:icon="@drawable/outline_border_color_24"
-            android:key="candidate_view_height_landscape_setting_fragment_preference"
-            android:title="@string/candidate_height_landscape_preference_title"
-            app:summary="@string/candidate_height_preference_sumary" />
-
-        <ListPreference
-            android:defaultValue="1"
-            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
-            android:entries="@array/candidate_column_entries"
-            android:entryValues="@array/candidate_column_values"
-            android:key="candidate_column_preference"
-            android:summary="@string/preference_summary_num_column_conversion"
-            android:title="@string/preference_title_num_columns_conversion" />
-
-        <ListPreference
-            android:defaultValue="1"
-            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
-            android:entries="@array/candidate_column_entries_landscape"
-            android:entryValues="@array/candidate_column_values_landscape"
-            android:key="candidate_column_landscape_preference"
-            android:summary="@string/preference_summary_num_column_conversion"
-            android:title="@string/preference_title_num_columns_conversion_landscape" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="stabilize_candidate_strip_height_preference"
-            android:title="@string/stabilize_candidate_strip_height_title"
-            android:summary="@string/stabilize_candidate_strip_height_summary" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 

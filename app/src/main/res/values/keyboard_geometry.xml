@@ -1,6 +1,6 @@
 <resources>
-    <string name="keyboard_geometry_title">Keyboard shape and candidates</string>
-    <string name="keyboard_geometry_summary">Adjust the split, curve, height and candidate placement</string>
+    <string name="keyboard_geometry_title">Keyboard size and position</string>
+    <string name="keyboard_geometry_summary">Adjust the keyboard size and position</string>
     <string name="keyboard_geometry_portrait">Portrait</string>
     <string name="keyboard_geometry_landscape">Landscape</string>
     <string name="keyboard_geometry_split">Center gap: %1$d%%</string>

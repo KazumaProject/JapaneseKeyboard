@@ -135,6 +135,10 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
             true
         }
 
+        findPreference<Preference>("setting_route_candidate_display")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.candidateDisplayPreferenceFragment)
+            true
+        }
         bindCanonicalSettingLinks()
         applyLegacySearchResultFilterIfNeeded()
         val targetKey = arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
