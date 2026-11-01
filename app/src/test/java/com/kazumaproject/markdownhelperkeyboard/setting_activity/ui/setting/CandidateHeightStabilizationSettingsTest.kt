@@ -41,15 +41,15 @@ class CandidateHeightStabilizationSettingsTest {
     }
 
     @Test
-    fun candidateHeightSwitchHasOneCommonEditingLocation() {
+    fun candidateHeightSwitchHasOneCandidateEditingLocation() {
         val manager = PreferenceManager(context)
-        val screen = manager.inflateFromResource(context, R.xml.pref_common_legacy, null)
+        val screen = manager.inflateFromResource(context, R.xml.pref_candidate_display, null)
         val preference = screen.findPreference<androidx.preference.SwitchPreferenceCompat>(key)!!
-        assertEquals("settings_common_candidates", preference.parent?.key)
+        assertEquals(null, preference.parent?.key)
         assertFalse(preference.isChecked)
         val oldScreen = manager.inflateFromResource(context, R.xml.pref_candidate_conversion, null)
         assertEquals(null, oldScreen.findPreference<androidx.preference.Preference>(key))
-        assertTrue(oldScreen.findPreference<androidx.preference.Preference>("setting_route_canonical_settings_common_candidates") != null)
+        assertTrue(oldScreen.findPreference<androidx.preference.Preference>("setting_route_candidate_display") != null)
     }
 
     @Test

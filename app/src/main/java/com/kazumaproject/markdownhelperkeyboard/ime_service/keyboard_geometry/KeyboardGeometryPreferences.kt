@@ -111,5 +111,32 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
         editor.apply()
     }
 
+    /** Candidate display and the QWERTY gap have different editors and reset scopes. */
+    fun saveCandidateDisplay(keyboard: GeometryKeyboard, landscape: Boolean, preference: KeyboardGeometryPreference) {
+        val p = prefix(keyboard, landscape)
+        val placement = preference.candidates.takeIf {
+            it == GeometryCandidatePlacement.TOP ||
+                (keyboard != GeometryKeyboard.QWERTY && it in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT))
+        } ?: GeometryCandidatePlacement.TOP
+        preferences.edit()
+            .putInt("${p}_candidate_width_percent", preference.sideCandidateWidthPercent.coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT))
+            .putBoolean("${p}_candidate_vertical_text", preference.sideCandidateVerticalText)
+            .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft)
+            .putBoolean("${p}_candidate_wrap_long_text", preference.sideCandidateWrapLongText)
+            .putInt("${p}_candidate_spacing_dp", preference.sideCandidateSpacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP))
+            .putInt("${p}_candidate_vertical_spacing_dp", preference.sideCandidateVerticalSpacingDp.coerceIn(0, SideCandidateSizing.MAX_VERTICAL_SPACING_DP))
+            .apply {
+                if (keyboard != GeometryKeyboard.QWERTY) putString("${p}_candidates", placement.name)
+            }.apply()
+    }
+
+    fun saveQwertyGap(landscape: Boolean, percent: Int) {
+        val normalized = KeyboardGeometry(splitPercent = percent).normalized().splitPercent
+        preferences.edit().putInt("${prefix(GeometryKeyboard.QWERTY, landscape)}_split", normalized).apply()
+    }
+
+    fun resetCandidateDisplay(keyboard: GeometryKeyboard, landscape: Boolean) =
+        saveCandidateDisplay(keyboard, landscape, KeyboardGeometryPreference())
+
     fun reset(keyboard: GeometryKeyboard, landscape: Boolean) = save(keyboard, landscape, KeyboardGeometryPreference())
 }

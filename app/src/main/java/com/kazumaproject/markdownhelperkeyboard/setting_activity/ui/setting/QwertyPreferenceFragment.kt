@@ -12,6 +12,11 @@ open class QwertyPreferenceFragment : AsyncPreferenceFragment() {
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
+        findPreference<Preference>("qwerty_gap_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.qwertyGapFragment, Bundle().apply { putBoolean("romaji", this@QwertyPreferenceFragment is QwertyRomajiPreferenceFragment) })
+            true
+        }
+
         findPreference<Preference>("qwerty_geometry_preference")?.setOnPreferenceClickListener {
             navigateSafely(R.id.keyboardGeometrySettingsFragment, Bundle().apply { putString("geometryKeyboard", "QWERTY") })
             true

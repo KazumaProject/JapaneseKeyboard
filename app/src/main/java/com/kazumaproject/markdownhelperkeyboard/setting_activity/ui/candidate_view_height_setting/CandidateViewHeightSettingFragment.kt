@@ -140,6 +140,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
             parentFragmentManager.popBackStack()
         }
         binding.toolbar.inflateMenu(R.menu.fragment_reset_menu)
+        binding.toolbar.menu.findItem(R.id.action_reset)?.setTitle(R.string.candidate_display_reset_height)
         binding.toolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_candidate_default_height -> {
