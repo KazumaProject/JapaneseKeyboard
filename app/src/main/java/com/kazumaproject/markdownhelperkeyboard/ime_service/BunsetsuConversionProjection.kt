@@ -10,7 +10,6 @@ internal data class BunsetsuConversionSnapshot(
     val paths: Map<String, List<CandidateConversionSegment>>,
     val splitPatterns: List<List<Int>> = emptyList(),
     val initialSplitPositions: List<Int> = emptyList(),
-    val candidateSplitPositions: Map<String, List<Int>> = emptyMap(),
 )
 
 internal data class BunsetsuSegmentState(

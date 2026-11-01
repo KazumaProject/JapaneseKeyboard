@@ -23,11 +23,17 @@ enum class KeyboardLayoutEditTarget {
     TenKeyFamily,
     QwertyFamily,
     Gojuon,
-    Custom;
+    Custom,
+    Sumire,
+    Morse,
+    Romaji;
 
     companion object {
         fun from(mode: TenKeyQWERTYMode, customNumberLayout: Boolean = false): KeyboardLayoutEditTarget = when (mode) {
-            TenKeyQWERTYMode.TenKeyQWERTY, TenKeyQWERTYMode.TenKeyQWERTYRomaji -> QwertyFamily
+            TenKeyQWERTYMode.TenKeyQWERTY -> QwertyFamily
+            TenKeyQWERTYMode.TenKeyQWERTYRomaji -> Romaji
+            TenKeyQWERTYMode.Sumire -> Sumire
+            TenKeyQWERTYMode.Morse -> Morse
             TenKeyQWERTYMode.Gojuon -> Gojuon
             TenKeyQWERTYMode.Custom -> Custom
             TenKeyQWERTYMode.Number -> if (customNumberLayout) Custom else TenKeyFamily

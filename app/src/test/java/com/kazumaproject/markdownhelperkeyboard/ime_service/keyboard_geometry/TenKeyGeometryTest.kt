@@ -27,7 +27,7 @@ import kotlin.math.sin
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class TenKeyGeometryTest {
-    @Test fun curvedKeyUsesItsOwnFlickAxesInBothTouchModes() {
+    @Test fun oldCurvePreferenceDoesNotChangeFlickInput() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         activity.setTheme(R.style.Theme_MarkdownKeyboard)
         val keyboard = TenKey(activity, Robolectric.buildAttributeSet().build())
@@ -51,6 +51,7 @@ class TenKeyGeometryTest {
                 keyboard.measure(View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(500, View.MeasureSpec.EXACTLY))
                 keyboard.layout(0, 0, 720, 500)
                 val key = keyboard.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1)
+                assertEquals(0f, key.rotation, .001f)
                 val bounds = RectF(0f, 0f, key.width.toFloat(), key.height.toFloat())
                 key.matrix.mapRect(bounds); bounds.offset(key.left.toFloat(), key.top.toFloat())
                 assertTrue("hand=$hand bounds=$bounds", bounds.left >= -0.1f && bounds.right <= 720.1f && bounds.top >= -0.1f && bounds.bottom <= 500.1f)

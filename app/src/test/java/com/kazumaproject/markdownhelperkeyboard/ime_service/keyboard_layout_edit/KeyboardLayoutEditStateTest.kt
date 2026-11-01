@@ -21,7 +21,7 @@ class KeyboardLayoutEditStateTest {
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.TenKeyQWERTY),
         )
         assertEquals(
-            KeyboardLayoutEditTarget.QwertyFamily,
+            KeyboardLayoutEditTarget.Romaji,
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.TenKeyQWERTYRomaji),
         )
         assertEquals(
@@ -33,7 +33,8 @@ class KeyboardLayoutEditStateTest {
             KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Gojuon),
         )
         assertEquals(KeyboardLayoutEditTarget.Custom, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Custom))
-        assertEquals(KeyboardLayoutEditTarget.TenKeyFamily, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Sumire))
+        assertEquals(KeyboardLayoutEditTarget.Sumire, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Sumire))
+        assertEquals(KeyboardLayoutEditTarget.Morse, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Morse))
         assertEquals(KeyboardLayoutEditTarget.Custom, KeyboardLayoutEditTarget.from(TenKeyQWERTYMode.Number, customNumberLayout = true))
         assertEquals(
             KeyboardLayoutEditTarget.TenKeyFamily,

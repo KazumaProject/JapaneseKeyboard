@@ -126,7 +126,7 @@ class GeometryPreviewDeviceTest {
                 val config = KeyboardGeometryPreference(
                     KeyboardGeometry(splitPercent = if (qwerty) 40 else 0, curveDegrees = 25,
                         hand = hand, autoHeight = autoHeight, curveDirection = direction),
-                    if (qwerty) GeometryCandidatePlacement.CENTER else if (hand == KeyboardCurveHand.LEFT) GeometryCandidatePlacement.RIGHT else GeometryCandidatePlacement.LEFT)
+                    if (qwerty) GeometryCandidatePlacement.TOP else if (hand == KeyboardCurveHand.LEFT) GeometryCandidatePlacement.RIGHT else GeometryCandidatePlacement.LEFT)
                 preview.update(config, landscape = landscape, widthPercent = widthPercent, alignEnd = true)
                 val screenWidth = context.resources.displayMetrics.widthPixels
                 preview.measure(View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
@@ -247,8 +247,8 @@ class GeometryPreviewDeviceTest {
                     root.findViewById<View>(id)?.takeIf { view ->
                         view.isShown && view.width > 0 && view.height > 0 && when (view) {
                             is QWERTYKeyboardView -> view.effectiveSplitGapPx() > 0
-                            is TenKey -> abs(view.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1).rotation) > 0
-                            is FlickKeyboardView -> runCatching { abs(findTextView(view, "あ").rotation) > 0 }.getOrDefault(false)
+                            is TenKey -> view.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1).rotation == 0f
+                            is FlickKeyboardView -> runCatching { findTextView(view, "あ").rotation == 0f }.getOrDefault(false)
                             else -> false
                         }
                     }

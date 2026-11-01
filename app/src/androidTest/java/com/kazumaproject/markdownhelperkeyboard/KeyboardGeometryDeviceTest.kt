@@ -36,11 +36,11 @@ class KeyboardGeometryDeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
 
-    @Test fun splitQwertyAcceptsInputAndCenterCandidatesCanBeSelected() = verify(floating = false, tenkey = false)
-    @Test fun floatingSplitQwertyAcceptsInputAndCenterCandidatesCanBeSelected() = verify(floating = true, tenkey = false)
-    @Test fun curvedTenKeyAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = false, tenkey = true)
-    @Test fun floatingCurvedTenKeyAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = true, tenkey = true)
-    @Test fun reverseSplitQwertyAcceptsInputAndCenterCandidatesCanBeSelected() = verify(floating = false, tenkey = false, reverse = true)
+    @Test fun splitQwertyAcceptsInputAndTopCandidatesCanBeSelected() = verify(floating = false, tenkey = false)
+    @Test fun floatingSplitQwertyAcceptsInputAndTopCandidatesCanBeSelected() = verify(floating = true, tenkey = false)
+    @Test fun tenKeyWithOldCurveValueAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = false, tenkey = true)
+    @Test fun floatingTenKeyWithOldCurveValueAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = true, tenkey = true)
+    @Test fun reverseSplitQwertyAcceptsInputAndTopCandidatesCanBeSelected() = verify(floating = false, tenkey = false, reverse = true)
     @Test fun floatingReverseTenKeyAcceptsInputAndSideCandidatesCanBeSelected() = verify(floating = true, tenkey = true, reverse = true)
     @Test fun sideCandidatesCanSwitchSidesAndReturnToTheTop() = verify(floating = false, tenkey = true, switchSide = true)
     @Test fun sideCandidatesRestoreTheConfiguredMultiRowTopLayout() = verify(floating = false, tenkey = true, switchSide = true, columns = "3")
@@ -60,7 +60,7 @@ class KeyboardGeometryDeviceTest {
     @Test fun narrowTenKeyFallsBackToTopCandidates() = verify(floating = false, tenkey = true, marginDp = 110, fallback = true)
     @Test fun narrowQwertyGapFallsBackToTopCandidates() = verify(floating = false, tenkey = false, splitPercent = 10, fallback = true)
 
-    @Test fun landscapeSplitQwertyAcceptsInputAndCenterCandidatesCanBeSelected() {
+    @Test fun landscapeSplitQwertyAcceptsInputAndTopCandidatesCanBeSelected() {
         val oldAuto = shell("settings get system accelerometer_rotation")
         val oldRotation = shell("settings get system user_rotation")
         try {
@@ -116,7 +116,6 @@ class KeyboardGeometryDeviceTest {
                 .putString("keyboard_geometry_${geometryName}_portrait_curve_direction", if (reverse) "UP" else "DOWN")
                 .putString("keyboard_geometry_${geometryName}_portrait_candidates", side)
                 .putBoolean("keyboard_geometry_${geometryName}_portrait_candidate_vertical_text", expanded || chromeMode != 0)
-                .putBoolean("keyboard_geometry_${geometryName}_portrait_segment_editor", false)
                 .putBoolean("flick_input_only_preference", true)
                 .commit())
             shell("ime enable $targetIme")
@@ -149,7 +148,7 @@ class KeyboardGeometryDeviceTest {
             } else if (tenkey) {
                 val keyboard = awaitView<TenKey>(if (floating) R.id.keyboard_view_floating else R.id.keyboard_view) {
                     val rotation = it.findViewById<View>(com.kazumaproject.tenkey.R.id.key_1)?.rotation ?: 0f
-                    if (reverse) rotation > 0f else rotation < 0f
+                    rotation == 0f
                 }
                 tap(keyboard.findViewById(com.kazumaproject.tenkey.R.id.key_1))
                 if (adjustSide) tap(keyboard.findViewById(com.kazumaproject.tenkey.R.id.key_2))
@@ -157,8 +156,7 @@ class KeyboardGeometryDeviceTest {
             } else {
                 val keyboard = awaitView<QWERTYKeyboardView>(if (floating) R.id.qwerty_view_floating else R.id.qwerty_view) {
                     val rotation = it.findViewById<View>(com.kazumaproject.qwerty_keyboard.R.id.key_t)?.rotation ?: 0f
-                    it.effectiveSplitGapPx() > 0f &&
-                        if (reverse) rotation < 0f else rotation > 0f
+                    it.effectiveSplitGapPx() > 0f && rotation == 0f
                 }
                 for (id in listOf(com.kazumaproject.qwerty_keyboard.R.id.key_h,
                     com.kazumaproject.qwerty_keyboard.R.id.key_e,
@@ -198,7 +196,7 @@ class KeyboardGeometryDeviceTest {
                 }
                 return candidates
             }
-            val initialPosition = if (fallback) "TOP" else if (tenkey) side else "CENTER"
+            val initialPosition = if (fallback || !tenkey) "TOP" else side
             var candidates = awaitCandidates(initialPosition)
             if (chromeMode != 0) {
                 val tabs = awaitView<com.google.android.material.tabs.TabLayout>(R.id.candidate_tab_layout) { it.tabCount > 1 }
@@ -290,7 +288,9 @@ class KeyboardGeometryDeviceTest {
                 val density = context.resources.displayMetrics.density
                 val available = context.resources.displayMetrics.widthPixels - (2 * marginDp * density).toInt()
                 val expectedWidth = available / 4
-                assertEquals("candidate width uses the available width after margins", expectedWidth.toFloat(), candidates.width.toFloat(), 2f)
+                val visibleBounds = Rect()
+                instrumentation.runOnMainSync { assertTrue(candidates.getGlobalVisibleRect(visibleBounds)) }
+                assertEquals("candidate width uses the available width after margins", expectedWidth.toFloat(), visibleBounds.width().toFloat(), 2f)
             }
             if (resizeSide) {
                 val density = context.resources.displayMetrics.density
