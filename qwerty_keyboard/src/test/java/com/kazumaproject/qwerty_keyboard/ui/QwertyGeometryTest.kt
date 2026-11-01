@@ -23,10 +23,10 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = android.app.Application::class)
 class QwertyGeometryTest {
-    @Test fun unsplitCurvedKeyboardStillRecognizesGlideAcrossTransformedKeys() =
+    @Test fun unsplitKeyboardStillRecognizesGlideWithOldCurvePreference() =
         verifyUnsplitGlide(KeyboardCurveDirection.DOWN)
 
-    @Test fun reverseCurvedKeyboardStillRecognizesGlideAcrossTransformedKeys() =
+    @Test fun unsplitKeyboardStillRecognizesGlideWithOldReverseCurvePreference() =
         verifyUnsplitGlide(KeyboardCurveDirection.UP)
 
     private fun verifyUnsplitGlide(direction: KeyboardCurveDirection) {
@@ -61,7 +61,7 @@ class QwertyGeometryTest {
         assertEquals(y, key.centerY, .01f)
     }
 
-    @Test fun rotatedCornersStayInsideAtLargeAnglesAndDifferentWidths() {
+    @Test fun splitKeysStayInsideAtDifferentWidths() {
         for (width in listOf(400, 700, 1080)) for (split in listOf(0, 40)) for (direction in KeyboardCurveDirection.entries) {
             val keyboard = keyboard()
             keyboard.setKeyboardGeometry(KeyboardGeometry(splitPercent = split, curveDegrees = 25, curveDirection = direction), 500)
@@ -94,21 +94,11 @@ class QwertyGeometryTest {
         keyboard.setKeyboardGeometry(KeyboardGeometry(splitPercent = 20), 500)
         assertTrue(cancellations > 0)
     }
-    @Test fun curveChangesKeyPositionsAndReportsExtraHeightWithoutChangingBaselineHeight() {
+    @Test fun oldCurveSettingDoesNotRotateOrMoveKeys() {
         val keyboard = keyboard()
         keyboard.setKeyboardGeometry(KeyboardGeometry(curveDegrees = 25), 500)
         layout(keyboard)
-        val required = keyboard.javaClass.getDeclaredField("lastRequiredGeometryHeight").apply { isAccessible = true }.getInt(keyboard)
         val key = keyboard.findViewById<View>(R.id.key_t)
-        assertTrue("The inner key should follow the curved layout", key.rotation > 0f)
-        assertTrue("The outer bounds should need extra height; required=$required", required > 500)
-        keyboard.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(required, View.MeasureSpec.EXACTLY))
-        keyboard.layout(0, 0, 1080, required)
-        assertEquals(500, keyboard.javaClass.getDeclaredField("geometryBaseHeight").apply { isAccessible = true }.getInt(keyboard))
-        val (x, y) = KeyboardViewGeometry.centerInParent(key)
-        assertTrue(x in 0f..1080f && y in 0f..required.toFloat())
-        keyboard.setKeyboardGeometry(KeyboardGeometry(), 500)
-        layout(keyboard)
         assertEquals(0f, key.rotation, .001f)
         assertEquals(0f, key.translationX, .001f)
         assertEquals(0f, key.translationY, .001f)

@@ -27,8 +27,11 @@
     <string name="keyboard_geometry_candidate_long_display">Long vertical candidates</string>
     <string name="keyboard_geometry_candidate_truncate">Shorten</string>
     <string name="keyboard_geometry_candidate_wrap">Show the rest in the next column</string>
-    <string name="keyboard_geometry_candidate_spacing">Vertical candidate spacing: %1$d dp</string>
-    <string name="keyboard_geometry_candidate_spacing_hint">Adjusts spacing between candidates and between wrapped columns.</string>
+    <string name="keyboard_geometry_candidate_vertical_spacing">Space between vertical candidates: %1$d dp</string>
+    <string name="keyboard_geometry_candidate_vertical_spacing_hint">Adjusts the vertical space between candidates.</string>
+    <string name="keyboard_geometry_candidate_spacing">Vertical column spacing: %1$d dp</string>
+    <string name="keyboard_geometry_candidate_spacing_hint">Adjusts the horizontal space between candidate columns and wrapped text columns.</string>
+    <string name="keyboard_geometry_center_candidate_spacing">Center candidate row spacing: %1$d dp</string>
     <string name="keyboard_geometry_candidate_direction">Vertical candidate order</string>
     <string name="keyboard_geometry_candidate_left_to_right">Left to right</string>
     <string name="keyboard_geometry_candidate_right_to_left">Right to left</string>
@@ -44,6 +47,4 @@
     <string name="keyboard_geometry_example_hello">Hello</string>
     <string name="keyboard_geometry_example_conversion">Convert</string>
     <string name="keyboard_geometry_example_japanese">Japanese</string>
-    <string name="keyboard_geometry_segment_editor">Show segment editor</string>
-    <string name="keyboard_geometry_segment_editor_hint">Select a segment and drag its handles to adjust boundaries. Long-press and drag a segment to reorder it.</string>
 </resources>

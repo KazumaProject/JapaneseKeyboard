@@ -24,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.GridLayout
+import android.widget.LinearLayout
 import android.widget.Space
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
@@ -83,7 +84,7 @@ import kotlin.math.sqrt
  * IME keyboard view, input controller, or input connection. The original XML is read as a
  * presentation resource; the three input-aware widgets are replaced by passive equivalents.
  */
-internal enum class PreviewKeyboard { QWERTY, TENKEY, SUMIRE, GOJUON, CUSTOM }
+internal enum class PreviewKeyboard { QWERTY, ROMAJI, TENKEY, SUMIRE, GOJUON, CUSTOM, MORSE }
 
 internal class GeometryPreview(context: Context, private val keyboard: PreviewKeyboard) : View(context) {
     constructor(context: Context, keyboard: GeometryKeyboard) : this(context, when (keyboard) {
@@ -108,7 +109,9 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
 
     fun update(value: KeyboardGeometryPreference, landscape: Boolean, widthPercent: Int, alignEnd: Boolean,
         sizeOverride: IndependentKeyboardSize? = null, customLayout: KeyboardLayout? = null) {
-        this.value = value
+        val placement = if (keyboard == PreviewKeyboard.QWERTY || keyboard == PreviewKeyboard.ROMAJI || value.candidates == GeometryCandidatePlacement.CENTER)
+            GeometryCandidatePlacement.TOP else value.candidates
+        this.value = value.copy(geometry = value.geometry.normalized(), candidates = placement)
         this.landscape = landscape
         this.keyboardWidthPercent = widthPercent
         this.alignEnd = alignEnd
@@ -220,7 +223,8 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
                 val density = resources.displayMetrics.density
                 val columns = SideCandidateSizing.columnCount(model.candidateSideWidth.roundToInt(), density, paint.textSize)
                 val inset = SideCandidateSizing.horizontalInset(model.candidateSideWidth.roundToInt(), density).toFloat()
-                val cellWidth = (model.candidateSideWidth - 2 * inset) / columns
+                val cellWidth = SideCandidateSizing.columnWidth(model.candidateSideWidth.roundToInt(), density, paint.textSize).toFloat()
+                val columnStep = cellWidth + value.sideCandidateSpacingDp * density
                 var top = model.chromeHeight
                 var column = 0
                 val verticalExamples = examples + listOf(
@@ -236,14 +240,16 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
                     if (column >= columns) break
                     val columnWidth = characters.maxOfOrNull { paint.measureText(it) } ?: 0f
                     val textHeight = characters.size * paint.fontSpacing
-                    val physicalColumn = if (value.sideCandidateRightToLeft) columns - 1 - column else column
-                    val cx = left + inset + physicalColumn * cellWidth + 5f * density + columnWidth / 2f
+                    val cellLeft = if (value.sideCandidateRightToLeft)
+                        left + model.candidateSideWidth - inset - cellWidth - column * columnStep
+                    else left + inset + column * columnStep
+                    val cx = cellLeft + 5f * density + columnWidth / 2f
                     var baseline = top + (itemHeight - textHeight) / 2f - paint.fontMetrics.ascent
                     for (character in characters) {
                         canvas.drawText(character, cx, baseline, paint)
                         baseline += paint.fontSpacing
                     }
-                    top += itemHeight + value.sideCandidateSpacingDp * density
+                    top += itemHeight + value.sideCandidateVerticalSpacingDp * density
                 }
             } else if (value.candidates == GeometryCandidatePlacement.CENTER) {
                 val cx = left + model.candidateSideWidth / 2f
@@ -274,7 +280,7 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
         val density = metrics.density
         val screenWidth = (if (landscape) max(metrics.widthPixels, metrics.heightPixels) else min(metrics.widthPixels, metrics.heightPixels)).toFloat().coerceAtLeast(1f)
         val screenHeight = (if (landscape) min(metrics.widthPixels, metrics.heightPixels) else max(metrics.widthPixels, metrics.heightPixels)).toFloat()
-        val qwerty = keyboard == PreviewKeyboard.QWERTY
+        val qwerty = keyboard == PreviewKeyboard.QWERTY || keyboard == PreviewKeyboard.ROMAJI
         val heightDp = sizeOverride?.heightDp ?: when {
             qwerty && landscape -> AppPreference.qwerty_keyboard_height_landscape
             qwerty -> AppPreference.qwerty_keyboard_height
@@ -314,6 +320,7 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
             PreviewKeyboard.SUMIRE -> createSumireKeys(previewContext, bodyWidth, baseHeight)
             PreviewKeyboard.GOJUON -> createGojuonKeys(previewContext, bodyWidth, baseHeight)
             PreviewKeyboard.CUSTOM -> createCustomKeys(previewContext, bodyWidth, baseHeight, customLayout)
+            PreviewKeyboard.MORSE -> createMorsePreview(previewContext, bodyWidth, baseHeight)
             else -> createXmlKeys(previewContext, bodyWidth, baseHeight, qwerty)
         }
         val gap = if (qwerty) min(bodyWidth * value.geometry.splitPercent / 100f, max(0f, bodyWidth - 240f * density)) else 0f
@@ -337,6 +344,48 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
         return ContextThemeWrapper(context.createConfigurationContext(configuration), 0).apply {
             theme.setTo(context.theme)
         }
+    }
+
+    private fun createMorsePreview(ctx: Context, width: Float, height: Float): List<PreviewItem> {
+        val settings = com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferences(ctx).settings()
+        val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        val headerHeight = (70f * resources.displayMetrics.density).roundToInt().coerceAtMost(height.toInt() / 3)
+        root.addView(TextView(ctx).apply { setText(R.string.morse_title); gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, headerHeight))
+        fun controlRows(vertical: Boolean): LinearLayout = LinearLayout(ctx).apply {
+            orientation = if (vertical) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+            settings.controlLayout.rows.forEach { row ->
+                addView(LinearLayout(ctx).apply {
+                    orientation = if (vertical) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+                    row.forEach { control ->
+                        addView(TextView(ctx).apply {
+                            text = ctx.getString(control.labelResource)
+                            gravity = Gravity.CENTER
+                            styleKey(this, SkinKeyRole.MODIFIER, false)
+                        }, LinearLayout.LayoutParams(if (vertical) -1 else 0, if (vertical) 0 else -1, 1f))
+                    }
+                }, LinearLayout.LayoutParams(if (vertical) 0 else -1, if (vertical) -1 else 0, 1f))
+            }
+        }
+        val placement = settings.controlLayout.placement
+        val controlsHeight = (48f * resources.displayMetrics.density * settings.controlLayout.rows.size).roundToInt()
+        if (placement == com.kazumaproject.morse_keyboard.MorseControlPlacement.TOP) root.addView(controlRows(false), LinearLayout.LayoutParams(-1, controlsHeight))
+        val body = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        if (placement == com.kazumaproject.morse_keyboard.MorseControlPlacement.LEFT || placement == com.kazumaproject.morse_keyboard.MorseControlPlacement.BOTH_SIDES) {
+            body.addView(controlRows(true), LinearLayout.LayoutParams((48f * resources.displayMetrics.density).roundToInt(), -1))
+        }
+        val pads = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+        val labels = if (settings.style == com.kazumaproject.morse_keyboard.MorseInputStyle.STRAIGHT) listOf("・")
+            else if (settings.reverse) listOf("－", "・") else listOf("・", "－")
+        labels.forEach { label ->
+            pads.addView(TextView(ctx).apply { text = label; gravity = Gravity.CENTER; styleKey(this, SkinKeyRole.CHARACTER, false) }, LinearLayout.LayoutParams(0, -1, 1f))
+        }
+        body.addView(pads, LinearLayout.LayoutParams(0, -1, 1f))
+        if (placement == com.kazumaproject.morse_keyboard.MorseControlPlacement.RIGHT) body.addView(controlRows(true), LinearLayout.LayoutParams((48f * resources.displayMetrics.density).roundToInt(), -1))
+        root.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
+        if (placement == com.kazumaproject.morse_keyboard.MorseControlPlacement.BOTTOM) root.addView(controlRows(false), LinearLayout.LayoutParams(-1, controlsHeight))
+        root.measure(MeasureSpec.makeMeasureSpec(width.roundToInt(), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height.roundToInt(), MeasureSpec.EXACTLY))
+        root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+        return listOf(PreviewItem(root, RectF(0f, 0f, width, height), PreviewGroup.SINGLE))
     }
 
     private fun createXmlKeys(ctx: Context, width: Float, height: Float, qwerty: Boolean): List<PreviewItem> {
@@ -396,7 +445,7 @@ internal class GeometryPreview(context: Context, private val keyboard: PreviewKe
         listOf(QwertyR.id.key_kuten, QwertyR.id.key_touten).forEach { root.findViewById<View>(it).visibility = if (AppPreference.qwerty_show_kutouten_buttons == true) VISIBLE else GONE }
         // This preview shows the English QWERTY state. The Japanese/English switch is only
         // present in the separate Romaji state.
-        root.findViewById<View>(QwertyR.id.switch_romaji_english).visibility = GONE
+        root.findViewById<View>(QwertyR.id.switch_romaji_english).visibility = if (keyboard == PreviewKeyboard.ROMAJI) VISIBLE else GONE
         root.findViewById<View>(QwertyR.id.switch_number_layout).visibility = if (AppPreference.qwerty_switch_number_key_without_number_preference) VISIBLE else GONE
         val set = ConstraintSet().apply { clone(root) }
         set.setGuidelinePercent(QwertyR.id.guideline_number_row, if (showNumber) .2f else 0f)

@@ -10,8 +10,6 @@ import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
-import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
-import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import org.junit.Assert.*
 import org.junit.Test
@@ -34,12 +32,11 @@ class KeyboardGeometryPreferencesTest {
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateWrapLongText)
         assertEquals(SideCandidateSizing.DEFAULT_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateSpacingDp)
-        assertTrue(store.read(GeometryKeyboard.TENKEY, false).showSegmentEditor)
+        assertEquals(12, store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalSpacingDp)
         val configured = KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.LEFT,
             sideCandidateWidthPercent = 40, sideCandidateVerticalText = true, sideCandidateRightToLeft = true,
             sideCandidateWrapLongText = true,
-            sideCandidateSpacingDp = 16,
-            showSegmentEditor = false)
+            sideCandidateSpacingDp = 16, sideCandidateVerticalSpacingDp = 24)
         store.save(GeometryKeyboard.TENKEY, false, configured)
         assertEquals(configured, store.read(GeometryKeyboard.TENKEY, false))
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, true))
@@ -48,12 +45,14 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.TENKEY, false))
         prefs.edit().putInt("keyboard_geometry_tenkey_portrait_candidate_width_percent", 999)
             .putInt("keyboard_geometry_tenkey_portrait_candidate_spacing_dp", 999)
+            .putInt("keyboard_geometry_tenkey_portrait_candidate_vertical_spacing_dp", 999)
             .putString("keyboard_geometry_tenkey_portrait_candidate_vertical_text", "invalid")
             .putString("keyboard_geometry_tenkey_portrait_candidate_right_to_left", "invalid").commit()
         assertEquals(SideCandidateSizing.MAX_PERCENT, store.read(GeometryKeyboard.TENKEY, false).sideCandidateWidthPercent)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalText)
         assertFalse(store.read(GeometryKeyboard.TENKEY, false).sideCandidateRightToLeft)
         assertEquals(SideCandidateSizing.MAX_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateSpacingDp)
+        assertEquals(SideCandidateSizing.MAX_VERTICAL_SPACING_DP, store.read(GeometryKeyboard.TENKEY, false).sideCandidateVerticalSpacingDp)
     }
 
     @Test fun sideWidthPreservesTheDefaultAndProtectsBothRegions() {
@@ -98,33 +97,24 @@ class KeyboardGeometryPreferencesTest {
         assertEquals(listOf("今\n↵", "日\n⇥"), verticalCandidateColumns("今\n日\t", 2))
     }
 
-    @Test fun settingsAreIndependentAndLegacyDefaultsRemainUnchanged() {
+    @Test fun oldCurvesAndCenterCandidatesAreIgnoredWithoutDeletingSavedValues() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val prefs = context.getSharedPreferences("geometry_test", Context.MODE_PRIVATE)
-        prefs.edit().clear().commit()
+        val prefs = context.getSharedPreferences("geometry_removed_features", Context.MODE_PRIVATE)
+        prefs.edit().clear()
+            .putInt("keyboard_geometry_qwerty_landscape_curve", 15)
+            .putInt("keyboard_geometry_qwerty_landscape_split", 20)
+            .putString("keyboard_geometry_qwerty_landscape_candidates", "CENTER")
+            .commit()
         val store = KeyboardGeometryPreferences(prefs)
-        val configured = KeyboardGeometryPreference(
-            KeyboardGeometry(splitPercent = 20, curveDegrees = 15, hand = KeyboardCurveHand.LEFT, autoHeight = false,
-                curveDirection = KeyboardCurveDirection.UP),
-            GeometryCandidatePlacement.CENTER,
-        )
-        store.save(GeometryKeyboard.QWERTY, true, configured)
-        assertEquals(configured, store.read(GeometryKeyboard.QWERTY, true))
+        val value = store.read(GeometryKeyboard.QWERTY, true)
+        assertEquals(20, value.geometry.splitPercent)
+        assertEquals(0, value.geometry.curveDegrees)
+        assertEquals(GeometryCandidatePlacement.TOP, value.candidates)
+        store.save(GeometryKeyboard.QWERTY, true, value.copy(geometry = value.geometry.copy(splitPercent = 25)))
+        assertEquals(15, prefs.getInt("keyboard_geometry_qwerty_landscape_curve", 0))
+        assertEquals("CENTER", prefs.getString("keyboard_geometry_qwerty_landscape_candidates", null))
+        assertEquals(25, store.read(GeometryKeyboard.QWERTY, true).geometry.splitPercent)
         assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.QWERTY, false))
-        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.SUMIRE, true))
-        store.reset(GeometryKeyboard.QWERTY, true)
-        assertEquals(KeyboardGeometryPreference(), store.read(GeometryKeyboard.QWERTY, true))
-    }
-
-    @Test fun absentOrInvalidCurveDirectionKeepsTheExistingDirection() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val prefs = context.getSharedPreferences("geometry_direction_test", Context.MODE_PRIVATE)
-        prefs.edit().clear().putInt("keyboard_geometry_qwerty_portrait_curve", 15).commit()
-        val store = KeyboardGeometryPreferences(prefs)
-        assertEquals(KeyboardCurveDirection.DOWN, store.read(GeometryKeyboard.QWERTY, false).geometry.curveDirection)
-        prefs.edit().putString("keyboard_geometry_qwerty_portrait_curve_direction", "invalid").commit()
-        assertEquals(KeyboardCurveDirection.DOWN, store.read(GeometryKeyboard.QWERTY, false).geometry.curveDirection)
-        assertEquals(15, store.read(GeometryKeyboard.QWERTY, false).geometry.curveDegrees)
     }
 
     @Test fun invalidCandidateModesCannotLeakBetweenKeyboardTypes() {
@@ -153,10 +143,12 @@ class KeyboardGeometryPreferencesTest {
         host.show(Rect(100, 20, 230, 260))
         assertTrue(host.attached)
         assertEquals(RecyclerView.VERTICAL, (recycler.layoutManager as LinearLayoutManager).orientation)
+        assertTrue(recycler.parent is android.widget.HorizontalScrollView)
         assertNotSame(originalParent, recycler.parent)
         val originalDecorations = recycler.itemDecorationCount
         val density = context.resources.displayMetrics.density
         host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true)
+        assertFalse(recycler.parent is android.widget.HorizontalScrollView)
         val flow = recycler.layoutManager as SideCandidateFlowLayoutManager
         assertEquals(View.LAYOUT_DIRECTION_LTR, flow.layoutDirection)
         assertTrue(flow.canScrollHorizontally())
@@ -166,18 +158,26 @@ class KeyboardGeometryPreferencesTest {
         val offsets = Rect()
         decoration.getItemOffsets(offsets, View(context), recycler, RecyclerView.State())
         assertEquals((4 * density).roundToInt(), offsets.right)
-        assertEquals((4 * density).roundToInt(), offsets.bottom)
-        host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true, spacingDp = 20)
+        assertEquals((12 * density).roundToInt(), offsets.bottom)
+        host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true,
+            spacingDp = 20, verticalSpacingDp = 30)
         offsets.setEmpty()
         decoration.getItemOffsets(offsets, View(context), recycler, RecyclerView.State())
         assertEquals((20 * density).roundToInt(), offsets.left)
-        assertEquals((20 * density).roundToInt(), offsets.bottom)
+        assertEquals((30 * density).roundToInt(), offsets.bottom)
         assertEquals(0, offsets.right)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = true)
-        assertSame(flow, recycler.layoutManager)
+        assertTrue(recycler.layoutManager is SideCandidateFlowLayoutManager)
         host.show(Rect(0, 0, (80 * density).toInt(), 260), verticalText = false)
+        assertTrue(recycler.parent is android.widget.HorizontalScrollView)
         assertFalse(recycler.layoutManager is SideCandidateFlowLayoutManager)
         assertEquals(originalDecorations, recycler.itemDecorationCount)
+        host.show(Rect(0, 0, (80 * density).toInt(), 260), horizontalSpacingDp = 20)
+        assertTrue(recycler.parent is android.widget.HorizontalScrollView)
+        assertEquals(originalDecorations + 1, recycler.itemDecorationCount)
+        val centerOffsets = Rect()
+        recycler.getItemDecorationAt(originalDecorations).getItemOffsets(centerOffsets, View(context), recycler, RecyclerView.State())
+        assertEquals((20 * density).roundToInt(), centerOffsets.bottom)
         host.show(Rect(0, 0, (220 * density).toInt(), 260), verticalText = true, rightToLeft = true)
         assertEquals(View.LAYOUT_DIRECTION_RTL, (recycler.layoutManager as SideCandidateFlowLayoutManager).layoutDirection)
         assertTrue(host.detach())
@@ -202,29 +202,6 @@ class KeyboardGeometryPreferencesTest {
         scaled.pivotX = 0f; scaled.pivotY = 0f; scaled.scaleX = .5f; scaled.scaleY = .5f
         body.layout(40, 60, 240, 260)
         assertEquals(Rect(40, 70, 140, 170), geometryBoundsInHost(body, host, RectF(0f, 0f, 200f, 200f)))
-    }
-
-    @Test fun segmentBarUsesTheKeyboardBodyBoundsOnEitherSide() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val root = FrameLayout(context)
-        val row = androidx.constraintlayout.widget.ConstraintLayout(context)
-        val body = View(context)
-        val bar = View(context)
-        root.addView(row)
-        root.addView(body)
-        row.addView(bar, androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(0, 40))
-        root.layout(0, 0, 400, 400)
-        row.layout(0, 0, 400, 80)
-        body.layout(80, 80, 400, 380)
-        alignSegmentBarToKeyboardBody(bar, body, emptyList())
-        var params = bar.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
-        assertEquals(80, params.leftMargin)
-        assertEquals(0, params.rightMargin)
-        body.layout(0, 80, 320, 380)
-        alignSegmentBarToKeyboardBody(bar, body, emptyList())
-        params = bar.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
-        assertEquals(0, params.leftMargin)
-        assertEquals(80, params.rightMargin)
     }
 
     @Test fun candidateTouchExclusionFollowsScaledFloatingAncestors() {

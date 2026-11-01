@@ -408,6 +408,7 @@ class SuggestionAdapter internal constructor(
     private var sideCandidateWrapLongText = false
     private var sideCandidateRightToLeft = false
     private var sideCandidateSpacingDp = SideCandidateSizing.DEFAULT_SPACING_DP
+    private var sideCandidateVerticalSpacingDp = SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP
     private var candidateTextColor: Int? = null
     private var candidateDividerColor: Int? = null
     private var candidateDividerVerticalMarginDp: Int? = null
@@ -423,16 +424,20 @@ class SuggestionAdapter internal constructor(
         enabled: Boolean, columnWidth: Int = 0, panelHeight: Int = 0, panelWidth: Int = 0,
         wrapLongText: Boolean = false, rightToLeft: Boolean = false,
         spacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
+        verticalSpacingDp: Int = SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP,
     ) {
         val width = if (enabled) columnWidth else 0
         val height = if (enabled) panelHeight else 0
         val fullWidth = if (enabled) panelWidth else 0
         val spacing = if (enabled) spacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP)
             else SideCandidateSizing.DEFAULT_SPACING_DP
+        val verticalSpacing = if (enabled) verticalSpacingDp.coerceIn(0, SideCandidateSizing.MAX_VERTICAL_SPACING_DP)
+            else SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP
         if (sideCandidateVerticalText == enabled && sideCandidateColumnWidth == width &&
             sideCandidatePanelHeight == height && sideCandidatePanelWidth == fullWidth &&
             sideCandidateWrapLongText == (enabled && wrapLongText) &&
-            sideCandidateRightToLeft == (enabled && rightToLeft) && sideCandidateSpacingDp == spacing) return
+            sideCandidateRightToLeft == (enabled && rightToLeft) && sideCandidateSpacingDp == spacing &&
+            sideCandidateVerticalSpacingDp == verticalSpacing) return
         sideCandidateVerticalText = enabled
         sideCandidateColumnWidth = width
         sideCandidatePanelHeight = height
@@ -440,6 +445,7 @@ class SuggestionAdapter internal constructor(
         sideCandidateWrapLongText = enabled && wrapLongText
         sideCandidateRightToLeft = enabled && rightToLeft
         sideCandidateSpacingDp = spacing
+        sideCandidateVerticalSpacingDp = verticalSpacing
         val busy = attachedRecyclerViews.keys.firstOrNull { it.isComputingLayout }
         if (busy != null) busy.post { if (!released) notifyDataSetChanged() } else notifyDataSetChanged()
     }
@@ -1608,8 +1614,9 @@ class SuggestionAdapter internal constructor(
         }
         divider?.visibility = View.GONE
         val spacing = (sideCandidateSpacingDp * root.resources.displayMetrics.density).toInt()
-        val availableHeight = (sideCandidatePanelHeight - spacing).coerceAtLeast(1)
-        val availableTextHeight = (availableHeight - root.paddingTop - root.paddingBottom - spacing / 2).coerceAtLeast(1)
+        val verticalSpacing = (sideCandidateVerticalSpacingDp * root.resources.displayMetrics.density).toInt()
+        val availableHeight = (sideCandidatePanelHeight - verticalSpacing).coerceAtLeast(1)
+        val availableTextHeight = (availableHeight - root.paddingTop - root.paddingBottom - verticalSpacing / 2).coerceAtLeast(1)
         // Rich presentations retain their own rendering and occupy a whole column.
         if (candidate.presentation != null) {
             if (sideCandidatePanelHeight > 0) root.minimumHeight = maxOf(state.itemMinHeight, availableHeight)

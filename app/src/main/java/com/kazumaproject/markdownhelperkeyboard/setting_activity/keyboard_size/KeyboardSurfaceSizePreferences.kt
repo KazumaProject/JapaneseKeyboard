@@ -2,8 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size
 
 import android.content.SharedPreferences
 
-/** The Sumire and TenKey surfaces deliberately share the legacy TenKey slot. */
-enum class KeyboardSurfaceSizeTarget { TENKEY, QWERTY, GOJUON, CUSTOM }
+enum class KeyboardSurfaceSizeTarget { TENKEY, QWERTY, GOJUON, CUSTOM, SUMIRE, MORSE, ROMAJI }
 
 class KeyboardSurfaceSizePreferences(private val preferences: SharedPreferences) {
     private val independent = IndependentKeyboardSizePreferences(preferences)
@@ -43,6 +42,9 @@ class KeyboardSurfaceSizePreferences(private val preferences: SharedPreferences)
         private fun independentTarget(target: KeyboardSurfaceSizeTarget) = when (target) {
             KeyboardSurfaceSizeTarget.GOJUON -> IndependentKeyboardSizeTarget.GOJUON
             KeyboardSurfaceSizeTarget.CUSTOM -> IndependentKeyboardSizeTarget.CUSTOM
+            KeyboardSurfaceSizeTarget.SUMIRE -> IndependentKeyboardSizeTarget.SUMIRE
+            KeyboardSurfaceSizeTarget.MORSE -> IndependentKeyboardSizeTarget.MORSE
+            KeyboardSurfaceSizeTarget.ROMAJI -> IndependentKeyboardSizeTarget.ROMAJI
             else -> null
         }
 
