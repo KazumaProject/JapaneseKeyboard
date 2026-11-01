@@ -3,6 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/settings_related_settings">
+
+        <Preference android:key="setting_route_candidate_display" android:title="@string/candidate_display_title" android:summary="@string/candidate_display_summary" />
         <Preference
             android:key="setting_route_canonical_settings_common_candidates"
             android:title="@string/settings_common_candidates_title"

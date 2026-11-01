@@ -1042,6 +1042,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             "setting_route_keyboard_display" to R.id.keyboardDisplayPreferenceFragment,
             "setting_route_input_method" to R.id.inputMethodPreferenceFragment,
             "setting_route_candidate_conversion" to R.id.candidateConversionPreferenceFragment,
+            "setting_route_candidate_display" to R.id.candidateDisplayPreferenceFragment,
             "setting_route_conversion_engine" to R.id.conversionEnginePreferenceFragment,
             "setting_route_utility_candidates" to R.id.utilityCandidatePreferenceFragment,
             "setting_route_dictionary" to R.id.dictionaryPreferenceFragment,

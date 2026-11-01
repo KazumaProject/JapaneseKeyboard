@@ -38,16 +38,6 @@
 
         <Preference android:key="key_popup_text_color_preference" android:title="@string/key_popup_text_color_title" />
 
-        <Preference android:key="theme_custom_candidate_text_color" android:title="@string/theme_custom_candidate_text_color" />
-
-        <Preference android:key="theme_custom_candidate_item_bg_color" android:title="@string/theme_custom_candidate_item_bg_color" />
-
-        <Preference android:key="theme_custom_candidate_item_pressed_bg_color" android:title="@string/theme_custom_candidate_item_pressed_bg_color" />
-
-        <Preference android:key="theme_custom_candidate_empty_popup_bg_color" android:title="@string/theme_custom_candidate_empty_popup_bg_color" />
-
-        <Preference android:key="theme_custom_candidate_empty_popup_text_color" android:title="@string/theme_custom_candidate_empty_popup_text_color" />
-
         <Preference android:key="theme_custom_shortcut_icon_color" android:title="@string/theme_custom_shortcut_icon_color" />
 
         <Preference android:key="theme_custom_input_color_enable" android:title="@string/custom_input_color_enable_title" />
@@ -68,22 +58,15 @@
         android:summary="@string/settings_theme_text_summary">
 
         <Preference
-            android:key="settings_theme_enable_live_conversion_link"
-            android:title="@string/settings_theme_enable_live_conversion"
-            android:summary="@string/settings_theme_enable_live_conversion_summary" />
-
-        <Preference
             android:key="settings_theme_enable_composing_guide_link"
             android:title="@string/settings_theme_enable_composing_guide"
             android:summary="@string/settings_theme_enable_composing_guide_summary" />
 
-        <Preference android:key="local_font_settings_preference" android:title="@string/local_font_title" />
 
-        <Preference
-            android:icon="@drawable/outline_border_color_24"
-            android:key="keyboard_key_letter_size_fragment_preference"
-            android:title="@string/key_candidate_letter_size_preference_title"
-            app:summary="@string/key_candidate_letter_size_preference_summary" />
+
+        <Preference android:key="setting_route_candidate_display" android:title="@string/candidate_display_title" android:summary="@string/candidate_display_summary" />
+
+        <Preference android:key="local_font_settings_preference" android:title="@string/local_font_title" />
 
         <SwitchPreferenceCompat
             android:key="composing_guide_show_live_reading"
@@ -96,49 +79,6 @@
             android:title="@string/composing_guide_text_size"
             android:max="56"
             app:min="18"
-            app:showSeekBarValue="true" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="candidate_character_type_labels_preference"
-            android:title="@string/candidate_character_type_labels_title"
-            android:summary="@string/candidate_character_type_labels_summary" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="candidate_character_type_indicators_preference"
-            android:title="@string/candidate_character_indicators_title"
-            android:summary="@string/candidate_character_indicators_summary" />
-
-        <Preference
-            android:key="candidate_indicator_style_settings"
-            android:title="@string/candidate_indicator_settings"
-            android:summary="@string/candidate_indicator_settings_summary" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="live_conversion_candidate_yomi_preference"
-            android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
-            android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
-            android:title="@string/live_conversion_candidate_yomi_title" />
-
-        <ListPreference
-            android:defaultValue="whole"
-            android:dependency="live_conversion_candidate_yomi_preference"
-            android:entries="@array/live_conversion_candidate_yomi_mode_entries"
-            android:entryValues="@array/live_conversion_candidate_yomi_mode_values"
-            android:key="live_conversion_candidate_yomi_mode_preference"
-            android:title="@string/live_conversion_candidate_yomi_mode_title"
-            app:useSimpleSummaryProvider="true" />
-
-        <SeekBarPreference
-            android:defaultValue="14"
-            android:dependency="live_conversion_candidate_yomi_preference"
-            android:key="live_conversion_candidate_yomi_size_preference"
-            android:max="24"
-            android:summary="@string/live_conversion_candidate_yomi_size_summary"
-            android:title="@string/live_conversion_candidate_yomi_size_title"
-            app:min="1"
             app:showSeekBarValue="true" />
 
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
