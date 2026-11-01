@@ -1,13 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.navigation.fragment.findNavController
 import androidx.core.os.bundleOf
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
@@ -19,8 +17,6 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navi
 import androidx.preference.PreferenceScreen
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
-import com.afollestad.materialdialogs.MaterialDialog
-import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -53,16 +49,6 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
         private const val PREF_KEY_CUSTOM_SPECIAL_KEY = "theme_custom_special_key_color"
         private const val PREF_KEY_CUSTOM_TEXT = "theme_custom_key_text_color"
         private const val PREF_KEY_CUSTOM_SPECIAL_TEXT = "theme_custom_special_key_text_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_TEXT =
-            "theme_custom_candidate_text_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG =
-            "theme_custom_candidate_item_bg_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG =
-            "theme_custom_candidate_item_pressed_bg_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG =
-            "theme_custom_candidate_empty_popup_bg_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT =
-            "theme_custom_candidate_empty_popup_text_color"
         private const val PREF_KEY_CUSTOM_SHORTCUT_ICON =
             "theme_custom_shortcut_icon_color"
 
@@ -261,45 +247,6 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
             true
         }
 
-        val customCandidateTextPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_TEXT,
-            context.getString(R.string.theme_custom_candidate_text_color)
-        ) { appPreference.custom_theme_candidate_text_color }
-        customCategory.addPreference(customCandidateTextPref)
-
-        val customCandidateItemBgPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG,
-            context.getString(R.string.theme_custom_candidate_item_bg_color)
-        ) { appPreference.custom_theme_candidate_item_bg_color }
-        customCategory.addPreference(customCandidateItemBgPref)
-
-        val customCandidateItemPressedBgPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG,
-            context.getString(R.string.theme_custom_candidate_item_pressed_bg_color)
-        ) {
-            appPreference.getCustomThemeCandidateItemPressedBgColor(
-                ContextCompat.getColor(context, com.kazumaproject.core.R.color.qwety_key_bg_color)
-            )
-        }
-        customCategory.addPreference(customCandidateItemPressedBgPref)
-
-        val customCandidateEmptyPopupBgPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG,
-            context.getString(R.string.theme_custom_candidate_empty_popup_bg_color)
-        ) { appPreference.custom_theme_candidate_empty_popup_bg_color }
-        customCategory.addPreference(customCandidateEmptyPopupBgPref)
-
-        val customCandidateEmptyPopupTextPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT,
-            context.getString(R.string.theme_custom_candidate_empty_popup_text_color)
-        ) { appPreference.custom_theme_candidate_empty_popup_text_color }
-        customCategory.addPreference(customCandidateEmptyPopupTextPref)
-
         val customShortcutIconPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SHORTCUT_ICON,
@@ -466,10 +413,6 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
         super.onPreferencesReady(savedInstanceState, rootKey)
         updateCheckStates(appPreference.theme_mode)
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
-        findPreference<Preference>("settings_theme_enable_live_conversion_link")?.setOnPreferenceClickListener {
-            navigateSafely(R.id.conversionEnginePreferenceFragment, bundleOf(ARG_HIGHLIGHT_PREFERENCE_KEY to "live_conversion_preference"))
-            true
-        }
         findPreference<Preference>("settings_theme_enable_composing_guide_link")?.setOnPreferenceClickListener {
             navigateSafely(R.id.legacyCommonPreferenceFragment, bundleOf(ARG_HIGHLIGHT_PREFERENCE_KEY to "composing_guide_text_enabled"))
             true
@@ -488,9 +431,7 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
             PREF_KEY_LIQUID_GLASS_BLUR, PREF_KEY_LIQUID_GLASS_KEY_ALPHA, PREF_KEY_CUSTOM_BG,
             PREF_KEY_CUSTOM_KEY, PREF_KEY_CUSTOM_SPECIAL_KEY, PREF_KEY_CUSTOM_TEXT,
             PREF_KEY_CUSTOM_SPECIAL_TEXT, PREF_KEY_POPUP_USE_CUSTOM_COLOR, PREF_KEY_POPUP_BACKGROUND_COLOR,
-            PREF_KEY_POPUP_TEXT_COLOR, PREF_KEY_CUSTOM_CANDIDATE_TEXT, PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG,
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG, PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG,
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT, PREF_KEY_CUSTOM_SHORTCUT_ICON,
+            PREF_KEY_POPUP_TEXT_COLOR, PREF_KEY_CUSTOM_SHORTCUT_ICON,
             PREF_KEY_CUSTOM_BORDER_ENABLE, PREF_KEY_CUSTOM_BORDER_COLOR, PREF_KEY_CUSTOM_BORDER_WIDTH)
         for (key in skinDependent) {
             val enabledByParent = when (key) {
@@ -506,7 +447,7 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
     }
 
     private val dependencyListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "composing_guide_text_enabled" || key == "live_conversion_preference") syncCrossScreenDependencies()
+        if (key == "composing_guide_text_enabled") syncCrossScreenDependencies()
         if (key != null && (key.startsWith("keyboard_touch_effect_") || key.startsWith("theme_") || key.startsWith("liquid_glass_") || key.startsWith("key_popup_"))) syncSearchAvailability()
     }
 
@@ -526,9 +467,6 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
         findPreference<Preference>("composing_guide_show_live_reading")?.isEnabled = composingEnabled
         findPreference<Preference>("composing_guide_text_size_setting")?.isEnabled = composingEnabled
         findPreference<Preference>("settings_theme_enable_composing_guide_link")?.conditionVisible = !composingEnabled
-        val liveEnabled = prefs.getBoolean("live_conversion_preference", false)
-        findPreference<Preference>("live_conversion_candidate_yomi_preference")?.isEnabled = liveEnabled
-        findPreference<Preference>("settings_theme_enable_live_conversion_link")?.conditionVisible = !liveEnabled
     }
 
     private fun syncSearchAvailability() {
@@ -621,11 +559,6 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
         findPreference<Preference>(PREF_KEY_POPUP_USE_CUSTOM_COLOR)?.conditionVisible = isVisible
         findPreference<Preference>(PREF_KEY_POPUP_BACKGROUND_COLOR)?.conditionVisible = isVisible
         findPreference<Preference>(PREF_KEY_POPUP_TEXT_COLOR)?.conditionVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_TEXT)?.conditionVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG)?.conditionVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG)?.conditionVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG)?.conditionVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT)?.conditionVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SHORTCUT_ICON)?.conditionVisible = isVisible
 
         // Border Settings
@@ -646,16 +579,6 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
             PREF_KEY_CUSTOM_TEXT -> appPreference.custom_theme_key_text_color = color
             PREF_KEY_CUSTOM_SPECIAL_TEXT -> appPreference.custom_theme_special_key_text_color =
                 color
-            PREF_KEY_CUSTOM_CANDIDATE_TEXT -> appPreference.custom_theme_candidate_text_color =
-                color
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG ->
-                appPreference.custom_theme_candidate_item_bg_color = color
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG ->
-                appPreference.custom_theme_candidate_item_pressed_bg_color = color
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG ->
-                appPreference.custom_theme_candidate_empty_popup_bg_color = color
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT ->
-                appPreference.custom_theme_candidate_empty_popup_text_color = color
             PREF_KEY_CUSTOM_SHORTCUT_ICON -> appPreference.custom_theme_shortcut_icon_color =
                 color
 
@@ -675,72 +598,6 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
         }
     }
 
-    @SuppressLint("CheckResult")
-    private fun showColorPickerDialog(initialColor: Int, onColorSelected: (Int) -> Unit) {
-        MaterialDialog(requireContext()).show {
-            title(text = getString(R.string.keyboard_theme_dialog_title_2))
-            colorChooser(
-                colors = intArrayOf(
-                    0x00000000,
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.char_in_edit_color
-                    ),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.orange),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.violet),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.violet_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.violet_dark
-                    ),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.mint),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.mint_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.mint_dark
-                    ),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.sky),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.sky_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.sky_dark
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.orange2
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.orange_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.orange_dark
-                    ),
-                    android.graphics.Color.WHITE,
-                    android.graphics.Color.BLACK,
-                    android.graphics.Color.DKGRAY,
-                    android.graphics.Color.LTGRAY,
-                    "#1C1C1E".toColorInt(),
-                    "#1E2022".toColorInt()
-                ),
-                initialSelection = initialColor,
-                allowCustomArgb = true
-            ) { _, color ->
-                onColorSelected(color)
-            }
-            positiveButton(android.R.string.ok)
-            negativeButton(android.R.string.cancel)
-        }
-    }
+    private fun showColorPickerDialog(initialColor: Int, onColorSelected: (Int) -> Unit) =
+        showKeyboardThemeColorPicker(requireContext(), initialColor, onColorSelected)
 }

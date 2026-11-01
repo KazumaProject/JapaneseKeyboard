@@ -77,6 +77,29 @@ class SettingsBackupRepositoryTest {
     }
 
     @Test
+    fun roundTripPreservesCandidatePlacementGapAndAppearance() = runTest {
+        val store = com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreferences(preferences)
+        val keyboard = com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryKeyboard.TENKEY
+        val side = com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.KeyboardGeometryPreference(
+            candidates = com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryCandidatePlacement.LEFT,
+            sideCandidateWidthPercent = 40, sideCandidateVerticalText = true, sideCandidateVerticalSpacingDp = 24,
+        )
+        store.saveCandidateDisplay(keyboard, false, side)
+        store.saveQwertyGap(false, 30)
+        AppPreference.candidate_letter_size = 19.5f
+        AppPreference.candidate_character_type_labels_preference = false
+        val backup = backups.exportAllToJson()
+        store.resetCandidateDisplay(keyboard, false)
+        store.saveQwertyGap(false, 0)
+        AppPreference.candidate_letter_size = 14f
+        backups.importAllFromJson(backup)
+        assertEquals(side, store.read(keyboard, false))
+        assertEquals(30, store.read(com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry.GeometryKeyboard.QWERTY, false).geometry.splitPercent)
+        assertEquals(19.5f, AppPreference.candidate_letter_size!!, 0f)
+        assertFalse(AppPreference.candidate_character_type_labels_preference)
+    }
+
+    @Test
     fun importReplacesExistingToolbarRatherThanAppending() = runTest {
         shortcuts.updateShortcuts(listOf(ShortcutType.COPY, ShortcutType.PASTE))
         val json = backups.exportAllToJson()

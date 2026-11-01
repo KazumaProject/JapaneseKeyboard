@@ -23,6 +23,7 @@ class SettingJapaneseSearchTest {
             "フリック・トグル入力" to "flick_input_only_preference",
             "候補ハイライト時の削除キー動作" to "henkan_delete_key_action_preference",
             "日本語の予測変換" to "japanese_prediction_enable_preference",
+            "キー・変換候補の文字サイズ" to "keyboard_key_letter_size_fragment_preference",
         )
         for (scope in SettingSearchScope.entries) {
             val index = SettingSearchIndex.searchable(context, scope)

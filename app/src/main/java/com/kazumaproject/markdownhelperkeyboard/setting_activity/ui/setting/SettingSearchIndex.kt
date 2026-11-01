@@ -28,6 +28,7 @@ object SettingSearchIndex {
     )
     private val previousJapaneseTitles = mapOf(
         "candidate_tab_visibility_preference" to "変換候補タブ",
+        "keyboard_key_letter_size_fragment_preference" to "キー・変換候補の文字サイズ",
         "delete_key_flick_down_preference" to "削除キーの下フリック",
         "delete_key_flick_left_preference" to "削除キーの左フリック",
         "delete_key_flick_up_preference" to "削除キーの上フリック",
@@ -147,6 +148,7 @@ object SettingSearchIndex {
 
     private val highlightableDestinations = setOf(
         R.id.candidateIndicatorPreferenceFragment,
+        R.id.candidateDisplayPreferenceFragment,
         R.id.morsePreferenceFragment,
         R.id.splitKeyboardPreferenceFragment,
         R.id.keyboardDisplayPreferenceFragment,
@@ -172,7 +174,7 @@ object SettingSearchIndex {
             SettingDestinations.management(context) +
             SettingDestinations.frequentCandidates(context)
         val xmlItems = preferenceXmlDestinations(context)
-        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment)
+        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
         val official = xmlItems.filter { SettingDestinations.destinationId(it.destination) in officialIds }
         return (official + topLevel + xmlItems).distinctBy { it.key }
     }
@@ -241,10 +243,13 @@ object SettingSearchIndex {
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
+        val candidateItems = readPreferenceXml(context, PreferenceXmlSource(
+            R.xml.pref_candidate_display, R.id.candidateDisplayPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
+        )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
         val indicatorItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
-        return (listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { it.key }
+        return (candidateItems + listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { it.key }
     }
 
     fun search(
@@ -416,6 +421,7 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_split_keyboard, R.id.splitKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_voice_input, R.id.voiceInputPreferenceFragment, SettingCategory.VOICE_INPUT))
+        add(PreferenceXmlSource(R.xml.pref_candidate_display, R.id.candidateDisplayPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_utility_candidate, R.id.utilityCandidatePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
@@ -483,6 +489,7 @@ object SettingSearchIndex {
                         if (
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
+                            key != "candidate_display_preview" &&
                             !key.startsWith("setting_route_canonical_") &&
                             !key.startsWith("settings_theme_enable_") &&
                             !key.startsWith("settings_theme_unavailable_") &&
@@ -492,7 +499,7 @@ object SettingSearchIndex {
                             val title = readTextAttribute(context, parser, "title")
                                 .ifBlank { key }
                             val summary = readSummary(context, parser)
-                            val isOfficial = source.xmlRes in setOf(R.xml.pref_common_legacy, R.xml.pref_theme, R.xml.pref_conversion_engine)
+                            val isOfficial = source.xmlRes in setOf(R.xml.pref_common_legacy, R.xml.pref_theme, R.xml.pref_conversion_engine, R.xml.pref_candidate_display)
                             val destinationId = if (isOfficial) source.destinationId else
                                 SettingDestinations.routeDestinationId(key) ?: source.destinationId
                             val highlightKey =
