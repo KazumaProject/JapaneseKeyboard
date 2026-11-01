@@ -8,7 +8,7 @@
     <string name="morse_tap">二本指タップ</string>
     <string name="morse_straight">一本指・縦振り</string>
     <string name="morse_wpm_title">パドル速度（WPM）</string>
-    <string name="morse_auto_title">文字の自動区切り</string>
+    <string name="morse_auto_title">モールス信号を自動で文字に区切る</string>
     <string name="morse_boundary_title">文字区切りの待ち時間（ms）</string>
     <string name="morse_threshold_title">縦振りで線と判定する時間（ms）</string>
     <string name="morse_layout_title">パッド配置</string>
@@ -18,7 +18,7 @@
     <string name="morse_height_title">パッドの高さ（%）</string>
     <string name="morse_gap_title">パッドの間隔（dp）</string>
     <string name="morse_feedback_title">音と振動</string>
-    <string name="morse_sound_title">モールス音</string>
+    <string name="morse_sound_title">モールス信号の音を鳴らす</string>
     <string name="morse_frequency_title">音程（Hz）</string>
     <string name="morse_volume_title">音量（%）</string>
     <string name="morse_vibration_title">符号ごとに振動</string>
@@ -70,7 +70,7 @@
     <string name="morse_control_placement">補助キーの配置</string>
     <string name="morse_control_placement_value">補助キー：%1$s</string>
     <string-array name="morse_control_placements"><item>パッドの下</item><item>パッドの上</item><item>パッドの左</item><item>パッドの右</item><item>パッドを挟んで左右</item></string-array>
-    <string name="morse_beginner_guide_title">初心者ガイドの開閉キー</string>
+    <string name="morse_beginner_guide_title">初心者ガイドの開閉キーを表示</string>
     <string name="morse_beginner_guide_summary">マップ横に本のキーを表示します。押すとガイドを開閉でき、日本語は五十音順、英語はABC順に表示します。</string>
     <string name="morse_reorder_map">ドラッグして並べ替え</string>
     <string name="morse_map_actions">マップの操作</string>

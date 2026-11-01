@@ -1,0 +1,37 @@
+<resources>
+    <string name="candidate_display_title">変換候補の表示</string>
+    <string name="candidate_display_summary">候補の位置・大きさ・文字・色をプレビューで確認</string>
+    <string name="candidate_display_preview_options">プレビュー</string>
+    <string name="candidate_display_orientation">画面の向き</string>
+    <string name="candidate_display_position">選択中のキーボードと画面の候補位置</string>
+    <string name="candidate_display_unavailable">左右への配置はかな・すみれで使えます。フロート候補、分割キーボード、幅の狭い画面では通常の位置に表示されます。</string>
+    <string name="candidate_display_width">候補欄の幅（%）</string>
+    <string name="candidate_display_vertical">候補を縦書きにする</string>
+    <string name="candidate_display_spacing">縦書きの列の間隔（dp）</string>
+    <string name="candidate_display_line_spacing">縦書きの候補の間隔（dp）</string>
+    <string name="candidate_display_reset_position">このキーボード・画面の候補位置をリセット</string>
+    <string name="candidate_display_height_tabs">高さ・列数・タブ</string>
+    <string name="candidate_display_text">候補の文字とラベル</string>
+    <string name="candidate_display_text_size">候補の文字サイズ</string>
+    <string name="candidate_display_text_size_summary">すべてのキーボードの候補文字の大きさを変更</string>
+    <string name="candidate_display_reset_text">キーと候補の文字サイズをリセット</string>
+    <string name="candidate_display_reset_text_summary">キーと変換候補の文字サイズを両方とも初期値に戻します。</string>
+    <string name="candidate_display_colors">候補の色</string>
+    <string name="candidate_display_enable_colors">対応するカスタムテーマを選ぶ</string>
+    <string name="candidate_display_enable_colors_summary">標準スキンのカスタムテーマで候補の色を変更できます。</string>
+    <string name="candidate_display_reset_confirm">設定を初期値に戻しますか？</string>
+    <string name="qwerty_gap_title">QWERTY 中央の間隔</string>
+    <string name="qwerty_gap_summary">左右のキーの間隔を変更</string>
+    <string name="candidate_display_examples">候補の見た目のプレビュー</string>
+    <string name="candidate_display_reset_gap">間隔をリセット</string>
+    <string-array name="candidate_display_keyboard_entries"><item>かな</item><item>すみれ</item><item>QWERTY</item><item>ローマ字</item></string-array>
+    <string-array name="candidate_display_orientation_entries"><item>縦画面</item><item>横画面</item></string-array>
+    <string-array name="candidate_display_placement_entries"><item>上</item><item>左</item><item>右</item></string-array>
+    <string name="candidate_display_reset_height">高さと候補の文字サイズをリセット</string>
+    <string name="candidate_display_tab_prediction">予測</string>
+    <string name="candidate_display_tab_conversion">変換</string>
+    <string name="candidate_display_tab_alphanumeric">英数カナ</string>
+    <string name="candidate_display_unavailable_title">左右配置を使える条件</string>
+    <string name="candidate_display_enable_vertical">候補の縦書きを有効にする</string>
+    <string name="candidate_display_enable_vertical_summary">この設定は候補を縦書きにすると使えます。</string>
+</resources>

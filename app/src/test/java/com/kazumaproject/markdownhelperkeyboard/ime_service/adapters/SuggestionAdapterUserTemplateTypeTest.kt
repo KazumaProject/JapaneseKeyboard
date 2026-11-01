@@ -53,7 +53,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         adapter.suggestions = listOf(candidate("分類語", 1).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PERSON_ACTOR)))
         awaitItemCount(adapter, 1)
         adapter.onBindViewHolder(holder, 0)
-        assertEquals("[${holder.itemView.context.getString(com.kazumaproject.markdownhelperkeyboard.R.string.classified_label_person_actor)}]", holder.typeText.text.toString())
+        assertEquals("[俳優]", holder.typeText.text.toString())
         adapter.suggestions = emptyList()
         awaitItemCount(adapter, 0)
         adapter.suggestions = listOf(candidate("123", 23))
@@ -157,7 +157,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         awaitItemCount(adapter, 3)
         val holder = createHolder(adapter)
 
-        val expected = listOf(holder.itemView.context.getString(R.string.candidate_label_learned), holder.itemView.context.getString(R.string.candidate_label_user), holder.itemView.context.getString(R.string.candidate_label_template))
+        val expected = listOf("[学習]", "[ユーザー]", "[定型]")
         expected.forEachIndexed { position, label ->
             adapter.onBindViewHolder(holder, position)
             assertEquals(label, holder.typeText.text.toString())
@@ -177,7 +177,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         val holder = createHolder(adapter)
 
         adapter.onBindViewHolder(holder, 0)
-        assertEquals(holder.itemView.context.getString(R.string.candidate_label_template), holder.typeText.text.toString())
+        assertEquals("[定型]", holder.typeText.text.toString())
 
         adapter.setShowDictionaryCandidateLabels(false)
         adapter.onBindViewHolder(holder, 0)
@@ -211,9 +211,9 @@ class SuggestionAdapterUserTemplateTypeTest {
         val holder = createHolder(adapter)
 
         adapter.onBindViewHolder(holder, 0)
-        assertEquals("[Calc]", holder.typeText.text.toString())
+        assertEquals("[計算]", holder.typeText.text.toString())
         adapter.onBindViewHolder(holder, 1)
-        assertEquals("[Convert]", holder.typeText.text.toString())
+        assertEquals("[換算]", holder.typeText.text.toString())
         adapter.release()
     }
 

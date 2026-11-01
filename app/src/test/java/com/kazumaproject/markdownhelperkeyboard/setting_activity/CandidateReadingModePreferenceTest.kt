@@ -25,8 +25,8 @@ class CandidateReadingModePreferenceTest {
         AppPreference.init(context)
     }
 
-    @Test fun bothSettingsScreensOfferTheSameModesAndDependOnTheReadingSwitch() {
-        for (resource in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
+    @Test fun candidateScreenOffersModesDependingOnTheReadingSwitch() {
+        for (resource in listOf(R.xml.pref_candidate_display)) {
             val manager = PreferenceManager(context)
             val screen = manager.inflateFromResource(context, resource, null)
             manager.setPreferences(screen)
@@ -40,7 +40,6 @@ class CandidateReadingModePreferenceTest {
             assertEquals("whole", mode.value)
             screen.onAttached()
             assertFalse(mode.isEnabled)
-            screen.findPreference<SwitchPreferenceCompat>("live_conversion_preference")!!.isChecked = true
             show.isChecked = true
             assertTrue(mode.isEnabled)
             mode.value = "ruby"

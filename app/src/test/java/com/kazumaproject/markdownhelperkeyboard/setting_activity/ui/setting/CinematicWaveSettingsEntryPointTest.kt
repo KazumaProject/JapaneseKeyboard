@@ -16,14 +16,14 @@ import org.xmlpull.v1.XmlPullParser
 class CinematicWaveSettingsEntryPointTest {
 
     @Test
-    fun cinematicWaveSettingsExistInNewAndLegacyPreferenceXml() {
+    fun cinematicWaveSettingsHaveOneThemeEditingLocation() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val newKeys = preferenceKeys(context, R.xml.pref_keyboard_display)
-        val legacyKeys = preferenceKeys(context, R.xml.pref_common_legacy)
+        val themeKeys = preferenceKeys(context, R.xml.pref_theme)
+        val oldKeys = preferenceKeys(context, R.xml.pref_keyboard_display)
 
         requiredCinematicWaveKeys.forEach { key ->
-            assertTrue("Missing $key in pref_keyboard_display.xml", key in newKeys)
-            assertTrue("Missing $key in pref_common_legacy.xml", key in legacyKeys)
+            assertTrue("Missing $key in pref_theme.xml", key in themeKeys)
+            assertTrue("Duplicated $key in pref_keyboard_display.xml", key !in oldKeys)
         }
     }
 

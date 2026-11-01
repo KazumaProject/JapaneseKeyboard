@@ -167,6 +167,7 @@ object KeyboardDefaultLayouts {
      * Creates the final keyboard layout based on the mode and dynamic key states.
      * @param mode The keyboard input mode (HIRAGANA, ENGLISH, etc.).
      * @param dynamicKeyStates A map of dynamic key states [keyId: String, stateIndex: Int].
+     * @param highlightSelectedMode Retain the built-in mode selection highlight.
      * @return The final, state-applied KeyboardLayout.
      */
     fun createFinalLayout(
@@ -176,7 +177,8 @@ object KeyboardDefaultLayouts {
         inputStyle: String,
         deleteKeyFlickSettings: DeleteKeyFlickSettings = DeleteKeyFlickSettings(),
         tfbiFlickRotation: TfbiFlickRotation = TfbiFlickRotation.DEFAULT,
-        sumireFlickInputMode: SumireFlickInputMode = SumireFlickInputMode.ALL
+        sumireFlickInputMode: SumireFlickInputMode = SumireFlickInputMode.ALL,
+        highlightSelectedMode: Boolean = true
     ): KeyboardLayout {
         val baseLayout = when (inputLayoutType) {
             "toggle" -> {
@@ -289,6 +291,16 @@ object KeyboardDefaultLayouts {
         }
         dynamicKeyStates.forEach { (keyId, stateIndex) ->
             finalLayout = applyKeyState(finalLayout, keyId, stateIndex)
+        }
+
+        if (!highlightSelectedMode) {
+            finalLayout = finalLayout.copyWithKeys(finalLayout.keys.map { key ->
+                when (key.action) {
+                    KeyAction.SwitchToKanaLayout, KeyAction.SwitchToEnglishLayout,
+                    KeyAction.SwitchToNumberLayout -> key.copy(isHiLighted = false)
+                    else -> key
+                }
+            })
         }
 
         return ensureSumireSpecialKeyCrossFlickAttach(

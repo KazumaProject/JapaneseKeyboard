@@ -26,6 +26,68 @@ object SettingSearchIndex {
         val configuration: Configuration,
         val destinations: List<SettingDestination>,
     )
+    private val previousJapaneseTitles = mapOf(
+        "candidate_tab_visibility_preference" to "変換候補タブ",
+        "keyboard_key_letter_size_fragment_preference" to "キー・変換候補の文字サイズ",
+        "delete_key_flick_down_preference" to "削除キーの下フリック",
+        "delete_key_flick_left_preference" to "削除キーの左フリック",
+        "delete_key_flick_up_preference" to "削除キーの上フリック",
+        "emoji_candidate_enable_preference" to "絵文字の変換候補",
+        "emoticon_candidate_enable_preference" to "顔文字の変換候補",
+        "enable_typo_correction_japanese_flick_keyboard_preference" to "フリック（日本語）",
+        "enable_typo_correction_qwerty_english_keyboard_preference" to "QWERTY（英語）",
+        "english_prediction_enable_preference" to "英語の予測変換",
+        "english_reading_dictionary_enable_preference" to "英語読み辞書",
+        "external_mozc_prediction_enable_preference" to "外部Mozc辞書",
+        "flick_input_only_preference" to "フリック・トグル入力",
+        "floating_cursor_enabled" to "カーソル・トラックパッドフロート",
+        "henkan_delete_key_action_preference" to "候補ハイライト時の削除キー動作",
+        "hide_candidate_password_preference" to "パスワード入力時の変換候補",
+        "incremental_conversion_session_preference" to "セッション型変換エンジン",
+        "japanese_prediction_enable_preference" to "日本語の予測変換",
+        "keyboard_floating_preference" to "フローティングキーボード",
+        "landscape_force_qwerty_romaji_preference" to "横画面 QWERTY の入力モード",
+        "live_conversion_preference" to "ライブ変換 β",
+        "morse_auto_boundary" to "文字の自動区切り",
+        "morse_beginner_guide" to "初心者ガイドの開閉キー",
+        "morse_sound" to "モールス音",
+        "omission_search_preference" to "修飾キー省略入力",
+        "proverb_prediction_enable_preference" to "ことわざ辞書",
+        "qwerty_english_space_flick_preference" to "スペースキーのフリック",
+        "qwerty_glide_input_preference" to "英語 QWERTY のグライド入力 β",
+        "qwerty_romaji_hankaku_number_preference" to "ローマ字入力時の半角数字",
+        "qwerty_romaji_hankaku_symbol_preference" to "ローマ字入力時の半角記号",
+        "qwerty_romaji_space_flick_preference" to "スペースキーのフリック",
+        "qwerty_romaji_zenkaku_space_preference" to "ローマ字キーボードの全角スペース",
+        "qwerty_show_cursor_buttons_preference" to "カーソルボタン",
+        "qwerty_show_emoji_button_preference" to "絵文字ボタン",
+        "qwerty_show_kutouten_buttons_preference" to "句読点ボタン",
+        "qwerty_show_number_keys_buttons_preference" to "数字キー",
+        "reading_correction_prediction_enable_preference" to "読み補正辞書",
+        "shortcut_toolbar_integrated_in_suggestion_preference" to "ショートカットを候補欄に統合",
+        "shortcut_toolbar_visibility_preference" to "ショートカットツールバー",
+        "show_learned_candidates_in_incognito_preference" to "シークレットモード中の学習済み候補",
+        "sumire_keymap_guide_english" to "英語モードのキーガイド",
+        "sumire_keymap_guide_japanese" to "日本語モードのキーガイド",
+        "sumire_keymap_guide_number" to "数字モードのキーガイド",
+        "switch_qwerty_keyboard_password_preference" to "パスワード入力時",
+        "symbol_candidate_enable_preference" to "記号の変換候補",
+        "symbol_emoji_prediction_enable_preference" to "記号・絵文字・顔文字",
+        "system_dictionary_prediction_enable_preference" to "システム辞書の予測変換",
+        "system_user_dictionary_prediction_enable_preference" to "システムユーザー辞書",
+        "tenkey_keymap_guide" to "日本語モードのキーガイド",
+        "tenkey_keymap_guide_english" to "英語モードのキーガイド",
+        "tenkey_keymap_guide_number" to "数字モードのキーガイド",
+        "tenkey_space_flick_preference" to "スペースキーのフリック",
+        "learn_prediction_preference" to "予測変換",
+        "user_dictionary_prefix_match_number" to "予測変換",
+        "learn_dictionary_prediction_candidate_limit_preference" to "予測候補数",
+        "user_dictionary_prediction_candidate_limit_preference" to "予測候補数",
+        "undo_enable_preference" to "元に戻す機能",
+        "voice_input_space_replacement_enabled" to "半角スペースの自動置換",
+        "zero_query_suggestion_preference" to "確定後の後続語候補",
+    )
+
     private val extraKeywordsByKey = mapOf(
         "floating_keyboard_hide_button_position" to listOf(
             "floating", "hide", "arrow", "position", "フローティング", "下向き矢印", "やじるし", "隠す", "位置",
@@ -86,6 +148,7 @@ object SettingSearchIndex {
 
     private val highlightableDestinations = setOf(
         R.id.candidateIndicatorPreferenceFragment,
+        R.id.candidateDisplayPreferenceFragment,
         R.id.morsePreferenceFragment,
         R.id.splitKeyboardPreferenceFragment,
         R.id.keyboardDisplayPreferenceFragment,
@@ -103,6 +166,7 @@ object SettingSearchIndex {
         R.id.zenzPreferenceFragment,
         R.id.gemmaPreferenceFragment,
         R.id.legacyCommonPreferenceFragment,
+        R.id.keyboardThemeFragment,
     )
 
     fun searchable(context: Context): List<SettingDestination> {
@@ -110,10 +174,9 @@ object SettingSearchIndex {
             SettingDestinations.management(context) +
             SettingDestinations.frequentCandidates(context)
         val xmlItems = preferenceXmlDestinations(context)
-        return (topLevel + xmlItems).distinctBy { destination ->
-            val targetId = SettingDestinations.destinationId(destination.destination)
-            "${destination.key}:${destination.category}:$targetId"
-        }
+        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
+        val official = xmlItems.filter { SettingDestinations.destinationId(it.destination) in officialIds }
+        return (official + topLevel + xmlItems).distinctBy { it.key }
     }
 
     fun searchable(
@@ -180,13 +243,13 @@ object SettingSearchIndex {
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
+        val candidateItems = readPreferenceXml(context, PreferenceXmlSource(
+            R.xml.pref_candidate_display, R.id.candidateDisplayPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
+        )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
         val indicatorItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
-        return (listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { destination ->
-            val legacyTarget = destination.legacyTarget
-            "${legacyTarget?.tabKey}:${destination.key}:${legacyTarget?.destinationId}"
-        }
+        return (candidateItems + listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { it.key }
     }
 
     fun search(
@@ -239,13 +302,7 @@ object SettingSearchIndex {
             ?.takeIf { it.configuration == configuration }
             ?.let { return it.destinations }
 
-        val destinations = sources().flatMap { source ->
-            val items = readPreferenceXml(context, source)
-            // New settings routes must resolve to the operation screen, not its legacy duplicate.
-            if (source.xmlRes == R.xml.pref_common_legacy) {
-                items.filterNot { it.key == AppPreference.INDEPENDENT_MULTI_TOUCH_KEY }
-            } else items
-        }
+        val destinations = sources().flatMap { source -> readPreferenceXml(context, source) }
         destinationCache = DestinationCache(configuration, destinations)
         return destinations
     }
@@ -356,15 +413,17 @@ object SettingSearchIndex {
         }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
-        add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
+        add(PreferenceXmlSource(R.xml.pref_theme, R.id.keyboardThemeFragment, SettingCategory.KEYBOARD_DISPLAY))
+        add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
+        add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
         add(PreferenceXmlSource(R.xml.pref_split_keyboard, R.id.splitKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_voice_input, R.id.voiceInputPreferenceFragment, SettingCategory.VOICE_INPUT))
+        add(PreferenceXmlSource(R.xml.pref_candidate_display, R.id.candidateDisplayPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
-        add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_utility_candidate, R.id.utilityCandidatePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_dictionary, R.id.dictionaryPreferenceFragment, SettingCategory.DICTIONARY))
         add(PreferenceXmlSource(R.xml.pref_ai_conversion, R.id.aiConversionPreferenceFragment, SettingCategory.AI_CONVERSION))
@@ -422,18 +481,26 @@ object SettingSearchIndex {
         val parser = context.resources.getXml(source.xmlRes)
         return parser.use {
             buildList {
+                val headings = ArrayDeque<String>()
                 while (parser.eventType != XmlPullParser.END_DOCUMENT) {
                     if (parser.eventType == XmlPullParser.START_TAG) {
+                        if (parser.isPreferenceCategory()) headings.addLast(readTextAttribute(context, parser, "title"))
                         val key = parser.getAttributeValue(ANDROID_NS, "key")
                         if (
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
+                            key != "candidate_display_preview" &&
+                            !key.startsWith("setting_route_canonical_") &&
+                            !key.startsWith("settings_theme_enable_") &&
+                            !key.startsWith("settings_theme_unavailable_") &&
+                            !key.startsWith("settings_engine_enable_") &&
                             !parser.isPreferenceCategoryOrScreen()
                         ) {
                             val title = readTextAttribute(context, parser, "title")
                                 .ifBlank { key }
                             val summary = readSummary(context, parser)
-                            val destinationId =
+                            val isOfficial = source.xmlRes in setOf(R.xml.pref_common_legacy, R.xml.pref_theme, R.xml.pref_conversion_engine, R.xml.pref_candidate_display)
+                            val destinationId = if (isOfficial) source.destinationId else
                                 SettingDestinations.routeDestinationId(key) ?: source.destinationId
                             val highlightKey =
                                 key.takeIf {
@@ -446,22 +513,24 @@ object SettingSearchIndex {
                                     title = title,
                                     summary = summary,
                                     category = source.category,
-                                    keywords = buildKeywords(key, title, summary),
+                                    keywords = buildKeywords(key, title, summary) + headings,
                                     destinationId = destinationId,
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = highlightKey,
-                                    destinationType = readDestinationType(
+                                    destinationType = if (isOfficial) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
                                         context = context,
                                         parser = parser,
                                         key = key,
                                         destinationId = destinationId,
                                         highlightPreferenceKey = highlightKey,
                                     ),
+                                    location = headings.filter { it.isNotBlank() }.joinToString(" › ").ifBlank { null },
                                 )
                             )
                         }
                     }
+                    if (parser.eventType == XmlPullParser.END_TAG && parser.isPreferenceCategory() && headings.isNotEmpty()) headings.removeLast()
                     parser.next()
                 }
             }
@@ -476,13 +545,18 @@ object SettingSearchIndex {
         val location = context.getString(R.string.setting_search_legacy_location, source.tabTitle)
         return parser.use {
             buildList {
+                val headings = ArrayDeque<String>()
                 while (parser.eventType != XmlPullParser.END_DOCUMENT) {
                     if (parser.eventType == XmlPullParser.START_TAG) {
+                        if (parser.isPreferenceCategory()) headings.addLast(readTextAttribute(context, parser, "title"))
                         val key = parser.getAttributeValue(ANDROID_NS, "key")
                         if (
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
-                            !key.startsWith("setting_route_") &&
+                            (!key.startsWith("setting_route_") || key == "setting_route_utility_candidates") &&
+                            !key.startsWith("settings_theme_enable_") &&
+                            !key.startsWith("settings_theme_unavailable_") &&
+                            !key.startsWith("settings_engine_enable_") &&
                             !parser.isPreferenceCategoryOrScreen()
                         ) {
                             val title = readTextAttribute(context, parser, "title")
@@ -503,7 +577,7 @@ object SettingSearchIndex {
                                     title = title,
                                     summary = summary,
                                     category = source.category,
-                                    keywords = buildKeywords(key, title, summary),
+                                    keywords = buildKeywords(key, title, summary) + headings,
                                     destinationId = source.destinationId,
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
@@ -514,11 +588,12 @@ object SettingSearchIndex {
                                     ),
                                     legacyTarget = legacyTarget,
                                     searchScope = SettingSearchScope.LEGACY_TABS,
-                                    location = location,
+                                    location = (listOf(location) + headings.filter { it.isNotBlank() }).joinToString(" › "),
                                 )
                             )
                         }
                     }
+                    if (parser.eventType == XmlPullParser.END_TAG && parser.isPreferenceCategory() && headings.isNotEmpty()) headings.removeLast()
                     parser.next()
                 }
             }
@@ -529,6 +604,26 @@ object SettingSearchIndex {
         buildList {
             if (key == "shortcut_toolbar_integrated_in_suggestion_preference") {
                 add("shortcut_toolbar_visibility_preference")
+            }
+            if (key.startsWith("live_conversion_candidate_yomi_")) add("settings_theme_enable_live_conversion_link")
+            if (key == "composing_guide_show_live_reading" || key == "composing_guide_text_size_setting") add("settings_theme_enable_composing_guide_link")
+            if (key in setOf("enable_prediction_search_learn_dictionary_preference", "learn_prediction_preference", "learn_dictionary_prediction_candidate_limit_preference")) add("settings_engine_enable_learning_dictionary_link")
+            if (key in setOf("user_dictionary_prefix_match_number", "user_dictionary_prediction_candidate_limit_preference")) add("settings_engine_enable_user_dictionary_link")
+            if (key.startsWith("keyboard_touch_effect_") && key != "keyboard_touch_effect_type_preference") {
+                add("settings_theme_unavailable_effects")
+                add("keyboard_touch_effect_type_preference")
+            }
+            if (key.startsWith("theme_custom_") || key.startsWith("key_popup_")) {
+                add("theme_custom")
+                add("settings_theme_unavailable_colors")
+                add("settings_theme_unavailable_corners")
+            }
+            if (key.startsWith("theme_custom_border_")) add("theme_custom_border_enable")
+            if (key.startsWith("key_popup_")) add("key_popup_use_custom_color_preference")
+            if (key.startsWith("theme_custom_pre_edit_") || key.startsWith("theme_custom_post_edit_")) add("theme_custom_input_color_enable")
+            if (key.startsWith("liquid_glass_")) {
+                add("liquid_glass_preference")
+                add("settings_theme_unavailable_effects")
             }
             if (key.startsWith("keyboard_touch_effect_cinematic_wave_")) {
                 add("keyboard_touch_effect_type_preference")
@@ -784,6 +879,9 @@ object SettingSearchIndex {
             else -> false
         }
 
+    private fun XmlResourceParser.isPreferenceCategory(): Boolean =
+        name.substringAfterLast('.') in setOf("PreferenceCategory", "CollapsiblePreferenceCategory")
+
     private fun buildKeywords(
         key: String,
         title: String,
@@ -793,6 +891,7 @@ object SettingSearchIndex {
             add(key)
             add(title)
             add(summary)
+            previousJapaneseTitles[key]?.let(::add)
             addAll(key.split('_', '-', '.'))
             addAll(extraKeywordsByKey[key].orEmpty())
         }

@@ -135,6 +135,7 @@ object AppPreference {
     const val TFBI_DIAGONAL_RECOGNITION_MODE_KEY = "tfbi_diagonal_recognition_mode_preference"
     const val SUMIRE_FLICK_ROTATION_KEY = "sumire_flick_rotation_preference"
     const val SUMIRE_FLICK_INPUT_MODE_KEY = "sumire_flick_input_mode_preference"
+    const val SUMIRE_MODE_KEY_HIGHLIGHT_KEY = "sumire_mode_key_highlight_preference"
     const val FLICK_TFBI_POPUP_PRESENTATION_KEY = "flick_tfbi_popup_presentation_preference"
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
         "flick_tfbi_flick_start_position_preference"
@@ -1030,6 +1031,7 @@ object AppPreference {
                 appContext.codeCacheDir.setReadOnly()
                 isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
                 loadedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences.migrate(preferences)
                 migrateCandidateHeightDefaultsIfNeeded()
                 removeUnsafeLegacyGemmaHandwritingPrompt()
                 migratePredictionLookaheadPreferenceIfNeeded()
@@ -1951,6 +1953,10 @@ object AppPreference {
             it.putString(SUMIRE_FLICK_INPUT_MODE_KEY, value.preferenceValue)
         }
 
+    var sumire_mode_key_highlight_preference: Boolean
+        get() = preferences.getBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, false)
+        set(value) = preferences.edit { it.putBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, value) }
+
     var hierarchical_flick_mode_switch_angle_margin_preference: Int
         get() = preferences.getInt(
             HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.first,
@@ -2429,6 +2435,13 @@ object AppPreference {
         get() = com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.CandidateIndicatorSettings.read(preferences)
 
     const val CANDIDATE_CHARACTER_INDICATORS_KEY = "candidate_character_type_indicators_preference"
+    const val CANDIDATE_CHARACTER_TYPE_LABELS_KEY = "candidate_character_type_labels_preference"
+
+    var candidate_character_type_labels_preference: Boolean
+        get() = preferences.getBoolean(CANDIDATE_CHARACTER_TYPE_LABELS_KEY, true)
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_CHARACTER_TYPE_LABELS_KEY, value)
+        }
 
     var candidate_character_type_indicators_preference: Boolean
         get() = preferences.getBoolean(CANDIDATE_CHARACTER_INDICATORS_KEY, false)
@@ -5266,6 +5279,7 @@ object AppPreference {
         }
         migrateSumireKeymapGuideModesIfNeeded()
         migrateGojuonKeyboardTypeIfNeeded()
+        com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences.migrate(preferences)
         return backup.shortcutIds
     }
 

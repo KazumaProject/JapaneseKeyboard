@@ -1964,4 +1964,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="mushroom_failed">Could not open the Mushroom app</string>
     <string name="mushroom_target_changed">The input field could not be verified. Mushroom result was not inserted.</string>
     <string name="mushroom_unsupported">Mushroom is unavailable in this input field</string>
+    <string name="sumire_mode_key_highlight_title">Keep the selected mode key highlighted</string>
+    <string name="sumire_mode_key_highlight_summary">In the flick key layout, keep the current Hiragana, English, or Number mode key highlighted after switching modes.</string>
 </resources>
