@@ -1,8 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_geometry
 
 import android.content.SharedPreferences
-import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
-import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
 import com.kazumaproject.core.ui.geometry.KeyboardGeometry
 import kotlin.math.roundToInt
 
@@ -17,7 +15,8 @@ data class KeyboardGeometryPreference(
     val sideCandidateRightToLeft: Boolean = false,
     val sideCandidateWrapLongText: Boolean = false,
     val sideCandidateSpacingDp: Int = SideCandidateSizing.DEFAULT_SPACING_DP,
-    val showSegmentEditor: Boolean = true,
+    val sideCandidateVerticalSpacingDp: Int = SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP,
+    val centerCandidateSpacingDp: Int = 0,
 )
 
 /** Size rules only; settings previews and IME views remain separate. */
@@ -27,6 +26,8 @@ object SideCandidateSizing {
     const val DEFAULT_PERCENT = 25
     const val DEFAULT_SPACING_DP = 4
     const val MAX_SPACING_DP = 32
+    const val DEFAULT_VERTICAL_SPACING_DP = 12
+    const val MAX_VERTICAL_SPACING_DP = 48
 
     fun width(surfaceWidth: Int, density: Float, percent: Int): Int {
         if (surfaceWidth < (256f * density).toInt()) return 0
@@ -68,20 +69,14 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
         val p = prefix(keyboard, landscape)
         fun int(name: String, default: Int) = runCatching { preferences.getInt("${p}_$name", default) }.getOrDefault(default)
         fun string(name: String, default: String) = runCatching { preferences.getString("${p}_$name", default) }.getOrNull() ?: default
-        val hand = runCatching { KeyboardCurveHand.valueOf(string("hand", "RIGHT")) }.getOrDefault(KeyboardCurveHand.RIGHT)
-        val direction = runCatching { KeyboardCurveDirection.valueOf(string("curve_direction", "DOWN")) }.getOrDefault(KeyboardCurveDirection.DOWN)
         val placement = runCatching { GeometryCandidatePlacement.valueOf(string("candidates", "TOP")) }.getOrDefault(GeometryCandidatePlacement.TOP)
         val allowed = when (keyboard) {
-            GeometryKeyboard.QWERTY -> placement == GeometryCandidatePlacement.CENTER || placement == GeometryCandidatePlacement.TOP
+            GeometryKeyboard.QWERTY -> placement == GeometryCandidatePlacement.TOP
             else -> placement != GeometryCandidatePlacement.CENTER
         }
         return KeyboardGeometryPreference(
             geometry = KeyboardGeometry(
                 splitPercent = if (keyboard == GeometryKeyboard.QWERTY) int("split", 0) else 0,
-                curveDegrees = int("curve", 0),
-                hand = hand,
-                autoHeight = runCatching { preferences.getBoolean("${p}_auto_height", true) }.getOrDefault(true),
-                curveDirection = direction,
             ).normalized(),
             candidates = if (allowed) placement else GeometryCandidatePlacement.TOP,
             sideCandidateWidthPercent = int("candidate_width_percent", SideCandidateSizing.DEFAULT_PERCENT)
@@ -91,7 +86,10 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
             sideCandidateWrapLongText = runCatching { preferences.getBoolean("${p}_candidate_wrap_long_text", false) }.getOrDefault(false),
             sideCandidateSpacingDp = int("candidate_spacing_dp", SideCandidateSizing.DEFAULT_SPACING_DP)
                 .coerceIn(0, SideCandidateSizing.MAX_SPACING_DP),
-            showSegmentEditor = runCatching { preferences.getBoolean("${p}_segment_editor", true) }.getOrDefault(true),
+            sideCandidateVerticalSpacingDp = int("candidate_vertical_spacing_dp", SideCandidateSizing.DEFAULT_VERTICAL_SPACING_DP)
+                .coerceIn(0, SideCandidateSizing.MAX_VERTICAL_SPACING_DP),
+            centerCandidateSpacingDp = int("center_candidate_spacing_dp", 0)
+                .coerceIn(0, SideCandidateSizing.MAX_SPACING_DP),
         )
     }
 
@@ -100,19 +98,17 @@ class KeyboardGeometryPreferences(private val preferences: SharedPreferences) {
         val value = preference.geometry.normalized()
         val placement = preference.candidates.takeIf {
             it == GeometryCandidatePlacement.TOP ||
-                (keyboard == GeometryKeyboard.QWERTY && it == GeometryCandidatePlacement.CENTER) ||
                 (keyboard != GeometryKeyboard.QWERTY && it in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT))
         } ?: GeometryCandidatePlacement.TOP
-        preferences.edit().putInt("${p}_split", if (keyboard == GeometryKeyboard.QWERTY) value.splitPercent else 0)
-            .putInt("${p}_curve", value.curveDegrees).putString("${p}_hand", value.hand.name)
-            .putString("${p}_curve_direction", value.curveDirection.name)
-            .putBoolean("${p}_auto_height", value.autoHeight).putString("${p}_candidates", placement.name)
+        val editor = preferences.edit().putInt("${p}_split", if (keyboard == GeometryKeyboard.QWERTY) value.splitPercent else 0)
             .putInt("${p}_candidate_width_percent", preference.sideCandidateWidthPercent.coerceIn(SideCandidateSizing.MIN_PERCENT, SideCandidateSizing.MAX_PERCENT))
             .putBoolean("${p}_candidate_vertical_text", preference.sideCandidateVerticalText)
             .putBoolean("${p}_candidate_right_to_left", preference.sideCandidateRightToLeft)
             .putBoolean("${p}_candidate_wrap_long_text", preference.sideCandidateWrapLongText)
             .putInt("${p}_candidate_spacing_dp", preference.sideCandidateSpacingDp.coerceIn(0, SideCandidateSizing.MAX_SPACING_DP))
-            .putBoolean("${p}_segment_editor", preference.showSegmentEditor).apply()
+            .putInt("${p}_candidate_vertical_spacing_dp", preference.sideCandidateVerticalSpacingDp.coerceIn(0, SideCandidateSizing.MAX_VERTICAL_SPACING_DP))
+        if (keyboard != GeometryKeyboard.QWERTY) editor.putString("${p}_candidates", placement.name)
+        editor.apply()
     }
 
     fun reset(keyboard: GeometryKeyboard, landscape: Boolean) = save(keyboard, landscape, KeyboardGeometryPreference())

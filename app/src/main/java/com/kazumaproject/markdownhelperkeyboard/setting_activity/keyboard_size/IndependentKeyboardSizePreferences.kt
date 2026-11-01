@@ -2,8 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size
 
 import android.content.SharedPreferences
 
-/** Size slots for keyboard types that used to share the TenKey-family settings. */
-enum class IndependentKeyboardSizeTarget { GOJUON, CUSTOM }
+/** Size slots for keyboard types that previously shared another keyboard's settings. */
+enum class IndependentKeyboardSizeTarget { GOJUON, CUSTOM, SUMIRE, MORSE, ROMAJI }
 
 /** Bottom margin is stored in screen pixels by the existing IME. Side margins and height are dp. */
 data class IndependentKeyboardSize(
@@ -46,7 +46,7 @@ class IndependentKeyboardSizePreferences(private val preferences: SharedPreferen
 
     companion object {
         const val KEY_PREFIX = "independent_keyboard_size_"
-        private const val MIGRATED_KEY = "independent_keyboard_size_migrated"
+        private const val MIGRATED_KEY = "independent_keyboard_size_v2_migrated"
 
         private fun prefix(target: IndependentKeyboardSizeTarget, landscape: Boolean) =
             "$KEY_PREFIX${target.name.lowercase()}_${if (landscape) "landscape" else "portrait"}"
@@ -58,15 +58,16 @@ class IndependentKeyboardSizePreferences(private val preferences: SharedPreferen
             val edit = preferences.edit()
             for (landscape in listOf(false, true)) {
                 val suffix = if (landscape) "_landscape_preference" else "_preference"
-                val legacy = IndependentKeyboardSize(
-                    heightDp = preferences.int("keyboard_height$suffix", 220),
-                    widthPercent = preferences.int("keyboard_width$suffix", 100),
-                    bottomMarginPx = preferences.int("keyboard_vertical_margin_bottom$suffix", 0),
-                    marginStartDp = preferences.int(if (landscape) "keyboard_margin_start_dp_landscape_preference" else "keyboard_margin_start_dp_preference", 0),
-                    marginEndDp = preferences.int(if (landscape) "keyboard_margin_end_dp_landscape_preference" else "keyboard_margin_end_dp_preference", 0),
-                    positionEnd = preferences.bool("keyboard_position$suffix", true),
-                )
                 for (target in IndependentKeyboardSizeTarget.entries) {
+                    val base = if (target == IndependentKeyboardSizeTarget.ROMAJI) "qwerty_keyboard" else "keyboard"
+                    val legacy = IndependentKeyboardSize(
+                        heightDp = preferences.int("${base}_height$suffix", 220),
+                        widthPercent = preferences.int("${base}_width$suffix", 100),
+                        bottomMarginPx = preferences.int("${base}_vertical_margin_bottom$suffix", 0),
+                        marginStartDp = preferences.int("${base}_margin_start_dp$suffix", 0),
+                        marginEndDp = preferences.int("${base}_margin_end_dp$suffix", 0),
+                        positionEnd = preferences.bool("${base}_position$suffix", true),
+                    )
                     val prefix = prefix(target, landscape)
                     fun putIntIfAbsent(name: String, value: Int) {
                         val key = "${prefix}_$name"

@@ -20,7 +20,8 @@ data class KeyboardGeometry(
 ) {
     fun normalized() = copy(
         splitPercent = splitPercent.coerceIn(0, MAX_SPLIT_PERCENT),
-        curveDegrees = curveDegrees.coerceIn(0, MAX_CURVE_DEGREES),
+        // Retain old preference data for backups, but never apply curved key geometry.
+        curveDegrees = 0,
     )
 
     val isDefault: Boolean get() = splitPercent <= 0 && curveDegrees <= 0

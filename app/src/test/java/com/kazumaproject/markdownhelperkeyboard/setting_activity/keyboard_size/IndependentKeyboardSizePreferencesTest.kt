@@ -25,15 +25,18 @@ class IndependentKeyboardSizePreferencesTest {
             .putBoolean("keyboard_position_preference", false)
             .putInt("keyboard_height_landscape_preference", 181)
             .putInt("keyboard_width_landscape_preference", 83)
+            .putInt("qwerty_keyboard_height_preference", 269)
+            .putInt("qwerty_keyboard_width_preference", 76)
             .commit()
         IndependentKeyboardSizePreferences.migrate(prefs)
         val store = IndependentKeyboardSizePreferences(prefs)
         val portrait = IndependentKeyboardSize(251, 71, 73, 12, 13, false)
         val landscape = IndependentKeyboardSize(181, 83, 0, 0, 0, true)
-        for (target in IndependentKeyboardSizeTarget.entries) {
+        for (target in IndependentKeyboardSizeTarget.entries.filterNot { it == IndependentKeyboardSizeTarget.ROMAJI }) {
             assertEquals(portrait, store.read(target, false))
             assertEquals(landscape, store.read(target, true))
         }
+        assertEquals(IndependentKeyboardSize(269, 76), store.read(IndependentKeyboardSizeTarget.ROMAJI, false))
         prefs.edit().putInt("keyboard_height_preference", 300).commit()
         val custom = portrait.copy(heightDp = 155)
         store.save(IndependentKeyboardSizeTarget.CUSTOM, false, custom)
@@ -53,6 +56,25 @@ class IndependentKeyboardSizePreferencesTest {
         assertEquals(310, store.read(IndependentKeyboardSizeTarget.GOJUON, false).heightDp)
         assertEquals(240, store.read(IndependentKeyboardSizeTarget.CUSTOM, false).heightDp)
         assertEquals(100, store.read(IndependentKeyboardSizeTarget.CUSTOM, false).widthPercent)
+    }
+
+    @Test fun existingVersionOneMigrationIsExtendedWithoutChangingExistingSlots() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("independent_sizes_v1", Context.MODE_PRIVATE)
+        prefs.edit().clear()
+            .putBoolean("independent_keyboard_size_migrated", true)
+            .putInt("keyboard_height_preference", 245)
+            .putInt("qwerty_keyboard_height_preference", 275)
+            .putInt("independent_keyboard_size_gojuon_portrait_height", 310)
+            .putInt("independent_keyboard_size_sumire_portrait_height", 315)
+            .commit()
+        val store = IndependentKeyboardSizePreferences(prefs)
+        assertEquals(310, store.read(IndependentKeyboardSizeTarget.GOJUON, false).heightDp)
+        assertEquals(315, store.read(IndependentKeyboardSizeTarget.SUMIRE, false).heightDp)
+        assertEquals(245, store.read(IndependentKeyboardSizeTarget.MORSE, false).heightDp)
+        assertEquals(275, store.read(IndependentKeyboardSizeTarget.ROMAJI, false).heightDp)
+        prefs.edit().putInt("keyboard_height_preference", 350).commit()
+        assertEquals(245, store.read(IndependentKeyboardSizeTarget.MORSE, false).heightDp)
     }
 
     @Test fun restoringAnOldBackupMigratesItAndNewBackupsKeepIndependentSizes() {

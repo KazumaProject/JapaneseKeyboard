@@ -44,8 +44,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.PreferenceManager
-import com.kazumaproject.core.ui.geometry.KeyboardCurveDirection
-import com.kazumaproject.core.ui.geometry.KeyboardCurveHand
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -63,7 +61,6 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navi
 import com.google.android.material.R as MaterialR
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -156,12 +153,15 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         val top = section()
         if (!dedicated) {
             top.addView(label(R.string.keyboard_layout_type))
-            val types = radio(listOf(1 to R.string.keyboard_layout_tenkey, 2 to R.string.keyboard_layout_qwerty, 3 to R.string.keyboard_layout_sumire))
+            val types = radio(listOf(1 to R.string.keyboard_layout_tenkey, 2 to R.string.keyboard_layout_qwerty,
+                3 to R.string.keyboard_layout_sumire, 4 to R.string.keyboard_layout_romaji, 5 to R.string.keyboard_layout_morse), vertical = true)
             types.id = R.id.keyboard_layout_type_selector
-            types.check(when (type) { PreviewKeyboard.QWERTY -> 2; PreviewKeyboard.SUMIRE -> 3; else -> 1 })
+            types.check(when (type) { PreviewKeyboard.QWERTY -> 2; PreviewKeyboard.SUMIRE -> 3; PreviewKeyboard.ROMAJI -> 4; PreviewKeyboard.MORSE -> 5; else -> 1 })
             top.addView(types)
             types.setOnCheckedChangeListener { _, id ->
-                type = when (id) { 2 -> PreviewKeyboard.QWERTY; 3 -> PreviewKeyboard.SUMIRE; else -> PreviewKeyboard.TENKEY }
+                type = when (id) { 2 -> PreviewKeyboard.QWERTY; 3 -> PreviewKeyboard.SUMIRE; 4 -> PreviewKeyboard.ROMAJI; 5 -> PreviewKeyboard.MORSE; else -> PreviewKeyboard.TENKEY }
+                if (type == PreviewKeyboard.MORSE) shapeTab = false
+                tabs.isVisible = type != PreviewKeyboard.MORSE
                 loadValues(); rebuildPreview(); buildBody()
             }
         }
@@ -172,6 +172,11 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
             val next = id == 2
             if (landscape != next) { landscape = next; loadValues(); setActivityOrientation(); rebuildPreview(); buildBody() }
         }
+        top.addView(MaterialButton(ctx, null, MaterialR.attr.materialButtonOutlinedStyle).apply {
+            isAllCaps = false
+            setText(R.string.keyboard_layout_split_settings)
+            setOnClickListener { navigateSafely(R.id.splitKeyboardPreferenceFragment) }
+        })
         customBox = section()
         customBox.isVisible = type == PreviewKeyboard.CUSTOM
         previewFrame = UnscaledPreviewFrame(ctx) { previewScreenWidth() }
@@ -185,7 +190,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         below.addView(TextView(ctx).apply { setText(R.string.keyboard_layout_drag_hint); setPadding(0, dp(4), 0, dp(8)) })
         tabs = radio(listOf(1 to R.string.keyboard_layout_size_tab, 2 to R.string.keyboard_layout_shape_tab))
         tabs.id = R.id.keyboard_layout_tab_selector; tabs.check(if (shapeTab) 2 else 1)
-        tabs.isVisible = !dedicated; below.addView(tabs)
+        tabs.isVisible = !dedicated && type != PreviewKeyboard.MORSE; below.addView(tabs)
         tabs.setOnCheckedChangeListener { _, id -> shapeTab = id == 2; buildBody() }
         body = LinearLayout(ctx).apply { this.orientation = LinearLayout.VERTICAL }
         below.addView(body)
@@ -230,12 +235,16 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     }
     private fun target() = when (type) {
         PreviewKeyboard.QWERTY -> KeyboardSurfaceSizeTarget.QWERTY
+        PreviewKeyboard.ROMAJI -> KeyboardSurfaceSizeTarget.ROMAJI
+        PreviewKeyboard.MORSE -> KeyboardSurfaceSizeTarget.MORSE
+        PreviewKeyboard.SUMIRE -> KeyboardSurfaceSizeTarget.SUMIRE
         PreviewKeyboard.GOJUON -> KeyboardSurfaceSizeTarget.GOJUON
         PreviewKeyboard.CUSTOM -> KeyboardSurfaceSizeTarget.CUSTOM
         else -> KeyboardSurfaceSizeTarget.TENKEY
     }
     private fun geometryTarget() = when (type) {
         PreviewKeyboard.QWERTY -> GeometryKeyboard.QWERTY
+        PreviewKeyboard.ROMAJI -> GeometryKeyboard.QWERTY
         PreviewKeyboard.TENKEY -> GeometryKeyboard.TENKEY
         PreviewKeyboard.SUMIRE -> GeometryKeyboard.SUMIRE
         else -> null
@@ -316,10 +325,8 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
         body.addView(header)
         if (type == PreviewKeyboard.CUSTOM) body.addView(TextView(requireContext()).apply { setText(R.string.keyboard_layout_custom_shared) })
-        body.addView(editCard(R.id.keyboard_layout_edit_size, R.string.keyboard_layout_edit_size,
-            R.string.keyboard_layout_edit_size_summary, R.drawable.composing_guide_edit, SizeEditMode.SIZE))
-        body.addView(editCard(R.id.keyboard_layout_edit_position, R.string.keyboard_layout_edit_position,
-            R.string.keyboard_layout_edit_position_summary, CoreR.drawable.arrows_output_24px, SizeEditMode.POSITION))
+        body.addView(editCard(R.id.keyboard_layout_edit_size, R.string.keyboard_layout_edit_combined,
+            R.string.keyboard_layout_edit_combined_summary, R.drawable.composing_guide_edit, SizeEditMode.BOTH))
         body.addView(label(R.string.keyboard_layout_alignment))
         val align = radio(listOf(1 to R.string.keyboard_layout_align_start, 2 to R.string.keyboard_layout_align_end))
         align.check(if (size.positionEnd) 2 else 1)
@@ -370,7 +377,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
             setPadding(dp(16), dp(4), dp(12), dp(4))
         }
         header.addView(TextView(ctx).apply {
-            setText(if (mode == SizeEditMode.SIZE) R.string.keyboard_layout_edit_size_hint else R.string.keyboard_layout_edit_position_hint)
+            setText(when (mode) { SizeEditMode.SIZE -> R.string.keyboard_layout_edit_size_hint; SizeEditMode.POSITION -> R.string.keyboard_layout_edit_position_hint; SizeEditMode.BOTH -> R.string.keyboard_layout_edit_combined_summary })
             textSize = 14f
         }, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(MaterialButton(ctx).apply {
@@ -417,31 +424,16 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         fun choices(heading: Int, options: List<Pair<Int, Int>>, checked: Int, viewId: Int = View.NO_ID, action: (Int) -> Unit) {
             body.addView(label(heading)); body.addView(radio(options, true).apply { id = viewId; check(checked); setOnCheckedChangeListener { _, id -> action(id) } })
         }
-        if (type == PreviewKeyboard.QWERTY) slider(R.string.keyboard_geometry_split, geometry.geometry.splitPercent, 40) {
+        if (type == PreviewKeyboard.QWERTY || type == PreviewKeyboard.ROMAJI) slider(R.string.keyboard_geometry_split, geometry.geometry.splitPercent, 40) {
             saveGeometry(geometry.copy(geometry = geometry.geometry.copy(splitPercent = it)))
         }
-        slider(R.string.keyboard_geometry_curve, geometry.geometry.curveDegrees, 25) {
-            saveGeometry(geometry.copy(geometry = geometry.geometry.copy(curveDegrees = it)))
-        }
-        choices(R.string.keyboard_geometry_curve_direction, listOf(1 to R.string.keyboard_geometry_curve_down, 2 to R.string.keyboard_geometry_curve_up),
-            if (geometry.geometry.curveDirection == KeyboardCurveDirection.UP) 2 else 1) {
-            saveGeometry(geometry.copy(geometry = geometry.geometry.copy(curveDirection = if (it == 2) KeyboardCurveDirection.UP else KeyboardCurveDirection.DOWN)))
-        }
-        if (type != PreviewKeyboard.QWERTY) choices(R.string.keyboard_geometry_hand,
-            listOf(1 to R.string.keyboard_geometry_right_hand, 2 to R.string.keyboard_geometry_left_hand),
-            if (geometry.geometry.hand == KeyboardCurveHand.LEFT) 2 else 1) {
-            saveGeometry(geometry.copy(geometry = geometry.geometry.copy(hand = if (it == 2) KeyboardCurveHand.LEFT else KeyboardCurveHand.RIGHT)))
-        }
-        choices(R.string.keyboard_geometry_height, listOf(1 to R.string.keyboard_geometry_height_auto, 2 to R.string.keyboard_geometry_height_fixed),
-            if (geometry.geometry.autoHeight) 1 else 2) { saveGeometry(geometry.copy(geometry = geometry.geometry.copy(autoHeight = it == 1))) }
-        val candidates = if (type == PreviewKeyboard.QWERTY) listOf(1 to R.string.keyboard_geometry_top, 2 to R.string.keyboard_geometry_center)
-            else listOf(1 to R.string.keyboard_geometry_top, 3 to R.string.keyboard_geometry_left, 4 to R.string.keyboard_geometry_right)
-        choices(R.string.keyboard_geometry_candidates, candidates, when (geometry.candidates) {
+        val candidates = listOf(1 to R.string.keyboard_geometry_top, 3 to R.string.keyboard_geometry_left, 4 to R.string.keyboard_geometry_right)
+        if (type == PreviewKeyboard.TENKEY || type == PreviewKeyboard.SUMIRE) choices(R.string.keyboard_geometry_candidates, candidates, when (geometry.candidates) {
             GeometryCandidatePlacement.TOP -> 1; GeometryCandidatePlacement.CENTER -> 2; GeometryCandidatePlacement.LEFT -> 3; GeometryCandidatePlacement.RIGHT -> 4
         }, viewId = R.id.keyboard_geometry_candidate_placement) {
             val oldSide = geometry.candidates in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)
             val placement = when (it) {
-                2 -> GeometryCandidatePlacement.CENTER; 3 -> GeometryCandidatePlacement.LEFT; 4 -> GeometryCandidatePlacement.RIGHT; else -> GeometryCandidatePlacement.TOP
+                3 -> GeometryCandidatePlacement.LEFT; 4 -> GeometryCandidatePlacement.RIGHT; else -> GeometryCandidatePlacement.TOP
             }
             saveGeometry(geometry.copy(candidates = placement))
             if (oldSide != (placement in setOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT))) buildBody()
@@ -477,6 +469,33 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 check(if (geometry.sideCandidateWrapLongText) 2 else 1)
                 setOnCheckedChangeListener { _, id -> saveGeometry(geometry.copy(sideCandidateWrapLongText = id == 2)) }
             }
+            val verticalSpacingLabel = TextView(ctx).apply {
+                text = getString(R.string.keyboard_geometry_candidate_vertical_spacing, geometry.sideCandidateVerticalSpacingDp)
+                setPadding(0, dp(8), 0, 0)
+                isVisible = geometry.sideCandidateVerticalText
+            }
+            val verticalSpacing = SeekBar(ctx).apply {
+                id = R.id.keyboard_geometry_candidate_vertical_spacing
+                max = SideCandidateSizing.MAX_VERTICAL_SPACING_DP
+                progress = geometry.sideCandidateVerticalSpacingDp
+                contentDescription = verticalSpacingLabel.text
+                isVisible = geometry.sideCandidateVerticalText
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar: SeekBar?, value: Int, fromUser: Boolean) {
+                        if (!fromUser) return
+                        verticalSpacingLabel.text = getString(R.string.keyboard_geometry_candidate_vertical_spacing, value)
+                        contentDescription = verticalSpacingLabel.text
+                        saveGeometry(geometry.copy(sideCandidateVerticalSpacingDp = value))
+                    }
+                    override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+                })
+            }
+            val verticalSpacingHint = TextView(ctx).apply {
+                setText(R.string.keyboard_geometry_candidate_vertical_spacing_hint)
+                textSize = 13f
+                isVisible = geometry.sideCandidateVerticalText
+            }
             val spacingLabel = TextView(ctx).apply {
                 text = getString(R.string.keyboard_geometry_candidate_spacing, geometry.sideCandidateSpacingDp)
                 setPadding(0, dp(8), 0, 0)
@@ -504,19 +523,6 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 textSize = 13f
                 isVisible = geometry.sideCandidateVerticalText
             }
-            val segmentEditor = MaterialSwitch(ctx).apply {
-                id = R.id.keyboard_geometry_segment_editor
-                setText(R.string.keyboard_geometry_segment_editor)
-                isChecked = geometry.showSegmentEditor
-                isVisible = geometry.sideCandidateVerticalText
-                setOnCheckedChangeListener { _, checked -> saveGeometry(geometry.copy(showSegmentEditor = checked)) }
-            }
-            val segmentEditorHint = TextView(ctx).apply {
-                setText(R.string.keyboard_geometry_segment_editor_hint)
-                textSize = 13f
-                setPadding(0, 0, 0, dp(8))
-                isVisible = geometry.sideCandidateVerticalText
-            }
             choices(R.string.keyboard_geometry_candidate_order,
                 listOf(1 to R.string.keyboard_geometry_candidate_order_horizontal, 2 to R.string.keyboard_geometry_candidate_order_vertical),
                 if (geometry.sideCandidateVerticalText) 2 else 1, R.id.keyboard_geometry_candidate_order) {
@@ -526,22 +532,24 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
                 direction.isVisible = it == 2
                 longCandidateLabel.isVisible = it == 2
                 longCandidateDisplay.isVisible = it == 2
+                verticalSpacingLabel.isVisible = it == 2
+                verticalSpacing.isVisible = it == 2
+                verticalSpacingHint.isVisible = it == 2
                 spacingLabel.isVisible = it == 2
                 spacing.isVisible = it == 2
                 spacingHint.isVisible = it == 2
-                segmentEditor.isVisible = it == 2
-                segmentEditorHint.isVisible = it == 2
             }
-            body.addView(segmentEditor)
-            body.addView(segmentEditorHint)
             body.addView(verticalHint)
+            body.addView(verticalSpacingLabel)
+            body.addView(verticalSpacing)
+            body.addView(verticalSpacingHint)
+            body.addView(spacingLabel)
+            body.addView(spacing)
+            body.addView(spacingHint)
             body.addView(directionLabel)
             body.addView(direction)
             body.addView(longCandidateLabel)
             body.addView(longCandidateDisplay)
-            body.addView(spacingLabel)
-            body.addView(spacing)
-            body.addView(spacingHint)
         }
         body.addView(MaterialButton(ctx, null, MaterialR.attr.materialButtonOutlinedStyle).apply { isAllCaps = false; setText(R.string.keyboard_layout_reset_shape); setOnClickListener {
             geometryTarget()?.let { geometries.reset(it, landscape) }; loadValues(); updatePreview(); buildBody()
@@ -677,7 +685,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     }
 }
 
-private enum class SizeEditMode { SIZE, POSITION }
+private enum class SizeEditMode { SIZE, POSITION, BOTH }
 
 /** The preview is a physical keyboard-sized surface even in a narrower settings window. */
 @SuppressLint("ViewConstructor")
@@ -754,6 +762,7 @@ private class SizeHandles(context: android.content.Context, private val preview:
         when (mode) {
             SizeEditMode.SIZE -> (2..5).forEach { edge -> drawResizeGrip(canvas, b, edge) }
             SizeEditMode.POSITION -> drawMoveHandle(canvas, handleCenter(b, 1))
+            SizeEditMode.BOTH -> { (2..5).forEach { edge -> drawResizeGrip(canvas, b, edge) }; drawMoveHandle(canvas, handleCenter(b, 1)) }
             null -> Unit
         }
     }
@@ -833,10 +842,11 @@ private class SizeHandles(context: android.content.Context, private val preview:
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         val hit = resizeTargetHalfDepth.roundToInt()
         val sideCenterY = handleCenter(bounds, 4).y
-        val top = (if (mode == SizeEditMode.POSITION) bounds.top else sideCenterY - resizeTargetHalfLength).roundToInt().coerceIn(0, height)
-        val bottom = (if (mode == SizeEditMode.POSITION) bounds.bottom else sideCenterY + resizeTargetHalfLength).roundToInt().coerceIn(top, height)
-        val leftNearEdge = if (mode == SizeEditMode.POSITION) bounds.left <= hit else handleCenter(bounds, 4).x - hit < hit
-        val rightNearEdge = if (mode == SizeEditMode.POSITION) width - bounds.right <= hit else width - handleCenter(bounds, 5).x - hit < hit
+        val movable = mode == SizeEditMode.POSITION || mode == SizeEditMode.BOTH
+        val top = (if (movable) bounds.top else sideCenterY - resizeTargetHalfLength).roundToInt().coerceIn(0, height)
+        val bottom = (if (movable) bounds.bottom else sideCenterY + resizeTargetHalfLength).roundToInt().coerceIn(top, height)
+        val leftNearEdge = if (movable) bounds.left <= hit else handleCenter(bounds, 4).x - hit < hit
+        val rightNearEdge = if (movable) width - bounds.right <= hit else width - handleCenter(bounds, 5).x - hit < hit
         val rects = buildList {
             if (mode != null && leftNearEdge) add(Rect(0, top, min(width, hit * 2), bottom))
             if (mode != null && rightNearEdge) add(Rect(max(0, width - hit * 2), top, width, bottom))
@@ -856,12 +866,11 @@ private class SizeHandles(context: android.content.Context, private val preview:
                 }
                 val edit = mode ?: return false
                 gesture = when {
-                    edit == SizeEditMode.POSITION && b.contains(event.x, event.y) -> 1
-                    edit != SizeEditMode.SIZE -> 0
-                    near(2) -> 2
-                    near(3) -> 3
-                    near(4) -> 4
-                    near(5) -> 5
+                    edit != SizeEditMode.POSITION && near(2) -> 2
+                    edit != SizeEditMode.POSITION && near(3) -> 3
+                    edit != SizeEditMode.POSITION && near(4) -> 4
+                    edit != SizeEditMode.POSITION && near(5) -> 5
+                    edit != SizeEditMode.SIZE && b.contains(event.x, event.y) -> 1
                     else -> 0
                 }
                 if (gesture == 0) return false
