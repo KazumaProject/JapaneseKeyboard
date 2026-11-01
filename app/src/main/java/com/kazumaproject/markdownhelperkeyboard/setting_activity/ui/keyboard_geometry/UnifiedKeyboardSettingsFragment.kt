@@ -337,9 +337,10 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     private fun editCard(id: Int, title: Int, description: Int, icon: Int, mode: SizeEditMode): View {
         val ctx = requireContext()
         return MaterialCardView(ctx).apply {
-            this.id = id; radius = dp(16).toFloat(); strokeWidth = dp(1)
-            setStrokeColor(MaterialColors.getColor(this, MaterialR.attr.colorOutlineVariant, Color.LTGRAY))
-            setCardBackgroundColor(MaterialColors.getColor(this, MaterialR.attr.colorSurfaceContainerLow, Color.WHITE))
+            this.id = id; radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
+            setStrokeColor(MaterialColors.getColor(this, MaterialR.attr.colorOutline, Color.LTGRAY))
+            setCardBackgroundColor(MaterialColors.getColor(this, MaterialR.attr.colorSurface, Color.WHITE))
             isClickable = true; isFocusable = true
             isEnabled = type != PreviewKeyboard.CUSTOM || customLayout != null
             alpha = if (isEnabled) 1f else .45f
@@ -600,9 +601,11 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         val start = field(R.string.keyboard_layout_start, size.marginStartDp.toString())
         val end = field(R.string.keyboard_layout_end, size.marginEndDp.toString())
         val card = MaterialCardView(ctx).apply {
-            id = R.id.keyboard_layout_size_input; radius = dp(16).toFloat(); strokeWidth = dp(1)
-            setStrokeColor(MaterialColors.getColor(this, MaterialR.attr.colorOutlineVariant, Color.LTGRAY))
-            setCardBackgroundColor(MaterialColors.getColor(this, MaterialR.attr.colorSurfaceContainerLow, Color.WHITE))
+            id = R.id.keyboard_layout_size_input
+            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
+            setStrokeColor(MaterialColors.getColor(this, MaterialR.attr.colorOutline, Color.LTGRAY))
+            setCardBackgroundColor(MaterialColors.getColor(this, MaterialR.attr.colorSurface, Color.WHITE))
             addView(fields)
         }
         val wrapper = LinearLayout(ctx).apply {

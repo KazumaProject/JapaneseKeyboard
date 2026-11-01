@@ -199,7 +199,7 @@
             android:dependency="enable_prediction_search_learn_dictionary_preference"
             android:key="learn_prediction_preference"
             android:max="8"
-            android:title="@string/user_dictionary_prefix_match_title"
+            android:title="@string/settings_learn_dictionary_prediction_start"
             app:min="1"
             app:showSeekBarValue="true" />
         <SeekBarPreference
@@ -208,14 +208,14 @@
             android:key="learn_dictionary_prediction_candidate_limit_preference"
             android:max="8"
             android:summary="@string/learn_dictionary_prediction_candidate_limit_summary"
-            android:title="@string/dictionary_prediction_candidate_limit_title"
+            android:title="@string/settings_learn_dictionary_prediction_limit"
             app:min="1"
             app:showSeekBarValue="true" />
         <SeekBarPreference
             android:defaultValue="2"
             android:key="user_dictionary_prefix_match_number"
             android:max="8"
-            android:title="@string/user_dictionary_prefix_match_title"
+            android:title="@string/settings_user_dictionary_prediction_start"
             app:min="2"
             app:showSeekBarValue="true" />
         <SeekBarPreference
@@ -223,7 +223,7 @@
             android:key="user_dictionary_prediction_candidate_limit_preference"
             android:max="8"
             android:summary="@string/user_dictionary_prediction_candidate_limit_summary"
-            android:title="@string/dictionary_prediction_candidate_limit_title"
+            android:title="@string/settings_user_dictionary_prediction_limit"
             app:min="1"
             app:showSeekBarValue="true" />
 
