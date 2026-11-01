@@ -10,8 +10,8 @@ Dictionary data keeps its upstream terms; it is not uniformly MIT licensed.
 
 ## Classified dictionaries / 143カテゴリ辞書
 
-Distribution: `v1.7.278`, converter revision
-`39b3059dba81d6abb9fff3f57253c67e6e74c08e`.
+Distribution: `v1.7.283`, converter revision
+`b9f3375a1cfb0ce5e56f4da622ecc4e983364581`.
 The classified dictionaries are reclassified, filtered, and converted from the five
 frozen inputs in that revision. Their exact input hashes and source-pair counts
 are in `tools/classified-dictionaries/category-provenance.json`.
@@ -54,7 +54,7 @@ The person dictionary also includes reviewed fighter names: the per-record
 source URLs and input hashes are preserved, without redistributing source page
 text. Per-entry copyright conditions for these names remain unconfirmed.
 
-The full v1.7.278 `DICTIONARY-LICENSES.txt` is retained in
+The full v1.7.283 `DICTIONARY-LICENSES.txt` is retained in
 `app/src/main/assets/licenses/sources/distribution-licenses.txt`, byte-identical
 and verified against the release asset SHA-256 `ec74cdd99e434b17081944759e07aef3b388dda6fad0d9c9616bc4dd3988ebf6`.
 

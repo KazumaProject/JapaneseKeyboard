@@ -45,7 +45,7 @@ class OpenSourceLicensesTest {
         }
         items.forEach {
             val html = it.document()
-            assertTrue(it.id, html.contains("v1.7.278 (39b3059dba81d6abb9fff3f57253c67e6e74c08e)"))
+            assertTrue(it.id, html.contains("v1.7.283 (b9f3375a1cfb0ce5e56f4da622ecc4e983364581)"))
             assertTrue(it.id, html.contains("<pre>"))
         }
     }
