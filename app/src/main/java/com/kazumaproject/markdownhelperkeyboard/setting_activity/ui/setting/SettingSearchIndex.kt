@@ -26,6 +26,67 @@ object SettingSearchIndex {
         val configuration: Configuration,
         val destinations: List<SettingDestination>,
     )
+    private val previousJapaneseTitles = mapOf(
+        "candidate_tab_visibility_preference" to "変換候補タブ",
+        "delete_key_flick_down_preference" to "削除キーの下フリック",
+        "delete_key_flick_left_preference" to "削除キーの左フリック",
+        "delete_key_flick_up_preference" to "削除キーの上フリック",
+        "emoji_candidate_enable_preference" to "絵文字の変換候補",
+        "emoticon_candidate_enable_preference" to "顔文字の変換候補",
+        "enable_typo_correction_japanese_flick_keyboard_preference" to "フリック（日本語）",
+        "enable_typo_correction_qwerty_english_keyboard_preference" to "QWERTY（英語）",
+        "english_prediction_enable_preference" to "英語の予測変換",
+        "english_reading_dictionary_enable_preference" to "英語読み辞書",
+        "external_mozc_prediction_enable_preference" to "外部Mozc辞書",
+        "flick_input_only_preference" to "フリック・トグル入力",
+        "floating_cursor_enabled" to "カーソル・トラックパッドフロート",
+        "henkan_delete_key_action_preference" to "候補ハイライト時の削除キー動作",
+        "hide_candidate_password_preference" to "パスワード入力時の変換候補",
+        "incremental_conversion_session_preference" to "セッション型変換エンジン",
+        "japanese_prediction_enable_preference" to "日本語の予測変換",
+        "keyboard_floating_preference" to "フローティングキーボード",
+        "landscape_force_qwerty_romaji_preference" to "横画面 QWERTY の入力モード",
+        "live_conversion_preference" to "ライブ変換 β",
+        "morse_auto_boundary" to "文字の自動区切り",
+        "morse_beginner_guide" to "初心者ガイドの開閉キー",
+        "morse_sound" to "モールス音",
+        "omission_search_preference" to "修飾キー省略入力",
+        "proverb_prediction_enable_preference" to "ことわざ辞書",
+        "qwerty_english_space_flick_preference" to "スペースキーのフリック",
+        "qwerty_glide_input_preference" to "英語 QWERTY のグライド入力 β",
+        "qwerty_romaji_hankaku_number_preference" to "ローマ字入力時の半角数字",
+        "qwerty_romaji_hankaku_symbol_preference" to "ローマ字入力時の半角記号",
+        "qwerty_romaji_space_flick_preference" to "スペースキーのフリック",
+        "qwerty_romaji_zenkaku_space_preference" to "ローマ字キーボードの全角スペース",
+        "qwerty_show_cursor_buttons_preference" to "カーソルボタン",
+        "qwerty_show_emoji_button_preference" to "絵文字ボタン",
+        "qwerty_show_kutouten_buttons_preference" to "句読点ボタン",
+        "qwerty_show_number_keys_buttons_preference" to "数字キー",
+        "reading_correction_prediction_enable_preference" to "読み補正辞書",
+        "shortcut_toolbar_integrated_in_suggestion_preference" to "ショートカットを候補欄に統合",
+        "shortcut_toolbar_visibility_preference" to "ショートカットツールバー",
+        "show_learned_candidates_in_incognito_preference" to "シークレットモード中の学習済み候補",
+        "sumire_keymap_guide_english" to "英語モードのキーガイド",
+        "sumire_keymap_guide_japanese" to "日本語モードのキーガイド",
+        "sumire_keymap_guide_number" to "数字モードのキーガイド",
+        "switch_qwerty_keyboard_password_preference" to "パスワード入力時",
+        "symbol_candidate_enable_preference" to "記号の変換候補",
+        "symbol_emoji_prediction_enable_preference" to "記号・絵文字・顔文字",
+        "system_dictionary_prediction_enable_preference" to "システム辞書の予測変換",
+        "system_user_dictionary_prediction_enable_preference" to "システムユーザー辞書",
+        "tenkey_keymap_guide" to "日本語モードのキーガイド",
+        "tenkey_keymap_guide_english" to "英語モードのキーガイド",
+        "tenkey_keymap_guide_number" to "数字モードのキーガイド",
+        "tenkey_space_flick_preference" to "スペースキーのフリック",
+        "learn_prediction_preference" to "予測変換",
+        "user_dictionary_prefix_match_number" to "予測変換",
+        "learn_dictionary_prediction_candidate_limit_preference" to "予測候補数",
+        "user_dictionary_prediction_candidate_limit_preference" to "予測候補数",
+        "undo_enable_preference" to "元に戻す機能",
+        "voice_input_space_replacement_enabled" to "半角スペースの自動置換",
+        "zero_query_suggestion_preference" to "確定後の後続語候補",
+    )
+
     private val extraKeywordsByKey = mapOf(
         "floating_keyboard_hide_button_position" to listOf(
             "floating", "hide", "arrow", "position", "フローティング", "下向き矢印", "やじるし", "隠す", "位置",
@@ -823,6 +884,7 @@ object SettingSearchIndex {
             add(key)
             add(title)
             add(summary)
+            previousJapaneseTitles[key]?.let(::add)
             addAll(key.split('_', '-', '.'))
             addAll(extraKeywordsByKey[key].orEmpty())
         }

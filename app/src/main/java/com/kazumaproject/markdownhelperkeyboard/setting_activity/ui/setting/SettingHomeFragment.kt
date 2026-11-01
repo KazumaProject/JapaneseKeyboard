@@ -16,7 +16,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.AttrRes
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
@@ -150,6 +149,7 @@ class SettingHomeFragment : Fragment() {
                     width = 0
                     height = ViewGroup.LayoutParams.WRAP_CONTENT
                     columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    setGravity(Gravity.FILL)
                     setMargins(dp(4), dp(4), dp(4), dp(4))
                 }
             )
@@ -178,13 +178,12 @@ class SettingHomeFragment : Fragment() {
         val switchTarget = destination.destination as? SettingDestinationType.SwitchPreference
         val switchValue = switchTarget?.let { settingCardEditorController.readSwitchPreference(it) }
         val card = MaterialCardView(context).apply {
-            radius = dp(8).toFloat()
-            strokeWidth = dp(1)
+            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
-            setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurfaceVariant))
+            setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
             isClickable = true
             isFocusable = true
-            foreground = selectableItemBackground(context)
             contentDescription = listOf(title, summary, valueText)
                 .filter { !it.isNullOrBlank() }
                 .joinToString(". ")
@@ -297,13 +296,12 @@ class SettingHomeFragment : Fragment() {
         val title = destination.title
         val summary = currentSummary(destination)
         val card = MaterialCardView(context).apply {
-            radius = dp(8).toFloat()
-            strokeWidth = dp(1)
+            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
             isClickable = true
             isFocusable = true
-            foreground = selectableItemBackground(context)
             contentDescription = "$title. $summary"
             setOnClickListener { navigateTo(destination) }
         }
@@ -312,7 +310,7 @@ class SettingHomeFragment : Fragment() {
             gravity = android.view.Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(14), dp(12), dp(12), dp(12))
-            minimumHeight = dp(76)
+            minimumHeight = resources.getDimensionPixelSize(R.dimen.settings_row_min_height)
         }
 
         row.addView(
@@ -521,12 +519,6 @@ class SettingHomeFragment : Fragment() {
         val imm = ContextCompat.getSystemService(requireContext(), InputMethodManager::class.java)
         return imm?.enabledInputMethodList?.any { it.packageName == requireContext().packageName }
     }
-
-    private fun selectableItemBackground(context: Context) =
-        TypedValue().let { value ->
-            context.theme.resolveAttribute(android.R.attr.selectableItemBackground, value, true)
-            AppCompatResources.getDrawable(context, value.resourceId)
-        }
 
     private fun resolveColor(@AttrRes attr: Int): Int {
         val value = TypedValue()
