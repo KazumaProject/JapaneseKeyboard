@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.CandidatePreviewPreference
+        android:key="candidate_display_preview" android:selectable="false" />
+    <PreferenceCategory android:title="@string/candidate_display_preview_options">
+        <ListPreference android:key="candidate_display_keyboard" android:persistent="false" android:title="@string/keyboard_layout_type" android:entries="@array/candidate_display_keyboard_entries" android:entryValues="@array/candidate_display_keyboard_values" app:useSimpleSummaryProvider="true" />
+        <ListPreference android:key="candidate_display_orientation" android:persistent="false" android:title="@string/candidate_display_orientation" android:entries="@array/candidate_display_orientation_entries" android:entryValues="@array/candidate_display_orientation_values" app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/candidate_display_position">
+        <ListPreference android:key="candidate_display_placement" android:persistent="false" android:title="@string/keyboard_geometry_candidates" android:entries="@array/candidate_display_placement_entries" android:entryValues="@array/candidate_display_placement_values" app:useSimpleSummaryProvider="true" />
+        <Preference android:key="candidate_display_unavailable" android:title="@string/candidate_display_unavailable_title" android:summary="@string/candidate_display_unavailable" />
+        <SeekBarPreference android:key="candidate_display_width" android:persistent="false" android:title="@string/candidate_display_width" android:max="50" app:min="15" app:showSeekBarValue="true" />
+        <SwitchPreferenceCompat android:key="candidate_display_vertical" android:persistent="false" android:title="@string/candidate_display_vertical" />
+        <SwitchPreferenceCompat android:key="candidate_display_right_to_left" android:persistent="false" android:title="@string/keyboard_geometry_candidate_right_to_left" />
+        <SwitchPreferenceCompat android:key="candidate_display_wrap" android:persistent="false" android:title="@string/keyboard_geometry_candidate_wrap" />
+        <SeekBarPreference android:key="candidate_display_spacing" android:persistent="false" android:title="@string/candidate_display_spacing" android:max="32" app:showSeekBarValue="true" />
+        <SeekBarPreference android:key="candidate_display_line_spacing" android:persistent="false" android:title="@string/candidate_display_line_spacing" android:max="48" app:showSeekBarValue="true" />
+        <Preference android:key="candidate_display_reset_position" android:title="@string/candidate_display_reset_position" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/candidate_display_height_tabs">
+        <SwitchPreferenceCompat
+            android:key="candidate_tab_visibility_preference"
+            android:title="@string/candidate_tab"
+            app:defaultValue="false"
+            app:summary="@string/candidate_tab_summary" />
+
+        <Preference
+            android:dependency="candidate_tab_visibility_preference"
+            android:key="candidate_tab_order_preference"
+            android:title="@string/candidate_tab_order_preference_title"
+            app:summary="@string/candidate_tab_order_preference_summary" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="candidate_view_height_setting_fragment_preference"
+            android:title="@string/candidate_height_preference_title"
+            app:summary="@string/candidate_height_preference_sumary" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="candidate_view_height_landscape_setting_fragment_preference"
+            android:title="@string/candidate_height_landscape_preference_title"
+            app:summary="@string/candidate_height_preference_sumary" />
+
+        <ListPreference
+            android:defaultValue="1"
+            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
+            android:entries="@array/candidate_column_entries"
+            android:entryValues="@array/candidate_column_values"
+            android:key="candidate_column_preference"
+            android:summary="@string/preference_summary_num_column_conversion"
+            android:title="@string/preference_title_num_columns_conversion" />
+
+        <ListPreference
+            android:defaultValue="1"
+            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
+            android:entries="@array/candidate_column_entries_landscape"
+            android:entryValues="@array/candidate_column_values_landscape"
+            android:key="candidate_column_landscape_preference"
+            android:summary="@string/preference_summary_num_column_conversion"
+            android:title="@string/preference_title_num_columns_conversion_landscape" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="stabilize_candidate_strip_height_preference"
+            android:title="@string/stabilize_candidate_strip_height_title"
+            android:summary="@string/stabilize_candidate_strip_height_summary" />
+
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/candidate_display_text">
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_key_letter_size_fragment_preference"
+            android:title="@string/candidate_display_text_size"
+            app:summary="@string/candidate_display_text_size_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="candidate_character_type_labels_preference"
+            android:title="@string/candidate_character_type_labels_title"
+            android:summary="@string/candidate_character_type_labels_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="candidate_character_type_indicators_preference"
+            android:title="@string/candidate_character_indicators_title"
+            android:summary="@string/candidate_character_indicators_summary" />
+
+        <Preference
+            android:key="candidate_indicator_style_settings"
+            android:title="@string/candidate_indicator_settings"
+            android:summary="@string/candidate_indicator_settings_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="live_conversion_candidate_yomi_preference"
+            android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
+            android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
+            android:title="@string/live_conversion_candidate_yomi_title" />
+
+        <ListPreference
+            android:defaultValue="whole"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:entries="@array/live_conversion_candidate_yomi_mode_entries"
+            android:entryValues="@array/live_conversion_candidate_yomi_mode_values"
+            android:key="live_conversion_candidate_yomi_mode_preference"
+            android:title="@string/live_conversion_candidate_yomi_mode_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <SeekBarPreference
+            android:defaultValue="14"
+            android:dependency="live_conversion_candidate_yomi_preference"
+            android:key="live_conversion_candidate_yomi_size_preference"
+            android:max="24"
+            android:summary="@string/live_conversion_candidate_yomi_size_summary"
+            android:title="@string/live_conversion_candidate_yomi_size_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="show_dictionary_candidate_labels_preference"
+            android:title="@string/show_dictionary_candidate_labels_title"
+            app:iconSpaceReserved="false"
+            app:summary="@string/show_dictionary_candidate_labels_summary" />
+
+        <Preference
+            android:key="settings_theme_enable_live_conversion_link"
+            android:title="@string/settings_theme_enable_live_conversion"
+            android:summary="@string/settings_theme_enable_live_conversion_summary" />
+
+        <Preference android:key="candidate_display_reset_text" android:title="@string/candidate_display_reset_text" android:summary="@string/candidate_display_reset_text_summary" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/candidate_display_colors">
+        <Preference android:key="candidate_display_enable_colors" android:title="@string/candidate_display_enable_colors" android:summary="@string/candidate_display_enable_colors_summary" />
+        <Preference android:key="theme_custom_candidate_text_color" android:title="@string/theme_custom_candidate_text_color" />
+
+        <Preference android:key="theme_custom_candidate_item_bg_color" android:title="@string/theme_custom_candidate_item_bg_color" />
+
+        <Preference android:key="theme_custom_candidate_item_pressed_bg_color" android:title="@string/theme_custom_candidate_item_pressed_bg_color" />
+
+        <Preference android:key="theme_custom_candidate_empty_popup_bg_color" android:title="@string/theme_custom_candidate_empty_popup_bg_color" />
+
+        <Preference android:key="theme_custom_candidate_empty_popup_text_color" android:title="@string/theme_custom_candidate_empty_popup_text_color" />
+
+    </PreferenceCategory>
+</PreferenceScreen>

@@ -355,6 +355,7 @@
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/candidate_column_label"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
@@ -363,6 +364,7 @@
 
                     <com.google.android.material.button.MaterialButtonToggleGroup
                         android:id="@+id/candidate_column_toggle_group"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
@@ -398,6 +400,7 @@
                     </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <LinearLayout
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="20dp"
@@ -421,6 +424,7 @@
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/candidate_letter_size_input_layout"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
@@ -441,6 +445,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/candidate_letter_size_seekbar"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"

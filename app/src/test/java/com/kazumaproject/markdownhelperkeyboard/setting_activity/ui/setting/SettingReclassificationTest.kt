@@ -49,13 +49,14 @@ class SettingReclassificationTest {
         val common = inflate(R.xml.pref_common_legacy)
         val theme = inflate(R.xml.pref_theme)
         val engine = inflate(R.xml.pref_conversion_engine)
+        val candidate = inflate(R.xml.pref_candidate_display)
         val destinations = mapOf(
             "custom_romaji_preference" to (common to "settings_common_selection"),
             "floating_cursor_enabled" to (common to "settings_common_editing"),
             "composing_guide_text_enabled" to (common to "settings_common_candidates"),
             "inline_suggestion_enabled_preference" to (common to "settings_common_privacy"),
             "composing_guide_text_size_setting" to (theme to "settings_theme_text"),
-            "candidate_character_type_labels_preference" to (theme to "settings_theme_text"),
+            "candidate_character_type_labels_preference" to (candidate to null),
             "keyboard_background_image_clear_preference" to (theme to "settings_theme_background"),
             "round_corner_keyboard_preference" to (theme to "settings_theme_corners"),
             "delete_long_press_conversion_behavior" to (engine to "settings_engine_conversion"),
@@ -66,7 +67,7 @@ class SettingReclassificationTest {
         )
         destinations.forEach { (key, expected) -> assertEquals(key, expected.second, expected.first.findPreference<Preference>(key)?.parent?.key) }
         assertNull(theme.findPreference<Preference>("composing_guide_text_size_setting")?.dependency)
-        assertNull(theme.findPreference<Preference>("live_conversion_candidate_yomi_preference")?.dependency)
+        assertNull(candidate.findPreference<Preference>("live_conversion_candidate_yomi_preference")?.dependency)
         assertNull(engine.findPreference<Preference>("delete_long_press_conversion_behavior")?.dependency)
     }
 
@@ -86,6 +87,12 @@ class SettingReclassificationTest {
         val expected = mapOf(
             "composing_guide_text_size_setting" to R.id.keyboardThemeFragment,
             "round_corner_keyboard_preference" to R.id.keyboardThemeFragment,
+            "candidate_character_type_labels_preference" to R.id.candidateDisplayPreferenceFragment,
+            "live_conversion_candidate_yomi_preference" to R.id.candidateDisplayPreferenceFragment,
+            "candidate_column_preference" to R.id.candidateDisplayPreferenceFragment,
+            "show_dictionary_candidate_labels_preference" to R.id.candidateDisplayPreferenceFragment,
+            "theme_custom_candidate_item_bg_color" to R.id.candidateDisplayPreferenceFragment,
+            "candidate_view_height_landscape_setting_fragment_preference" to R.id.candidateDisplayPreferenceFragment,
             "live_conversion_preference" to R.id.conversionEnginePreferenceFragment,
             "custom_romaji_preference" to R.id.legacyCommonPreferenceFragment,
         )

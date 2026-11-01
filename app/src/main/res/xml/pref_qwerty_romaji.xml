@@ -3,6 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/qwerty_romaji_category_title">
+        <Preference android:key="qwerty_gap_preference" android:title="@string/qwerty_gap_title" android:summary="@string/qwerty_gap_summary" />
+
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
