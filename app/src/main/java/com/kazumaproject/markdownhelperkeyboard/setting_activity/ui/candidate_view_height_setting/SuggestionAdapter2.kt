@@ -196,6 +196,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateYomiMode: String = AppPreference.CANDIDATE_YOMI_MODE_WHOLE
     private var showCandidateYomiForLiveConversion: Boolean = false
     private var showCharacterIndicators: Boolean = false
+    private var showCharacterTypeLabels: Boolean = true
     private var characterStyles = CandidateIndicatorStyles()
 
     fun setCharacterIndicatorStyles(styles: CandidateIndicatorStyles) {
@@ -930,6 +931,12 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setShowCharacterTypeLabels(enabled: Boolean) {
+        if (showCharacterTypeLabels == enabled) return
+        showCharacterTypeLabels = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setShowDictionaryCandidateLabels(enabled: Boolean) {
         if (showDictionaryCandidateLabels == enabled) return
         showDictionaryCandidateLabels = enabled
@@ -1033,7 +1040,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             displayedBody, showCharacterIndicators && !isFormula, paddingLength, position == highlightedPosition, styles = characterStyles
         )
         holder.typeText.text = candidateLabelPresentation(
-            holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterIndicators, displayedBody
+            holder.itemView.context, suggestion, showDictionaryCandidateLabels, showCharacterTypeLabels
         )
         holder.typeText.contentDescription = holder.typeText.text
         holder.typeText.maxLines = 1

@@ -104,6 +104,7 @@ abstract class AsyncPreferenceFragment : PreferenceFragmentCompat() {
                 listeners.forEach { it() }
                 pendingPreferenceState?.let(screen::restoreHierarchyState)
                 onPreferencesReady(null, rootKey)
+                expandHighlightedPreferenceAncestors()
                 preferencesReady = true
                 if (isResumed) onPreferencesResumed()
                 // setPreferenceScreen posts the RecyclerView adapter binding first.

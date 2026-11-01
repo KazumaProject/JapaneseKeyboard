@@ -4,12 +4,6 @@
 
     <PreferenceCategory android:title="@string/setting_category_ai_conversion_title">
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="conversion_key_long_press_ai_conversion_preference"
-            android:summary="@string/conversion_key_long_press_ai_conversion_preference_summary"
-            android:title="@string/conversion_key_long_press_ai_conversion_preference_title" />
-
         <Preference
             android:icon="@drawable/lightbulb_24dp"
             android:key="setting_route_zenz_preferences"
@@ -33,4 +27,10 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/settings_related_settings">
+        <Preference
+            android:key="setting_route_canonical_settings_engine_candidates"
+            android:title="@string/settings_engine_candidates_title"
+            android:summary="@string/settings_engine_candidates_summary" />
+    </PreferenceCategory>
 </PreferenceScreen>
