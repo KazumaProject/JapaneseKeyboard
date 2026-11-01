@@ -11,7 +11,7 @@
     <string name="keyboard_layout_split_help">分割キーボードを開き、編集ボタンから各パネルの位置とサイズを調整します。</string>
     <string name="keyboard_layout_custom">カスタムキーボード</string>
     <string name="keyboard_layout_size_tab">サイズ・位置</string>
-    <string name="keyboard_layout_shape_tab">形・候補</string>
+    <string name="keyboard_layout_shape_tab">キー間隔・候補</string>
     <string name="keyboard_layout_drag_hint">表示の確認用です。プレビューから文字は入力されません。</string>
     <string name="keyboard_layout_size_value">高さ: %1$d dp　幅: %2$d%%</string>
     <string name="keyboard_layout_effective_height">表示上の高さ: %1$d dp</string>
@@ -26,7 +26,7 @@
     <string name="keyboard_layout_end">右の余白 (dp)</string>
     <string name="keyboard_layout_invalid">すべての欄に 0 以上の数値を入力してください。</string>
     <string name="keyboard_layout_reset_size">サイズ・位置をリセット</string>
-    <string name="keyboard_layout_reset_shape">形・候補をリセット</string>
+    <string name="keyboard_layout_reset_shape">キー間隔・候補をリセット</string>
     <string name="keyboard_layout_custom_shared">サイズと位置はすべてのカスタムキーボードで共通です。</string>
     <string name="keyboard_layout_no_custom">カスタムキーボードがありません。作成するとプレビューできます。</string>
     <string name="keyboard_layout_custom_error">カスタムキーボードを読み込めませんでした。</string>
