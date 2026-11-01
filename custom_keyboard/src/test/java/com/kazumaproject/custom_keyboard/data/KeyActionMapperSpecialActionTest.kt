@@ -19,6 +19,19 @@ class KeyActionMapperSpecialActionTest {
             KeyAction.MoveCursorDown to "MoveCursorDown",
             KeyAction.Cut to "Cut",
             KeyAction.SelectAll to "SelectAll",
+            KeyAction.SelectLeft to "SelectLeft",
+            KeyAction.SelectRight to "SelectRight",
+            KeyAction.UndoLastDelete to "UndoLastDelete",
+            KeyAction.Tab to "Tab",
+            KeyAction.Escape to "Escape",
+            KeyAction.Home to "Home",
+            KeyAction.End to "End",
+            KeyAction.PageUp to "PageUp",
+            KeyAction.PageDown to "PageDown",
+            KeyAction.NextField to "NextField",
+            KeyAction.PreviousField to "PreviousField",
+            KeyAction.CtrlLock to "CtrlLock",
+            KeyAction.AltLock to "AltLock",
             KeyAction.DoNothing to "DoNothing"
         )
 

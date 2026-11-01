@@ -27,9 +27,9 @@ class CandidateReadingSizePreferenceTest {
         AppPreference.init(context)
     }
 
-    @Test fun bothSettingsScreensPlaceTheSizeNextToReadingAndPersistTheSameValue() {
+    @Test fun candidateScreenPlacesTheSizeNextToReadingAndPersistsTheSameValue() {
         assertEquals(14, AppPreference.live_conversion_candidate_yomi_size)
-        for (resource in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
+        for (resource in listOf(R.xml.pref_candidate_display)) {
             val screen = PreferenceManager(context).inflateFromResource(context, resource, null) as PreferenceScreen
             val size = screen.findPreference<SeekBarPreference>(AppPreference.LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY)!!
             val show = screen.findPreference<androidx.preference.Preference>("live_conversion_candidate_yomi_preference")!!

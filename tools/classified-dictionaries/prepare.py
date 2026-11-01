@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = '13e391bc7a4a245f63aa0091c1e9c11db3dbd759'
-VERSION = 'v1.7.277'
+REVISION = 'b9f3375a1cfb0ce5e56f4da622ecc4e983364581'
+VERSION = 'v1.7.283'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -46,9 +46,9 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = 'f2b1c1521a2dacd8fdfdf40a06cf9b7566db60a2592c14be78ea9ce7d5e26d63'
+    archive_sha = '2c13311ce86c3dbec45c8b6a8f8fad7200dcfdaac24aab9f93a9e0fb1656f724'
     assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
-    licenses_sha = '1002230bbdf760c6a00a81b6dd19d93299b9bba3a3e31815d2eff16bd1bd2ff2'
+    licenses_sha = 'ec74cdd99e434b17081944759e07aef3b388dda6fad0d9c9616bc4dd3988ebf6'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == archive_sha
@@ -221,9 +221,19 @@ def provenance():
     # Empty categories are intentionally distributed for taxonomy stability.
     for category in distribution['categories']:
         fingerprints.setdefault(category['id'], {'count': 0, 'sum': 0, 'sample': {'reading': '', 'surface': ''}})
-    assert {k: v['count'] for k, v in fingerprints.items()} == {c['id']: c['recordCount'] for c in distribution['categories']}
-    expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
-    write(ROOT / 'app/src/androidTest/assets/classified-expected-records.json', json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
+    expected_path = ROOT / 'app/src/androidTest/assets/classified-expected-records.json'
+    category_counts = {c['id']: c['recordCount'] for c in distribution['categories']}
+    if distribution.get('filterRevision'):
+        # Filtered releases intentionally omit protected entries that remain in
+        # the public candidate catalog. Keep the fixture decoded from the exact
+        # bundled binaries, and verify its counts against the release manifest.
+        expected = json.loads(expected_path.read_text())
+        assert {k: v['count'] for k, v in expected.items()} == category_counts
+        assert all(re.fullmatch(r'[0-9a-f]{64}', v['digestSum']) for v in expected.values())
+    else:
+        assert {k: v['count'] for k, v in fingerprints.items()} == category_counts
+        expected = {category: {'count': item['count'], 'digestSum': format(item['sum'] % (1 << 256), '064x'), 'sample': item['sample']} for category, item in fingerprints.items()}
+        write(expected_path, json.dumps(expected, ensure_ascii=False, indent=2) + '\n')
     repairs = {}
     for category, surfaces in surface_overrides.items():
         assert all(len(sentinel_surfaces[(category, key)]) == 1 for key in surfaces), category

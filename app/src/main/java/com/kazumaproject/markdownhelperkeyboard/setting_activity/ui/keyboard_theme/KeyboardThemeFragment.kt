@@ -1,32 +1,30 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme
 
-import android.annotation.SuppressLint
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.navigation.fragment.findNavController
+import androidx.core.os.bundleOf
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.LegacyPreferenceResultFilter
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.conditionVisible
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 import androidx.preference.PreferenceScreen
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
-import com.afollestad.materialdialogs.MaterialDialog
-import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
 @AndroidEntryPoint
-class KeyboardThemeFragment : AsyncPreferenceFragment() {
-
-    @Inject
-    lateinit var appPreference: AppPreference
+class KeyboardThemeFragment : CommonPreferenceFragment() {
 
     companion object {
         // System Theme Keys
@@ -51,16 +49,6 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
         private const val PREF_KEY_CUSTOM_SPECIAL_KEY = "theme_custom_special_key_color"
         private const val PREF_KEY_CUSTOM_TEXT = "theme_custom_key_text_color"
         private const val PREF_KEY_CUSTOM_SPECIAL_TEXT = "theme_custom_special_key_text_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_TEXT =
-            "theme_custom_candidate_text_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG =
-            "theme_custom_candidate_item_bg_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG =
-            "theme_custom_candidate_item_pressed_bg_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG =
-            "theme_custom_candidate_empty_popup_bg_color"
-        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT =
-            "theme_custom_candidate_empty_popup_text_color"
         private const val PREF_KEY_CUSTOM_SHORTCUT_ICON =
             "theme_custom_shortcut_icon_color"
 
@@ -259,45 +247,6 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
             true
         }
 
-        val customCandidateTextPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_TEXT,
-            context.getString(R.string.theme_custom_candidate_text_color)
-        ) { appPreference.custom_theme_candidate_text_color }
-        customCategory.addPreference(customCandidateTextPref)
-
-        val customCandidateItemBgPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG,
-            context.getString(R.string.theme_custom_candidate_item_bg_color)
-        ) { appPreference.custom_theme_candidate_item_bg_color }
-        customCategory.addPreference(customCandidateItemBgPref)
-
-        val customCandidateItemPressedBgPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG,
-            context.getString(R.string.theme_custom_candidate_item_pressed_bg_color)
-        ) {
-            appPreference.getCustomThemeCandidateItemPressedBgColor(
-                ContextCompat.getColor(context, com.kazumaproject.core.R.color.qwety_key_bg_color)
-            )
-        }
-        customCategory.addPreference(customCandidateItemPressedBgPref)
-
-        val customCandidateEmptyPopupBgPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG,
-            context.getString(R.string.theme_custom_candidate_empty_popup_bg_color)
-        ) { appPreference.custom_theme_candidate_empty_popup_bg_color }
-        customCategory.addPreference(customCandidateEmptyPopupBgPref)
-
-        val customCandidateEmptyPopupTextPref = createColorPreference(
-            context,
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT,
-            context.getString(R.string.theme_custom_candidate_empty_popup_text_color)
-        ) { appPreference.custom_theme_candidate_empty_popup_text_color }
-        customCategory.addPreference(customCandidateEmptyPopupTextPref)
-
         val customShortcutIconPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SHORTCUT_ICON,
@@ -440,28 +389,128 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
             }
         }
         screen.addPreference(localFontPreference)
-        return screen
+        // The XML is the search catalog as well as the canonical category structure.
+        // Replace its metadata entries with the existing programmatic controls so their
+        // color pickers, defaults and callbacks retain their original behavior.
+        val canonical = preferenceManager.inflateFromResource(context, R.xml.pref_theme, null)
+        fun transfer(preference: Preference) {
+            val placeholder = canonical.findPreference<Preference>(preference.key) ?: return
+            val parent = placeholder.parent ?: return
+            parent.removePreference(placeholder)
+            preference.parent?.removePreference(preference)
+            parent.addPreference(preference)
+        }
+        listOf(systemCategory, customCategory, inputCategory).forEach { group ->
+            val children = (0 until group.preferenceCount).map(group::getPreference)
+            children.filterNot { it.key == PREF_KEY_ROUND_CORNER }.forEach(::transfer)
+        }
+        transfer(skinPreference)
+        transfer(localFontPreference)
+        return canonical
     }
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        super.onPreferencesReady(savedInstanceState, rootKey)
         updateCheckStates(appPreference.theme_mode)
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
+        findPreference<Preference>("settings_theme_enable_composing_guide_link")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.legacyCommonPreferenceFragment, bundleOf(ARG_HIGHLIGHT_PREFERENCE_KEY to "composing_guide_text_enabled"))
+            true
+        }
+        syncCrossScreenDependencies()
+        syncSearchAvailability()
     }
 
     override fun onPreferencesResumed() {
+        super.onPreferencesResumed()
         val selected = appPreference.keyboardSkin
         findPreference<Preference>(KeyboardSkinId.PREFERENCE_KEY)?.summary =
             getString(KeyboardThemeCatalog.find(selected).titleRes)
-        for (index in 0 until preferenceScreen.preferenceCount) {
-            val preference = preferenceScreen.getPreference(index)
-            if (
-                preference.key != KeyboardSkinId.PREFERENCE_KEY &&
-                preference.key != PREF_KEY_LOCAL_FONT &&
-                preference.key != CATEGORY_KEY_CUSTOM_INPUT
-            ) {
-                preference.isEnabled = selected == KeyboardSkinId.DEFAULT
+        val compatible = selected == KeyboardSkinId.DEFAULT
+        val skinDependent = listOf(PREF_KEY_DEFAULT, PREF_KEY_CUSTOM, PREF_KEY_LIQUID_GLASS,
+            PREF_KEY_LIQUID_GLASS_BLUR, PREF_KEY_LIQUID_GLASS_KEY_ALPHA, PREF_KEY_CUSTOM_BG,
+            PREF_KEY_CUSTOM_KEY, PREF_KEY_CUSTOM_SPECIAL_KEY, PREF_KEY_CUSTOM_TEXT,
+            PREF_KEY_CUSTOM_SPECIAL_TEXT, PREF_KEY_POPUP_USE_CUSTOM_COLOR, PREF_KEY_POPUP_BACKGROUND_COLOR,
+            PREF_KEY_POPUP_TEXT_COLOR, PREF_KEY_CUSTOM_SHORTCUT_ICON,
+            PREF_KEY_CUSTOM_BORDER_ENABLE, PREF_KEY_CUSTOM_BORDER_COLOR, PREF_KEY_CUSTOM_BORDER_WIDTH)
+        for (key in skinDependent) {
+            val enabledByParent = when (key) {
+                PREF_KEY_LIQUID_GLASS_BLUR, PREF_KEY_LIQUID_GLASS_KEY_ALPHA -> findPreference<SwitchPreferenceCompat>(PREF_KEY_LIQUID_GLASS)?.isChecked == true
+                PREF_KEY_POPUP_BACKGROUND_COLOR, PREF_KEY_POPUP_TEXT_COLOR -> findPreference<SwitchPreferenceCompat>(PREF_KEY_POPUP_USE_CUSTOM_COLOR)?.isChecked == true
+                PREF_KEY_CUSTOM_BORDER_COLOR, PREF_KEY_CUSTOM_BORDER_WIDTH -> findPreference<SwitchPreferenceCompat>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.isChecked == true
+                else -> true
             }
+            findPreference<Preference>(key)?.isEnabled = compatible && enabledByParent
         }
+        syncCrossScreenDependencies()
+        syncSearchAvailability()
+    }
+
+    private val dependencyListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "composing_guide_text_enabled") syncCrossScreenDependencies()
+        if (key != null && (key.startsWith("keyboard_touch_effect_") || key.startsWith("theme_") || key.startsWith("liquid_glass_") || key.startsWith("key_popup_"))) syncSearchAvailability()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(dependencyListener)
+    }
+
+    override fun onStop() {
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()).unregisterOnSharedPreferenceChangeListener(dependencyListener)
+        super.onStop()
+    }
+
+    private fun syncCrossScreenDependencies() {
+        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
+        val composingEnabled = prefs.getBoolean("composing_guide_text_enabled", false)
+        findPreference<Preference>("composing_guide_show_live_reading")?.isEnabled = composingEnabled
+        findPreference<Preference>("composing_guide_text_size_setting")?.isEnabled = composingEnabled
+        findPreference<Preference>("settings_theme_enable_composing_guide_link")?.conditionVisible = !composingEnabled
+    }
+
+    private fun syncSearchAvailability() {
+        val linkKeys = listOf("settings_theme_unavailable_colors", "settings_theme_unavailable_corners", "settings_theme_unavailable_effects")
+        linkKeys.forEach { findPreference<Preference>(it)?.conditionVisible = false }
+        val key = arguments?.getString(ARG_HIGHLIGHT_PREFERENCE_KEY)
+            ?: arguments?.getString(LegacyPreferenceResultFilter.ARG_LEGACY_SEARCH_TARGET_KEY)
+            ?: return
+        val target = findPreference<Preference>(key) ?: return
+        if (target.conditionVisible && target.isEnabled) return
+        val group = target.parent as? CollapsiblePreferenceCategory ?: return
+        val linkKey = when (group.key) {
+            "settings_theme_colors" -> linkKeys[0]
+            "settings_theme_corners" -> linkKeys[1]
+            "settings_theme_effects" -> linkKeys[2]
+            else -> return
+        }
+        val link = findPreference<Preference>(linkKey) ?: return
+        val incompatibleSkin = !target.isEnabled && appPreference.keyboardSkin != KeyboardSkinId.DEFAULT
+        val parentKey = when {
+            incompatibleSkin -> null
+            !target.conditionVisible && group.key != "settings_theme_effects" -> PREF_KEY_CUSTOM
+            key == PREF_KEY_CUSTOM_BORDER_COLOR || key == PREF_KEY_CUSTOM_BORDER_WIDTH -> PREF_KEY_CUSTOM_BORDER_ENABLE
+            key == PREF_KEY_POPUP_BACKGROUND_COLOR || key == PREF_KEY_POPUP_TEXT_COLOR -> PREF_KEY_POPUP_USE_CUSTOM_COLOR
+            key == PREF_KEY_LIQUID_GLASS_BLUR || key == PREF_KEY_LIQUID_GLASS_KEY_ALPHA -> PREF_KEY_LIQUID_GLASS
+            key.startsWith("theme_custom_") && key.contains("edit_") -> PREF_KEY_CUSTOM_INPUT_ENABLE
+            group.key == "settings_theme_effects" -> "keyboard_touch_effect_type_preference"
+            else -> PREF_KEY_CUSTOM
+        }
+        link.summary = getString(when {
+            incompatibleSkin -> R.string.settings_theme_unavailable_skin
+            !target.conditionVisible && group.key != "settings_theme_effects" -> R.string.settings_theme_unavailable_custom
+            group.key == "settings_theme_effects" && parentKey == "keyboard_touch_effect_type_preference" -> R.string.settings_theme_unavailable_effect
+            else -> R.string.settings_theme_unavailable_parent
+        })
+        link.setOnPreferenceClickListener {
+            if (incompatibleSkin) navigateSafely(R.id.keyboardSkinSelectionFragment)
+            else parentKey?.let { parent ->
+                (findPreference<Preference>(parent)?.parent as? CollapsiblePreferenceCategory)?.setExpanded(true, persist = false)
+                scrollToPreference(parent)
+            }
+            true
+        }
+        link.conditionVisible = true
     }
 
     private fun createColorPreference(
@@ -491,6 +540,7 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
         appPreference.theme_mode = mode
         updateCheckStates(mode)
         updateCustomColorsVisibility(mode == MODE_CUSTOM)
+        syncSearchAvailability()
     }
 
     private fun updateCheckStates(selectedMode: String) {
@@ -501,28 +551,23 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
 
     private fun updateCustomColorsVisibility(isVisible: Boolean) {
         // Base Custom Colors
-        findPreference<Preference>(PREF_KEY_CUSTOM_BG)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_KEY)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_KEY)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_TEXT)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_TEXT)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_POPUP_USE_CUSTOM_COLOR)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_POPUP_BACKGROUND_COLOR)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_POPUP_TEXT_COLOR)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_TEXT)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_SHORTCUT_ICON)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_BG)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_KEY)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_KEY)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_TEXT)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_TEXT)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_USE_CUSTOM_COLOR)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_BACKGROUND_COLOR)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_TEXT_COLOR)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_SHORTCUT_ICON)?.conditionVisible = isVisible
 
         // Border Settings
-        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_COLOR)?.isVisible = isVisible
-        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_WIDTH)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_COLOR)?.conditionVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_WIDTH)?.conditionVisible = isVisible
 
         // Input Category Visibility
-        //findPreference<PreferenceCategory>(CATEGORY_KEY_CUSTOM_INPUT)?.isVisible = isVisible
+        //findPreference<PreferenceCategory>(CATEGORY_KEY_CUSTOM_INPUT)?.conditionVisible = isVisible
     }
 
     private fun saveCustomColor(key: String, color: Int) {
@@ -534,16 +579,6 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
             PREF_KEY_CUSTOM_TEXT -> appPreference.custom_theme_key_text_color = color
             PREF_KEY_CUSTOM_SPECIAL_TEXT -> appPreference.custom_theme_special_key_text_color =
                 color
-            PREF_KEY_CUSTOM_CANDIDATE_TEXT -> appPreference.custom_theme_candidate_text_color =
-                color
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG ->
-                appPreference.custom_theme_candidate_item_bg_color = color
-            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG ->
-                appPreference.custom_theme_candidate_item_pressed_bg_color = color
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG ->
-                appPreference.custom_theme_candidate_empty_popup_bg_color = color
-            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT ->
-                appPreference.custom_theme_candidate_empty_popup_text_color = color
             PREF_KEY_CUSTOM_SHORTCUT_ICON -> appPreference.custom_theme_shortcut_icon_color =
                 color
 
@@ -563,72 +598,6 @@ class KeyboardThemeFragment : AsyncPreferenceFragment() {
         }
     }
 
-    @SuppressLint("CheckResult")
-    private fun showColorPickerDialog(initialColor: Int, onColorSelected: (Int) -> Unit) {
-        MaterialDialog(requireContext()).show {
-            title(text = getString(R.string.keyboard_theme_dialog_title_2))
-            colorChooser(
-                colors = intArrayOf(
-                    0x00000000,
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.char_in_edit_color
-                    ),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.orange),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.violet),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.violet_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.violet_dark
-                    ),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.mint),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.mint_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.mint_dark
-                    ),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.sky),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.sky_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.sky_dark
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.orange2
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.orange_light
-                    ),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.orange_dark
-                    ),
-                    android.graphics.Color.WHITE,
-                    android.graphics.Color.BLACK,
-                    android.graphics.Color.DKGRAY,
-                    android.graphics.Color.LTGRAY,
-                    "#1C1C1E".toColorInt(),
-                    "#1E2022".toColorInt()
-                ),
-                initialSelection = initialColor,
-                allowCustomArgb = true
-            ) { _, color ->
-                onColorSelected(color)
-            }
-            positiveButton(android.R.string.ok)
-            negativeButton(android.R.string.cancel)
-        }
-    }
+    private fun showColorPickerDialog(initialColor: Int, onColorSelected: (Int) -> Unit) =
+        showKeyboardThemeColorPicker(requireContext(), initialColor, onColorSelected)
 }

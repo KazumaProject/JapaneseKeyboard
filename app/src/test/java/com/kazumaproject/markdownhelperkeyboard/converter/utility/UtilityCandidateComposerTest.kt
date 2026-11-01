@@ -3,11 +3,26 @@ package com.kazumaproject.markdownhelperkeyboard.converter.utility
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_CALCULATION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UNIT_CONVERSION
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_UTILITY_LITERAL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_NUMBER_SYMBOL
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class UtilityCandidateComposerTest {
+    @Test
+    fun classifiedNumberSymbolsKeepTheirExistingOrderAroundFormulaCandidates() {
+        val result = UtilityCandidateResult(
+            candidates = listOf(UtilityCandidate("x²", UtilityCandidateKind.FORMULA_UNICODE)),
+            trigger = UtilityTrigger.FORMULA,
+        )
+        fun ordered(type: Byte) = UtilityCandidateComposer.compose(
+            "x", listOf(candidate("x"), candidate("１２３", type), candidate("１", type)), result,
+        ).map { it.string }
+        assertEquals(ordered(CANDIDATE_TYPE_NUMBER_SYMBOL), ordered(CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL))
+        assertEquals(listOf("１２３", "x", "x²", "１"), ordered(CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL))
+    }
+
     @Test
     fun explicitResultsLeadAndDuplicateStringsAreRemoved() {
         val existing = listOf(candidate("3"), candidate("三"))

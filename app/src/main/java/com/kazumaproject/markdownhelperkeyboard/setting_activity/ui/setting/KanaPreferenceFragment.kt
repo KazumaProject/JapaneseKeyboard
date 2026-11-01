@@ -11,6 +11,16 @@ class KanaPreferenceFragment : AsyncPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_kana
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        findPreference<Preference>("setting_route_candidate_display")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.candidateDisplayPreferenceFragment, Bundle().apply { putString("geometryKeyboard", "TENKEY") })
+            true
+        }
+
+
+        findPreference<Preference>("tenkey_geometry_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.keyboardGeometrySettingsFragment, Bundle().apply { putString("geometryKeyboard", "TENKEY") })
+            true
+        }
 
         val letterSizePreference =
             findPreference<Preference>("kana_keyboard_letter_size_preference")

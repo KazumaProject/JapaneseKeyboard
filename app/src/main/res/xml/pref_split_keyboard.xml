@@ -1,4 +1,5 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference android:key="split_keyboard_position_help" android:title="@string/keyboard_layout_split_settings" android:summary="@string/keyboard_layout_split_help" android:selectable="false" />
     <PreferenceCategory android:title="@string/split_keyboard_main">
         <ListPreference android:key="split_keyboard_main_type" android:title="@string/split_keyboard_main" android:defaultValue="TENKEY" app:useSimpleSummaryProvider="true" />
         <ListPreference android:key="split_keyboard_main_custom" android:title="@string/split_keyboard_custom" app:useSimpleSummaryProvider="true" />

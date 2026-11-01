@@ -468,9 +468,14 @@ object SettingDestinations {
         }
         val xmlDestinations = SettingSearchIndex.destinationsForKeys(
             context = context,
-            keys = frequentCandidatePreferenceKeys,
+            keys = (manualDestinations.map { it.key } + frequentCandidatePreferenceKeys).distinct(),
         )
-        return (manualDestinations + xmlDestinations).distinctBy { it.key }
+        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
+        val officialByKey = xmlDestinations.filter { destinationId(it.destination) in officialIds }.associateBy { it.key }
+        val resolvedManual = manualDestinations.map { old ->
+            officialByKey[old.key]?.copy(category = old.category, iconRes = old.iconRes, keywords = old.keywords + officialByKey.getValue(old.key).keywords) ?: old
+        }
+        return (resolvedManual + xmlDestinations).distinctBy { it.key }
     }
 
     private val frequentCandidatePreferenceKeys = listOf(
@@ -830,6 +835,8 @@ object SettingDestinations {
             "setting_route_keyboard_display" -> R.id.keyboardDisplayPreferenceFragment
             "setting_route_input_method" -> R.id.inputMethodPreferenceFragment
             "setting_route_candidate_conversion" -> R.id.candidateConversionPreferenceFragment
+            "setting_route_candidate_display" -> R.id.candidateDisplayPreferenceFragment
+            "qwerty_gap_preference" -> R.id.qwertyGapFragment
             "setting_route_conversion_engine" -> R.id.conversionEnginePreferenceFragment
             "setting_route_utility_candidates" -> R.id.utilityCandidatePreferenceFragment
             "setting_route_dictionary" -> R.id.dictionaryPreferenceFragment
@@ -847,8 +854,8 @@ object SettingDestinations {
             "setting_management_custom_keyboard" -> R.id.keyboardListFragment
             "setting_route_legacy_settings" -> R.id.settingMainFragment
             "setting_route_keyboard_theme" -> R.id.keyboardThemeFragment
-            "theme_custom_candidate_empty_popup_bg_color" -> R.id.keyboardThemeFragment
-            "theme_custom_candidate_empty_popup_text_color" -> R.id.keyboardThemeFragment
+            "theme_custom_candidate_empty_popup_bg_color" -> R.id.candidateDisplayPreferenceFragment
+            "theme_custom_candidate_empty_popup_text_color" -> R.id.candidateDisplayPreferenceFragment
             "key_popup_use_custom_color_preference" -> R.id.keyboardThemeFragment
             "key_popup_background_color_preference" -> R.id.keyboardThemeFragment
             "key_popup_text_color_preference" -> R.id.keyboardThemeFragment
@@ -872,7 +879,7 @@ object SettingDestinations {
             "candidate_indicator_style_settings" -> R.id.candidateIndicatorPreferenceFragment
             "date_candidate_settings_preference" -> R.id.dateCandidateSettingsFragment
             "keyboard_selection_preference" -> R.id.keyboardSelectionFragment
-            "keyboard_key_letter_size_fragment_preference" -> R.id.keyCandidateLetterSizeFragment
+            "keyboard_key_letter_size_fragment_preference" -> R.id.candidateDisplayPreferenceFragment
             "keyboard_screen_landscape_preference" -> R.id.keyboardSizeLandscapeFragment
             "candidate_view_height_setting_fragment_preference" -> R.id.candidateViewHeightSettingFragment
             "candidate_view_height_landscape_setting_fragment_preference" -> R.id.candidateHeightLandscapeSettingFragment

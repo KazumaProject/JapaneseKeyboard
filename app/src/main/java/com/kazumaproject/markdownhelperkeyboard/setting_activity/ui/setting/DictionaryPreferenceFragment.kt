@@ -3,7 +3,6 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.content.Context
 import android.os.Bundle
 import androidx.preference.Preference
-import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -136,38 +135,11 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
             true
         }
 
-        val learnDictionaryPrefixSeekBar =
-            findPreference<SeekBarPreference>("learn_prediction_preference")
-        learnDictionaryPrefixSeekBar?.apply {
-            appPreference.learn_prediction_preference.let {
-                summary = resources.getString(R.string.learn_dictionary_prefix_match_summary, it)
-            }
-            setOnPreferenceChangeListener { _, newValue ->
-                summary =
-                    resources.getString(
-                        R.string.learn_dictionary_prefix_match_summary,
-                        newValue as Int
-                    )
-                true
-            }
+        findPreference<Preference>("setting_route_candidate_display")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.candidateDisplayPreferenceFragment)
+            true
         }
-
-        val userDictionaryPrefixSeekBar =
-            findPreference<SeekBarPreference>("user_dictionary_prefix_match_number")
-        userDictionaryPrefixSeekBar?.apply {
-            appPreference.user_dictionary_prefix_match_number_preference?.let {
-                summary = resources.getString(R.string.user_dictionary_prefix_match_summary, it)
-            }
-            setOnPreferenceChangeListener { _, newValue ->
-                summary =
-                    resources.getString(
-                        R.string.user_dictionary_prefix_match_summary,
-                        newValue as Int
-                    )
-                true
-            }
-        }
-
+        bindCanonicalSettingLinks()
         applyLegacySearchResultFilterIfNeeded()
         val targetKey = arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
             ?.takeIf { it.isNotBlank() }
