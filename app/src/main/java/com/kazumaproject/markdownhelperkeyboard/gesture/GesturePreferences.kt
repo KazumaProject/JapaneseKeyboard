@@ -16,7 +16,7 @@ class GesturePreferences(context: Context) {
         val state = read(SESSION, GestureSessionState(), GestureCodec::decodeSession)
         val ids = sets().map { it.id }
         return state.copy(pads = state.pads.map { pad ->
-            if (pad.setId in ids) pad else pad.copy(setId = GesturePresets.KANA, romajiOverride = null)
+            if (pad.setId in ids) pad.copy(shift = false) else pad.copy(setId = GesturePresets.KANA, romajiOverride = null)
         })
     }
     fun showGuide() = runCatching { prefs.getBoolean("gesture_show_guide", true) }.getOrDefault(true)

@@ -59,7 +59,7 @@ class GesturePadViewTest {
         try {
             manager.applicationLocales = android.os.LocaleList(java.util.Locale.JAPANESE)
             val view = GestureKeyboardView(context)
-            assertEquals("1: かな", view.leftPad.contentDescription)
+            assertEquals("1: Palmローマ字", view.leftPad.contentDescription)
             assertNull(view.findViewById<Button>(R.id.gesture_set_left))
         } finally { manager.applicationLocales = previous }
     }
@@ -75,7 +75,7 @@ class GesturePadViewTest {
         assertTrue(view.session.pads[2].direct)
         assertFalse(view.session.pads[3].direct)
         assertTrue(view.handlePadAction(KeyAction.SwitchToNumberLayout))
-        assertEquals(GesturePresets.DIGITS, view.session.pads[2].setId)
+        assertEquals(PalmGesturePresets.DIGITS, view.session.pads[2].setId)
         assertFalse(view.handlePadAction(KeyAction.Delete))
         fun buttons(parent: android.view.ViewGroup): List<Button> = (0 until parent.childCount).flatMap {
             when (val child = parent.getChildAt(it)) {

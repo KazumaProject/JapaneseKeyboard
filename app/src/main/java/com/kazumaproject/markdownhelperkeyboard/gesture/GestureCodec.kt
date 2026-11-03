@@ -13,17 +13,17 @@ object GestureCodec {
     private fun root(json: String): JsonObject {
         require(json.length <= LIMIT) { "Gesture data is too large" }
         return JsonParser.parseString(json).asJsonObject.also {
-            require(it["version"]?.asJsonPrimitive?.isNumber == true && it["version"].asString in listOf("1", "2")) { "Unsupported gesture version" }
+            require(it["version"]?.asJsonPrimitive?.isNumber == true && it["version"].asString in listOf("1", "2", "3")) { "Unsupported gesture version" }
         }
     }
     private fun JsonObject.string(key: String): String = get(key).also {
         require(it != null && it.isJsonPrimitive && it.asJsonPrimitive.isString) { "Expected string: $key" }
     }.asString
-    private fun document() = JsonObject().apply { addProperty("version", 2) }
+    private fun document() = JsonObject().apply { addProperty("version", 3) }
     fun encodeSets(sets: List<GestureSet>): String {
         sets.forEach { require(!it.builtIn && !it.id.startsWith("builtin_")); it.validate() }
         return document().apply { add("sets", JsonArray().apply { sets.forEach { set -> add(JsonObject().apply {
-            addProperty("id", set.id); addProperty("name", set.name); addProperty("isRomaji", set.isRomaji)
+            addProperty("id", set.id); addProperty("name", set.name); addProperty("isRomaji", set.isRomaji); addProperty("palm", set.palm)
             add("entries", JsonArray().apply { set.entries.forEach { entry -> add(JsonObject().apply {
                 addProperty("id", entry.id)
                 when (val output = entry.output) {
@@ -60,7 +60,8 @@ object GestureCodec {
                 }
                 GestureEntry(entry.string("id"), output, samples)
             }
-            GestureSet(id, set.string("name"), entries, isRomaji = if (set.has("isRomaji")) set.boolean("isRomaji") else false).also { it.validate() }
+            GestureSet(id, set.string("name"), entries, isRomaji = if (set.has("isRomaji")) set.boolean("isRomaji") else false,
+                palm = if (set.has("palm")) set.boolean("palm") else false).also { it.validate() }
         }
         require(sets.map { it.id }.distinct().size == sets.size)
         return sets
@@ -116,7 +117,7 @@ object GestureCodec {
                 addProperty("id", pad.id); addProperty("setId", pad.setId)
                 addProperty("x", pad.bounds.x); addProperty("y", pad.bounds.y)
                 addProperty("width", pad.bounds.width); addProperty("height", pad.bounds.height)
-                addProperty("uppercase", pad.uppercase); addProperty("shift", pad.shift); addProperty("direct", pad.direct)
+                addProperty("uppercase", pad.uppercase); addProperty("shift", false); addProperty("direct", pad.direct)
                 pad.romajiOverride?.let { addProperty("romajiOverride", it) }
             }) } })
         }.toString()

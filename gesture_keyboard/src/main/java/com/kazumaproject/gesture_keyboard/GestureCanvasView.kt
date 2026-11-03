@@ -18,7 +18,8 @@ class GestureCanvasView(context: Context) : FrameLayout(context) {
     fun configure(state: GestureSessionState, sets: List<GestureSet>, editing: Boolean,
                   ink: Int, background: () -> android.graphics.drawable.Drawable,
                   allowed: () -> Boolean, start: (String) -> Unit,
-                  stroke: (String, List<GesturePoint>) -> Unit) {
+                  stroke: (String, List<GesturePoint>) -> Unit,
+                  tap: (String) -> Unit = {}) {
         pads.values.forEach { it.cancelStroke() }
         removeAllViews(); rectangles.clear(); pads.clear()
         state.pads.forEachIndexed { index, pad ->
@@ -31,6 +32,7 @@ class GestureCanvasView(context: Context) : FrameLayout(context) {
                 captureAllowed = { !editing && allowed() }
                 onStart = { start(pad.id) }
                 onStroke = { stroke(pad.id, it) }
+                onTap = { tap(pad.id) }
             }
             pads[pad.id] = view
             frame.addView(view, LayoutParams(-1, -1))

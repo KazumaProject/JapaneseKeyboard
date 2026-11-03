@@ -14,24 +14,41 @@ object GestureRecognizer {
     const val DEFAULT_MAX_DISTANCE = 0.14f
     const val DEFAULT_MIN_MARGIN = 0.025f
     data class Match(val entry: GestureEntry, val distance: Float)
+    sealed interface Decision {
+        data class Accepted(val match: Match) : Decision
+        data class Ambiguous(val candidates: List<Match>) : Decision
+        data object Rejected : Decision
+    }
     class Prepared(set: GestureSet) {
         private val samples = set.entries.flatMap { entry ->
             entry.samples.mapNotNull { normalize(it)?.let { normalized -> entry to normalized } }
         }
         fun ranked(points: List<GesturePoint>): List<Match> {
             val normalized = normalize(points) ?: return emptyList()
-            return samples.map { (entry, sample) -> Match(entry, distance(normalized, sample)) }
+            return samples.map { (entry, sample) -> Match(entry, tiltedDistance(normalized, sample)) }
                 .groupBy { it.entry.output }.values.map { matches -> matches.minBy { it.distance } }
                 .sortedBy { it.distance }
         }
-        fun recognize(points: List<GesturePoint>, maxDistance: Float = DEFAULT_MAX_DISTANCE): Match? {
+        fun evaluate(points: List<GesturePoint>, maxDistance: Float = DEFAULT_MAX_DISTANCE): Decision {
             val ranked = ranked(points)
-            val best = ranked.firstOrNull() ?: return null
-            if (best.distance > maxDistance) return null
-            if (ranked.size > 1 && ranked[1].distance - best.distance < DEFAULT_MIN_MARGIN) return null
-            return best
+            val best = ranked.firstOrNull() ?: return Decision.Rejected
+            if (best.distance > maxDistance) return Decision.Rejected
+            return if (ranked.size > 1 && ranked[1].distance - best.distance < DEFAULT_MIN_MARGIN)
+                Decision.Ambiguous(ranked.filter { it.distance <= maxDistance }.take(3))
+            else Decision.Accepted(best)
         }
+        fun recognize(points: List<GesturePoint>, maxDistance: Float = DEFAULT_MAX_DISTANCE): Match? =
+            (evaluate(points, maxDistance) as? Decision.Accepted)?.match
     }
+    // Limited tilt tolerance; never rotate into a different direction or mirror/reverse a stroke.
+    private fun tiltedDistance(points: List<GesturePoint>, sample: List<GesturePoint>): Float =
+        listOf(-10.0, 0.0, 10.0).minOf { degrees ->
+            val angle = Math.toRadians(degrees)
+            val c = kotlin.math.cos(angle).toFloat(); val s = kotlin.math.sin(angle).toFloat()
+            val rotated = if (degrees == 0.0) points else points.map { GesturePoint(it.x * c - it.y * s, it.x * s + it.y * c) }
+            distance(rotated, sample) + if (degrees == 0.0) 0f else .003f
+        }
+
     fun normalize(input: List<GesturePoint>): List<GesturePoint>? {
         if (input.size < 2 || input.any { !it.x.isFinite() || !it.y.isFinite() }) return null
         val cumulative = FloatArray(input.size)

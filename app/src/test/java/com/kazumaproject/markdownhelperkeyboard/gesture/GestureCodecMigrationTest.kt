@@ -21,7 +21,7 @@ class GestureCodecMigrationTest {
     @Test fun versionTwoRoundTripsGeometryModesAndParameterizedActions() {
         val state = GestureSessionState().withCount(4).copy(activePadId = "pad_3")
             .update("pad_3") { it.copy(bounds = GestureBounds(.05f, .6f, .3f, .3f), shift = true, direct = true, romajiOverride = true) }
-        assertEquals(state, GestureCodec.decodeSession(GestureCodec.encodeSession(state)))
+        assertEquals(state.update("pad_3") { it.copy(shift = false) }, GestureCodec.decodeSession(GestureCodec.encodeSession(state)))
         val actions = listOf(KeyAction.Paste, KeyAction.ForceFullWidthSpace, KeyAction.MoveToCustomKeyboard("stable-123"))
         val layout = GestureControlLayout(actions.mapIndexed { i, action -> GestureControlKey("key_$i", action) }, emptyList())
         assertEquals(layout, GestureCodec.decodeLayout(GestureCodec.encodeLayout(layout)))
@@ -35,10 +35,24 @@ class GestureCodecMigrationTest {
     }
     @Test fun unsupportedActionsVersionsAndOverlappingAreasAreRejected() {
         assertThrows(IllegalArgumentException::class.java) { GestureCodec.decodeLayout("""{"version":2,"left":[{"id":"a","action":"missing"}],"right":[]}""") }
-        assertThrows(IllegalArgumentException::class.java) { GestureCodec.decodeSession("""{"version":3}""") }
+        assertThrows(IllegalArgumentException::class.java) { GestureCodec.decodeSession("""{"version":99}""") }
         val state = GestureSessionState()
         val valid = GestureCodec.encodeSession(state)
         assertThrows(IllegalArgumentException::class.java) { GestureCodec.decodeSession(valid.replace("\"x\":0.5", "\"x\":0.0")) }
+    }
+    @Test fun palmProfileAndCopiesRoundTripWithoutChangingLegacyMaps() {
+        val palm = PalmGesturePresets.sets(false).first { it.id == PalmGesturePresets.ROMAJI }
+            .copy(id = "personal-palm", name = "Personal Palm", builtIn = false)
+        assertEquals(listOf(palm), GestureCodec.decodeSets(GestureCodec.encodeSets(listOf(palm))))
+        val legacy = """{"version":2,"sets":[{"id":"old","name":"Old","isRomaji":true,"entries":[{"id":"i","type":"text","value":"i","samples":[[[5,0],[5,10]]]}]}]}"""
+        val old = GestureCodec.decodeSets(legacy).single()
+        assertFalse(old.palm)
+        assertTrue(old.isRomaji)
+        val session = """{"version":2,"activePadId":"pad_2","pads":[{"id":"pad_1","setId":"builtin_kana","x":0,"y":0,"width":0.5,"height":1,"uppercase":false,"shift":false,"direct":false},{"id":"pad_2","setId":"builtin_digits","x":0.5,"y":0,"width":0.5,"height":1,"uppercase":true,"shift":false,"direct":false}]}"""
+        val restored = GestureCodec.decodeSession(session)
+        assertEquals(listOf(GesturePresets.KANA, GesturePresets.DIGITS), restored.pads.map { it.setId })
+        assertEquals("pad_2", restored.activePadId)
+        assertEquals(restored, GestureCodec.decodeSession(GestureCodec.encodeSession(restored)))
     }
     @Test fun everyLegacyCommandHasAStableSharedActionEncoding() {
         for (name in listOf("DELETE", "SPACE", "CONVERT", "COMMIT", "ENTER", "CURSOR_LEFT", "CURSOR_RIGHT", "DAKUTEN", "HANDAKUTEN", "SMALL_KANA", "NEXT_KEYBOARD")) {

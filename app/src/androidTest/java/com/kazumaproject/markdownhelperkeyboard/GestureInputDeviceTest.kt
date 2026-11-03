@@ -101,7 +101,9 @@ class GestureInputDeviceTest {
     }
     @Test fun normalInputConvertsKanaAndCommitsDigits() = exercise(false)
     @Test fun floatingInputConvertsKanaAndCommitsDigits() = exercise(true)
-    private fun exercise(floating: Boolean) {
+    @Test fun normalPalmInputConvertsRomajiAndSupportsTapPunctuation() = exercise(false, palm = true)
+    @Test fun floatingPalmInputConvertsRomajiAndSupportsTapPunctuation() = exercise(true, palm = true)
+    private fun exercise(floating: Boolean, palm: Boolean = false) {
         val oldIme = shell("settings get secure default_input_method")
         val target = context.packageName + "/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val enabled = shell("settings get secure enabled_input_methods").split(':').any { it.substringBefore(';') == target }
@@ -119,29 +121,36 @@ class GestureInputDeviceTest {
                 .putBoolean("live_conversion_preference", false).putBoolean("learn_dictionary_preference", false)
                 .putInt("keyboard_height_preference", 280).putInt("keyboard_width_preference", 100)
                 .remove(GesturePreferences.SESSION).remove(GesturePreferences.LAYOUT).remove(GesturePreferences.SETS).commit()
+            if (!palm) GesturePreferences(context).saveSession(GestureSessionState()
+                .withSet("pad_1", GesturePresets.KANA).withSet("pad_2", GesturePresets.DIGITS))
             GesturePreferences(context).saveLayout(GestureControlLayout(leftKeys = listOf(
                 GestureControlKey("caps", KeyAction.CapLockKey), GestureControlKey("copy", KeyAction.Copy),
                 GestureControlKey("paste", KeyAction.Paste), GestureControlKey("romaji", KeyAction.SwitchRomajiEnglish))))
             shell("ime enable " + target); shell("ime set " + target)
+            await("Gesture IME was not selected") { shell("settings get secure default_input_method") == target }
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { host ->
                 host.onActivity { activity ->
                     activity.editText.requestFocus()
                     activity.editText.post {
-                        (activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
-                            .showSoftInput(activity.editText, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                        val manager = activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                        manager.restartInput(activity.editText)
+                        manager.showSoftInput(activity.editText, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
                     }
                 }
                 fun text(): String { var result = ""; host.onActivity { result = it.editText.text.toString() }; return result }
                 val kana = GesturePresets.sets().first()
+                val palmRomaji = GesturePresets.sets().first { it.id == PalmGesturePresets.ROMAJI }
                 var reading = ""
-                for (character in listOf("に", "ほ", "ん")) {
-                    draw(GestureSide.LEFT, kana.entries.single { it.id == character })
-                    reading += character
-                    await("Kana was not composed: " + reading + " / " + text()) { text() == reading }
+                val characters = if (palm) listOf("n", "i", "h", "o", "n") else listOf("に", "ほ", "ん")
+                val readings = if (palm) listOf("n", "に", "にh", "にほ", "にほn") else listOf("に", "にほ", "にほん")
+                for ((index, character) in characters.withIndex()) {
+                    draw(GestureSide.LEFT, (if (palm) palmRomaji else kana).entries.single { it.id == character })
+                    reading = readings[index]
+                    await("Text was not composed: " + reading + " / " + text()) { text() == reading }
                 }
                 host.onActivity { assertTrue(BaseInputConnection.getComposingSpanStart(it.editText.text) >= 0) }
-                click(KeyAction.Convert)
-                await("Kana did not convert: " + text()) { text() != reading && text().isNotEmpty() }
+                if (palm) draw(GestureSide.LEFT, palmRomaji.entries.single { it.id == "palm_space" }) else click(KeyAction.Convert)
+                await("Kana did not convert: " + text()) { text() != reading && (!palm || text() != "にほん") && text().isNotEmpty() }
                 val preview = text()
                 click(KeyAction.Enter)
                 await("Conversion did not commit") {
@@ -152,11 +161,25 @@ class GestureInputDeviceTest {
                 val converted = text()
                 android.util.Log.i("GestureDeviceTest", "floating=" + floating + " preview=" + preview + " committed=" + converted)
                 assertEquals("Committed candidate must match the preview", preview, converted)
-                draw(GestureSide.RIGHT, GesturePresets.sets().first { it.id == GesturePresets.DIGITS }.entries.single { it.id == "7" })
+                draw(GestureSide.RIGHT, GesturePresets.sets().first { it.id == if (palm) PalmGesturePresets.DIGITS else GesturePresets.DIGITS }.entries.single { it.id == "7" })
                 try { await("Digit was not committed") { text() == converted + "7" } }
                 catch (error: Exception) { throw AssertionError("Expected [" + converted + "7], actual [" + text() + "]", error) }
                 click(KeyAction.Delete)
                 await("Delete did not remove digit") { text() == converted }
+                if (palm) {
+                    fun tapRight() {
+                        val bounds = pad(GestureSide.RIGHT)
+                        val time = SystemClock.uptimeMillis()
+                        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                            val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, bounds.exactCenterX(), bounds.exactCenterY(), 0).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
+                            assertTrue(ui.injectInputEvent(event, true)); event.recycle()
+                        }
+                    }
+                    tapRight(); tapRight()
+                    await("Two taps did not enter a period") { text() == converted + "." }
+                    click(KeyAction.Delete)
+                    await("Period did not delete") { text() == converted }
+                }
                 draw(GestureSide.LEFT, kana.entries.single { it.id == "か" }, cancel = true)
                 SystemClock.sleep(400)
                 assertEquals(converted, text())

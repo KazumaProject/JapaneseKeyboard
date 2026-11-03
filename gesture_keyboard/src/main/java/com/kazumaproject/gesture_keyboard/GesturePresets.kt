@@ -111,5 +111,5 @@ object GesturePresets {
         GestureSet(LATIN, if (ja) "英字" else "Alphabet", latinSketches.map { entry(it.key, it.value, false) }, true),
         GestureSet(DIGITS, if (ja) "数字" else "Numbers", digitSketches.map { entry(it.key, it.value, false) }, true),
         GestureSet(ROMAJI, if (ja) "ローマ字" else "Romaji", latinSketches.map { entry(it.key, it.value, false) }, true, isRomaji = true)
-    )
+    ) + PalmGesturePresets.sets(ja)
 }
