@@ -37,7 +37,7 @@ class GestureLayoutEditorDeviceTest {
     private fun nodes(): List<AccessibilityNodeInfo> {
         val result = mutableListOf<AccessibilityNodeInfo>()
         fun walk(node: AccessibilityNodeInfo) { if (node.isVisibleToUser) result.add(node); for (i in 0 until node.childCount) node.getChild(i)?.let(::walk) }
-        ui.windows.forEach { it.root?.let(::walk) }; return result
+        ui.rootInActiveWindow?.let(::walk); return result
     }
     private fun node(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo {
         var value: AccessibilityNodeInfo? = null
@@ -99,8 +99,18 @@ class GestureLayoutEditorDeviceTest {
                     views(activity.window.decorView).filterIsInstance<Button>().first { it.text.toString() in label }.performClick()
                 }
                 click(setOf("A")); click(setOf("Edit", "編集"))
+                ins.waitForIdleSync()
+                node { it.text?.toString() in setOf("Special key", "特殊キー") }
                 node { it.className?.toString() == "android.widget.Button" && it.text?.toString() in setOf("Delete", "削除") }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                node { it.text?.toString() in setOf("Enter", "エンター") }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                var enter: AccessibilityNodeInfo? = null
+                // The shared catalog can exceed the viewport when the label editor opens the IME.
+                await("Enter action missing from picker") {
+                    enter = nodes().firstOrNull { it.text?.toString() in setOf("Enter", "エンター") }
+                    if (enter == null) nodes().firstOrNull { it.className?.toString() == "android.widget.ListView" && it.isScrollable }
+                        ?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+                    enter != null
+                }
+                enter!!.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 node { it.className?.toString() == "android.widget.EditText" }.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,
                     Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "Edited") })
                 node { it.viewIdResourceName == "android:id/button1" }.performAction(AccessibilityNodeInfo.ACTION_CLICK)
