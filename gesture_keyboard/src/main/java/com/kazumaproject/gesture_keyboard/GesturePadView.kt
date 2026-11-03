@@ -14,6 +14,10 @@ import kotlin.math.hypot
 class GesturePadView(context: Context) : View(context) {
     var onStroke: (List<GesturePoint>) -> Unit = {}
     var onStart: () -> Unit = {}
+    var onTap: () -> Unit = {}
+    var animateGuide: Boolean = false
+        set(value) { field = value; animationStarted = android.os.SystemClock.uptimeMillis(); invalidate() }
+    private var animationStarted = 0L
     var captureAllowed: () -> Boolean = { true }
     var inkColor: Int = Color.BLUE
     var guide: List<GesturePoint>? = null
@@ -47,6 +51,7 @@ class GesturePadView(context: Context) : View(context) {
                     val valid = pathLength >= ViewConfiguration.get(context).scaledTouchSlop * 2
                     cancelStroke()
                     if (valid && stroke.size >= 2) onStroke(stroke)
+                    else if (stroke.isNotEmpty() && pathLengthFor(stroke) < ViewConfiguration.get(context).scaledTouchSlop) onTap()
                     performClick()
                 }
                 return true
@@ -54,12 +59,13 @@ class GesturePadView(context: Context) : View(context) {
         }
         return true
     }
+    private fun pathLengthFor(stroke: List<GesturePoint>) = stroke.zipWithNext().sumOf { (a, b) -> hypot(a.x - b.x, a.y - b.y).toDouble() }
     private fun append(x: Float, y: Float): Boolean {
         if (x < 0 || y < 0 || x >= width || y >= height) return false
         val previous = points.lastOrNull()
         if (previous != null) {
             val distance = hypot(x - previous.x, y - previous.y)
-            if (distance < 1f && points.size > 1) return true
+            if (distance < resources.displayMetrics.density && points.size > 1) return true
             pathLength += distance
         }
         // Bound capture while retaining later points instead of truncating the end.
@@ -78,7 +84,21 @@ class GesturePadView(context: Context) : View(context) {
             val h = (sample.maxOf { it.y } - minY).coerceAtLeast(0.01f)
             val scale = minOf(width * 0.72f / w, height * 0.72f / h)
             val display = sample.map { GesturePoint((it.x - minX - w / 2) * scale + width / 2, (it.y - minY - h / 2) * scale + height / 2) }
-            drawPath(canvas, display, inkColor and 0x00ffffff or 0x55000000)
+            drawPath(canvas, display, inkColor and 0x00ffffff or 0x33000000)
+            if (animateGuide) {
+                val elapsed = (android.os.SystemClock.uptimeMillis() - animationStarted) % 2200L
+                val normalized = GestureRecognizer.normalize(sample).orEmpty()
+                val progress = ((elapsed.coerceAtMost(1600) / 1600f) * (normalized.size - 1)).toInt().coerceAtLeast(0)
+                if (normalized.isNotEmpty()) {
+                    // Resample in the displayed coordinate system to animate by distance.
+                    val displayed = GestureRecognizer.normalize(display).orEmpty()
+                    val span = maxOf(display.maxOf { it.x } - display.minOf { it.x }, display.maxOf { it.y } - display.minOf { it.y })
+                    val centerX = width / 2f - (displayed.maxOf { it.x } + displayed.minOf { it.x }) * span / 2f
+                    val centerY = height / 2f - (displayed.maxOf { it.y } + displayed.minOf { it.y }) * span / 2f
+                    drawPath(canvas, displayed.take(progress + 1).map { GesturePoint(it.x * span + centerX, it.y * span + centerY) }, inkColor)
+                }
+                if (isShown) postInvalidateOnAnimation()
+            }
             paint.style = Paint.Style.FILL; paint.color = inkColor
             canvas.drawCircle(display.first().x, display.first().y, 5f * resources.displayMetrics.density, paint)
             val end = display.last(); val before = display[(display.size - 2).coerceAtLeast(0)]

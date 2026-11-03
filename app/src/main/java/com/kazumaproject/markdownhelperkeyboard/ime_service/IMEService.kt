@@ -12099,6 +12099,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         view.onOutput = { output ->
             enqueueGestureAction(view) { dispatchGestureOutput(view, output) }
         }
+        view.onResolveOutput = { resolve ->
+            enqueueGestureAction(view) { resolve()?.let { dispatchGestureOutput(view, it) } }
+        }
         view.onCommand = { command -> enqueueGestureAction(view) { dispatchGestureCommand(view, command) } }
         view.onBeforeStateChange = { enqueueGestureAction(view) { flushGestureRomaji() } }
         view.onOpenSettings = { cancelGestureInputs(); launchSettingsActivity("gesture") }
@@ -16624,8 +16627,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         gestureView: GestureKeyboardView? = null
     ) {
         if (deferCursorInput { dispatchSharedKeyboardAction(action, isFlick, mainView, isFloatingView, flickView, gestureView) }) return
-        if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
-                KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
         flickView?.let(::activateSplitView)
         if (isKeyboardLayoutEditModeActive()) return
         flushPendingBackspacesBefore(action)
@@ -16634,6 +16635,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
             return
         }
+        if (action !in setOf(KeyAction.DoNothing, KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                KeyAction.MoveCursorUp, KeyAction.MoveCursorDown)) endCursorSelectionForInput()
         finishCustomToggleForAction()
         if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
@@ -17074,9 +17077,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             KeyAction.UndoLastDelete -> {
-                if (isDeleteDownFlickPreference == true) {
-                    undoLastHistoryEntry()
-                }
+                undoLastDeleteEntry()
             }
 
             KeyAction.MoveCursorDown -> {

@@ -12,7 +12,7 @@ class GestureSessionStateTest {
             assertEquals(count, state.pads.size)
             assertEquals("personal", state.pads.first().setId)
         }
-        assertEquals(GesturePresets.ROMAJI, GestureSessionState().withCount(4).pads[3].setId)
+        assertEquals(GesturePresets.KANA, GestureSessionState().withCount(4).pads[3].setId)
     }
     @Test fun touchingEdgesIsAllowedButOverlapOutOfBoundsAndTooSmallAreRejected() {
         val state = GestureSessionState()

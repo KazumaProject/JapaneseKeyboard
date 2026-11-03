@@ -29,7 +29,7 @@ data class GestureEntry(val id: String, val output: GestureOutput, val samples: 
         }
     }
 }
-data class GestureSet(val id: String, val name: String, val entries: List<GestureEntry>, val builtIn: Boolean = false, val isRomaji: Boolean = false) {
+data class GestureSet(val id: String, val name: String, val entries: List<GestureEntry>, val builtIn: Boolean = false, val isRomaji: Boolean = false, val palm: Boolean = false) {
     fun validate() {
         require(id.isNotBlank() && name.isNotBlank() && name.length <= 100 && entries.size <= 256)
         require(entries.map { it.id }.distinct().size == entries.size)
@@ -84,7 +84,7 @@ data class GestureSessionState(
                 3 -> listOf(GestureBounds(0f, 0f, .5f, .5f), GestureBounds(.5f, 0f, .5f, .5f), GestureBounds(0f, .5f, 1f, .5f))
                 else -> listOf(GestureBounds(0f, 0f, .5f, .5f), GestureBounds(.5f, 0f, .5f, .5f), GestureBounds(0f, .5f, .5f, .5f), GestureBounds(.5f, .5f, .5f, .5f))
             }
-            val sets = listOf(GesturePresets.KANA, GesturePresets.DIGITS, GesturePresets.LATIN, GesturePresets.ROMAJI)
+            val sets = listOf(PalmGesturePresets.ROMAJI, PalmGesturePresets.DIGITS, PalmGesturePresets.LATIN, GesturePresets.KANA)
             return bounds.mapIndexed { index, rect -> GesturePadState("pad_${index + 1}", sets[index], rect) }
         }
     }

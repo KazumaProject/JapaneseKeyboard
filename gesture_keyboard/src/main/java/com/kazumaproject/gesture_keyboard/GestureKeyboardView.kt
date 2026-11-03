@@ -32,6 +32,8 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     var onInteraction: () -> Unit = {}
     var onOutput: (GestureOutput) -> Boolean = { false }
     var onCommand: (KeyAction) -> Unit = {}
+    /** The IME evaluates this on its input queue, after preceding commands and conversions. */
+    var onResolveOutput: ((() -> GestureOutput?) -> Unit)? = null
     var onOpenSettings: () -> Unit = {}
     /** Floating windows are subwindows; attach dialogs to the original IME window. */
     var dialogToken: () -> android.os.IBinder? = { windowToken }
@@ -71,6 +73,10 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     private val middle = canvas
     private val preview = TextView(context)
     private val controls = mutableMapOf<String, Button>()
+    private val candidates = LinearLayout(context)
+    private var interaction = 0L
+    private var punctuation = false
+    private val punctuationMatcher = GestureRecognizer.Prepared(PalmGesturePresets.punctuation)
 
     private var repeatTask: Runnable? = null
 
@@ -79,7 +85,20 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
         setPadding(dp(2), dp(2), dp(2), dp(2))
         preview.gravity = Gravity.CENTER
         preview.textSize = 13f
-        addView(preview, LayoutParams(-1, dp(24)))
+        preview.maxLines = 2
+        preview.ellipsize = android.text.TextUtils.TruncateAt.END
+        preview.setOnClickListener {
+            val set = sets.first { it.id == session.activePad().setId }
+            if (set.entries.any { (it.output as? GestureOutput.LiteralText)?.text?.any { c -> c in 'a'..'z' || c in 'A'..'Z' } == true })
+                enqueueCommand(KeyAction.SwitchRomajiEnglish)
+            else menu()
+        }
+        preview.contentDescription = if (ja) "入力モードを切り替え" else "Switch input mode"
+        candidates.visibility = GONE
+        addView(android.widget.FrameLayout(context).apply {
+            addView(preview, android.widget.FrameLayout.LayoutParams(-1, -1))
+            addView(candidates, android.widget.FrameLayout.LayoutParams(-1, -1))
+        }, LayoutParams(-1, dp(48)))
         addView(body, LayoutParams(-1, 0, 1f))
         body.orientation = HORIZONTAL
         rebuild()
@@ -89,7 +108,7 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
         val nextSets = available.ifEmpty { GesturePresets.sets(ja) }
         val ids = nextSets.map { it.id }.toSet()
         val safeState = state.copy(pads = state.pads.map { pad ->
-            if (pad.setId in ids) pad else pad.copy(setId = nextSets.first().id, romajiOverride = null)
+            if (pad.setId in ids) pad.copy(shift = false) else pad.copy(setId = nextSets.first().id, shift = false, romajiOverride = null)
         })
         if (sets == nextSets && session == safeState && layout == controls && showGuide == guide && maxDistance == distance && renderedEditing == isEditing) return
         cancelInput()
@@ -110,6 +129,10 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     }
     fun cancelInput() {
         epoch++
+        punctuation = false
+        clearCandidates()
+        session = session.copy(pads = session.pads.map { it.copy(shift = false) })
+        status()
         canvas.pads.values.forEach { it.cancelStroke() }
         main.removeCallbacksAndMessages(null); repeatTask = null
     }
@@ -127,41 +150,130 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
             { KeyboardSkinRegistry.find(skinId)?.keyDrawable(resources, role = SkinKeyRole.CHARACTER) ?: background(keyBg) },
             { inputAllowed() },
             { id ->
+                interaction++; clearCandidates()
                 if (session.activePadId != id) { session = session.copy(activePadId = id); onStateChanged(session); refreshSelection() }
-                onInteraction()
-            }, ::recognize)
-        refreshSelection()
+                status(); onInteraction()
+            }, ::recognize, ::tap)
+        refreshSelection(); status()
+    }
+    private fun clearCandidates() {
+        candidates.removeAllViews()
+        candidates.visibility = GONE
+        preview.visibility = VISIBLE
+    }
+    private fun status(result: String = "") {
+        val pad = session.activePad()
+        val set = sets.firstOrNull { it.id == pad.setId } ?: return
+        val literal = set.entries.mapNotNull { (it.output as? GestureOutput.LiteralText)?.text }
+        val mode = when {
+            literal.isNotEmpty() && literal.all { it.all(Char::isDigit) } -> "123"
+            set.entries.any { it.output is GestureOutput.Reading } && !pad.direct -> "かな"
+            pad.direct || !(pad.romajiOverride ?: set.isRomaji) -> "a"
+            else -> "あ"
+        }
+        preview.text = listOf(set.name, if (punctuation) "· . , ? !" else mode,
+            if (pad.uppercase) "CAPS" else if (pad.shift) "Shift" else "", result)
+            .filter { it.isNotEmpty() }.joinToString(" · ")
+    }
+    private fun submit(expected: Long = epoch, resolve: () -> GestureOutput?) {
+        val guarded = {
+            if (epoch == expected && inputAllowed() && !isEditing && isShown) resolve() else null
+        }
+        val callback = onResolveOutput
+        if (callback != null) callback(guarded)
+        else guarded()?.let { if (it is GestureOutput.Command) onCommand(it.action) else onOutput(it) }
+    }
+    private fun tap(padId: String) {
+        if (!inputAllowed() || isEditing) return
+        val generation = epoch
+        worker.execute { main.post { submit(generation) {
+            val pad = session.pads.firstOrNull { it.id == padId } ?: return@submit null
+            if (sets.none { it.id == pad.setId && it.palm }) return@submit null
+            session = session.copy(activePadId = padId)
+            val period = punctuation
+            punctuation = !punctuation
+            status()
+            if (period) GestureOutput.LiteralText(".") else null
+        } } }
     }
     private fun recognize(padId: String, stroke: List<GesturePoint>) {
         if (!inputAllowed() || isEditing) return
         val generation = epoch
-        val pad = session.pads.first { it.id == padId }
-        val set = sets.first { it.id == pad.setId }
-        val matcher = prepared[set.id] ?: GestureRecognizer.Prepared(set)
+        val strokeInteraction = interaction
+        val setId = session.pads.first { it.id == padId }.setId
+        val matcher = prepared[setId] ?: GestureRecognizer.Prepared(sets.first { it.id == setId })
         val threshold = maxDistance
         worker.execute {
-            val match = matcher.recognize(stroke, threshold)
-            main.post {
-                if (epoch != generation || !inputAllowed() || isEditing || !isShown) return@post
-                if (match == null) {
-                    preview.text = if (ja) "認識できません。もう一度描いてください" else "Not recognized. Please try again."
-                } else {
-                    val raw = match.entry.output
-                    val text = when (raw) { is GestureOutput.LiteralText -> raw.text; is GestureOutput.Reading -> raw.text; else -> null }
-                    val output = when {
-                        raw is GestureOutput.Command -> raw
-                        pad.direct && text != null -> GestureOutput.LiteralText(if (pad.uppercase || pad.shift) text.uppercase(java.util.Locale.ROOT) else text)
-                        raw is GestureOutput.LiteralText && (pad.romajiOverride ?: set.isRomaji) && raw.text.all { it in 'a'..'z' || it in 'A'..'Z' } -> GestureOutput.Romaji(raw.text)
-                        raw is GestureOutput.LiteralText && (pad.uppercase || pad.shift) -> raw.copy(text = raw.text.uppercase(java.util.Locale.ROOT))
-                        else -> raw
-                    }
-                    preview.text = GestureLabels.output(output, context)
-                    if (output is GestureOutput.Command) { session = session.copy(activePadId = padId); onCommand(output.action) }
-                    else onOutput(output)
-                    if (pad.shift && output !is GestureOutput.Command) { session = session.update(padId) { it.copy(shift = false) }; onStateChanged(session); refreshSelection() }
+            val ordinary = matcher.evaluate(stroke, threshold)
+            val symbol = punctuationMatcher.evaluate(stroke, threshold)
+            main.post { submit(generation) {
+                val pad = session.pads.firstOrNull { it.id == padId } ?: return@submit null
+                if (pad.setId != setId) return@submit null
+                session = session.copy(activePadId = padId)
+                val usePunctuation = punctuation && sets.first { it.id == setId }.palm
+                if (usePunctuation && ordinary is GestureRecognizer.Decision.Accepted &&
+                    ordinary.match.entry.output == GestureOutput.Command(KeyAction.Delete)) {
+                    punctuation = false; status(); return@submit null
                 }
-            }
+                val result = if (usePunctuation) symbol else ordinary
+                when (result) {
+                    is GestureRecognizer.Decision.Accepted -> {
+                        punctuation = false
+                        resolveOutput(padId, result.match.entry.output)
+                    }
+                    is GestureRecognizer.Decision.Ambiguous -> {
+                        if (interaction == strokeInteraction) {
+                            showCandidates(padId, result.candidates, generation, strokeInteraction)
+                            status(if (ja) "候補を選択" else "Choose a match")
+                        } else punctuation = false
+                        null
+                    }
+                    GestureRecognizer.Decision.Rejected -> {
+                        if (interaction == strokeInteraction) status(if (ja) "もう一度描いてください" else "Please try again")
+                        null
+                    }
+                }
+            } }
         }
+    }
+    private fun showCandidates(padId: String, matches: List<GestureRecognizer.Match>, generation: Long, token: Long) {
+        clearCandidates()
+        candidates.visibility = VISIBLE
+        preview.visibility = INVISIBLE
+        matches.forEach { match ->
+            val label = GestureLabels.output(match.entry.output, context)
+            candidates.addView(button(label).apply {
+                contentDescription = (if (ja) "候補: " else "Match: ") + label
+                setOnClickListener {
+                    if (interaction != token || epoch != generation) return@setOnClickListener
+                    interaction++; clearCandidates()
+                    // Queue the choice before any subsequent stroke, but discard it on a mode/editor change.
+                    submit(generation) { punctuation = false; resolveOutput(padId, match.entry.output) }
+                }
+            }, LayoutParams(0, -1, 1f))
+        }
+    }
+    private fun resolveOutput(padId: String, raw: GestureOutput): GestureOutput? {
+        val pad = session.pads.firstOrNull { it.id == padId } ?: return null
+        val set = sets.first { it.id == pad.setId }
+        session = session.copy(activePadId = padId)
+        val text = when (raw) { is GestureOutput.LiteralText -> raw.text; is GestureOutput.Reading -> raw.text; else -> null }
+        val romaji = !pad.direct && (pad.romajiOverride ?: set.isRomaji)
+        val output = when {
+            raw is GestureOutput.Command && raw.action == KeyAction.Delete && punctuation -> { punctuation = false; status(); return null }
+            raw is GestureOutput.Command -> raw
+            pad.direct && text != null -> GestureOutput.LiteralText(if (pad.uppercase || pad.shift) text.uppercase(java.util.Locale.ROOT) else text)
+            raw is GestureOutput.LiteralText && romaji && raw.text.all { it in 'a'..'z' || it in 'A'..'Z' } -> GestureOutput.Romaji(raw.text)
+            raw is GestureOutput.LiteralText && (pad.uppercase || pad.shift) -> raw.copy(text = raw.text.uppercase(java.util.Locale.ROOT))
+            else -> raw
+        }
+        if (pad.shift && !romaji && output !is GestureOutput.Command) {
+            session = session.update(padId) { it.copy(shift = false) }
+            onStateChanged(session)
+            refreshSelection()
+        }
+        status(GestureLabels.output(output, context))
+        return output
     }
     fun handlePadAction(action: KeyAction): Boolean {
         val id = session.activePadId
@@ -169,9 +281,14 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
         val set = sets.first { it.id == pad.setId }
         val next = when (action) {
             KeyAction.SwitchToKanaLayout -> session.withSet(id, GesturePresets.KANA)
-            KeyAction.SwitchToEnglishLayout -> session.withSet(id, GesturePresets.LATIN)
-            KeyAction.SwitchToNumberLayout -> session.withSet(id, GesturePresets.DIGITS)
-            KeyAction.ShiftKey -> session.update(id) { it.copy(shift = !it.shift) }
+            KeyAction.SwitchToEnglishLayout -> session.withSet(id, if (set.palm) PalmGesturePresets.LATIN else GesturePresets.LATIN)
+            KeyAction.SwitchToNumberLayout -> session.withSet(id, if (set.palm) PalmGesturePresets.DIGITS else GesturePresets.DIGITS)
+            KeyAction.ShiftKey -> session.update(id) {
+                if (!set.palm) it.copy(shift = !it.shift)
+                else when { it.uppercase -> it.copy(uppercase = false, shift = false)
+                    it.shift -> it.copy(uppercase = true, shift = false)
+                    else -> it.copy(shift = true) }
+            }
             KeyAction.CapLockKey -> session.update(id) { it.copy(uppercase = !it.uppercase, shift = false) }
             KeyAction.SwitchDirectMode -> session.update(id) { it.copy(direct = !it.direct) }
             KeyAction.SwitchRomajiEnglish -> session.update(id) { it.copy(romajiOverride = !(it.romajiOverride ?: set.isRomaji)) }
@@ -179,11 +296,12 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
         }
         // Keep already queued key actions alive; these state changes do not change geometry.
         canvas.pads.values.forEach { it.cancelStroke() }
+        interaction++; punctuation = false; clearCandidates()
         session = next; onStateChanged(session)
         session.pads.forEachIndexed { index, area ->
             canvas.pads[area.id]?.contentDescription = "${index + 1}: ${sets.first { it.id == area.setId }.name}"
         }
-        refreshSelection()
+        refreshSelection(); status()
         return true
     }
     private fun selectSet(padId: String) {
@@ -246,16 +364,11 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
     }
     private fun showSetGuide(padId: String) {
         val set = sets.first { it.id == session.pads.first { pad -> pad.id == padId }.setId }
-        val content = LinearLayout(context).apply { orientation = VERTICAL }
-        set.entries.forEach { entry ->
-            val row = LinearLayout(context)
-            row.addView(TextView(context).apply { text = GestureLabels.output(entry.output, context); gravity = Gravity.CENTER; textSize = 22f }, LayoutParams(dp(64), dp(100)))
-            row.addView(GesturePadView(context).apply { guide = entry.samples.first(); inkColor = Color.DKGRAY; captureAllowed = { false } }, LayoutParams(0, dp(100), 1f))
-            content.addView(row)
-        }
-        showDialog(AlertDialog.Builder(context).setTitle(set.name + if (ja) " · ●始点／矢印の方向" else " · dot=start / arrow=direction")
+        val content = GestureGuideView(context, set, maxDistance, searchable = false)
+        showDialog(AlertDialog.Builder(context).setTitle(set.name)
             .setView(ScrollView(context).apply { addView(content) }).setPositiveButton(android.R.string.ok, null))
     }
+
     private fun showDialog(builder: AlertDialog.Builder) {
         dialog?.dismiss()
         val next = builder.create()
@@ -324,12 +437,12 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
                 else if (side == GestureSide.LEFT) "Add left key" else "Add right key"
             setOnClickListener { onControlAdd?.invoke(side) }
         }, LayoutParams(-1, dp(48)))
-        if (side == GestureSide.RIGHT) column.addView(button("").apply {
+        val menuButton = if (side == GestureSide.RIGHT) button("").apply {
             id = R.id.gesture_menu
             contentDescription = if (ja) "ジェスチャーメニュー" else "Gesture menu"
             setIcon(this, com.kazumaproject.core.R.drawable.more_vert_24px)
             setOnClickListener { menu() }
-        }, LayoutParams(-1, dp(48)))
+        } else null
         if (isEditing) {
             var insertion = 0
             var lastDragY = 0f
@@ -361,7 +474,11 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
                 true
             }
         }
-        return scroll
+        return if (menuButton == null) scroll else LinearLayout(context).apply {
+            orientation = VERTICAL
+            addView(scroll, LayoutParams(-1, 0, 1f))
+            addView(menuButton, LayoutParams(-1, dp(48)))
+        }
     }
     private fun refreshSelection() {
         controls.forEach { (id, button) ->
@@ -371,13 +488,12 @@ class GestureKeyboardView @JvmOverloads constructor(baseContext: Context, attrs:
         }
     }
     private fun enqueueCommand(command: KeyAction) {
+        interaction++; clearCandidates()
         val generation = epoch
-        // This barrier follows earlier stroke recognition tasks on the same worker.
-        worker.execute {
-            main.post {
-                if (epoch == generation && !isEditing && inputAllowed() && isShown) onCommand(command)
-            }
-        }
+        worker.execute { main.post { submit(generation) {
+            if (command == KeyAction.Delete && punctuation) { punctuation = false; status(); null }
+            else { punctuation = false; GestureOutput.Command(command) }
+        } } }
     }
     private fun applyActionIcon(button: Button, action: KeyAction) {
         val pad = session.activePad()

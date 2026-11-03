@@ -1,14 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.gesture
 
 import android.os.Bundle
-import android.widget.LinearLayout
-import android.widget.Toast
 import androidx.navigation.fragment.findNavController
 import com.kazumaproject.gesture_keyboard.*
 import com.kazumaproject.markdownhelperkeyboard.R
 
 class GestureSetEditorFragment : GestureScreenFragment() {
-    private var testPad: GesturePadView? = null
     override fun build(state: Bundle?) { render() }
     override fun onResume() { super.onResume(); render() }
     private fun render() {
@@ -27,36 +24,47 @@ class GestureSetEditorFragment : GestureScreenFragment() {
             }
         }
         content.addView(romaji)
+        content.addView(androidx.appcompat.widget.SwitchCompat(requireContext()).apply {
+            text = t("Palm式のタップ記号・Shift動作", "Palm tap punctuation and Shift")
+            isChecked = set.palm; isEnabled = !set.builtIn
+            setOnCheckedChangeListener { _, checked ->
+                val current = store.sets().firstOrNull { it.id == set.id } ?: return@setOnCheckedChangeListener
+                if (!attempt { store.saveSet(current.copy(palm = checked)) }) isChecked = current.palm
+            }
+        })
         if (set.builtIn) text(t("標準セットは一覧画面から複製すると編集できます。●は始点、矢印は描画方向です。", "Duplicate the standard set to edit it. Dot: start. Arrow: direction."))
         else button(t("ジェスチャーを追加", "Add gesture")) {
             findNavController().navigate(R.id.gestureEntryEditorFragment, Bundle().apply { putString("setId", set.id) })
         }
-        text(t("試し書き（文字は入力しません）", "Try recognition (no text is entered)"))
-        val matcher = GestureRecognizer.Prepared(set)
-        testPad = GesturePadView(requireContext()).apply {
-            setBackgroundColor(0xffe8edf6.toInt())
-            onStroke = { points ->
-                val match = matcher.recognize(points, store.maxDistance())
-                Toast.makeText(context, match?.let { GestureLabels.output(it.entry.output, requireContext()) } ?: t("認識できません", "Not recognized"), Toast.LENGTH_SHORT).show()
+        content.addView(GestureGuideView(requireContext(), set, store.maxDistance(), onRecorded = record@ { entry, points ->
+            val editable = if (set.builtIn) set.copy(id = java.util.UUID.randomUUID().toString(),
+                name = set.name + t(" のコピー", " copy"), builtIn = false) else store.sets().first { it.id == set.id }
+            val target = editable.entries.firstOrNull { it.output == entry.output }
+                ?: entry.copy(id = java.util.UUID.randomUUID().toString())
+            if (target.samples.size >= 16) {
+                attempt { error(t("見本は16個までです。編集画面で既存の見本を削除してください。", "Up to 16 samples. Remove an existing sample in the editor first.")) }
+                return@record
             }
-        }
-        content.addView(testPad, LinearLayout.LayoutParams(-1, dp(180)))
-        set.entries.forEach { entry ->
-            text(GestureLabels.output(entry.output, requireContext()) + " · " + entry.samples.size + t(" 見本", " samples"))
-            entry.samples.forEach { sample ->
-                content.addView(GesturePadView(requireContext()).apply {
-                    guide = sample; captureAllowed = { false }; inkColor = android.graphics.Color.GRAY
-                }, LinearLayout.LayoutParams(-1, dp(110)))
+            val next = if (target in editable.entries) editable else editable.copy(entries = editable.entries + target)
+            if (attempt { store.saveSet(next) }) {
+                findNavController().navigate(R.id.gestureEntryEditorFragment, Bundle().apply {
+                    putString("setId", editable.id); putString("entryId", target.id)
+                    putFloatArray("practiceSample", points.flatMap { listOf(it.x, it.y) }.toFloatArray())
+                })
             }
-            if (!set.builtIn) {
-                button(t("編集・見本を追加／再録", "Edit / add or replace samples")) {
-                    findNavController().navigate(R.id.gestureEntryEditorFragment, Bundle().apply { putString("setId", set.id); putString("entryId", entry.id) })
-                }
-                button(t("ジェスチャーを削除", "Delete gesture")) {
-                    if (attempt { store.saveSet(store.sets().first { it.id == set.id }.let { current -> current.copy(entries = current.entries.filterNot { it.id == entry.id }) }) }) render()
-                }
-            }
-        }
+        }, onEdit = if (set.builtIn) null else { entry ->
+            findNavController().navigate(R.id.gestureEntryEditorFragment, Bundle().apply {
+                putString("setId", set.id); putString("entryId", entry.id)
+            })
+        }, onDelete = if (set.builtIn) null else { entry ->
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(t("このジェスチャーを削除しますか？", "Delete this gesture?"))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    if (attempt { store.saveSet(store.sets().first { it.id == set.id }.let { current ->
+                        current.copy(entries = current.entries.filterNot { it.id == entry.id })
+                    }) }) render()
+                }.show()
+        }))
     }
-    override fun onDestroyView() { testPad?.cancelStroke(); testPad = null; super.onDestroyView() }
 }

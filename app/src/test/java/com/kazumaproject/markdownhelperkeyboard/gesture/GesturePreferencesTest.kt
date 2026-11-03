@@ -39,6 +39,19 @@ class GesturePreferencesTest {
         assertEquals(GestureControlLayout(left, emptyList()), restored.layout())
         assertEquals(GestureSessionState().withSet("pad_1", "custom").withSet("pad_2", GesturePresets.LATIN).update("pad_2") { it.copy(uppercase = true) }, restored.session())
     }
+    @Test fun newInstallUsesPalmAndBackupRestoresTheProfileWithoutTransientShift() {
+        assertEquals(listOf(PalmGesturePresets.ROMAJI, PalmGesturePresets.DIGITS), store.session().pads.map { it.setId })
+        val copy = PalmGesturePresets.sets(false).first().copy(id = "personal-palm", builtIn = false)
+        store.saveSet(copy)
+        store.saveSession(store.session().withSet("pad_1", copy.id).update("pad_1") { it.copy(shift = true, uppercase = true) })
+        val backup = AppPreference.exportAllToJson()
+        preferences.edit().clear().commit()
+        AppPreference.importAllFromJson(backup)
+        assertEquals(copy, store.customSets().single())
+        assertEquals(copy.id, store.session().pads.first().setId)
+        assertFalse(store.session().pads.first().shift)
+        assertTrue(store.session().pads.first().uppercase)
+    }
     @Test fun deletingSelectedCustomSetRepairsOnlyItsReferences() {
         store.saveSet(custom)
         store.saveSession(GestureSessionState().withSet("pad_1", "custom").withSet("pad_2", GesturePresets.LATIN))
@@ -51,7 +64,7 @@ class GesturePreferencesTest {
         val invalid = """{"version":99,"sets":[]}"""
         preferences.edit().putString(GesturePreferences.SETS, invalid).commit()
         assertTrue(store.invalidData())
-        assertEquals(4, store.sets().size)
+        assertEquals(7, store.sets().size)
         assertThrows(IllegalArgumentException::class.java) { store.saveSet(custom) }
         assertEquals(invalid, preferences.getString(GesturePreferences.SETS, null))
         val corrupt = """{"version":1,"left":[{"id":"same","action":"DELETE"}],"right":[{"id":"same","action":"SPACE"}]}"""
