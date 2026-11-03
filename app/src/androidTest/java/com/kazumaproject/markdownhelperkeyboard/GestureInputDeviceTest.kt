@@ -138,6 +138,19 @@ class GestureInputDeviceTest {
                     }
                 }
                 fun text(): String { var result = ""; host.onActivity { result = it.editText.text.toString() }; return result }
+                // Restoring/disabling the previous case's IME can finish after the shell command returns.
+                // Establish the intended input surface before testing any strokes.
+                await("Gesture input surface was not activated") {
+                    if (shell("settings get secure default_input_method") != target) {
+                        shell("ime enable " + target); shell("ime set " + target)
+                        host.onActivity { activity ->
+                            val manager = activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                            manager.restartInput(activity.editText)
+                            manager.showSoftInput(activity.editText, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                        }
+                    }
+                    nodes().any { it.viewIdResourceName?.endsWith(":id/gesture_pad_left") == true }
+                }
                 val kana = GesturePresets.sets().first()
                 val palmRomaji = GesturePresets.sets().first { it.id == PalmGesturePresets.ROMAJI }
                 var reading = ""
