@@ -94,4 +94,32 @@ class CollapsibleDictionarySettingsTest {
         assertNotNull(screen.findPreference<Preference>("classified_group_facility_religious"))
         assertEquals(1, descendants(screen).filterIsInstance<SwitchPreferenceCompat>().size)
     }
+
+    @Test fun conditionChangesWhileCollapsedDoNotExposeOrRestoreHiddenChildren() {
+        val screen = inflate()
+        val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility_religious")!!
+        val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
+        val original = shrine.isChecked
+        shrine.conditionVisible = false
+        group.setExpanded(true)
+        assertFalse(shrine.isVisible)
+        group.setExpanded(false)
+        shrine.conditionVisible = true
+        assertFalse(shrine.isVisible)
+        group.setExpanded(true)
+        assertTrue(shrine.isVisible)
+        assertEquals(original, shrine.isChecked)
+    }
+
+    @Test fun dynamicallyAddedDictionaryActionsAppearWhenTheirGroupOpens() {
+        val screen = inflate()
+        DictionaryCategoryActions(screen, { false }, { _, _ -> }).bind()
+        val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
+        val action = screen.findPreference<Preference>("classified_group_facility_bulk_toggle")!!
+        assertFalse(action.isVisible)
+        group.setExpanded(true)
+        assertTrue(action.isVisible)
+        group.setExpanded(false)
+        assertFalse(action.isVisible)
+    }
 }

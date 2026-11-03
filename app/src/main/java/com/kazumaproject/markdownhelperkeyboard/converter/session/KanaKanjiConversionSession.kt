@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.session
 
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.NBestCandidateCollector
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -49,6 +50,8 @@ data class KanaKanjiQueryResult(
     val candidates: List<Candidate>,
     val bunsetsuResult: BunsetsuCandidateResult? = null,
     val candidateSegmentsByString: Map<String, List<CandidateConversionSegment>> = emptyMap(),
+    val bestNBestCandidate: Candidate? = null,
+    val nBestSelectionNs: Long? = null,
 )
 
 /**
@@ -69,7 +72,10 @@ class KanaKanjiConversionSession(
         null
     }
 
+    private var measureNBestSelection = false
+
     internal fun enablePerformanceProbe() {
+        measureNBestSelection = true
         incrementalState?.enablePerformanceProbe()
     }
 
@@ -85,6 +91,7 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
+            val nBestCollector = NBestCandidateCollector(measureNBestSelection)
             val result = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
@@ -93,11 +100,13 @@ class KanaKanjiConversionSession(
                     ),
                 )
 
-                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request)
-                CandidateQueryMode.PREDICTION -> queryPrediction(request)
-                CandidateQueryMode.CONVERSION -> queryConversion(request)
+                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request, nBestCollector)
+                CandidateQueryMode.PREDICTION -> queryPrediction(request, nBestCollector)
+                CandidateQueryMode.CONVERSION -> queryConversion(request, nBestCollector)
             }
             val composedResult = result.copy(
+                bestNBestCandidate = nBestCollector.best,
+                nBestSelectionNs = nBestCollector.selectionNs,
                 candidates = DateCandidateComposer.compose(
                     request.input,
                     result.candidates,
@@ -128,7 +137,7 @@ class KanaKanjiConversionSession(
         }
     }
 
-    private suspend fun queryOriginal(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+    private suspend fun queryOriginal(request: KanaKanjiQueryRequest, nBestCollector: NBestCandidateCollector): KanaKanjiQueryResult {
         val segmentCollector = request.newCandidateSegmentCollector()
         return if (request.bunsetsuSeparation) {
             engine.getCandidatesOriginalWithBunsetsu(
@@ -146,6 +155,7 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 candidateSegmentCollector = segmentCollector,
+                nBestCandidateCollector = nBestCollector,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
@@ -164,13 +174,14 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     candidateSegmentCollector = segmentCollector,
+                    nBestCandidateCollector = nBestCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )
         }
     }
 
-    private suspend fun queryPrediction(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+    private suspend fun queryPrediction(request: KanaKanjiQueryRequest, nBestCollector: NBestCandidateCollector): KanaKanjiQueryResult {
         val segmentCollector = request.newCandidateSegmentCollector()
         return if (request.bunsetsuSeparation) {
             engine.getCandidatesWithBunsetsuSeparation(
@@ -188,6 +199,7 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 candidateSegmentCollector = segmentCollector,
+                nBestCandidateCollector = nBestCollector,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
@@ -206,13 +218,14 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     candidateSegmentCollector = segmentCollector,
+                    nBestCandidateCollector = nBestCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )
         }
     }
 
-    private suspend fun queryConversion(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+    private suspend fun queryConversion(request: KanaKanjiQueryRequest, nBestCollector: NBestCandidateCollector): KanaKanjiQueryResult {
         val segmentCollector = request.newCandidateSegmentCollector()
         return if (request.bunsetsuSeparation) {
             engine.getCandidatesWithoutPredictionWithBunsetsu(
@@ -232,6 +245,7 @@ class KanaKanjiConversionSession(
                     englishPredictionEnabled = false,
                 ),
                 candidateSegmentCollector = segmentCollector,
+                nBestCandidateCollector = nBestCollector,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
@@ -252,6 +266,7 @@ class KanaKanjiConversionSession(
                         englishPredictionEnabled = false,
                     ),
                     candidateSegmentCollector = segmentCollector,
+                    nBestCandidateCollector = nBestCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )

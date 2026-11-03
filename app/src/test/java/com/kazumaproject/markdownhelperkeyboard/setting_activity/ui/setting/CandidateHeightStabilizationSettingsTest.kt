@@ -41,43 +41,15 @@ class CandidateHeightStabilizationSettingsTest {
     }
 
     @Test
-    fun candidateConversionScreensPlaceTheSwitchBesideCandidateSettings() {
-        for (xml in listOf(R.xml.pref_candidate_conversion, R.xml.pref_common_legacy)) {
-            val parser = context.resources.getXml(xml)
-            parser.use {
-                val keys = mutableListOf<String>()
-                while (parser.eventType != XmlPullParser.END_DOCUMENT) {
-                    if (parser.eventType == XmlPullParser.START_TAG) {
-                        val preferenceKey = parser.getAttributeValue(ANDROID_NS, "key")
-                        if (preferenceKey != null) keys += preferenceKey
-                        if (preferenceKey == key) {
-                            assertEquals("SwitchPreferenceCompat", parser.name)
-                            assertEquals("false", parser.getAttributeValue(ANDROID_NS, "defaultValue"))
-                        }
-                    }
-                    parser.next()
-                }
-                val settingIndex = keys.indexOf(key)
-                assertTrue("Missing switch in candidate settings screen $xml", settingIndex >= 0)
-                assertTrue("Switch should follow candidate tab settings in $xml", keys[settingIndex - 1] in setOf(
-                    "candidate_tab_order_preference",
-                    "candidate_column_landscape_preference",
-                ))
-                assertEquals("hide_candidate_password_preference", keys[settingIndex + 1])
-            }
-        }
-        val commonParser = context.resources.getXml(R.xml.pref_common)
-        commonParser.use {
-            while (commonParser.eventType != XmlPullParser.END_DOCUMENT) {
-                if (commonParser.eventType == XmlPullParser.START_TAG) {
-                    assertTrue(
-                        "Candidate height stabilization belongs in candidate conversion settings",
-                        commonParser.getAttributeValue(ANDROID_NS, "key") != key,
-                    )
-                }
-                commonParser.next()
-            }
-        }
+    fun candidateHeightSwitchHasOneCandidateEditingLocation() {
+        val manager = PreferenceManager(context)
+        val screen = manager.inflateFromResource(context, R.xml.pref_candidate_display, null)
+        val preference = screen.findPreference<androidx.preference.SwitchPreferenceCompat>(key)!!
+        assertEquals(null, preference.parent?.key)
+        assertFalse(preference.isChecked)
+        val oldScreen = manager.inflateFromResource(context, R.xml.pref_candidate_conversion, null)
+        assertEquals(null, oldScreen.findPreference<androidx.preference.Preference>(key))
+        assertTrue(oldScreen.findPreference<androidx.preference.Preference>("setting_route_candidate_display") != null)
     }
 
     @Test

@@ -6,6 +6,10 @@
         android:key="sumire_input_preference_category"
         android:title="@string/category_sumire_input_keyboard_title"
         app:isPreferenceVisible="true">
+        <Preference android:key="setting_route_candidate_display" android:title="@string/candidate_display_title" android:summary="@string/candidate_display_summary" />
+
+
+        <Preference android:key="sumire_geometry_preference" android:title="@string/keyboard_geometry_title" android:summary="@string/keyboard_geometry_summary" />
 
         <Preference
             android:key="sumire_keyboard_size_preference"
@@ -34,6 +38,12 @@
             android:key="sumire_input_method_preference"
             android:summary="%s"
             android:title="@string/sumire_input_method_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="sumire_mode_key_highlight_preference"
+            android:title="@string/sumire_mode_key_highlight_title"
+            app:summary="@string/sumire_mode_key_highlight_summary" />
 
         <ListPreference
             android:defaultValue="default"

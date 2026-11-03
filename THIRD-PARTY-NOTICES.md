@@ -10,8 +10,8 @@ Dictionary data keeps its upstream terms; it is not uniformly MIT licensed.
 
 ## Classified dictionaries / 143カテゴリ辞書
 
-Distribution: `v1.7.271`, converter revision
-`02320777884161421eca4b03f8d7ee22f29ee650`.
+Distribution: `v1.7.283`, converter revision
+`b9f3375a1cfb0ce5e56f4da622ecc4e983364581`.
 The classified dictionaries are reclassified, filtered, and converted from the five
 frozen inputs in that revision. Their exact input hashes and source-pair counts
 are in `tools/classified-dictionaries/category-provenance.json`.
@@ -54,9 +54,9 @@ The person dictionary also includes reviewed fighter names: the per-record
 source URLs and input hashes are preserved, without redistributing source page
 text. Per-entry copyright conditions for these names remain unconfirmed.
 
-The full v1.7.271 `DICTIONARY-LICENSES.txt` is retained in
+The full v1.7.283 `DICTIONARY-LICENSES.txt` is retained in
 `app/src/main/assets/licenses/sources/distribution-licenses.txt`, byte-identical
-and verified against the release manifest's `licensesSha256`.
+and verified against the release asset SHA-256 `ec74cdd99e434b17081944759e07aef3b388dda6fad0d9c9616bc4dd3988ebf6`.
 
 Two Kampo additions are backed by frozen Tsumura product fields. Source URLs and
 evidence hashes are recorded; source page bodies are not redistributed. Their
@@ -85,3 +85,20 @@ verifies archive and asset hashes, derives source-input memberships from the
 hash-verified frozen records, and snapshots upstream notices.
 `python3 tools/classified-dictionaries/prepare.py --check` verifies the bundled
 release assets and notice hashes without network access.
+
+## Release software and native notices / リリース版のソフトウェア・ネイティブ通知
+
+The in-app Licenses and sources screen uses the release dependency catalog in
+`app/src/main/assets/software-licenses/catalog.json`. It distinguishes Full,
+Lite Standard, and Lite F-Droid dependencies and preserves available notices
+from their AAR/JAR distributions. Original notices and license texts are available
+offline. POM declarations do not replace the individual third-party notices.
+
+Zenz model metadata is pinned to
+`Miwa-Keita/zenz-v3.2-xsmall-gguf@4f5423f0fad41a73b1242eb96fe5c12ae4fdca83`
+(Apache 2.0 declaration); native llama.cpp is pinned to
+`88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c` (MIT).
+The OpenMP runtime notice is retained from Android NDK `29.0.14206865`
+`NOTICE.toolchain`, including Apache 2.0 with LLVM Exceptions and its legacy
+notices. See `docs/licenses/README.md` for the evidence and regeneration commands.
+User-provided models retain their distributors’ terms.

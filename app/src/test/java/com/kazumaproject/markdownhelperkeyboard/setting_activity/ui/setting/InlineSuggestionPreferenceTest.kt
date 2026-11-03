@@ -27,23 +27,10 @@ class InlineSuggestionPreferenceTest {
     }
 
     @Test
-    fun settingExistsInNewAndLegacyCommonSettings() {
-        assertTrue(AppPreference.INLINE_SUGGESTION_ENABLED_KEY in preferenceKeys(R.xml.pref_common))
-        assertTrue(
-            AppPreference.INLINE_SUGGESTION_ENABLED_KEY in
-                preferenceKeys(R.xml.pref_common_legacy)
-        )
-        assertEquals(
-            "true",
-            preferenceDefaultValue(R.xml.pref_common, AppPreference.INLINE_SUGGESTION_ENABLED_KEY)
-        )
-        assertEquals(
-            "true",
-            preferenceDefaultValue(
-                R.xml.pref_common_legacy,
-                AppPreference.INLINE_SUGGESTION_ENABLED_KEY,
-            )
-        )
+    fun settingHasOneCommonEditingLocation() {
+        assertFalse(AppPreference.INLINE_SUGGESTION_ENABLED_KEY in preferenceKeys(R.xml.pref_common))
+        assertTrue(AppPreference.INLINE_SUGGESTION_ENABLED_KEY in preferenceKeys(R.xml.pref_common_legacy))
+        assertEquals("true", preferenceDefaultValue(R.xml.pref_common_legacy, AppPreference.INLINE_SUGGESTION_ENABLED_KEY))
     }
 
     @Test

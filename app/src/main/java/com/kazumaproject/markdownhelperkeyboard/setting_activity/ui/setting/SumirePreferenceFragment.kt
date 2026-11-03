@@ -12,6 +12,16 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_sumire
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        findPreference<Preference>("setting_route_candidate_display")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.candidateDisplayPreferenceFragment, Bundle().apply { putString("geometryKeyboard", "SUMIRE") })
+            true
+        }
+
+
+        findPreference<Preference>("sumire_geometry_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.keyboardGeometrySettingsFragment, Bundle().apply { putString("geometryKeyboard", "SUMIRE") })
+            true
+        }
 
         val sumireKeyboardSizePreference =
             findPreference<Preference>("sumire_keyboard_size_preference")

@@ -4,6 +4,7 @@ import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.dictionaryOriginsForType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -94,6 +95,7 @@ class FindPathConnectionMatrixTest {
             ).single()
 
             assertEquals(expectedType, candidate.type)
+            assertEquals(dictionaryOriginsForType(expectedType), candidate.dictionaryOrigins)
         }
     }
 
@@ -110,6 +112,7 @@ class FindPathConnectionMatrixTest {
         )
 
         assertEquals(CANDIDATE_TYPE_LEARNED_DICTIONARY, result.candidates.single().type)
+        assertEquals(dictionaryOriginsForType(CANDIDATE_TYPE_LEARNED_DICTIONARY), result.candidates.single().dictionaryOrigins)
     }
 
     private fun singleWordGraph(

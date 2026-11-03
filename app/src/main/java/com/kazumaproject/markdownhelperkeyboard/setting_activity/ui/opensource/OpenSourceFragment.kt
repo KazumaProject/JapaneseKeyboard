@@ -1,329 +1,140 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
-import android.os.Bundle
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.os.Bundle
+import android.view.*
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.webkit.WebResourceRequest
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
-import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
-import android.widget.ArrayAdapter
+import android.widget.BaseExpandableListAdapter
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentOpenSourceBinding
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.LicenseDialogLicense
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicense
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NeologdLicense
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiTextLicense
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.ZenzLicense
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
-import de.psdev.licensesdialog.LicensesDialog
-import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20
-import de.psdev.licensesdialog.licenses.MITLicense
-import de.psdev.licensesdialog.model.Notice
 
 class OpenSourceFragment : Fragment() {
-
-    private data class LicenseEntry(
-        val label: String,
-        val onClick: () -> Unit,
-    )
-
     private var _binding: FragmentOpenSourceBinding? = null
     private val binding get() = _binding!!
+    private var licenseDialog: androidx.appcompat.app.AlertDialog? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-        }
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentOpenSourceBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupToolbarAndMenu()
-
-        val licenses = buildLicenseEntries()
-        val arrayAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_list_item_1,
-            licenses.map { it.label }
-        )
+        val catalog = OpenSourceLicenses(requireContext())
+        val sections = catalog.sections()
+        val header = layoutInflater.inflate(R.layout.header_licenses, binding.openSourceLicenseList, false)
+        header.findViewById<TextView>(R.id.license_intro).setText(
+            if (AppVariantConfig.hasZenz) R.string.license_intro else R.string.license_intro_lite)
+        header.findViewById<View>(R.id.license_app).setOnClickListener { showDocument(catalog.application()) }
         binding.openSourceLicenseList.apply {
-            adapter = arrayAdapter
-            setOnItemClickListener { _, _, position, _ ->
-                licenses[position].onClick()
+            addHeaderView(header, null, false)
+            setAdapter(object : BaseExpandableListAdapter() {
+                override fun getGroupCount() = sections.size
+                override fun getChildrenCount(group: Int) = sections[group].items.size
+                override fun getGroup(group: Int) = sections[group]
+                override fun getChild(group: Int, child: Int) = sections[group].items[child]
+                override fun getGroupId(group: Int) = group.toLong()
+                override fun getChildId(group: Int, child: Int) = child.toLong()
+                override fun hasStableIds() = false
+                override fun isChildSelectable(group: Int, child: Int) = true
+                override fun getGroupView(group: Int, expanded: Boolean, recycled: View?, parent: ViewGroup): View =
+                    row(recycled, parent, sections[group].title,
+                        getString(R.string.license_section_count, sections[group].items.size), if (expanded) "−" else "+", true)
+                override fun getChildView(group: Int, child: Int, last: Boolean, recycled: View?, parent: ViewGroup): View {
+                    val item = getChild(group, child)
+                    return row(recycled, parent, item.title, item.summary, "›", false)
+                }
+            })
+            setOnChildClickListener { _, _, group, child, _ ->
+                showDocument(sections[group].items[child])
+                true
             }
         }
     }
 
-    private fun buildLicenseEntries(): List<LicenseEntry> {
-        val entries = mutableListOf<LicenseEntry>()
-        val apacheLicenses = listOf(
-            "androidx.core:core-ktx",
-            "androidx.appcompat:appcompat",
-            "com.google.android.material:material",
-            "androidx.constraintlayout:constraintlayout",
-            "androidx.preference:preference-ktx",
-            "androidx.lifecycle:lifecycle-extensions",
-            "androidx.lifecycle:lifecycle-livedata-ktx",
-            "androidx.lifecycle:lifecycle-runtime-ktx",
-            "androidx.lifecycle:lifecycle-viewmodel-ktx",
-            "com.google.dagger:hilt-android",
-            "com.google.dagger:hilt-android-compiler",
-            "androidx.lifecycle:lifecycle-livedata-ktx",
-            "androidx.hilt:hilt-compiler",
-            "androidx.room:room-runtime",
-            "androidx.room:room-compiler",
-            "androidx.room:room-ktx",
-            "androidx.navigation:navigation-fragment-ktx",
-            "androidx.navigation:navigation-ui-ktx",
-        )
-
-        apacheLicenses.forEach { name ->
-            entries += LicenseEntry(name) {
-                showLicenseDialog(
-                    title = "Apache Software License",
-                    notice = Notice(
-                        name,
-                        "",
-                        "Copyright (c) 2005-2011, The Android Open Source Project",
-                        ApacheSoftwareLicense20()
-                    )
-                )
+    private fun row(recycled: View?, parent: ViewGroup, title: String, summary: String, arrow: String, heading: Boolean): View =
+        (recycled ?: layoutInflater.inflate(R.layout.item_license, parent, false)).apply {
+            findViewById<TextView>(R.id.license_title).apply {
+                text = title
+                setTypeface(null, if (heading) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+                androidx.core.view.ViewCompat.setAccessibilityHeading(this, heading)
             }
+            findViewById<TextView>(R.id.license_summary).text = summary
+            findViewById<TextView>(R.id.license_arrow).text = arrow
         }
 
-        entries += LicenseEntry("org.jetbrains.kotlinx:kotlinx-coroutines-core") {
-            showLicenseDialog(
-                title = "MIT Software License",
-                notice = Notice(
-                    "org.jetbrains.kotlinx:kotlinx-coroutines-core",
-                    "",
-                    "Copyright (c) 2018 Wellington Costa",
-                    MITLicense()
-                )
-            )
-        }
-
-        entries += LicenseEntry("de.psdev.licensesdialog:licensesdialog") {
-            showLicenseDialog(
-                title = "Apache License",
-                notice = Notice(
-                    "de.psdev.licensesdialog:licensesdialog",
-                    "https://github.com/PSDev/LicensesDialog.git",
-                    "Apache License",
-                    LicenseDialogLicense()
-                )
-            )
-        }
-
-        entries += LicenseEntry("mozc") {
-            showLicenseDialog(
-                title = "Copyright 2010-2018, Google Inc.",
-                notice = Notice(
-                    "mozc",
-                    "https://github.com/google/mozc",
-                    "Copyright 2010-2018, Google Inc.",
-                    MozcLicense()
-                )
-            )
-        }
-
-        entries += LicenseEntry("com.github.MasayukiSuda:BubbleLayout") {
-            showLicenseDialog(
-                title = "MIT License",
-                notice = Notice(
-                    "com.github.MasayukiSuda:BubbleLayout",
-                    "https://github.com/MasayukiSuda/BubbleLayout",
-                    "Copyright 2016 MasayukiSuda",
-                    MITLicense()
-                )
-            )
-        }
-
-        entries += LicenseEntry("Japanese Wikipedia / 日本語Wikipedia") {
-            showDictionaryLicense("Japanese Wikipedia / 日本語Wikipedia", "licenses/wiki.html")
-        }
-
-        entries += LicenseEntry("mecab-ipadic-neologd") {
-            showLicenseDialog(
-                title = "mecab-ipadic-neologd",
-                notice = Notice(
-                    "mecab-ipadic-neologd",
-                    "https://github.com/neologd/mecab-ipadic-neologd/blob/master/COPYING",
-                    "2015-2019 Toshinori Sato (@overlast)",
-                    NeologdLicense()
-                )
-            )
-        }
-
-        entries += LicenseEntry("merge-ut-dictionaries") {
-            showLicenseDialog(
-                title = "merge-ut-dictionaries",
-                notice = Notice(
-                    "merge-ut-dictionaries",
-                    "https://github.com/utuhiro78/merge-ut-dictionaries/blob/main/LICENSE",
-                    "",
-                    ApacheSoftwareLicense20()
-                )
-            )
-        }
-
-        entries += LicenseEntry("Salesforce/wikitext") {
-            showLicenseDialog(
-                title = "Salesforce/wikitext",
-                notice = Notice(
-                    "Salesforce/wikitext",
-                    "https://huggingface.co/datasets/Salesforce/wikitext",
-                    "Creative Commons Attribution-ShareAlike License (CC BY-SA 4.0)",
-                    WikiTextLicense()
-                )
-            )
-        }
-
-        listOf(
-            "com.afollestad.material-dialogs:core:3.3.0",
-            "com.afollestad.material-dialogs:color:3.3.0"
-        ).forEach { name ->
-            entries += LicenseEntry(name) {
-                showLicenseDialog(
-                    title = name,
-                    notice = Notice(
-                        name,
-                        "https://github.com/afollestad/material-dialogs",
-                        "Copyright 2018 Aidan Follestad",
-                        LicenseDialogLicense()
-                    )
-                )
-            }
-        }
-
-        if (AppVariantConfig.hasGemma) {
-            entries += LicenseEntry("com.google.ai.edge.litertlm:litertlm-android") {
-                showLicenseDialog(
-                    title = "com.google.ai.edge.litertlm:litertlm-android",
-                    notice = Notice(
-                        "com.google.ai.edge.litertlm:litertlm-android",
-                        "https://github.com/google-ai-edge/LiteRT-LM",
-                        "Apache License 2.0",
-                        ApacheSoftwareLicense20()
-                    )
-                )
-            }
-        }
-
-        if (AppVariantConfig.hasZenz) {
-            entries += LicenseEntry("Miwa-Keita/zenz-v3.2-xsmall-gguf") {
-                showLicenseDialog(
-                    title = "Miwa-Keita/zenz-v3.2-xsmall-gguf",
-                    notice = Notice(
-                        "Miwa-Keita/zenz-v3.2-xsmall-gguf",
-                        "https://huggingface.co/Miwa-Keita/zenz-v3.2-xsmall-gguf",
-                        "Copyright 2025 Miwa-Keita",
-                        ZenzLicense()
-                    )
-                )
-            }
-
-            entries += LicenseEntry("azooKey/llama.cpp") {
-                showLicenseDialog(
-                    title = "azooKey/llama.cpp",
-                    notice = Notice(
-                        "azooKey/llama.cpp",
-                        "https://github.com/azooKey/llama.cpp.git",
-                        "Copyright (c) 2023-2024 The ggml authors",
-                        MITLicense()
-                    )
-                )
-            }
-        }
-
-        ClassifiedDictionaries.all.forEach { spec ->
-            entries += LicenseEntry(getString(spec.nameRes)) {
-                showDictionaryLicense(getString(spec.nameRes), spec.licenseAssetPath)
-            }
-        }
-        listOf(
-            "Mozc dictionaries / Mozc基本辞書" to "core",
-            "English reading dictionary / 英語読み辞書" to "english-reading",
-            "English word dictionary / 英単語辞書" to "english",
-            "N-gram / Unigram dictionaries" to "ngram",
-            "Reading correction / Proverbs / 読み修正・ことわざ辞書" to "auxiliary",
-        ).forEach { (name, id) ->
-            entries += LicenseEntry(name) { showDictionaryLicense(name, "licenses/$id.html") }
-        }
-        return entries
-    }
-
-    private fun showDictionaryLicense(title: String, assetPath: String) {
+    private fun showDocument(item: LicenseItem) {
+        licenseDialog?.dismiss()
         val webView = WebView(requireContext()).apply {
             settings.javaScriptEnabled = false
             settings.allowFileAccess = false
             settings.allowContentAccess = false
+            settings.blockNetworkLoads = true
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                    val uri = request.url
-                    if (uri.scheme == "https" || uri.scheme == "http") {
-                        startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    if (request.url.scheme in listOf("https", "http")) {
+                        try { startActivity(Intent(Intent.ACTION_VIEW, request.url)) }
+                        catch (_: ActivityNotFoundException) { /* The offline document remains available. */ }
                     }
                     return true
                 }
             }
-            setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            val ink = com.google.android.material.color.MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurface)
-            val link = com.google.android.material.color.MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary)
-            val colors = "<style>body{color:#%06x;background:transparent}a{color:#%06x}</style>".format(ink and 0xffffff, link and 0xffffff)
-            val content = requireContext().assets.open(assetPath).bufferedReader().use { it.readText() }
-                .replace("</style>", "</style>$colors")
-            loadDataWithBaseURL("https://dictionary-notices.invalid/", content, "text/html", "UTF-8", null)
+            setBackgroundColor(MaterialColors.getColor(requireView(), com.google.android.material.R.attr.colorSurface))
         }
+        val ink = MaterialColors.getColor(requireView(), com.google.android.material.R.attr.colorOnSurface)
+        val link = MaterialColors.getColor(requireView(), androidx.appcompat.R.attr.colorPrimary)
+        val surface = MaterialColors.getColor(requireView(), com.google.android.material.R.attr.colorSurface)
+        val style = """
+            <style>
+            body{font:16px sans-serif;line-height:1.6;padding:8px 16px;overflow-wrap:anywhere;color:#%06x;background-color:#%06x}
+            h1{font-size:20px;line-height:1.4}h2{font-size:17px;margin-top:24px}h3{font-size:15px}
+            html[lang=ja] .translation[lang=en],html:not([lang=ja]) .translation[lang=ja]{display:none}
+            a{color:#%06x}pre{white-space:pre-wrap;font:13px monospace;line-height:1.5}
+            </style>
+        """.trimIndent().format(ink and 0xffffff, surface and 0xffffff, link and 0xffffff)
+        val content = "<!doctype html><html lang=\"${resources.configuration.locales[0].language}\"><head>" +
+            "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">$style</head><body>" +
+            item.document().replace(Regex("<style>.*?</style>|<!doctype[^>]*>|<meta[^>]*>|<title>.*?</title>|<h1>.*?</h1>", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)), "") + "</body></html>"
         val viewportHeight = (resources.displayMetrics.heightPixels * 0.60f).toInt()
-        val viewport = android.widget.FrameLayout(requireContext()).apply {
-            minimumHeight = viewportHeight
-            addView(webView, android.widget.FrameLayout.LayoutParams(-1, viewportHeight))
+        val viewport = FrameLayout(requireContext()).apply {
+            addView(webView, FrameLayout.LayoutParams(-1, viewportHeight))
         }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(title)
+        lateinit var dialog: androidx.appcompat.app.AlertDialog
+        dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(item.title)
             .setView(viewport)
             .setPositiveButton(android.R.string.ok, null)
-            .setOnDismissListener { webView.destroy() }
-            .show()
+            .setOnDismissListener {
+                webView.destroy()
+                if (licenseDialog === dialog) licenseDialog = null
+            }
+            .create()
+        licenseDialog = dialog
+        dialog.show()
+        webView.loadDataWithBaseURL("https://licenses.invalid/", content, "text/html", "UTF-8", null)
     }
 
-    private fun showLicenseDialog(title: String, notice: Notice) {
-        LicensesDialog.Builder(requireContext())
-            .setTitle(title)
-            .setNotices(notice)
-            .build()
-            .show()
+    override fun onDestroyView() {
+        licenseDialog?.dismiss()
+        licenseDialog = null
+        binding.openSourceLicenseList.setOnChildClickListener(null)
+        _binding = null
+        super.onDestroyView()
     }
 
     private fun setupToolbarAndMenu() {
