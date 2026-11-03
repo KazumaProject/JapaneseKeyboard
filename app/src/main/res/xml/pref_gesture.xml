@@ -1,0 +1,7 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference android:key="gesture_controls" android:title="@string/gesture_controls_title" android:summary="@string/gesture_controls_summary" />
+    <Preference android:key="gesture_sets" android:title="@string/gesture_sets_title" android:summary="@string/gesture_sets_summary" />
+    <PreferenceCategory android:key="gesture_pad_assignments" android:title="@string/gesture_pad_assignments" />
+    <SwitchPreferenceCompat android:key="gesture_show_guide" android:title="@string/gesture_show_guide" android:defaultValue="true" />
+    <SeekBarPreference android:key="gesture_recognition_tolerance" android:title="@string/gesture_tolerance" android:defaultValue="14" app:min="6" android:max="25" app:showSeekBarValue="true" />
+</PreferenceScreen>

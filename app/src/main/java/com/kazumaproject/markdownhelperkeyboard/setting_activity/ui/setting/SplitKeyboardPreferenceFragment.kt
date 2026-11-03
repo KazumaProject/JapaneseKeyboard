@@ -25,7 +25,7 @@ class SplitKeyboardPreferenceFragment : AsyncPreferenceFragment() {
         }
     }
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
-        val types = KeyboardType.entries.filter { it != KeyboardType.SPLIT }
+        val types = KeyboardType.entries.filter { it != KeyboardType.SPLIT && it != KeyboardType.GESTURE }
         SplitSlot.entries.forEach { slot ->
             val custom = findPreference<ListPreference>(SplitKeyboardSettings.customKey(slot))!!
             findPreference<ListPreference>(SplitKeyboardSettings.typeKey(slot))!!.apply {
