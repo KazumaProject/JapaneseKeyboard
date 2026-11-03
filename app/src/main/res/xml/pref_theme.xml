@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_theme_skin"
+        android:title="@string/settings_theme_skin_title"
+        android:summary="@string/settings_theme_skin_summary">
+
+        <Preference android:key="keyboard_skin_preference" android:title="@string/keyboard_skin_choose" />
+
+        <Preference android:key="theme_default" android:title="@string/theme_default" />
+
+        <Preference android:key="theme_custom" android:title="@string/theme_custom" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_theme_colors"
+        android:title="@string/settings_theme_colors_title"
+        android:summary="@string/settings_theme_colors_summary">
+
+        <Preference android:key="settings_theme_unavailable_colors" android:title="@string/settings_theme_unavailable_title" />
+
+        <Preference android:key="theme_custom_bg_color" android:title="@string/theme_custom_bg_color" />
+
+        <Preference android:key="theme_custom_key_color" android:title="@string/theme_custom_key_color" />
+
+        <Preference android:key="theme_custom_special_key_color" android:title="@string/theme_custom_special_key_color" />
+
+        <Preference android:key="theme_custom_key_text_color" android:title="@string/theme_custom_key_text_color" />
+
+        <Preference android:key="theme_custom_special_key_text_color" android:title="@string/theme_custom_special_key_text_color" />
+
+        <Preference android:key="key_popup_use_custom_color_preference" android:title="@string/key_popup_use_custom_color_title" />
+
+        <Preference android:key="key_popup_background_color_preference" android:title="@string/key_popup_background_color_title" />
+
+        <Preference android:key="key_popup_text_color_preference" android:title="@string/key_popup_text_color_title" />
+
+        <Preference android:key="theme_custom_shortcut_icon_color" android:title="@string/theme_custom_shortcut_icon_color" />
+
+        <Preference android:key="theme_custom_input_color_enable" android:title="@string/custom_input_color_enable_title" />
+
+        <Preference android:key="theme_custom_pre_edit_bg_color" android:title="@string/pre_edit" />
+
+        <Preference android:key="theme_custom_pre_edit_text_color" android:title="@string/pre_edit_text" />
+
+        <Preference android:key="theme_custom_post_edit_bg_color" android:title="@string/conversion_text_color" />
+
+        <Preference android:key="theme_custom_post_edit_text_color" android:title="@string/conversion_text_color_" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_theme_text"
+        android:title="@string/settings_theme_text_title"
+        android:summary="@string/settings_theme_text_summary">
+
+        <Preference
+            android:key="settings_theme_enable_composing_guide_link"
+            android:title="@string/settings_theme_enable_composing_guide"
+            android:summary="@string/settings_theme_enable_composing_guide_summary" />
+
+
+
+        <Preference android:key="setting_route_candidate_display" android:title="@string/candidate_display_title" android:summary="@string/candidate_display_summary" />
+
+        <Preference android:key="local_font_settings_preference" android:title="@string/local_font_title" />
+
+        <SwitchPreferenceCompat
+            android:key="composing_guide_show_live_reading"
+            android:defaultValue="false"
+            android:title="@string/composing_guide_show_live_reading" />
+
+        <SeekBarPreference
+            android:key="composing_guide_text_size_setting"
+            android:persistent="false"
+            android:title="@string/composing_guide_text_size"
+            android:max="56"
+            app:min="18"
+            app:showSeekBarValue="true" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_theme_background"
+        android:title="@string/settings_theme_background_title"
+        android:summary="@string/settings_theme_background_summary">
+
+        <Preference
+            android:key="keyboard_background_image_select_preference"
+            android:summary="@string/keyboard_background_image_select_summary"
+            android:title="@string/keyboard_background_image_select_title" />
+
+        <ListPreference
+            android:defaultValue="fit"
+            android:entries="@array/keyboard_background_image_display_mode_entries"
+            android:entryValues="@array/keyboard_background_image_display_mode_values"
+            android:key="keyboard_background_image_display_mode_preference"
+            android:summary="@string/keyboard_background_image_display_mode_summary"
+            android:title="@string/keyboard_background_image_display_mode_title" />
+
+        <Preference
+            android:key="keyboard_background_image_clear_preference"
+            android:summary="@string/keyboard_background_image_clear_summary"
+            android:title="@string/keyboard_background_image_clear_title" />
+
+        <Preference
+            android:key="keyboard_background_video_select_preference"
+            android:summary="@string/keyboard_background_video_select_summary"
+            android:title="@string/keyboard_background_video_select_title" />
+
+        <ListPreference
+            android:defaultValue="high"
+            android:entries="@array/keyboard_background_video_quality_entries"
+            android:entryValues="@array/keyboard_background_video_quality_values"
+            android:key="keyboard_background_video_quality_preference"
+            android:summary="@string/keyboard_background_video_quality_summary"
+            android:title="@string/keyboard_background_video_quality_title" />
+
+        <Preference
+            android:key="keyboard_background_video_clear_preference"
+            android:summary="@string/keyboard_background_video_clear_summary"
+            android:title="@string/keyboard_background_video_clear_title" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_theme_corners"
+        android:title="@string/settings_theme_corners_title"
+        android:summary="@string/settings_theme_corners_summary">
+
+        <Preference android:key="settings_theme_unavailable_corners" android:title="@string/settings_theme_unavailable_title" />
+
+        <Preference android:key="theme_custom_border_enable" android:title="@string/custom_border_enable" />
+
+        <Preference android:key="theme_custom_border_color" android:title="@string/custom_border_color" />
+
+        <Preference android:key="theme_custom_border_width" android:title="@string/custom_border_width" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="round_corner_keyboard_preference"
+            android:summary="@string/pref_round_corner_keyboard_summary"
+            android:title="@string/pref_round_corner_keyboard_title" />
+
+        <SeekBarPreference
+            android:defaultValue="32"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_radius_dp_preference"
+            android:max="64"
+            android:title="@string/keyboard_corner_radius_dp_preference_title"
+            app:min="0"
+            app:showSeekBarValue="true"
+            app:summary="@string/keyboard_corner_radius_dp_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_top_left_preference"
+            android:title="@string/keyboard_corner_top_left_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_top_right_preference"
+            android:title="@string/keyboard_corner_top_right_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_bottom_left_preference"
+            android:title="@string/keyboard_corner_bottom_left_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_bottom_right_preference"
+            android:title="@string/keyboard_corner_bottom_right_preference_title" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_theme_effects"
+        android:title="@string/settings_theme_effects_title"
+        android:summary="@string/settings_theme_effects_summary">
+
+        <Preference android:key="settings_theme_unavailable_effects" android:title="@string/settings_theme_unavailable_title" />
+
+        <Preference android:key="liquid_glass_preference" android:title="@string/liquid_glass_effect" />
+
+        <Preference android:key="liquid_glass_blur_preference" android:title="@string/blur_radius" />
+
+        <Preference android:key="liquid_glass_key_alpha_preference" android:title="@string/key_transparency" />
+
+        <ListPreference
+            android:defaultValue="none"
+            android:entries="@array/keyboard_touch_effect_type_entries"
+            android:entryValues="@array/keyboard_touch_effect_type_values"
+            android:key="keyboard_touch_effect_type_preference"
+            android:summary="@string/keyboard_touch_effect_type_summary"
+            android:title="@string/keyboard_touch_effect_type_title" />
+
+        <ListPreference
+            android:defaultValue="high"
+            android:entries="@array/keyboard_touch_effect_quality_entries"
+            android:entryValues="@array/keyboard_touch_effect_quality_values"
+            android:key="keyboard_touch_effect_quality_preference"
+            android:summary="@string/keyboard_touch_effect_quality_summary"
+            android:title="@string/keyboard_touch_effect_quality_title" />
+
+        <ListPreference
+            android:defaultValue="random"
+            android:entries="@array/keyboard_touch_effect_color_mode_entries"
+            android:entryValues="@array/keyboard_touch_effect_color_mode_values"
+            android:key="keyboard_touch_effect_color_mode_preference"
+            android:summary="@string/keyboard_touch_effect_color_mode_summary"
+            android:title="@string/keyboard_touch_effect_color_mode_title" />
+
+        <Preference
+            android:key="keyboard_touch_effect_color_preference"
+            android:summary="@string/keyboard_touch_effect_color_summary"
+            android:title="@string/keyboard_touch_effect_color_title" />
+
+        <ListPreference
+            android:defaultValue="paint_splash"
+            android:entries="@array/keyboard_touch_effect_palette_entries"
+            android:entryValues="@array/keyboard_touch_effect_palette_values"
+            android:key="keyboard_touch_effect_palette_preference"
+            android:summary="@string/keyboard_touch_effect_palette_summary"
+            android:title="@string/keyboard_touch_effect_palette_title" />
+
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="keyboard_touch_effect_liquid_ink_density_preference"
+            android:max="300"
+            android:summary="@string/liquid_ink_density_summary"
+            android:title="@string/liquid_ink_density_title"
+            app:min="50"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="keyboard_touch_effect_aurora_ink_density_preference"
+            android:max="300"
+            android:summary="@string/aurora_ink_density_summary"
+            android:title="@string/aurora_ink_density_title"
+            app:min="50"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+
+        <ListPreference
+            android:defaultValue="cinematic_random"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_color_mode_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_color_mode_values"
+            android:key="keyboard_touch_effect_cinematic_wave_color_mode_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_color_mode_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_color_mode_title" />
+
+        <ListPreference
+            android:defaultValue="aurora_membrane"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_type_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_type_values"
+            android:key="keyboard_touch_effect_cinematic_wave_type_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_type_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_type_title" />
+
+        <Preference
+            android:key="keyboard_touch_effect_cinematic_wave_primary_color_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_primary_color_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_primary_color_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_secondary_auto_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_secondary_auto_title" />
+
+        <Preference
+            android:key="keyboard_touch_effect_cinematic_wave_secondary_color_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_secondary_color_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_secondary_color_title" />
+
+        <SeekBarPreference
+            android:defaultValue="46"
+            android:key="keyboard_touch_effect_cinematic_wave_opacity_percent_preference"
+            android:max="68"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_opacity_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_opacity_title"
+            app:min="18"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="keyboard_touch_effect_cinematic_wave_intensity_percent_preference"
+            android:max="180"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_intensity_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_intensity_title"
+            app:min="35"
+            app:showSeekBarValue="true" />
+
+        <ListPreference
+            android:defaultValue="elegant"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_motion_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_motion_values"
+            android:key="keyboard_touch_effect_cinematic_wave_motion_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_motion_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_motion_title" />
+
+        <ListPreference
+            android:defaultValue="normal"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_touch_response_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_touch_response_values"
+            android:key="keyboard_touch_effect_cinematic_wave_touch_response_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_touch_response_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_touch_response_title" />
+
+        <ListPreference
+            android:defaultValue="balanced"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_quality_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_quality_values"
+            android:key="keyboard_touch_effect_cinematic_wave_quality_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_quality_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_quality_title" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+</PreferenceScreen>

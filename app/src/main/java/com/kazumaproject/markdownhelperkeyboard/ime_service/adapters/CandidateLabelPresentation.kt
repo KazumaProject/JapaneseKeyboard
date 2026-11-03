@@ -1,0 +1,80 @@
+package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
+
+import android.content.Context
+import android.content.res.Configuration
+import android.text.SpannableString
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.*
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
+import java.util.Locale
+
+/** Candidate labels use Japanese even when the IME's context uses another device language. */
+internal fun japaneseCandidateLabelContext(context: Context): Context {
+    val configuration = context.resources.configuration
+    if (configuration.locales[0]?.language == Locale.JAPANESE.language) return context
+    return context.createConfigurationContext(Configuration(configuration).apply { setLocale(Locale.JAPANESE) })
+}
+
+/** One label policy for the real strip, the preview and physical-keyboard candidates. */
+internal fun candidateLabelPresentation(
+    context: Context,
+    candidate: Candidate,
+    showDictionaryLabels: Boolean,
+    showCharacterTypeLabels: Boolean,
+): CharSequence {
+    val labelContext by lazy(LazyThreadSafetyMode.NONE) { japaneseCandidateLabelContext(context) }
+    fun label(id: Int) = labelContext.getString(id)
+    val base: CharSequence = when (candidate.type) {
+        CANDIDATE_TYPE_PARTIAL -> label(R.string.candidate_label_partial)
+        CANDIDATE_TYPE_KATAKANA ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_katakana) else ""
+        CANDIDATE_TYPE_HALF_WIDTH_KATAKANA ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_half_katakana) else ""
+        CANDIDATE_TYPE_FULL_WIDTH_NUMBER, CANDIDATE_TYPE_FULL_WIDTH,
+        CANDIDATE_TYPE_FULL_WIDTH_SYMBOL, CANDIDATE_TYPE_FULL_WIDTH_NUMBER_SYMBOL ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_full_width) else ""
+        CANDIDATE_TYPE_HALF_WIDTH, CANDIDATE_TYPE_HALF_WIDTH_SYMBOL,
+        CANDIDATE_TYPE_HALF_WIDTH_NUMBER_SYMBOL ->
+            if (showCharacterTypeLabels) label(R.string.candidate_label_half_width) else ""
+        CANDIDATE_TYPE_DATE, CANDIDATE_TYPE_DIGIT_DATE -> label(R.string.candidate_label_date)
+        CANDIDATE_TYPE_READING_CORRECTION -> {
+            val prefix = label(R.string.candidate_label_reading) + " "
+            SpannableString(prefix + candidate.string.correctReading().second).apply {
+                if (length > prefix.length) setSpan(RelativeSizeSpan(1.25f), prefix.length, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+        CANDIDATE_TYPE_ZENZ, CANDIDATE_TYPE_ZENZ_WHOLE_RESULT,
+        CANDIDATE_TYPE_ZENZ_REGENERATED, 42.toByte(), 44.toByte() -> label(R.string.candidate_label_ai)
+        41.toByte(), 43.toByte() -> label(R.string.candidate_label_translation)
+        CANDIDATE_TYPE_ENGLISH_CORRECTION -> label(R.string.candidate_label_correction)
+        CANDIDATE_TYPE_CALCULATION -> label(R.string.candidate_badge_calculation)
+        CANDIDATE_TYPE_UNIT_CONVERSION -> label(R.string.candidate_badge_unit_conversion)
+        CANDIDATE_TYPE_FORMULA_UNICODE -> label(R.string.candidate_badge_formula_unicode)
+        CANDIDATE_TYPE_FORMULA_TEX -> label(R.string.candidate_badge_formula_tex)
+        CANDIDATE_TYPE_TEXT_MACRO -> label(R.string.candidate_label_macro)
+        else -> ""
+    }
+    val result = SpannableStringBuilder()
+    fun append(part: CharSequence) {
+        if (part.isEmpty()) return
+        if (result.isNotEmpty()) result.append(" ")
+        result.append(part)
+    }
+    append(base)
+    if (showDictionaryLabels) {
+        val originLabel = when {
+            CandidateDictionaryOrigin.LEARNED_DICTIONARY in candidate.dictionaryOrigins -> R.string.candidate_label_learned
+            CandidateDictionaryOrigin.USER_DICTIONARY in candidate.dictionaryOrigins -> R.string.candidate_label_user
+            CandidateDictionaryOrigin.USER_TEMPLATE in candidate.dictionaryOrigins -> R.string.candidate_label_template
+            else -> null
+        }
+        originLabel?.let { append(label(it)) }
+    }
+    if (candidate.dictionaryCategories.isNotEmpty()) {
+        append(classifiedCandidateLabel(labelContext, candidate.dictionaryCategories))
+    }
+    return result
+}

@@ -106,6 +106,7 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <!-- RecyclerView for Suggestions -->
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
             android:layout_width="0dp"

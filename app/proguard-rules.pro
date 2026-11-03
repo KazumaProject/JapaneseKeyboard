@@ -42,6 +42,9 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.ThreeNodeRuleBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NodeFeatureInput { *; }
 
+# Keyboard order preferences use Gson's reflective enum adapter, including MORSE.
+-keep enum com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType { *; }
+
 # Keep Gson generic type metadata and annotations used by backup import/export parsing.
 -keepattributes Signature
 -keepattributes RuntimeVisibleAnnotations

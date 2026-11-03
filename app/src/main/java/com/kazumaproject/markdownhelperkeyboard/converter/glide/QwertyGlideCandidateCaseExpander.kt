@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.glide
 
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withLiteralText
 import java.util.Locale
 
 class QwertyGlideCandidateCaseExpander {
@@ -26,8 +27,7 @@ class QwertyGlideCandidateCaseExpander {
                 char.uppercase(Locale.ROOT)
             }
             add(
-                candidate.copy(
-                    string = capitalized,
+                candidate.withLiteralText(capitalized).copy(
                     length = capitalized.length.toUByte(),
                     score = candidate.score + CAPITALIZED_SCORE_OFFSET
                 )
@@ -35,8 +35,7 @@ class QwertyGlideCandidateCaseExpander {
 
             val uppercase = candidate.string.uppercase(Locale.ROOT)
             add(
-                candidate.copy(
-                    string = uppercase,
+                candidate.withLiteralText(uppercase).copy(
                     length = uppercase.length.toUByte(),
                     score = candidate.score + UPPERCASE_SCORE_OFFSET
                 )

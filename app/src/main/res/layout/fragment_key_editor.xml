@@ -150,6 +150,13 @@
                     android:text="@string/input_style_two_step" />
 
                 <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_three_stage_flick"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/input_style_three_stage" />
+
+                <com.google.android.material.chip.Chip
                     android:id="@+id/chip_flick_long_press"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
@@ -494,6 +501,13 @@
                     android:layout_height="wrap_content"
                     android:nestedScrollingEnabled="false" />
             </LinearLayout>
+
+            <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.HierarchicalFlickEditorView
+                android:id="@+id/hierarchical_flick_editor_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone" />
 
             <!-- フリックグリッドエディタ (ペタル・2段・特殊フリック共通) -->
             <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.FlickGridEditorView

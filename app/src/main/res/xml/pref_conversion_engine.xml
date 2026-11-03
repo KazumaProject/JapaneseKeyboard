@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="@string/conversion_engine_category_title">
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_engine_conversion"
+        android:title="@string/settings_engine_conversion_title"
+        android:summary="@string/settings_engine_conversion_summary">
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
@@ -12,15 +15,64 @@
             android:title="@string/incremental_conversion_session_title"
             app:iconSpaceReserved="false" />
 
-        <Preference
-            android:key="date_candidate_settings_preference"
-            android:title="@string/date_candidate_settings_title"
-            android:summary="@string/date_candidate_settings_summary"
-            app:iconSpaceReserved="false" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="conversion_bunsetsu_separation_preference"
+            android:title="@string/conversion_separation_title"
+            app:summary="@string/conversion_separation_summary" />
 
-    </PreferenceCategory>
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="conversion_bunsetsu_separation_preference"
+            android:key="conversion_bunsetsu_cursor_move_preference"
+            android:title="@string/conversion_bunsetsu_cursor_move_title"
+            app:summary="@string/conversion_bunsetsu_cursor_move_summary" />
 
-    <PreferenceCategory android:title="@string/prediction_language_category_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="reconversion_preference"
+            android:title="@string/reconversion_preference_title"
+            app:summary="@string/reconversion_preference_summary" />
+
+        <ListPreference
+            android:defaultValue="deferred"
+            android:dialogTitle="@string/delete_long_press_conversion_behavior_title"
+            android:entries="@array/delete_long_press_conversion_behavior_entries"
+            android:entryValues="@array/delete_long_press_conversion_behavior_values"
+            android:key="delete_long_press_conversion_behavior"
+            android:title="@string/delete_long_press_conversion_behavior_title"
+            app:useSimpleSummaryProvider="true" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_engine_live"
+        android:title="@string/settings_engine_live_title"
+        android:summary="@string/settings_engine_live_summary">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="live_conversion_preference"
+            android:summaryOff="@string/live_conversion_summary_off"
+            android:summaryOn="@string/live_conversion_summary_on"
+            android:title="@string/live_conversion_title" />
+
+        <SeekBarPreference
+            android:defaultValue="1"
+            android:dependency="live_conversion_preference"
+            android:key="live_conversion_start_length_preference"
+            android:max="10"
+            android:summary="@string/live_conversion_start_length_summary"
+            android:title="@string/live_conversion_start_length_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_engine_prediction"
+        android:title="@string/settings_engine_prediction_title"
+        android:summary="@string/settings_engine_prediction_summary">
 
         <SwitchPreferenceCompat
             android:defaultValue="true"
@@ -35,17 +87,6 @@
             android:summary="@string/english_prediction_enable_summary"
             android:title="@string/english_prediction_enable_title"
             app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="english_reading_dictionary_enable_preference"
-            android:summary="@string/english_reading_dictionary_enable_summary"
-            android:title="@string/english_reading_dictionary_enable_title"
-            app:iconSpaceReserved="false" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/prediction_behavior_category_title">
 
         <SeekBarPreference
             android:defaultValue="3"
@@ -85,9 +126,27 @@
             android:title="@string/prediction_aggressiveness_title"
             app:useSimpleSummaryProvider="true" />
 
-    </PreferenceCategory>
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="zero_query_suggestion_preference"
+            android:summaryOff="@string/zero_query_suggestion_summary_off"
+            android:summaryOn="@string/zero_query_suggestion_summary_on"
+            android:title="@string/zero_query_suggestion_title"
+            app:iconSpaceReserved="false" />
 
-    <PreferenceCategory android:title="@string/prediction_source_category_title">
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_engine_dictionaries"
+        android:title="@string/settings_engine_dictionaries_title"
+        android:summary="@string/settings_engine_dictionaries_summary">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="english_reading_dictionary_enable_preference"
+            android:summary="@string/english_reading_dictionary_enable_summary"
+            android:title="@string/english_reading_dictionary_enable_title"
+            app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
             android:defaultValue="true"
@@ -129,6 +188,114 @@
             android:title="@string/external_mozc_prediction_enable_title"
             app:iconSpaceReserved="false" />
 
+
+        <SwitchPreferenceCompat
+            android:key="enable_prediction_search_learn_dictionary_preference"
+            android:title="@string/enable_prediction_search_learn_dictionary_preference_titile"
+            app:defaultValue="false"
+            app:summary="@string/enable_prediction_search_learn_dictionary_preference_summary" />
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:dependency="enable_prediction_search_learn_dictionary_preference"
+            android:key="learn_prediction_preference"
+            android:max="8"
+            android:title="@string/settings_learn_dictionary_prediction_start"
+            app:min="1"
+            app:showSeekBarValue="true" />
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:dependency="enable_prediction_search_learn_dictionary_preference"
+            android:key="learn_dictionary_prediction_candidate_limit_preference"
+            android:max="8"
+            android:summary="@string/learn_dictionary_prediction_candidate_limit_summary"
+            android:title="@string/settings_learn_dictionary_prediction_limit"
+            app:min="1"
+            app:showSeekBarValue="true" />
+        <SeekBarPreference
+            android:defaultValue="2"
+            android:key="user_dictionary_prefix_match_number"
+            android:max="8"
+            android:title="@string/settings_user_dictionary_prediction_start"
+            app:min="2"
+            app:showSeekBarValue="true" />
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:key="user_dictionary_prediction_candidate_limit_preference"
+            android:max="8"
+            android:summary="@string/user_dictionary_prediction_candidate_limit_summary"
+            android:title="@string/settings_user_dictionary_prediction_limit"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
+        <Preference
+            android:key="settings_engine_enable_learning_dictionary_link"
+            android:title="@string/settings_engine_enable_learning_dictionary"
+            android:summary="@string/settings_engine_enable_learning_dictionary_summary" />
+
+        <Preference
+            android:key="settings_engine_enable_user_dictionary_link"
+            android:title="@string/settings_engine_enable_user_dictionary"
+            android:summary="@string/settings_engine_enable_user_dictionary_summary" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_engine_correction"
+        android:title="@string/settings_engine_correction_title"
+        android:summary="@string/settings_engine_correction_summary">
+
+        <SwitchPreferenceCompat
+            android:key="enable_typo_correction_japanese_flick_keyboard_preference"
+            android:title="@string/enable_typo_correction_japanese_flick_keyboard_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/enable_typo_correction_japanese_flick_keyboard_preference_sumary" />
+
+        <SeekBarPreference
+            android:key="enable_typo_correction_japanese_flick_keyboard_offset_score_preference"
+            android:max="5000"
+            android:title="@string/enable_typo_correction_japanese_flick_keyboard_offset_score_preference_tittle"
+            app:defaultValue="3000"
+            app:min="0"
+            app:seekBarIncrement="10"
+            app:showSeekBarValue="true"
+            app:summary="@string/enable_typo_correction_japanese_flick_keyboard_offset_score_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="enable_typo_correction_qwerty_english_keyboard_preference"
+            android:title="@string/enable_typo_correction_qwerty_english_keyboard_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/enable_typo_correction_qwerty_english_keyboard_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="omission_search_preference"
+            android:summaryOff="@string/omission_search_summary_off"
+            android:summaryOn="@string/omission_search_summary_on"
+            android:title="@string/omission_search_title" />
+
+        <SeekBarPreference
+            android:key="omission_search_preference_offset_score_preference"
+            android:max="5000"
+            android:title="@string/omission_search_preference_offset_score_preference_title"
+            app:defaultValue="1900"
+            app:min="0"
+            app:seekBarIncrement="10"
+            app:showSeekBarValue="true"
+            app:summary="@string/omission_search_preference_offset_score_preference_summary" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_engine_candidates"
+        android:title="@string/settings_engine_candidates_title"
+        android:summary="@string/settings_engine_candidates_summary">
+
+        <Preference
+            android:key="date_candidate_settings_preference"
+            android:title="@string/date_candidate_settings_title"
+            android:summary="@string/date_candidate_settings_summary"
+            app:iconSpaceReserved="false" />
+
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:dependency="japanese_prediction_enable_preference"
@@ -164,6 +331,43 @@
             android:title="@string/utility_candidate_settings_title"
             app:iconSpaceReserved="false" />
 
-    </PreferenceCategory>
+        <SwitchPreferenceCompat
+            android:key="conversion_candidates_romaji_enable_preference"
+            android:title="@string/conversion_candidates_romaji_enable_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/conversion_candidates_romaji_enable_preference_summary" />
 
-</androidx.preference.PreferenceScreen>
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="conversion_key_long_press_ai_conversion_preference"
+            android:summary="@string/conversion_key_long_press_ai_conversion_preference_summary"
+            android:title="@string/conversion_key_long_press_ai_conversion_preference_title" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+    <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
+        android:key="settings_engine_search"
+        android:title="@string/settings_engine_search_title"
+        android:summary="@string/settings_engine_search_summary">
+
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:key="n_best_preference"
+            android:max="16"
+            android:summary="@string/n_best_preference_summary"
+            android:title="N-Best"
+            app:min="2"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:defaultValue="20"
+            android:key="conversion_beam_width_preference"
+            android:max="100"
+            android:summary="@string/conversion_beam_width_preference_summary"
+            android:title="@string/conversion_beam_width_preference_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
+    </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
+
+</PreferenceScreen>

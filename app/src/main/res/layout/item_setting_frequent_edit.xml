@@ -8,9 +8,9 @@
     android:layout_margin="4dp"
     android:focusable="true"
     app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="8dp"
+    app:cardCornerRadius="@dimen/settings_card_corner_radius"
     app:strokeColor="?attr/colorOutline"
-    app:strokeWidth="1dp">
+    app:strokeWidth="@dimen/settings_card_stroke_width">
 
     <LinearLayout
         android:id="@+id/setting_frequent_row"

@@ -1016,12 +1016,7 @@
 
     <PreferenceCategory android:title="@string/dictionary_candidate_label_category_title">
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="show_dictionary_candidate_labels_preference"
-            android:title="@string/show_dictionary_candidate_labels_title"
-            app:iconSpaceReserved="false"
-            app:summary="@string/show_dictionary_candidate_labels_summary" />
+        <Preference android:key="setting_route_candidate_display" android:title="@string/candidate_display_title" android:summary="@string/candidate_display_summary" />
 
     </PreferenceCategory>
 
@@ -1036,20 +1031,7 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="@string/conversion_beam_width_category_title">
-
-        <SeekBarPreference
-            android:defaultValue="20"
-            android:key="conversion_beam_width_preference"
-            android:max="100"
-            android:summary="@string/conversion_beam_width_preference_summary"
-            android:title="@string/conversion_beam_width_preference_title"
-            app:min="1"
-            app:showSeekBarValue="true" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory
+<PreferenceCategory
         android:title="N-gram">
 
         <SwitchPreferenceCompat
@@ -1131,31 +1113,8 @@
             app:defaultValue="true"
             app:summary="@string/learn_dictionary_allow_mixed_symbols_numbers_summary" />
 
-        <SwitchPreferenceCompat
-            android:dependency="learn_dictionary_preference"
-            android:key="enable_prediction_search_learn_dictionary_preference"
-            android:title="@string/enable_prediction_search_learn_dictionary_preference_titile"
-            app:defaultValue="false"
-            app:summary="@string/enable_prediction_search_learn_dictionary_preference_summary" />
 
-        <SeekBarPreference
-            android:defaultValue="4"
-            android:dependency="enable_prediction_search_learn_dictionary_preference"
-            android:key="learn_prediction_preference"
-            android:max="8"
-            android:title="@string/user_dictionary_prefix_match_title"
-            app:min="1"
-            app:showSeekBarValue="true" />
 
-        <SeekBarPreference
-            android:defaultValue="4"
-            android:dependency="enable_prediction_search_learn_dictionary_preference"
-            android:key="learn_dictionary_prediction_candidate_limit_preference"
-            android:max="8"
-            android:summary="@string/learn_dictionary_prediction_candidate_limit_summary"
-            android:title="@string/dictionary_prediction_candidate_limit_title"
-            app:min="1"
-            app:showSeekBarValue="true" />
 
     </PreferenceCategory>
 
@@ -1176,24 +1135,7 @@
             android:summaryOn="@string/user_dictionary_summary_on"
             android:title="@string/user_dictionary_title" />
 
-        <SeekBarPreference
-            android:defaultValue="2"
-            android:dependency="user_dictionary_preference"
-            android:key="user_dictionary_prefix_match_number"
-            android:max="8"
-            android:title="@string/user_dictionary_prefix_match_title"
-            app:min="2"
-            app:showSeekBarValue="true" />
 
-        <SeekBarPreference
-            android:defaultValue="4"
-            android:dependency="user_dictionary_preference"
-            android:key="user_dictionary_prediction_candidate_limit_preference"
-            android:max="8"
-            android:summary="@string/user_dictionary_prediction_candidate_limit_summary"
-            android:title="@string/dictionary_prediction_candidate_limit_title"
-            app:min="1"
-            app:showSeekBarValue="true" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/user_template_title">
@@ -1216,12 +1158,6 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_zero_query_suggestion_title">
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="zero_query_suggestion_preference"
-            android:summaryOff="@string/zero_query_suggestion_summary_off"
-            android:summaryOn="@string/zero_query_suggestion_summary_on"
-            android:title="@string/zero_query_suggestion_title" />
 
         <Preference
             android:key="custom_zero_query_dictionary_preference"
@@ -1230,4 +1166,18 @@
             app:summary="@string/custom_zero_query_dictionary_summary" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/settings_related_settings">
+        <Preference
+            android:key="setting_route_canonical_settings_engine_dictionaries"
+            android:title="@string/settings_engine_dictionaries_title"
+            android:summary="@string/settings_engine_dictionaries_summary" />
+        <Preference
+            android:key="setting_route_canonical_settings_engine_prediction"
+            android:title="@string/settings_engine_prediction_title"
+            android:summary="@string/settings_engine_prediction_summary" />
+        <Preference
+            android:key="setting_route_canonical_settings_engine_search"
+            android:title="@string/settings_engine_search_title"
+            android:summary="@string/settings_engine_search_summary" />
+    </PreferenceCategory>
 </androidx.preference.PreferenceScreen>

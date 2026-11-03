@@ -103,6 +103,7 @@
             app:layout_constraintBottom_toTopOf="@+id/floating_keyboard_container">
 
             <!-- RecyclerView for Suggestions -->
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/suggestion_recycler_view"
                 android:layout_width="0dp"
