@@ -6,8 +6,8 @@ import kotlin.math.max
 /**
  * Ordered geometric template matching: arc-length resampling, uniform scale and translation.
  * Inspired by the published $1 approach (Wobbrock, Wilson, Li, UIST 2007).
- * This implementation is independently written; it intentionally does not rotate, mirror,
- * reverse, or independently scale the axes of the path.
+ * This implementation is independently written and permits only limited tilt matching.
+ * It never mirrors, reverses, or independently scales the axes of the path.
  */
 object GestureRecognizer {
     private const val POINTS = 64

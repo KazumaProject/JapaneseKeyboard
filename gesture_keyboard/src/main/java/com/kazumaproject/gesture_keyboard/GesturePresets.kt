@@ -1,7 +1,7 @@
 package com.kazumaproject.gesture_keyboard
 
 /**
- * Original connected sketches, not Palm/Graffiti alphabets or font outlines.
+ * Legacy connected sketches, retained alongside the separate Palm-compatible presets.
  * Each coordinate list is also the source for the user's start/direction guide.
  * Separate sets deliberately permit identical shapes (for example English o and digit 0).
  */
