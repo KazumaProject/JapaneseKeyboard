@@ -59,7 +59,7 @@ internal class OpenSourceLicenses(private val context: Context) {
         } + LicenseItem("dictionary/kanji", text(R.string.license_kanji), "CC BY-SA 4.0 · Unicode-3.0") {
             val edrdgNotice = HtmlCompat.fromHtml(
                 asset("licenses/sources/jmdict.txt"), HtmlCompat.FROM_HTML_MODE_LEGACY,
-            ).toString()
+            ).toString().replace("\uFFFC", "").trim()
             document(
                 text(R.string.license_kanji),
                 text(R.string.license_kanji_overview),
