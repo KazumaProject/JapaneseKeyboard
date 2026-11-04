@@ -24,6 +24,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.InlineSuggestionToggle
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidateSurfaceHost
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CupertinoClassicCandidateChrome
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
@@ -275,6 +276,39 @@ class IMEServiceCupertinoCandidateAppearanceTest {
                 assertNotNull("$skin toolbar tint", shortcutHolder.imageView.colorFilter)
                 val button = fixture.binding.suggestionVisibility
                 assertEquals("$skin expand tint", colors.text, button.imageTintList!!.defaultColor)
+            }
+        } finally { fixture.close() }
+    }
+
+    @Test fun kanjiShortcutUsesTheSamePaletteInBothToolbars() {
+        val fixture = Fixture()
+        try {
+            val shortcuts = listOf(ShortcutType.KANJI)
+            val parent = FrameLayout(fixture.context)
+            fixture.shortcuts.submitList(shortcuts)
+            fixture.adapter.submitContent(CandidateStripContent.ExpandedShortcutEntry(shortcuts))
+            drain(fixture.shortcuts, 1)
+            drain(fixture.adapter, 2)
+            val independent = fixture.shortcuts.onCreateViewHolder(parent, 0)
+            val integrated = fixture.adapter.onCreateViewHolder(parent, SuggestionAdapter.VIEW_TYPE_SHORTCUT)
+                as SuggestionAdapter.ShortcutViewHolder
+            val defaultColor = fixture.context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
+            fixture.set("customThemeShortcutIconColor", Color.MAGENTA)
+            for ((skin, theme, expected) in listOf(
+                Triple(KeyboardSkinId.DEFAULT, "default", defaultColor),
+                Triple(KeyboardSkinId.DEFAULT, "custom", Color.MAGENTA),
+                Triple(KeyboardSkinId.CUPERTINO_CLASSIC, "custom", CupertinoClassicCandidateChrome.textColor),
+                Triple(KeyboardSkinId.DEFAULT, "default", defaultColor),
+            )) {
+                fixture.set("keyboardSkinId", skin)
+                fixture.set("keyboardThemeMode", theme)
+                fixture.call("applyCandidateAppearance")
+                fixture.shortcuts.onBindViewHolder(independent, 0)
+                fixture.adapter.onBindViewHolder(integrated, 1)
+                for (icon in listOf(independent.imageView, integrated.imageView)) {
+                    assertNotNull(icon.colorFilter)
+                    assertTrue("$skin/$theme shortcut color", expected in iconPixels(icon))
+                }
             }
         } finally { fixture.close() }
     }

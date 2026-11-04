@@ -329,6 +329,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.Floati
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.FloatingPhysicalToolbarView
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.PhysicalToolbarSettings
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideWindow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.GuideProfile
@@ -3118,12 +3119,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainHandler.post {
             splitCandidateRefreshPosted = false
             val source = suggestionAdapter ?: return@post
+            val colors = resolveCandidatePanelColors()
+            val shortcutColor = resolveCandidateShortcutIconColor(colors)
             splitInputs.values.forEach { state ->
                 state.adapter.mirrorSplitContentFrom(source)
-                val colors = resolveCandidatePanelColors()
                 state.adapter.setFloatingPanelColors(colors)
                 state.adapter.setCandidateTextColor(colors.text)
-                state.adapter.setShortcutIconColor(colors.icon)
+                state.adapter.setShortcutIconColor(shortcutColor)
                 state.adapter.setCandidateEmptyPopupColors(colors.background, colors.text)
             }
         }
@@ -3568,9 +3570,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun resolveCandidatePanelColors(): com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors {
+    private fun resolveCandidatePanelColors(): CandidatePanelColors {
         val context = mainLayoutBinding?.root?.context ?: this
-        val custom = if (keyboardThemeMode == "custom") com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors(
+        val custom = if (keyboardThemeMode == "custom") CandidatePanelColors(
             customThemeBgColor ?: Color.WHITE,
             customThemeCandidateItemBgColor ?: Color.TRANSPARENT,
             customThemeCandidateTextColor ?: Color.BLACK,
@@ -3579,7 +3581,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customThemeSpecialKeyTextColor ?: Color.BLACK,
             customThemeShortcutIconColor ?: Color.BLACK,
         ) else null
-        return com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.CandidatePanelColors.resolve(
+        return CandidatePanelColors.resolve(
             context,
             KeyboardSkinRegistry.find(keyboardSkinId)?.palette,
             custom,
@@ -3592,8 +3594,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateSurfaceHost?.setColors(colors)
         suggestionAdapter?.setFloatingPanelColors(colors)
         suggestionAdapter?.setCandidateTextColor(colors.text)
-        suggestionAdapter?.setShortcutIconColor(colors.icon)
-        shortcutAdapter?.setIconColor(colors.icon)
+        val shortcutColor = resolveCandidateShortcutIconColor(colors)
+        suggestionAdapter?.setShortcutIconColor(shortcutColor)
+        shortcutAdapter?.setIconColor(shortcutColor)
         if (keyboardThemeMode != "custom" || KeyboardSkinRegistry.find(keyboardSkinId) != null) {
             suggestionAdapter?.setCandidateEmptyPopupColors(colors.background, colors.text)
         }
@@ -8222,10 +8225,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshZenzFloatingCandidates()
     }
 
-    private fun resolveCandidateShortcutIconColor(): Int? =
-        if (KeyboardSkinRegistry.find(keyboardSkinId) != null) resolveCandidatePanelColors().icon
-        else if (keyboardThemeMode == "custom") customThemeShortcutIconColor ?: Color.BLACK
-        else null
+    private fun resolveCandidateShortcutIconColor(
+        colors: CandidatePanelColors? = null,
+    ): Int {
+        if (KeyboardSkinRegistry.find(keyboardSkinId) != null || keyboardThemeMode == "custom") {
+            return (colors ?: resolveCandidatePanelColors()).icon
+        }
+        val context = mainLayoutBinding?.root?.context ?: this
+        return ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
+    }
 
     private fun applyCandidateEmptyPopupThemeToAdapters() {
         val adapters = listOfNotNull(suggestionAdapter, suggestionAdapterFull)
