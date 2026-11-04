@@ -172,13 +172,13 @@ class ImePopupInstrumentedTest {
                 val radicalIndex = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_radical_index)
                 val history = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_history)
                 val remove = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_remove_history)
-                val indexButton = awaitNode(radicalIndex)
-                assertNull(findNode(history))
+                val indexButton = awaitKanjiNode(radicalIndex)
+                assertNull(findKanjiNode(history))
 
                 tap(indexButton)
                 tap(awaitRadical("丨"))
                 awaitKanjiCell("中")
-                tap(awaitNode(radicalIndex))
+                tap(awaitKanjiNode(radicalIndex))
                 tap(awaitRadical("一"))
 
                 val example = ins.targetContext.getString(
@@ -187,17 +187,17 @@ class ImePopupInstrumentedTest {
                 val reading = ins.targetContext.getString(
                     com.kazumaproject.symbol_keyboard.R.string.kanji_reading_on, "イチ、イツ",
                 )
-                longPress(awaitKanjiCell("一")) { awaitNode(example); awaitNode(reading) }
+                longPress(awaitKanjiCell("一")) { awaitKanjiNode(example); awaitKanjiNode(reading) }
                 host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
                 awaitText(host, "")
                 touch(8f, 200f)
-                await { (findNode(example) == null).takeIf { it } }
+                await { (findKanjiNode(example) == null).takeIf { it } }
                 tap(awaitKanjiCell("一"))
                 awaitText(host, "一")
-                tap(awaitNode(history))
-                longPress(awaitKanjiCell("一")) { awaitNode(remove) }
-                tap(awaitNode(remove))
-                await { (findNode(history) == null).takeIf { it } }
+                tap(awaitKanjiNode(history))
+                longPress(awaitKanjiCell("一")) { awaitKanjiNode(remove) }
+                tap(awaitKanjiNode(remove))
+                await { (findKanjiNode(history) == null).takeIf { it } }
                 awaitText(host, "一")
             }
         } finally {
@@ -218,6 +218,7 @@ class ImePopupInstrumentedTest {
                 dao.replaceAll(listOf(ShortcutItem(typeId = "kanji", sortOrder = 0)))
             }
             for (surface in listOf("docked", "floating", "split")) {
+                android.util.Log.i("ImePopupQA", "Testing Kanji shortcut on $surface")
                 withHost(
                     integrated = surface != "docked",
                     floating = surface == "floating",
@@ -229,7 +230,7 @@ class ImePopupInstrumentedTest {
                             tap(it); null
                         }
                     }.let(::tap)
-                    awaitNode(radicalIndex)
+                    awaitKanjiNode(radicalIndex)
                     awaitKanjiCell("一")
                     host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
                 }
@@ -240,12 +241,25 @@ class ImePopupInstrumentedTest {
     }
 
     private fun awaitRadical(symbol: String): AccessibilityNodeInfo = await {
-        allNodes().firstOrNull { it.text == symbol && it.parent?.className == "android.widget.GridView" }
+        kanjiNodes(symbol).firstOrNull { it.parent?.className == "android.widget.GridView" }
     }
 
     private fun awaitKanjiCell(symbol: String): AccessibilityNodeInfo = await {
-        allNodes().firstOrNull { it.text == symbol && it.viewIdResourceName?.endsWith(":id/symbol_text") == true }
+        kanjiNodes(symbol).firstOrNull { it.viewIdResourceName?.endsWith(":id/symbol_text") == true }
     }
+
+    private fun awaitKanjiNode(label: String): AccessibilityNodeInfo = await { findKanjiNode(label) }
+
+    private fun findKanjiNode(label: String): AccessibilityNodeInfo? = kanjiNodes(label).firstOrNull()
+
+    // Searching each window avoids traversing all 214 tabs for every keyboard assertion.
+    private fun kanjiNodes(label: String): Sequence<AccessibilityNodeInfo> =
+        automation.windows.asSequence().mapNotNull { it.root }
+            .flatMap { it.findAccessibilityNodeInfosByText(label).asSequence() }
+            .filter {
+                it.isVisibleToUser &&
+                    (it.text?.toString() == label || it.contentDescription?.toString() == label)
+            }
 
     @Test fun independentAndIntegratedToolbarsUseTheSameSelectionWindow() {
         for (integrated in listOf(false, true)) {
