@@ -42,6 +42,8 @@
     <string name="license_openmp_changes">The NDK runtime library is bundled with the app.</string>
     <string name="license_source_document">View source documentation</string>
     <string name="license_kanji">Kanji keyboard data</string>
-    <string name="license_kanji_overview">The kanji catalog and readings are derived from KANJIDIC2, compiled by the Electronic Dictionary Research and Development Group (EDRDG). The radical labels use Unicode data.</string>
+    <string name="license_kanji_overview">This app uses KANJIDIC2 data. Copyright is held by James William Breen and the Electronic Dictionary Research and Development Group (EDRDG). Radical labels come from CJKRadicals.txt, © 2026 Unicode, Inc.</string>
     <string name="license_kanji_changes">Extracted characters, classical radicals, stroke counts, Jōyō flags, and Japanese readings. Usage sentences were written for this app and are distributed separately from the dictionary extract.</string>
+    <string name="license_kanji_terms">The KANJIDIC2 extract is distributed under CC BY-SA 4.0. When redistributing it, retain attribution, the source and modification notices, and the licence. Apply CC BY-SA 4.0 or a compatible licence to adaptations. EDRDG also requires a procedure to check and update bundled data regularly. For the Unicode radical labels, retain the copyright and permission notice under Unicode License v3.</string>
+    <string name="license_kanji_edrdg_notice">EDRDG dictionary licence statement</string>
 </resources>
