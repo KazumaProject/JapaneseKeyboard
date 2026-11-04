@@ -42,6 +42,8 @@
     <string name="license_openmp_changes">NDK の実行ライブラリをアプリに同梱しています。</string>
     <string name="license_source_document">配布元の資料を確認</string>
     <string name="license_kanji">漢字キーボードのデータ</string>
-    <string name="license_kanji_overview">収録漢字と読みは Electronic Dictionary Research and Development Group（EDRDG）の KANJIDIC2 を使用しています。部首ラベルには Unicode のデータを使用しています。</string>
+    <string name="license_kanji_overview">本アプリは KANJIDIC2 のデータを使用しています。著作権は James William Breen と Electronic Dictionary Research and Development Group（EDRDG）に帰属します。部首ラベルの出典は CJKRadicals.txt（© 2026 Unicode, Inc.）です。</string>
     <string name="license_kanji_changes">文字、康熙部首、画数、常用漢字の区分、日本語の読みを抽出しました。例文は本アプリ用に書き下ろし、辞書の抽出データとは別ファイルで配布しています。</string>
+    <string name="license_kanji_terms">KANJIDIC2 の抽出データは CC BY-SA 4.0 で配布します。再配布時は帰属・出典・加工内容・ライセンスの表示を保持し、加工したデータは CC BY-SA 4.0 または互換ライセンスで配布してください。EDRDG は、同梱データを定期的に確認・更新する手順も求めています。Unicode 由来の部首ラベルには Unicode License v3 が適用され、著作権・許諾表示を保持してください。</string>
+    <string name="license_kanji_edrdg_notice">EDRDG の辞書ライセンス声明</string>
 </resources>

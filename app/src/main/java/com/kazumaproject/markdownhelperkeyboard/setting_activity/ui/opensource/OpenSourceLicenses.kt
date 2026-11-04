@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.content.Context
 import android.text.TextUtils
+import androidx.core.text.HtmlCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
@@ -23,7 +24,8 @@ internal class OpenSourceLicenses(private val context: Context) {
     private fun escape(value: String) = TextUtils.htmlEncode(value)
     private fun paragraph(value: String) = "<p>${escape(value)}</p>"
     private fun section(heading: Int, body: String) = "<h2>${escape(text(heading))}</h2>$body"
-    private fun link(url: String) = "<p><a href=\"${escape(url)}\">${escape(text(R.string.license_source_document))}</a></p>"
+    private fun link(url: String, label: String = text(R.string.license_source_document)) =
+        "<p><a href=\"${escape(url)}\">${escape(label)}</a></p>"
     private fun original(path: String) = "<pre>${escape(asset(path))}</pre>"
 
     private fun document(title: String, overview: String, source: String, version: String,
@@ -55,17 +57,24 @@ internal class OpenSourceLicenses(private val context: Context) {
         ).map { (label, id) ->
             LicenseItem("dictionary/$id", text(label), dictionarySummary) { asset("licenses/$id.html").replace(Regex("<h1>.*?</h1>"), "") }
         } + LicenseItem("dictionary/kanji", text(R.string.license_kanji), "CC BY-SA 4.0 · Unicode-3.0") {
+            val edrdgNotice = HtmlCompat.fromHtml(
+                asset("licenses/sources/jmdict.txt"), HtmlCompat.FROM_HTML_MODE_LEGACY,
+            ).toString()
             document(
                 text(R.string.license_kanji),
                 text(R.string.license_kanji_overview),
-                link("https://www.edrdg.org/wiki/KANJIDIC_Project.html") +
-                    link("https://www.edrdg.org/edrdg/licence.html") +
-                    link("https://www.unicode.org/Public/18.0.0/ucd/CJKRadicals.txt"),
+                link("https://www.edrdg.org/wiki/KANJIDIC_Project.html", "KANJIDIC Project") +
+                    link("https://www.edrdg.org/edrdg/licence.html", text(R.string.license_kanji_edrdg_notice)) +
+                    link("https://creativecommons.org/licenses/by-sa/4.0/", "CC BY-SA 4.0") +
+                    link("https://www.unicode.org/Public/18.0.0/ucd/CJKRadicals.txt", "CJKRadicals.txt") +
+                    link("https://www.unicode.org/license.txt", "Unicode License v3"),
                 "KANJIDIC2 2026-308 (2026-11-04) · SHA-256 e26e34c9187a786bf1f0b21f87e311a9b0ed644aefe9693d10bdc7cb8643d8e0\n" +
                     "Unicode 18.0.0 CJKRadicals.txt · SHA-256 689e2e5852699e7115823dc0b6d3e615eb767c7f477b615678f4f989d1f06105",
                 text(R.string.license_kanji_changes),
-                "KANJIDIC2 · CC BY-SA 4.0 / CJKRadicals.txt · Unicode License v3",
-                original("licenses/sources/cc-by-sa-4.txt") + original("licenses/sources/unicode-3.txt"),
+                text(R.string.license_kanji_terms),
+                "<h3>${escape(text(R.string.license_kanji_edrdg_notice))}</h3><pre>${escape(edrdgNotice)}</pre>" +
+                    "<h3>CC BY-SA 4.0</h3>" + original("licenses/sources/cc-by-sa-4.txt") +
+                    "<h3>Unicode License v3</h3>" + original("licenses/sources/unicode-3.txt"),
             )
         } + ClassifiedDictionaries.all.map { spec ->
             LicenseItem("dictionary/classified/${spec.id}", text(spec.nameRes), dictionarySummary) {

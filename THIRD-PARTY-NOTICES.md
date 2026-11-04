@@ -78,6 +78,45 @@ bundled offline source notices under `app/src/main/assets/licenses/`.
 Read the preserved notices for the full terms. Redistribution must retain
 applicable copyright, attribution, license and source-data notices.
 
+## Kanji keyboard data / 漢字キーボードのデータ
+
+- `symbol_keyboard/src/main/assets/kanji/catalog.tsv` contains data extracted
+  from **KANJIDIC2 2026-308 (2026-11-04)**, copyright James William Breen
+  and the Electronic Dictionary Research and Development Group (EDRDG).
+  The extract contains characters, classical radical numbers, stroke counts,
+  jōyō flags, and Japanese readings. It is distributed under CC BY-SA 4.0.
+  Preserve attribution, the source and modification notices, and the license
+  when redistributing it. Apply CC BY-SA 4.0 or a compatible license to
+  adaptations. [KANJIDIC project](https://www.edrdg.org/wiki/KANJIDIC_Project.html)
+  [EDRDG statement](https://www.edrdg.org/edrdg/licence.html)
+  [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+- The radical label rows use **Unicode 18.0.0 CJKRadicals.txt**, © 2026
+  Unicode, Inc. Preserve the copyright and permission notice under Unicode
+  License v3. [Unicode source data](https://www.unicode.org/Public/18.0.0/ucd/CJKRadicals.txt)
+  [Bundled Unicode notice](app/src/main/assets/licenses/sources/unicode-3.txt)
+- `symbol_keyboard/src/main/assets/kanji/examples.tsv` contains separately
+  authored usage sentences. アプリ用の書き下ろし例文は別ファイルで同梱しています。
+- The app displays these notices under Licenses and sources → Dictionaries →
+  Kanji keyboard data. 「ライセンスと出典」の「漢字キーボードのデータ」で、
+  使用版・加工内容・ライセンス原文を確認できます。
+
+### Updating KANJIDIC2 / KANJIDIC2 の更新手順
+
+1. Check the [EDRDG download archive](https://www.edrdg.org/pub/Nihongo/) regularly
+   and before releases that include the kanji data. Compare the XML
+   `database_version` and `date_of_creation` against the in-app notice.
+   For an update, retain the input off-repository and record the version,
+   date, and SHA-256 of `kanjidic2.xml.gz`.
+2. Rebuild the kanji rows of `catalog.tsv` with the literal, classical radical,
+   first stroke count, jōyō flag (grades 1–6 or 8), and deduplicated `ja_on`
+   and `ja_kun` readings. Use tabs between fields, `|` between readings, and
+   `-` for missing readings. Sort by radical, jōyō first, stroke count, then
+   Unicode code point. Retain the Unicode radical label rows unless updating
+   the Unicode source as well. Check example coverage against the new jōyō set.
+3. Update the source versions, hashes, and notices alongside the data. Run
+   `:symbol_keyboard:testDebugUnitTest` and the app's
+   `OpenSourceLicensesTest` and verify the assets in the distribution build.
+
 ## Reproduction / 再生成
 
 `python3 tools/classified-dictionaries/prepare.py` imports the pinned release,

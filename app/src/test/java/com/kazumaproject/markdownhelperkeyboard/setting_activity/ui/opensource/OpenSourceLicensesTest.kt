@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.content.Context
+import android.content.res.Configuration
+import java.util.Locale
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import org.json.JSONObject
@@ -51,6 +53,24 @@ class OpenSourceLicensesTest {
             val html = it.document()
             assertTrue(it.id, html.contains("v1.7.283 (b9f3375a1cfb0ce5e56f4da622ecc4e983364581)"))
             assertTrue(it.id, html.contains("<pre>"))
+        }
+    }
+
+    @Test fun kanjiNoticesIncludeAttributionAndUpdateTermsInBothLanguages() {
+        val updateTerms = mapOf(
+            Locale.ENGLISH to "check and update bundled data regularly",
+            Locale.JAPANESE to "同梱データを定期的に確認・更新",
+        )
+        updateTerms.forEach { (locale, expected) ->
+            val configuration = Configuration(context.resources.configuration).apply { setLocale(locale) }
+            val localized = OpenSourceLicenses(context.createConfigurationContext(configuration))
+            val document = localized.sections("lite", false).flatMap { it.items }
+                .single { it.id == "dictionary/kanji" }.document()
+            assertTrue(document.contains("James William Breen"))
+            assertTrue(document.contains("Unicode, Inc."))
+            assertTrue(document.contains(expected))
+            assertTrue(document.contains("Updating Dictionary Versions"))
+            assertTrue(document.contains("https://creativecommons.org/licenses/by-sa/4.0/"))
         }
     }
 
