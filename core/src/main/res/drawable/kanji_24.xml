@@ -7,7 +7,7 @@
     <path
         android:fillColor="@android:color/transparent"
         android:pathData="M11,2L13,4.5 M4,10V6H20V10 M7,10H17L12,14V20Q12,21 11,21H8 M4,16H20"
-        android:strokeColor="#FF000000"
+        android:strokeColor="@color/keyboard_icon_color"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:strokeWidth="1.8" />
