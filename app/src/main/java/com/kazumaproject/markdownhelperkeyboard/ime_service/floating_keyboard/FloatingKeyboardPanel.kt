@@ -33,6 +33,7 @@ internal class FloatingKeyboardPanel(
     private var startBounds: GuideBounds? = null
     private var draft: KeyboardLayoutEditValues.Floating? = null
     private val keyboardBody = SplitKeyboardBody(context, dp(240), dp(180))
+    private val preferredSymbolHeight = binding.floatingSymbolKeyboard.layoutParams.height
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private var chromeSettings = FloatingKeyboardChromeSettings.read(preferences)
     private val hideButtonBounds = Rect()
@@ -157,6 +158,19 @@ internal class FloatingKeyboardPanel(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val insets = contentInsets
         val width = MeasureSpec.getSize(widthMeasureSpec)
+        val symbols = binding.floatingSymbolKeyboard
+        if (symbols.visibility == View.VISIBLE && MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+            // The symbol panel is bottom-aligned. Reserve the floating chrome before measuring it
+            // so a short display does not crop the category strip at the top.
+            val availableHeight = (MeasureSpec.getSize(heightMeasureSpec) - insets.top - insets.bottom)
+                .coerceAtLeast(1)
+            val height = minOf(preferredSymbolHeight, availableHeight)
+            val params = symbols.layoutParams
+            if (params.height != height) {
+                params.height = height
+                symbols.layoutParams = params
+            }
+        }
         binding.root.measure(MeasureSpec.makeMeasureSpec((width - insets.left - insets.right).coerceAtLeast(1), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
         val desired = binding.root.measuredHeight + insets.top + insets.bottom
