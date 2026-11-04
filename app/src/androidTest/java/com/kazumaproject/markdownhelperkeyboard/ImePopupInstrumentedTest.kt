@@ -167,6 +167,7 @@ class ImePopupInstrumentedTest {
         try {
             runBlocking { previousHistory.forEach { dao.deleteByModeAndSymbol("KANJI", it.symbol) } }
             withHost(initialSymbol = "KANJI") { host ->
+                applyKanjiTestOrientation(host)
                 openSoftwareKeyboard()
                 tap(awaitNode("symbol"))
                 val radicalIndex = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_radical_index)
@@ -224,12 +225,17 @@ class ImePopupInstrumentedTest {
                     floating = surface == "floating",
                     split = surface == "split",
                 ) { host ->
+                    applyKanjiTestOrientation(host)
                     await {
                         findNodeId("dock_icon")?.let { tap(it) }
-                        findNode(label) ?: findNode(ins.targetContext.getString(R.string.shortcut_entry_content_description))?.let {
-                            tap(it); null
-                        }
-                    }.let(::tap)
+                        kanjiNodes(label).firstOrNull { it.isClickable }
+                            ?: findNode(ins.targetContext.getString(R.string.shortcut_entry_content_description))?.let {
+                                tap(it)
+                                null
+                            }
+                    }.let { node ->
+                        if (!node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) tap(node)
+                    }
                     awaitKanjiNode(radicalIndex)
                     awaitKanjiCell("一")
                     host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
@@ -237,6 +243,20 @@ class ImePopupInstrumentedTest {
             }
         } finally {
             runBlocking { dao.replaceAll(shortcuts) }
+        }
+    }
+
+    private fun applyKanjiTestOrientation(host: HostScenario) {
+        if (InstrumentationRegistry.getArguments().getString("kanji_landscape") != "true") return
+        host.onActivity {
+            it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
+        await {
+            automation.takeScreenshot()?.let { screenshot ->
+                val landscape = screenshot.width > screenshot.height
+                screenshot.recycle()
+                landscape.takeIf { it }
+            }
         }
     }
 
