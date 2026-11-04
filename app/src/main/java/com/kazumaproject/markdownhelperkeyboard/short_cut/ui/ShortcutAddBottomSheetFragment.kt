@@ -165,7 +165,7 @@ class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
             .filterNot { it.id in selectedTypeIds }
             .filter { type ->
                 query.isBlank() ||
-                    type.description.contains(query, ignoreCase = true) ||
+                    type.label(requireContext()).contains(query, ignoreCase = true) ||
                     type.summary(requireContext()).contains(query, ignoreCase = true)
             }
 

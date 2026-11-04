@@ -10,7 +10,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:backgroundTint="@color/suggestion_view_bg"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/kanji_radical_index"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:tabGravity="fill"
@@ -20,12 +20,37 @@
         app:tabRippleColor="@null" />
 
 
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/kanji_radical_index"
+        android:layout_width="48dp"
+        android:layout_height="0dp"
+        android:background="?attr/selectableItemBackground"
+        android:contentDescription="@string/kanji_radical_index"
+        android:scaleType="center"
+        android:visibility="gone"
+        app:srcCompat="@drawable/kanji_radical_index_24"
+        app:layout_constraintBottom_toBottomOf="@id/category_tab_layout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/category_tab_layout" />
+
     <!-- 中央の RecyclerView を左右ボタンの間に挟む -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/symbol_candidate_recycler_view"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:overScrollMode="never"
+        app:layout_constraintBottom_toTopOf="@id/bottom_bar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/category_tab_layout" />
+
+    <TextView
+        android:id="@+id/kanji_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="8dp"
+        android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/bottom_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

@@ -39,11 +39,15 @@ class OpenSourceLicensesTest {
     @Test fun dictionaryNoticesCoverEverySelectableCategoryAndCurrentRelease() {
         val items = catalog.sections("lite", false).flatMap { it.items }
             .filter { it.id.startsWith("dictionary/") }
-        assertEquals(ClassifiedDictionaries.all.size + 6, items.size)
+        assertEquals(ClassifiedDictionaries.all.size + 7, items.size)
+        val kanji = items.single { it.id == "dictionary/kanji" }.document()
+        assertTrue(kanji.contains("KANJIDIC2 2026-308"))
+        assertTrue(kanji.contains("UNICODE LICENSE V3"))
+        assertTrue(kanji.contains("CC BY-SA 4.0"))
         ClassifiedDictionaries.all.forEach { spec ->
             assertTrue(items.any { it.id == "dictionary/classified/${spec.id}" })
         }
-        items.forEach {
+        items.filterNot { it.id == "dictionary/kanji" }.forEach {
             val html = it.document()
             assertTrue(it.id, html.contains("v1.7.283 (b9f3375a1cfb0ce5e56f4da622ecc4e983364581)"))
             assertTrue(it.id, html.contains("<pre>"))

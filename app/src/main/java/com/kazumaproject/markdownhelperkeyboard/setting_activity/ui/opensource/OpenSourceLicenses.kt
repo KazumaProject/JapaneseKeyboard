@@ -54,6 +54,19 @@ internal class OpenSourceLicenses(private val context: Context) {
             R.string.license_wikipedia to "wiki",
         ).map { (label, id) ->
             LicenseItem("dictionary/$id", text(label), dictionarySummary) { asset("licenses/$id.html").replace(Regex("<h1>.*?</h1>"), "") }
+        } + LicenseItem("dictionary/kanji", text(R.string.license_kanji), "CC BY-SA 4.0 · Unicode-3.0") {
+            document(
+                text(R.string.license_kanji),
+                text(R.string.license_kanji_overview),
+                link("https://www.edrdg.org/wiki/KANJIDIC_Project.html") +
+                    link("https://www.edrdg.org/edrdg/licence.html") +
+                    link("https://www.unicode.org/Public/18.0.0/ucd/CJKRadicals.txt"),
+                "KANJIDIC2 2026-308 (2026-11-04) · SHA-256 e26e34c9187a786bf1f0b21f87e311a9b0ed644aefe9693d10bdc7cb8643d8e0\n" +
+                    "Unicode 18.0.0 CJKRadicals.txt · SHA-256 689e2e5852699e7115823dc0b6d3e615eb767c7f477b615678f4f989d1f06105",
+                text(R.string.license_kanji_changes),
+                "KANJIDIC2 · CC BY-SA 4.0 / CJKRadicals.txt · Unicode License v3",
+                original("licenses/sources/cc-by-sa-4.txt") + original("licenses/sources/unicode-3.txt"),
+            )
         } + ClassifiedDictionaries.all.map { spec ->
             LicenseItem("dictionary/classified/${spec.id}", text(spec.nameRes), dictionarySummary) {
                 asset(spec.licenseAssetPath).replace(Regex("<h1>.*?</h1>"), "")

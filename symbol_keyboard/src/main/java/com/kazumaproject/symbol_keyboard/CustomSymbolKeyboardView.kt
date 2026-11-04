@@ -16,17 +16,23 @@ import android.os.Looper
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.GestureDetector
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.GridView
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
+import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.Pager
@@ -61,6 +67,8 @@ import com.kazumaproject.listeners.ImageItemClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
+import java.io.IOException
+import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -74,6 +82,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private val categoryTab: TabLayout
     private val modeTab: TabLayout
+    private val radicalIndex: ImageButton
+    private val kanjiStatus: TextView
     private val recycler: RecyclerView
     private val symbolAdapter = SymbolAdapter()
     private val clipboardAdapter = ClipboardAdapter()
@@ -101,7 +111,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var historyEmoticonList: MutableList<String> = mutableListOf()
     private var historySymbolList: MutableList<String> = mutableListOf()
 
-    private var symbolsHistory: List<ClickedSymbol> = emptyList()
+    private val historyKanjiList = mutableListOf<String>()
+    private var kanjiCatalog: KanjiCatalog? = null
+    private var kanjiLoadJob: Job? = null
     private var clipBoardItems: List<ClipboardItem> = emptyList()
     private var currentMode: SymbolMode = SymbolMode.EMOJI
     private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
@@ -123,7 +135,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private var pagingJob: Job? = null
     private var lifecycleOwner: LifecycleOwner? = null
-    private var skinTonePopup: PopupWindow? = null
+    private var symbolPopup: PopupWindow? = null
     private var defaultEmojiSkinTone: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
 
     private var returnListener: ReturnToTenKeyButtonClickListener? = null
@@ -145,6 +157,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         categoryTab = findViewById(R.id.category_tab_layout)
         modeTab = findViewById(R.id.mode_tab_layout)
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
+        radicalIndex = findViewById(R.id.kanji_radical_index)
+        kanjiStatus = findViewById(R.id.kanji_status)
+        radicalIndex.setOnClickListener { showRadicalIndex() }
         returnButton = findViewById(R.id.return_jp_keyboard_button)
         deleteButton = findViewById(R.id.symbol_keyboard_delete_key)
         KeyboardFontGlyphDrawable.setImageResource(
@@ -160,6 +175,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             ContextCompat.getColor(context, com.kazumaproject.core.R.color.enter_key_bg)
         themeKeyBackgroundColor =
             ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_bg)
+
+        radicalIndex.imageTintList = ColorStateList.valueOf(themeIconColor)
+        kanjiStatus.setTextColor(themeIconColor)
 
         recycler.apply {
             layoutManager = gridLM
@@ -180,6 +198,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         symbolAdapter.setOnItemLongClickListener { str, pos, anchor ->
+            if (currentMode == SymbolMode.KANJI) {
+                kanjiCatalog?.entries?.get(str)?.let { showKanjiDetails(it, anchor) }
+                return@setOnItemLongClickListener
+            }
             if (
                 currentMode == SymbolMode.EMOJI &&
                 !isHistoryCategorySelected() &&
@@ -261,11 +283,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
-                currentMode = SymbolMode.entries[tab?.position ?: 0]
-                symbolAdapter.setKeyboardFont(keyboardFontSnapshot, currentMode != SymbolMode.EMOJI)
-                buildCategoryTabs()
-                categoryTab.getTabAt(0)?.select()
-                updateSymbolsForCategory(0)
+                val mode = tab?.tag as? SymbolMode ?: return
+                selectMode(mode, 0)
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -320,7 +339,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     fun restoreDefaultKeyboardTheme() {
         if (!isCustomThemeApplied) return
         themeRevision++
-        skinTonePopup?.dismiss()
+        symbolPopup?.dismiss()
         keyboardSkinId = KeyboardSkinId.DEFAULT
         isCustomThemeApplied = false
         liquidGlassEnable = false
@@ -333,9 +352,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         symbolAdapter.setThemeColors(null, null)
         // Rebuild selection colors using the same path as a fresh Default view.
         val mode = currentMode
+        radicalIndex.imageTintList = ColorStateList.valueOf(themeIconColor)
+        kanjiStatus.setTextColor(themeIconColor)
         buildModeTabs()
-        modeTab.getTabAt(mode.ordinal)?.select()
-        buildCategoryTabs()
+        switchToSymbolMode(mode)
     }
 
     private var keyboardSkinId = KeyboardSkinId.DEFAULT
@@ -349,7 +369,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         skinId: KeyboardSkinId = KeyboardSkinId.DEFAULT,
     ) {
         themeRevision++
-        skinTonePopup?.dismiss()
+        symbolPopup?.dismiss()
         listOf(this, categoryTab, modeTab, returnButton, deleteButton).forEach(::rememberAppearance)
         listOf(categoryTab, modeTab).forEach { it.getChildAt(0)?.let(::rememberAppearance) }
         keyboardSkinId = skinId
@@ -359,6 +379,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         this.themeKeyBackgroundColor = keyBackgroundColor
         this.isCustomThemeApplied = true
         this.liquidGlassEnable = liquidGlassEnable
+        radicalIndex.imageTintList = ColorStateList.valueOf(iconColor)
+        kanjiStatus.setTextColor(iconColor)
 
         // 1. 全体の背景色
         if (liquidGlassEnable) {
@@ -688,7 +710,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         symbolMode: SymbolMode = SymbolMode.EMOJI,
         defaultEmojiSkinTone: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
     ) {
-        this.symbolsHistory = symbolsHistory
         this.clipBoardItems = clipBoardItems
         this.defaultEmojiSkinTone =
             if (EmojiSkinToneSupport.isSupportedSkinToneValue(defaultEmojiSkinTone)) {
@@ -710,6 +731,13 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             .map { it.symbol }
             .toMutableList()
 
+        historyKanjiList.clear()
+        historyKanjiList += symbolsHistory.asSequence()
+            .filter { it.mode == SymbolMode.KANJI }
+            .map { it.symbol }
+            .distinct()
+            .toList()
+
         this.emoticonMap = emoticons
             .groupBy { it.category }
             .mapValues { entry -> entry.value.map { it.symbol } }
@@ -720,23 +748,22 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             .groupBy { it.category }
             .toSortedMap(categoryOrder)
 
-        currentMode = symbolMode
-        buildModeTabs()
-        buildCategoryTabs()
-        modeTab.getTabAt(symbolMode.ordinal)?.select()
-        categoryTab.getTabAt(0)?.select()
-        updateSymbolsForCategory(0)
+        switchToSymbolMode(symbolMode)
     }
 
     private fun buildModeTabs() {
         modeTab.removeAllTabs()
-        listOf(
-            com.kazumaproject.core.R.drawable.mood_24px,
-            com.kazumaproject.core.R.drawable.emoticon_24px,
-            com.kazumaproject.core.R.drawable.star_24px,
-            com.kazumaproject.core.R.drawable.clip_board,
-        ).forEach { res ->
-            modeTab.addTab(modeTab.newTab().setIcon(res))
+        SymbolMode.entries.forEach { mode ->
+            val icon = when (mode) {
+                SymbolMode.EMOJI -> com.kazumaproject.core.R.drawable.mood_24px
+                SymbolMode.EMOTICON -> com.kazumaproject.core.R.drawable.emoticon_24px
+                SymbolMode.SYMBOL -> com.kazumaproject.core.R.drawable.star_24px
+                SymbolMode.CLIPBOARD -> com.kazumaproject.core.R.drawable.clip_board
+                SymbolMode.KANJI -> com.kazumaproject.core.R.drawable.kanji_24
+            }
+            val tab = modeTab.newTab().setIcon(icon).setTag(mode)
+            if (mode == SymbolMode.KANJI) tab.setContentDescription(R.string.symbol_mode_kanji)
+            modeTab.addTab(tab, false)
         }
 
         // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用
@@ -747,7 +774,14 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     private fun buildCategoryTabs() {
+        val tabStrip = categoryTab.getChildAt(0) as? ViewGroup
+        if (tabStrip != null) {
+            for (index in 0 until tabStrip.childCount) {
+                originalAppearance.remove(tabStrip.getChildAt(index))?.restore()
+            }
+        }
         categoryTab.removeAllTabs()
+        radicalIndex.isVisible = currentMode == SymbolMode.KANJI && kanjiCatalog != null
         val historyIcon = com.kazumaproject.core.R.drawable.history_24dp
 
         val normalColor = themeIconColor
@@ -837,6 +871,20 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 }
             }
 
+            SymbolMode.KANJI -> {
+                val catalog = kanjiCatalog
+                if (catalog == null) {
+                    categoryTab.addTab(categoryTab.newTab().setText(R.string.symbol_mode_kanji), false)
+                } else {
+                    if (historyKanjiList.isNotEmpty()) categoryTab.addTab(newKanjiHistoryTab(), false)
+                    catalog.radicals.forEach { radical ->
+                        val tab = categoryTab.newTab().setText(radical.label).setTag(radical.number)
+                        categoryTab.addTab(tab, false)
+                    }
+                }
+                KeyboardFontApplicator.applyToTextViews(categoryTab, keyboardFontSnapshot) { true }
+            }
+
             SymbolMode.CLIPBOARD -> {
                 val tab = categoryTab.newTab().setCustomView(R.layout.custom_tab_clipboard)
                 categoryTab.addTab(tab)
@@ -896,10 +944,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private fun updateSymbolsForCategory(index: Int) {
         KeyboardFontApplicator.applyToTextViews(modeTab, keyboardFontSnapshot) { true }
-        KeyboardFontApplicator.applyToTextViews(categoryTab, keyboardFontSnapshot) { true }
+        if (currentMode != SymbolMode.KANJI) {
+            KeyboardFontApplicator.applyToTextViews(categoryTab, keyboardFontSnapshot) { true }
+        }
         symbolAdapter.setKeyboardFont(keyboardFontSnapshot, currentMode != SymbolMode.EMOJI)
         clipboardAdapter.setKeyboardFont(keyboardFontSnapshot)
-        skinTonePopup?.dismiss()
+        symbolPopup?.dismiss()
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
             pagingJob = owner.lifecycleScope.launch {
@@ -970,9 +1020,19 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                                 }
                             }
 
-                            else -> emptyList()
+                            SymbolMode.KANJI -> {
+                                if (historyKanjiList.isNotEmpty() && index == 0) {
+                                    historyKanjiList.toList()
+                                } else {
+                                    val radical = categoryTab.getTabAt(index)?.tag as? Int
+                                    radical?.let { kanjiCatalog?.symbols(it) }.orEmpty()
+                                }
+                            }
+
+                            SymbolMode.CLIPBOARD -> emptyList()
                         }
 
+                        symbolAdapter.renderKanji = currentMode == SymbolMode.KANJI
                         when (currentMode) {
                             SymbolMode.EMOTICON -> symbolAdapter.setItemMargins(10, 8, context)
                             SymbolMode.SYMBOL -> symbolAdapter.setItemMargins(14, 8, context)
@@ -989,13 +1049,14 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
                             SymbolMode.EMOTICON -> 14f
                             SymbolMode.SYMBOL -> 13f
+                            SymbolMode.KANJI -> 24f
                             SymbolMode.CLIPBOARD -> 16f
                         }
 
                         gridLM.spanCount = when (currentMode) {
                             SymbolMode.EMOJI -> 7
                             SymbolMode.EMOTICON -> 3
-                            SymbolMode.SYMBOL -> 5
+                            SymbolMode.KANJI -> if (width >= dpToPx(300)) 7 else 5
                             else -> 5
                         }
                         gridLM.orientation = RecyclerView.VERTICAL
@@ -1014,7 +1075,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         val variants = EmojiSkinToneSupport.skinToneVariants(symbol)
         if (variants.isEmpty() || !anchor.isAttachedToWindow) return
 
-        skinTonePopup?.dismiss()
+        symbolPopup?.dismiss()
 
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1041,7 +1102,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     setTextColor(themeIconColor)
                     layoutParams = LinearLayout.LayoutParams(dpToPx(44), dpToPx(44))
                     setOnClickListener {
-                        skinTonePopup?.dismiss()
+                        symbolPopup?.dismiss()
                         updateDefaultEmojiSkinTone(
                             EmojiSkinToneSupport.skinToneValueFromEmoji(variant)
                         )
@@ -1058,7 +1119,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
 
-        skinTonePopup = PopupWindow(
+        symbolPopup = PopupWindow(
             content,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1097,6 +1158,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             SymbolMode.EMOJI -> historyEmojiList.isNotEmpty() && categoryTab.selectedTabPosition == 0
             SymbolMode.EMOTICON -> historyEmoticonList.isNotEmpty() && categoryTab.selectedTabPosition == 0
             SymbolMode.SYMBOL -> historySymbolList.isNotEmpty() && categoryTab.selectedTabPosition == 0
+            SymbolMode.KANJI -> historyKanjiList.isNotEmpty() && categoryTab.selectedTabPosition == 0
             SymbolMode.CLIPBOARD -> false
         }
     }
@@ -1125,9 +1187,16 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         return Color.argb(a, r, g, b)
     }
 
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        if (!isVisible) symbolPopup?.dismiss()
+    }
+
     fun release() {
-        skinTonePopup?.dismiss()
-        skinTonePopup = null
+        kanjiLoadJob?.cancel()
+        kanjiLoadJob = null
+        symbolPopup?.dismiss()
+        symbolPopup = null
         pagingJob?.cancel()
         pagingJob = null
         lifecycleOwner = null
@@ -1179,31 +1248,205 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private val categoryOrder = compareBy<EmojiCategory> { it.ordinal }
 
-    fun switchToClipboardMode(selectCategoryIndex: Int = 0) {
-        // Modeを切り替え
-        currentMode = SymbolMode.CLIPBOARD
-
-        // ModeTab / CategoryTab を作り直す（CLIPBOARD用タブを生成するため）
-        buildModeTabs()
-        buildCategoryTabs()
-
-        // UI上の選択状態も同期
-        modeTab.getTabAt(SymbolMode.CLIPBOARD.ordinal)?.select()
-
-        // CLIPBOARDのカテゴリは基本1つなので 0 を選択
-        categoryTab.getTabAt(selectCategoryIndex.coerceIn(0, categoryTab.tabCount - 1))?.select()
-
-        // Recycler表示更新
-        updateSymbolsForCategory(categoryTab.selectedTabPosition)
-    }
+    fun switchToClipboardMode(selectCategoryIndex: Int = 0) =
+        switchToSymbolMode(SymbolMode.CLIPBOARD, selectCategoryIndex)
 
     fun switchToSymbolMode(mode: SymbolMode, selectCategoryIndex: Int = 0) {
-        currentMode = mode
-        buildModeTabs()
-        buildCategoryTabs()
-        modeTab.getTabAt(mode.ordinal)?.select()
-        categoryTab.getTabAt(selectCategoryIndex.coerceIn(0, categoryTab.tabCount - 1))?.select()
-        updateSymbolsForCategory(categoryTab.selectedTabPosition)
+        if (modeTab.tabCount == 0) buildModeTabs()
+        val tab = modeTab.getTabAt(mode.ordinal) ?: return
+        if (!tab.isSelected) {
+            tab.select()
+            if (selectCategoryIndex > 0) selectCategory(selectCategoryIndex)
+        } else {
+            selectMode(mode, selectCategoryIndex)
+        }
     }
 
+    private fun selectMode(mode: SymbolMode, categoryIndex: Int) {
+        if (mode != SymbolMode.KANJI) {
+            kanjiLoadJob?.cancel()
+            kanjiLoadJob = null
+            kanjiStatus.isVisible = false
+        }
+        currentMode = mode
+        buildCategoryTabs()
+        selectCategory(categoryIndex)
+        if (mode == SymbolMode.KANJI && kanjiCatalog == null) loadKanji()
+    }
+
+    private fun selectCategory(index: Int) {
+        val tab = categoryTab.getTabAt(index.coerceIn(0, maxOf(0, categoryTab.tabCount - 1)))
+        if (tab == null || tab.isSelected) {
+            updateSymbolsForCategory(tab?.position ?: 0)
+        } else {
+            tab.select()
+        }
+    }
+
+    private fun loadKanji() {
+        if (kanjiLoadJob?.isActive == true) return
+        val owner = lifecycleOwner ?: return
+        kanjiStatus.apply {
+            setText(R.string.kanji_loading)
+            setOnClickListener(null)
+            isClickable = false
+            isVisible = true
+        }
+        kanjiLoadJob = owner.lifecycleScope.launch {
+            try {
+                kanjiCatalog = KanjiCatalog.load(context)
+                kanjiStatus.isVisible = false
+                buildCategoryTabs()
+                selectCategory(0)
+            } catch (_: IOException) {
+                showKanjiLoadError()
+            } catch (_: IllegalArgumentException) {
+                showKanjiLoadError()
+            }
+        }
+    }
+
+    private fun showKanjiLoadError() {
+        kanjiStatus.setText(R.string.kanji_load_error)
+        kanjiStatus.setOnClickListener { loadKanji() }
+    }
+
+    private fun newKanjiHistoryTab(): TabLayout.Tab = categoryTab.newTab()
+        .setIcon(com.kazumaproject.core.R.drawable.history_24dp)
+        .setContentDescription(R.string.kanji_history)
+
+    fun updateKanjiHistory(symbol: String, remove: Boolean) {
+        val hadHistory = historyKanjiList.isNotEmpty()
+        val wasSelected = currentMode == SymbolMode.KANJI && isHistoryCategorySelected()
+        historyKanjiList.remove(symbol)
+        if (!remove) historyKanjiList.add(0, symbol)
+        if (currentMode != SymbolMode.KANJI || kanjiCatalog == null) return
+
+        if (hadHistory && historyKanjiList.isEmpty()) {
+            (categoryTab.getChildAt(0) as? ViewGroup)?.getChildAt(0)?.let { view ->
+                originalAppearance.remove(view)?.restore()
+            }
+            categoryTab.removeTabAt(0)
+        } else if (!hadHistory && historyKanjiList.isNotEmpty()) {
+            categoryTab.addTab(newKanjiHistoryTab(), 0, false)
+            if (isCustomThemeApplied) postTabTheme(categoryTab)
+        } else if (wasSelected) {
+            updateSymbolsForCategory(0)
+        }
+    }
+
+    private fun showRadicalIndex() {
+        val radicals = kanjiCatalog?.radicals ?: return
+        val width = kanjiPopupWidth()
+        val list = GridView(context).apply {
+            numColumns = (width / dpToPx(44)).coerceAtLeast(1)
+            adapter = object : ArrayAdapter<KanjiRadical>(context, android.R.layout.simple_list_item_1, radicals) {
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    val radical = radicals[position]
+                    return (convertView as? TextView ?: kanjiPopupText(20f).apply {
+                        gravity = Gravity.CENTER
+                        height = dpToPx(44)
+                    }).apply { text = radical.label }
+                }
+            }
+            setOnItemClickListener { _, _, position, _ ->
+                symbolPopup?.dismiss()
+                val historyOffset = if (historyKanjiList.isEmpty()) 0 else 1
+                selectCategory(position + historyOffset)
+            }
+        }
+        showKanjiPopup(list, radicalIndex, width, kanjiPopupHeight(), aboveAnchor = false)
+    }
+
+    private fun showKanjiDetails(entry: KanjiEntry, anchor: View) {
+        val width = kanjiPopupWidth()
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            val padding = dpToPx(12)
+            setPadding(padding, padding, padding, padding)
+            addView(kanjiPopupText(26f).apply {
+                text = if (paint.hasGlyph(entry.symbol)) entry.symbol else kanjiCodePoint(entry.symbol)
+            })
+            if (entry.onReadings.isNotEmpty()) {
+                addView(kanjiPopupText(15f).apply {
+                    text = context.getString(R.string.kanji_reading_on, entry.onReadings.joinToString("、"))
+                })
+            }
+            if (entry.kunReadings.isNotEmpty()) {
+                addView(kanjiPopupText(15f).apply {
+                    val readings = entry.kunReadings.joinToString("、") { reading ->
+                        val parts = reading.split('.', limit = 2)
+                        if (parts.size == 2) "${parts[0]}（${parts[1]}）" else reading
+                    }
+                    text = context.getString(R.string.kanji_reading_kun, readings)
+                })
+            }
+            if (entry.onReadings.isEmpty() && entry.kunReadings.isEmpty()) {
+                addView(kanjiPopupText(15f).apply { setText(R.string.kanji_no_reading) })
+            }
+            entry.example?.let { example ->
+                addView(kanjiPopupText(15f).apply {
+                    text = context.getString(R.string.kanji_example, example)
+                })
+            }
+            if (isHistoryCategorySelected()) {
+                addView(kanjiPopupText(15f).apply {
+                    setText(R.string.kanji_remove_history)
+                    minHeight = dpToPx(48)
+                    gravity = Gravity.CENTER_VERTICAL
+                    setOnClickListener {
+                        symbolPopup?.dismiss()
+                        itemLongClickListener?.onLongClick(
+                            ClickedSymbol(mode = SymbolMode.KANJI, symbol = entry.symbol),
+                            historyKanjiList.indexOf(entry.symbol),
+                        )
+                    }
+                })
+            }
+        }
+        val scroll = ScrollView(context).apply { addView(content) }
+        scroll.measure(
+            MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(kanjiPopupHeight(), MeasureSpec.AT_MOST),
+        )
+        showKanjiPopup(scroll, anchor, width, scroll.measuredHeight, aboveAnchor = true)
+    }
+
+    private fun kanjiPopupText(size: Float): TextView = TextView(context).apply {
+        textSize = size
+        setTextColor(themeIconColor)
+        KeyboardFontApplicator.apply(this, keyboardFontSnapshot)
+        textLocale = Locale.JAPANESE
+    }
+
+    private fun kanjiPopupWidth(): Int =
+        minOf(dpToPx(320), resources.displayMetrics.widthPixels - dpToPx(16))
+
+    private fun kanjiPopupHeight(): Int =
+        minOf(dpToPx(264), resources.displayMetrics.heightPixels / 2)
+
+    private fun showKanjiPopup(
+        content: View,
+        anchor: View,
+        width: Int,
+        height: Int,
+        aboveAnchor: Boolean,
+    ) {
+        if (!anchor.isAttachedToWindow) return
+        symbolPopup?.dismiss()
+        val background = KeyboardSkinRegistry.find(keyboardSkinId)?.popupDrawable(
+            resources, com.kazumaproject.core.ui.skin.PopupDirection.CENTER,
+        ) ?: GradientDrawable().apply {
+            cornerRadius = dpToPx(12).toFloat()
+            setColor(themeKeyBackgroundColor)
+        }
+        // Keep the editor focused while the user browses details or selects a radical.
+        symbolPopup = PopupWindow(content, width, height, false).apply {
+            isOutsideTouchable = true
+            inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
+            setBackgroundDrawable(background)
+            elevation = dpToPx(8).toFloat()
+            showAsDropDown(anchor, (anchor.width - width) / 2, if (aboveAnchor) -anchor.height - height else 0)
+        }
+    }
 }

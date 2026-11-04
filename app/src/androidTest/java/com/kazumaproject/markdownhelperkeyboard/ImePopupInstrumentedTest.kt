@@ -161,6 +161,92 @@ class ImePopupInstrumentedTest {
         Unit
     }
 
+    @Test fun kanjiInitialModeShowsRadicalsReadingsAndLiveHistory() {
+        val dao = database.clickedSymbolDao()
+        val previousHistory = runBlocking { dao.getAll().filter { it.mode.name == "KANJI" } }
+        try {
+            runBlocking { previousHistory.forEach { dao.deleteByModeAndSymbol("KANJI", it.symbol) } }
+            withHost(initialSymbol = "KANJI") { host ->
+                openSoftwareKeyboard()
+                tap(awaitNode("symbol"))
+                val radicalIndex = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_radical_index)
+                val history = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_history)
+                val remove = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_remove_history)
+                val indexButton = awaitNode(radicalIndex)
+                assertNull(findNode(history))
+
+                tap(indexButton)
+                tap(awaitRadical("丨"))
+                awaitKanjiCell("中")
+                tap(awaitNode(radicalIndex))
+                tap(awaitRadical("一"))
+
+                val example = ins.targetContext.getString(
+                    com.kazumaproject.symbol_keyboard.R.string.kanji_example, "坂の上に大きな木が一本ある。",
+                )
+                val reading = ins.targetContext.getString(
+                    com.kazumaproject.symbol_keyboard.R.string.kanji_reading_on, "イチ、イツ",
+                )
+                longPress(awaitKanjiCell("一")) { awaitNode(example); awaitNode(reading) }
+                host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
+                awaitText(host, "")
+                touch(8f, 200f)
+                await { (findNode(example) == null).takeIf { it } }
+                tap(awaitKanjiCell("一"))
+                awaitText(host, "一")
+                tap(awaitNode(history))
+                longPress(awaitKanjiCell("一")) { awaitNode(remove) }
+                tap(awaitNode(remove))
+                await { (findNode(history) == null).takeIf { it } }
+                awaitText(host, "一")
+            }
+        } finally {
+            runBlocking {
+                dao.deleteByModeAndSymbol("KANJI", "一")
+                previousHistory.forEach { dao.insert(it) }
+            }
+        }
+    }
+
+    @Test fun kanjiShortcutOpensDirectlyOnDockedFloatingAndSplitSurfaces() {
+        val label = ins.targetContext.getString(R.string.symbol_mode_kanji)
+        val radicalIndex = ins.targetContext.getString(com.kazumaproject.symbol_keyboard.R.string.kanji_radical_index)
+        val dao = database.shortcutDao()
+        val shortcuts = runBlocking { dao.getAllShortcuts() }
+        try {
+            runBlocking {
+                dao.replaceAll(listOf(ShortcutItem(typeId = "kanji", sortOrder = 0)))
+            }
+            for (surface in listOf("docked", "floating", "split")) {
+                withHost(
+                    integrated = surface != "docked",
+                    floating = surface == "floating",
+                    split = surface == "split",
+                ) { host ->
+                    await {
+                        findNodeId("dock_icon")?.let { tap(it) }
+                        findNode(label) ?: findNode(ins.targetContext.getString(R.string.shortcut_entry_content_description))?.let {
+                            tap(it); null
+                        }
+                    }.let(::tap)
+                    awaitNode(radicalIndex)
+                    awaitKanjiCell("一")
+                    host.onActivity { assertTrue(it.editor.hasWindowFocus()) }
+                }
+            }
+        } finally {
+            runBlocking { dao.replaceAll(shortcuts) }
+        }
+    }
+
+    private fun awaitRadical(symbol: String): AccessibilityNodeInfo = await {
+        allNodes().firstOrNull { it.text == symbol && it.parent?.className == "android.widget.GridView" }
+    }
+
+    private fun awaitKanjiCell(symbol: String): AccessibilityNodeInfo = await {
+        allNodes().firstOrNull { it.text == symbol && it.viewIdResourceName?.endsWith(":id/symbol_text") == true }
+    }
+
     @Test fun independentAndIntegratedToolbarsUseTheSameSelectionWindow() {
         for (integrated in listOf(false, true)) {
             withHost(integrated = integrated) { host ->
@@ -578,13 +664,18 @@ class ImePopupInstrumentedTest {
         integrated: Boolean = false,
         floating: Boolean = false,
         web: Boolean = false,
+        initialSymbol: String = "EMOJI",
+        split: Boolean = false,
         block: (HostScenario) -> Unit,
     ) {
         // Each configuration gets a fresh IME instance so a previous test's physical/floating
         // keyboard state cannot hide the software keyboard in the next editor.
         restartImeForFixture {
             prefs.edit().putBoolean("shortcut_toolbar_integrated_in_suggestion_preference", integrated)
-                .putBoolean("keyboard_floating_preference", floating).commit()
+                .putBoolean("keyboard_floating_preference", floating)
+                .putString("symbol_mode_preference", initialSymbol)
+                .putString("keyboard_order_preference", if (split) "[\"SPLIT\"]" else "[\"TENKEY\"]")
+                .commit()
         }
         ins.targetContext.startActivity(Intent(ins.targetContext, ImePopupHostActivity::class.java)
             .putExtra("variation", variation).putExtra("web", web).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -663,7 +754,7 @@ class ImePopupInstrumentedTest {
         check(!rect.isEmpty) { "Node has no bounds" }
         touch(rect.exactCenterX(), rect.exactCenterY())
     }
-    private fun longPress(node: AccessibilityNodeInfo) {
+    private fun longPress(node: AccessibilityNodeInfo, waitForPopup: () -> Unit = { awaitNodeId("popup_listview") }) {
         val rect = Rect().also(node::getBoundsInScreen)
         val down = SystemClock.uptimeMillis()
         fun inject(action: Int) {
@@ -675,7 +766,7 @@ class ImePopupInstrumentedTest {
         inject(MotionEvent.ACTION_DOWN)
         try {
             // Wait for the actual long-press result before releasing, including on a busy emulator.
-            awaitNodeId("popup_listview")
+            waitForPopup()
         } finally { inject(MotionEvent.ACTION_UP) }
         SystemClock.sleep(500)
     }
@@ -740,6 +831,7 @@ class ImePopupInstrumentedTest {
             "shortcut_toolbar_visibility_preference" to true,
             "shortcut_toolbar_integrated_in_suggestion_preference" to false,
             "keyboard_floating_preference" to false,
+            "symbol_mode_preference" to "EMOJI",
             "keyboard_order_preference" to "[\"TENKEY\"]",
             "save_last_used_keyboard" to false,
             "live_conversion_preference" to false,
