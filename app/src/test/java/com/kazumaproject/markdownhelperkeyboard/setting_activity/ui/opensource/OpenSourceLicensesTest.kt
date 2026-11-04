@@ -70,6 +70,7 @@ class OpenSourceLicensesTest {
             assertTrue(document.contains("Unicode, Inc."))
             assertTrue(document.contains(expected))
             assertTrue(document.contains("Updating Dictionary Versions"))
+            assertFalse(document.contains('\uFFFC'))
             assertTrue(document.contains("https://creativecommons.org/licenses/by-sa/4.0/"))
         }
     }
