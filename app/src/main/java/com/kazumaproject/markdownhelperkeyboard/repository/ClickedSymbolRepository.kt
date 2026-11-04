@@ -24,7 +24,7 @@ class ClickedSymbolRepository @Inject constructor(
             mode = mode,
             symbol = symbol
         )
-        dao.insert(entity)
+        if (mode == SymbolMode.KANJI) dao.replaceHistoryEntry(entity) else dao.insert(entity)
     }
 
     /**

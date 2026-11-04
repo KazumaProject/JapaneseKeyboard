@@ -4,5 +4,7 @@ import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 
 data class SymbolKeyboardState(
     val isShown: Boolean = false,
-    val mode: SymbolMode = SymbolMode.EMOJI,
-)
+    val mode: SymbolMode? = null,
+) {
+    fun initialMode(preferred: SymbolMode?): SymbolMode = mode ?: preferred ?: SymbolMode.EMOJI
+}

@@ -895,6 +895,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
                 "EMOTICON" -> getString(R.string.emoticon)
                 "SYMBOL" -> getString(R.string.symbol)
                 "CLIPBOARD" -> getString(R.string.clipboard_history)
+                "KANJI" -> getString(R.string.symbol_mode_kanji)
                 else -> getString(R.string.choose_initial_symbol_keyboard_open)
             }
             setOnPreferenceChangeListener { _, newValue ->
@@ -903,6 +904,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
                     "EMOTICON" -> getString(R.string.emoticon)
                     "SYMBOL" -> getString(R.string.symbol)
                     "CLIPBOARD" -> getString(R.string.clipboard_history)
+                    "KANJI" -> getString(R.string.symbol_mode_kanji)
                     else -> getString(R.string.choose_initial_symbol_keyboard_open)
                 }
                 true

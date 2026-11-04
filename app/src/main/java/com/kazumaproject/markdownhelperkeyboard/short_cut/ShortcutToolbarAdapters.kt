@@ -62,7 +62,7 @@ class ShortcutToolbarSelectedAdapter(
                 strokeWidth = dp(1)
                 setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
                 contentDescription = listOf(
-                    type.description,
+                    type.label(context),
                     summary,
                     context.getString(R.string.shortcut_toolbar_selected),
                     context.getString(R.string.shortcut_toolbar_drag_reorder),
@@ -87,7 +87,7 @@ class ShortcutToolbarSelectedAdapter(
                 setImageResource(type.iconResId)
                 imageTintList = ColorStateList.valueOf(resolveColor(AppCompatR.attr.colorPrimary))
             }
-            binding.shortcutToolbarTitle.text = type.description
+            binding.shortcutToolbarTitle.text = type.label(context)
             binding.shortcutToolbarSummary.text = summary
             binding.shortcutToolbarRemoveButton.apply {
                 isEnabled = canRemove
@@ -97,7 +97,7 @@ class ShortcutToolbarSelectedAdapter(
                 )
                 contentDescription = context.getString(
                     R.string.shortcut_toolbar_remove_content_description,
-                    type.description,
+                    type.label(context),
                 )
                 setOnClickListener {
                     onRemove(type)
@@ -108,6 +108,7 @@ class ShortcutToolbarSelectedAdapter(
         }
 
         private fun setAccessibilityMoveActions(type: ShortcutType, position: Int, count: Int) {
+            val context = binding.root.context
             ViewCompat.setAccessibilityDelegate(
                 binding.shortcutToolbarEditCard,
                 object : AccessibilityDelegateCompat() {
@@ -122,7 +123,7 @@ class ShortcutToolbarSelectedAdapter(
                                     R.id.shortcut_toolbar_action_move_up,
                                     binding.root.context.getString(
                                         R.string.shortcut_toolbar_move_up,
-                                        type.description,
+                                        type.label(context),
                                     ),
                                 )
                             )
@@ -133,7 +134,7 @@ class ShortcutToolbarSelectedAdapter(
                                     R.id.shortcut_toolbar_action_move_down,
                                     binding.root.context.getString(
                                         R.string.shortcut_toolbar_move_down,
-                                        type.description,
+                                        type.label(context),
                                     ),
                                 )
                             )
@@ -190,7 +191,7 @@ class ShortcutToolbarAddAdapter(
                 strokeWidth = dp(1)
                 setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
                 contentDescription = listOf(
-                    type.description,
+                    type.label(context),
                     summary,
                     context.getString(R.string.shortcut_toolbar_available),
                 ).joinToString(". ")
@@ -200,13 +201,13 @@ class ShortcutToolbarAddAdapter(
                 setImageResource(type.iconResId)
                 imageTintList = ColorStateList.valueOf(resolveColor(AppCompatR.attr.colorPrimary))
             }
-            binding.shortcutToolbarAddTitle.text = type.description
+            binding.shortcutToolbarAddTitle.text = type.label(context)
             binding.shortcutToolbarAddSummary.text = summary
             binding.shortcutToolbarAddButton.apply {
                 imageTintList = ColorStateList.valueOf(resolveColor(AppCompatR.attr.colorPrimary))
                 contentDescription = context.getString(
                     R.string.shortcut_toolbar_add_content_description,
-                    type.description,
+                    type.label(context),
                 )
                 setOnClickListener { onAdd(type) }
             }
@@ -255,6 +256,7 @@ fun ShortcutType.summary(context: android.content.Context): String =
         ShortcutType.GEMMA_HANDWRITING -> context.getString(R.string.shortcut_toolbar_summary_gemma_handwriting)
         ShortcutType.FLOATING_CURSOR -> context.getString(R.string.floating_cursor_summary)
         ShortcutType.CLIP_BOARD -> context.getString(R.string.shortcut_toolbar_summary_clip_board)
+        ShortcutType.KANJI -> context.getString(R.string.shortcut_toolbar_summary_kanji)
     }
 
 private fun android.content.Context.resolveThemeColor(@AttrRes attr: Int): Int {

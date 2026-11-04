@@ -6,6 +6,7 @@ import androidx.preference.PreferenceManager
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.google.gson.Gson
+import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -74,6 +75,25 @@ class SettingsBackupRepositoryTest {
         val restored = database.shortcutDao().getAllShortcuts()
         assertEquals(selected.map { it.id }, restored.map { it.typeId })
         assertEquals(selected.indices.toList(), restored.map { it.sortOrder })
+    }
+
+    @Test
+    fun kanjiInitialModeAndOptionalShortcutRoundTrip() = runTest {
+        assertEquals(SymbolMode.EMOJI, AppPreference.symbol_mode_preference)
+        preferences.edit().putString("symbol_mode_preference", "SYMBOL").commit()
+        assertEquals(SymbolMode.SYMBOL, AppPreference.symbol_mode_preference)
+        assertFalse(ShortcutType.KANJI in shortcuts.defaultShortcuts)
+
+        AppPreference.symbol_mode_preference = SymbolMode.KANJI
+        val selected = listOf(ShortcutType.KANJI, ShortcutType.SETTINGS)
+        shortcuts.updateShortcuts(selected)
+        val json = backups.exportAllToJson()
+
+        preferences.edit().clear().commit()
+        database.shortcutDao().deleteAll()
+        backups.importAllFromJson(json)
+        assertEquals(SymbolMode.KANJI, AppPreference.symbol_mode_preference)
+        assertEquals(selected, shortcuts.enabledShortcutsFlow.first())
     }
 
     @Test

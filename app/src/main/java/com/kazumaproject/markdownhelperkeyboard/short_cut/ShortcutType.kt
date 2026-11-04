@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.short_cut
 
+import android.content.Context
+import com.kazumaproject.markdownhelperkeyboard.R
+
 enum class ShortcutType(
     val id: String,
     val iconResId: Int,
@@ -142,8 +145,15 @@ enum class ShortcutType(
         "clip_board",
         com.kazumaproject.markdownhelperkeyboard.R.drawable.shortcut_clip_board,
         description = "クリップボード"
-    )
-    ;
+    ),
+    KANJI(
+        "kanji",
+        com.kazumaproject.core.R.drawable.kanji_24,
+        description = "漢字"
+    );
+
+    fun label(context: Context): String =
+        if (this == KANJI) context.getString(R.string.symbol_mode_kanji) else description
 
     companion object {
         fun fromId(id: String): ShortcutType? = entries.find { it.id == id }

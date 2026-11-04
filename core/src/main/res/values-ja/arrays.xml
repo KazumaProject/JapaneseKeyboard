@@ -92,6 +92,7 @@
         <item>顔文字</item>
         <item>記号</item>
         <item>クリップボード履歴</item>
+        <item>漢字</item>
     </string-array>
 
     <string-array name="symbol_mode_values">
@@ -99,6 +100,7 @@
         <item>EMOTICON</item>
         <item>SYMBOL</item>
         <item>CLIPBOARD</item>
+        <item>KANJI</item>
     </string-array>
 
     <string-array name="candidate_column_entries">

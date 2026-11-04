@@ -2212,12 +2212,12 @@ class SuggestionAdapter internal constructor(
                 shortcutType.resolveShortcutIconResId(),
                 keyboardFontSnapshot,
             )
-            contentDescription = shortcutType.description
+            contentDescription = shortcutType.label(holder.itemView.context)
             shortcutIconColor?.let { color ->
                 setColorFilter(color, PorterDuff.Mode.SRC_IN)
             } ?: clearColorFilter()
         }
-        holder.itemView.contentDescription = shortcutType.description
+        holder.itemView.contentDescription = shortcutType.label(holder.itemView.context)
         holder.itemView.setOnClickListener {
             val adapterPosition = holder.bindingAdapterPosition
             if (adapterPosition != RecyclerView.NO_POSITION) {

@@ -31,7 +31,7 @@ class ShortcutSettingAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
         with(holder.binding) {
-            textTitle.text = item.type.description
+            textTitle.text = item.type.label(root.context)
             iconImage.setImageResource(item.type.iconResId)
 
             // リスナーを一度外してから状態をセットしてループを防ぐ

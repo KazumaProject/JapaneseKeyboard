@@ -94,6 +94,7 @@
         <item>Emoticon</item>
         <item>Symbol</item>
         <item>Clipboard history</item>
+        <item>Kanji</item>
     </string-array>
 
     <string-array name="symbol_mode_values">
@@ -101,6 +102,7 @@
         <item>EMOTICON</item>
         <item>SYMBOL</item>
         <item>CLIPBOARD</item>
+        <item>KANJI</item>
     </string-array>
 
     <string-array name="candidate_column_entries">

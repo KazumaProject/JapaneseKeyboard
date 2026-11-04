@@ -78,7 +78,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
-        holder.itemView.contentDescription = item.description
+        holder.itemView.contentDescription = item.label(holder.itemView.context)
         applyShortcutToolbarSize(holder)
         applyShortcutIcon(holder, item)
     }

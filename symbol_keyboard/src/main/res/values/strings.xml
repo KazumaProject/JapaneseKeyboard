@@ -16,4 +16,14 @@
     <string name="emoji_category_symbols">Symbols</string>
     <string name="emoji_category_flags">Flags</string>
     <string name="emoji_category_unknown">Other</string>
+    <string name="symbol_mode_kanji">Kanji</string>
+    <string name="kanji_radical_index">Radical index</string>
+    <string name="kanji_loading">Loading kanji…</string>
+    <string name="kanji_load_error">Kanji could not be loaded. Tap to retry.</string>
+    <string name="kanji_history">Kanji history</string>
+    <string name="kanji_remove_history">Remove from kanji history</string>
+    <string name="kanji_reading_on">On reading: %1$s</string>
+    <string name="kanji_reading_kun">Kun reading: %1$s</string>
+    <string name="kanji_no_reading">No reading available</string>
+    <string name="kanji_example">Example: %1$s</string>
 </resources>

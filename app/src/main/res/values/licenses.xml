@@ -41,4 +41,7 @@
     <string name="license_openmp_overview">OpenMP runtime used by native inference. Notices are preserved from the OpenMP section of NDK 29 NOTICE.toolchain.</string>
     <string name="license_openmp_changes">The NDK runtime library is bundled with the app.</string>
     <string name="license_source_document">View source documentation</string>
+    <string name="license_kanji">Kanji keyboard data</string>
+    <string name="license_kanji_overview">The kanji catalog and readings are derived from KANJIDIC2, compiled by the Electronic Dictionary Research and Development Group (EDRDG). The radical labels use Unicode data.</string>
+    <string name="license_kanji_changes">Extracted characters, classical radicals, stroke counts, Jōyō flags, and Japanese readings. Usage sentences were written for this app and are distributed separately from the dictionary extract.</string>
 </resources>

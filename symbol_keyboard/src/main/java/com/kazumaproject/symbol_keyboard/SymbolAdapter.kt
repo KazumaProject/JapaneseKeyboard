@@ -3,6 +3,7 @@ package com.kazumaproject.symbol_keyboard
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import java.util.Locale
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.util.TypedValue
@@ -38,6 +39,7 @@ class SymbolAdapter :
     private var onItemLongClickListener: ((String, Int, View) -> Unit)? = null
 
     var showSkinToneIndicators: Boolean = false
+    var renderKanji: Boolean = false
 
     // 外部から設定するためのメソッド
     fun setOnItemClickListener(onItemClick: (String) -> Unit) {
@@ -95,6 +97,7 @@ class SymbolAdapter :
         RecyclerView.ViewHolder(itemView) {
         val symbolTextView: MaterialTextView = itemView.findViewById(R.id.symbol_text)
         val originalTextColors = symbolTextView.textColors
+        val originalTextLocales = symbolTextView.textLocales
         val skinToneIndicator: View = itemView.findViewById(R.id.skin_tone_indicator)
 
         init {
@@ -129,13 +132,20 @@ class SymbolAdapter :
             null
         }
         if (symbol != null) {
-            holder.symbolTextView.text = symbol
             holder.symbolTextView.textSize = symbolTextSize
             KeyboardFontApplicator.apply(
                 holder.symbolTextView,
                 if (useKeyboardFont) keyboardFontSnapshot
                 else keyboardFontSnapshot.copy(typeface = null)
             )
+            holder.symbolTextView.textLocales = holder.originalTextLocales
+            if (renderKanji) holder.symbolTextView.textLocale = Locale.JAPANESE
+            if (renderKanji && !holder.symbolTextView.paint.hasGlyph(symbol)) {
+                holder.symbolTextView.text = kanjiCodePoint(symbol)
+                holder.symbolTextView.textSize = 10f
+            } else {
+                holder.symbolTextView.text = symbol
+            }
 
             // ★追加: テキストカラーの適用
             holder.symbolTextView.setTextColor(themeTextColor?.let(android.content.res.ColorStateList::valueOf) ?: holder.originalTextColors)

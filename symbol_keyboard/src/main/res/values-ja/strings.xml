@@ -16,4 +16,14 @@
     <string name="emoji_category_symbols">記号</string>
     <string name="emoji_category_flags">旗</string>
     <string name="emoji_category_unknown">その他</string>
+    <string name="symbol_mode_kanji">漢字</string>
+    <string name="kanji_radical_index">部首一覧</string>
+    <string name="kanji_loading">漢字を読み込み中…</string>
+    <string name="kanji_load_error">漢字を読み込めませんでした。タップして再試行。</string>
+    <string name="kanji_history">漢字の履歴</string>
+    <string name="kanji_remove_history">漢字の履歴から削除</string>
+    <string name="kanji_reading_on">音読み：%1$s</string>
+    <string name="kanji_reading_kun">訓読み：%1$s</string>
+    <string name="kanji_no_reading">読みのデータなし</string>
+    <string name="kanji_example">例文：%1$s</string>
 </resources>

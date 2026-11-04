@@ -1741,7 +1741,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cachedEmoji: List<Emoji>? = null
     private var cachedEmoticons: List<Emoticon>? = null
     private var cachedSymbols: List<Symbol>? = null
-    private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
     private var clipboardFloat: FloatingClipboardController? = null
 
     private fun toggleClipboardFloat() {
@@ -3151,8 +3150,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hideKeyboardViews(surface)
         // A source switch must neither reset this pane's tab/scroll nor cancel its loading job.
         state.symbolJob = scope.launch {
-            setSymbolsFloating(binding, if (requested.mode == SymbolMode.CLIPBOARD) SymbolMode.CLIPBOARD
-                else symbolKeyboardFirstItem ?: SymbolMode.EMOJI)
+            setSymbolsFloating(binding, requested.initialMode(symbolKeyboardFirstItem))
             if (splitInputs[state.slot] === state && state.symbolRequest == requested) {
                 updateFloatingKeyboardTouchEffectBounds(binding)
             }
@@ -19546,10 +19544,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setKeyboardSizeSwitchKeyboard(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                        setSymbolsFloating(floatingKeyboardLayoutBinding,
-                            if (isSymbolKeyboardShow.mode == SymbolMode.CLIPBOARD) SymbolMode.CLIPBOARD
-                            else symbolKeyboardFirstItem ?: SymbolMode.EMOJI)
                         if (isSymbolKeyboardShow.isShown) {
+                            setSymbolsFloating(
+                                floatingKeyboardLayoutBinding,
+                                isSymbolKeyboardShow.initialMode(symbolKeyboardFirstItem),
+                            )
                             hideKeyboardViews(getFloatingKeyboardSurface() ?: return@let)
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
                         } else {
@@ -19583,11 +19582,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
-                        if (isSymbolKeyboardShow.mode == SymbolMode.CLIPBOARD) {
-                            setSymbolsClipboard(mainView = mainView)
-                        } else {
-                            setSymbols(mainView)
-                        }
+                        setSymbols(mainView, isSymbolKeyboardShow.initialMode(symbolKeyboardFirstItem))
                     } else {
                         if (isGojuonSurface()) {
                             when {
@@ -24822,11 +24817,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.FLOATING_CLIPBOARD -> toggleClipboardFloat()
 
-            ShortcutType.CLIP_BOARD -> {
+            ShortcutType.CLIP_BOARD, ShortcutType.KANJI -> {
                 vibrate()
                 _keyboardSymbolViewState.value = SymbolKeyboardState(
                     isShown = true,
-                    mode = SymbolMode.CLIPBOARD
+                    mode = if (type == ShortcutType.KANJI) SymbolMode.KANJI else SymbolMode.CLIPBOARD,
                 )
                 stringInTail.set("")
                 finishComposingText()
@@ -25241,6 +25236,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private val kanjiHistoryMutex = Mutex()
+
+    private fun updateKanjiHistory(mainView: MainLayoutBinding, symbol: String, remove: Boolean) {
+        scope.launch {
+            kanjiHistoryMutex.withLock {
+                if (remove) clickedSymbolRepository.delete(SymbolMode.KANJI, symbol)
+                else clickedSymbolRepository.insert(SymbolMode.KANJI, symbol)
+
+                (splitInputs.values.map { it.binding.floatingSymbolKeyboard } +
+                    listOfNotNull(mainView.keyboardSymbolView, floatingKeyboardBinding?.floatingSymbolKeyboard))
+                    .distinct()
+                    .forEach { it.updateKanjiHistory(symbol, remove) }
+            }
+        }
+    }
+
     private fun setSymbolKeyboard(
         mainView: MainLayoutBinding,
         symbolView: CustomSymbolKeyboardView = mainView.keyboardSymbolView,
@@ -25288,7 +25299,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onClick(symbol: ClickedSymbol) {
                     activateSplitView(symbolView)
                     vibrate()
-                    commitText(symbol.symbol, 1)
+                    val committed = commitText(symbol.symbol, 1)
+                    if (symbol.mode == SymbolMode.KANJI) {
+                        if (committed) updateKanjiHistory(mainView, symbol.symbol, remove = false)
+                        return
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         clickedSymbolRepository.insert(
                             mode = symbol.mode, symbol = symbol.symbol
@@ -25301,6 +25316,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onLongClick(symbol: ClickedSymbol, position: Int) {
                     activateSplitView(symbolView)
                     vibrate()
+                    if (symbol.mode == SymbolMode.KANJI) {
+                        updateKanjiHistory(mainView, symbol.symbol, remove = true)
+                        return
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         clickedSymbolRepository.delete(
                             mode = symbol.mode, symbol = symbol.symbol
@@ -25370,7 +25389,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onClick(symbol: ClickedSymbol) {
                     activateSplitView(symbolView)
                     vibrate()
-                    commitText(symbol.symbol, 1)
+                    val committed = commitText(symbol.symbol, 1)
+                    if (symbol.mode == SymbolMode.KANJI) {
+                        if (committed) updateKanjiHistory(mainView, symbol.symbol, remove = false)
+                        return
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         clickedSymbolRepository.insert(
                             mode = symbol.mode, symbol = symbol.symbol
@@ -25383,6 +25406,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onLongClick(symbol: ClickedSymbol, position: Int) {
                     activateSplitView(symbolView)
                     vibrate()
+                    if (symbol.mode == SymbolMode.KANJI) {
+                        updateKanjiHistory(mainView, symbol.symbol, remove = true)
+                        return
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         clickedSymbolRepository.delete(
                             mode = symbol.mode, symbol = symbol.symbol
@@ -26155,72 +26182,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetFlagsSuggestionClick()
     }
 
-    private suspend fun setSymbols(mainView: MainLayoutBinding) {
-        val engine = awaitKanaKanjiEngineOrNull() ?: return
-        coroutineScope {
-            if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
-                val emojiDeferred =
-                    async(Dispatchers.Default) { engine.getSymbolEmojiCandidates() }
-                val emoticonDeferred =
-                    async(Dispatchers.Default) { engine.getSymbolEmoticonCandidates() }
-                val symbolDeferred =
-                    async(Dispatchers.Default) { engine.getSymbolCandidates() }
-                cachedEmoji = emojiDeferred.await()
-                cachedEmoticons = emoticonDeferred.await()
-                cachedSymbols = symbolDeferred.await()
-            }
-            val historyDeferred = async(Dispatchers.Default) { clickedSymbolRepository.getAll() }
-            cachedClickedSymbolHistory =
-                historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
-        }
-        Timber.d("setSymbols: ${cachedEmoji?.size}")
-        mainView.keyboardSymbolView.setSymbolLists(
-            emojiList = cachedEmoji ?: emptyList(),
-            emoticons = cachedEmoticons ?: emptyList(),
-            symbols = cachedSymbols ?: emptyList(),
-            clipBoardItems = currentClipboardItems,
-            symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
-            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
-
-        )
-    }
-
-    private suspend fun setSymbolsClipboard(mainView: MainLayoutBinding) {
-        val engine = awaitKanaKanjiEngineOrNull() ?: return
-        coroutineScope {
-            if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
-                val emojiDeferred =
-                    async(Dispatchers.Default) { engine.getSymbolEmojiCandidates() }
-                val emoticonDeferred =
-                    async(Dispatchers.Default) { engine.getSymbolEmoticonCandidates() }
-                val symbolDeferred =
-                    async(Dispatchers.Default) { engine.getSymbolCandidates() }
-                cachedEmoji = emojiDeferred.await()
-                cachedEmoticons = emoticonDeferred.await()
-                cachedSymbols = symbolDeferred.await()
-            }
-            val historyDeferred = async(Dispatchers.Default) { clickedSymbolRepository.getAll() }
-            cachedClickedSymbolHistory =
-                historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
-        }
-        Timber.d("setSymbols: ${cachedEmoji?.size}")
-        mainView.keyboardSymbolView.setSymbolLists(
-            emojiList = cachedEmoji ?: emptyList(),
-            emoticons = cachedEmoticons ?: emptyList(),
-            symbols = cachedSymbols ?: emptyList(),
-            clipBoardItems = currentClipboardItems,
-            symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = SymbolMode.CLIPBOARD,
-            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
-
-        )
-    }
+    private suspend fun setSymbols(
+        mainView: MainLayoutBinding,
+        initialMode: SymbolMode,
+    ) = setSymbolLists(mainView.keyboardSymbolView, initialMode)
 
     private suspend fun setSymbolsFloating(
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
-        initialMode: SymbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
-    ) {
+        initialMode: SymbolMode,
+    ) = setSymbolLists(floatingKeyboardLayoutBinding.floatingSymbolKeyboard, initialMode)
+
+    private suspend fun setSymbolLists(view: CustomSymbolKeyboardView, initialMode: SymbolMode) {
         val engine = awaitKanaKanjiEngineOrNull() ?: return
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
@@ -26234,27 +26206,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 cachedEmoticons = emoticonDeferred.await()
                 cachedSymbols = symbolDeferred.await()
             }
-            val historyDeferred = async(Dispatchers.Default) { clickedSymbolRepository.getAll() }
-            cachedClickedSymbolHistory =
-                historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
         }
-        floatingKeyboardLayoutBinding.floatingSymbolKeyboard.setSymbolLists(
-            emojiList = cachedEmoji ?: emptyList(),
-            emoticons = cachedEmoticons ?: emptyList(),
-            symbols = cachedSymbols ?: emptyList(),
-            clipBoardItems = currentClipboardItems,
-            symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = initialMode,
-            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
-
-        )
+        kanjiHistoryMutex.withLock {
+            val symbolHistory = clickedSymbolRepository.getAll()
+                .distinctBy { (it.mode.takeIf { mode -> mode == SymbolMode.KANJI }) to it.symbol }
+            view.setSymbolLists(
+                emojiList = cachedEmoji.orEmpty(),
+                emoticons = cachedEmoticons.orEmpty(),
+                symbols = cachedSymbols.orEmpty(),
+                clipBoardItems = currentClipboardItems,
+                symbolsHistory = symbolHistory,
+                symbolMode = initialMode,
+                defaultEmojiSkinTone = defaultEmojiSkinTonePreference,
+            )
+        }
     }
 
     private fun clearSymbols() {
         cachedEmoji = null
         cachedEmoticons = null
         cachedSymbols = null
-        cachedClickedSymbolHistory = null
     }
 
     private fun resolveCandidateLongPressPosition(
