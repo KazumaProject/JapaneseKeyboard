@@ -1094,6 +1094,7 @@ dependencies {
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
     fullImplementation project(':zenz')
+    fullImplementation project(':ai-runtime')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.8'
     implementation 'androidx.emoji2:emoji2:1.5.0'
@@ -1145,7 +1146,9 @@ dependencies {
     testImplementation "org.robolectric:robolectric:4.17"
 
     implementation 'com.google.code.gson:gson:2.13.1'
-    fullRuntimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.14.0') {
+    // The API is accessed reflectively. Keep upstream Kotlin 2.4 metadata out of Hilt's
+    // processing classpath; the used synchronous API runs with the app runtime dependencies.
+    fullRuntimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.19.0') {
         transitive = false
     }
 
