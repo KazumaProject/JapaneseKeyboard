@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ai
 
 import com.kazumaproject.ai.GgufEngine
 import org.json.JSONObject
+import timber.log.Timber
 
 internal data class AiModelInfo(val name: String, val flags: Int, val projector: Boolean = false) {
     fun encode(): String = JSONObject().put("name", name).put("flags", flags)
@@ -37,9 +38,21 @@ internal class GgufRuntimeBackend : AiRuntimeBackend {
         if (projectorPath.isNotBlank()) require(inspect(projectorPath).projector) {
             "The selected file is not a multimodal projector."
         }
-        handle = GgufEngine.initialize(path, projectorPath, Runtime.getRuntime().availableProcessors())
+        val resolved = if (backend == "gpu_if_available") {
+            try {
+                handle = GgufEngine.initialize(path, projectorPath, Runtime.getRuntime().availableProcessors(), true)
+                "GPU"
+            } catch (error: Exception) {
+                Timber.w(error, "GGUF GPU initialization failed; retrying with CPU")
+                handle = GgufEngine.initialize(path, projectorPath, Runtime.getRuntime().availableProcessors(), false)
+                "CPU_FALLBACK"
+            }
+        } else {
+            handle = GgufEngine.initialize(path, projectorPath, Runtime.getRuntime().availableProcessors(), false)
+            "CPU"
+        }
         modalityFlags = GgufEngine.capabilities(handle)
-        return "CPU"
+        return resolved
     }
 
     override fun resetCancellation() = GgufEngine.resetCancellation(handle)
