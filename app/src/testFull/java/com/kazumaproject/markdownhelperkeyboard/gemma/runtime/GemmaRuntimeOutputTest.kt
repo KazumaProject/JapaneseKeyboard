@@ -18,15 +18,15 @@ class GemmaRuntimeOutputTest {
     ): IGemmaRuntimeCallback {
         val service = Robolectric.buildService(GemmaRuntimeService::class.java).get()
         val backend = mock<AiRuntimeBackend>()
-        whenever(backend.generate(any(), any(), any(), any())).thenReturn(text)
+        whenever(backend.generate(any(), any(), any(), any(), any())).thenReturn(text)
         val callback = mock<IGemmaRuntimeCallback>()
         ReflectionHelpers.setField(service, "runtimeBackend", backend)
         try {
             GemmaRuntimeService::class.java.getDeclaredMethod(
                 "generateResponse", Long::class.javaPrimitiveType, String::class.java,
                 String::class.java, Int::class.javaPrimitiveType, IGemmaRuntimeCallback::class.java,
-                Boolean::class.javaPrimitiveType, String::class.java,
-            ).apply { isAccessible = true }.invoke(service, 1L, input, "", 0, callback, preview, instruction)
+                Boolean::class.javaPrimitiveType, String::class.java, String::class.java,
+            ).apply { isAccessible = true }.invoke(service, 1L, input, "", 0, callback, preview, instruction, "")
             verifyBackend(backend)
             return callback
         } finally { service.onDestroy() }
@@ -51,7 +51,7 @@ class GemmaRuntimeOutputTest {
         val instruction = "Convert every Latin letter to uppercase."
         for (preview in listOf(true, false)) {
             generate("RESULT", preview, input, instruction) { backend ->
-                verify(backend).generate(input, "", 0, instruction)
+                verify(backend).generate(input, "", 0, instruction, "")
             }
         }
     }
