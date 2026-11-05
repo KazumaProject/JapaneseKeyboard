@@ -114,7 +114,8 @@ class GemmaRuntimeService : Service() {
             activeRequestId = requestId
             callback.state("RUNNING", requestId.toString())
             val result = backend.generate(prompt, mediaPath, mediaType, instruction)
-            (if (preview) result else result.trim()).ifBlank { error("AI returned an empty response.") }
+            (if (preview || mediaType == MEDIA_TEXT) result else result.trim())
+                .ifBlank { error("AI returned an empty response.") }
         }.onSuccess { callback.result(requestId, it) }
             .onFailure { callback.error(requestId, it) }
         activeRequestId = NO_REQUEST
