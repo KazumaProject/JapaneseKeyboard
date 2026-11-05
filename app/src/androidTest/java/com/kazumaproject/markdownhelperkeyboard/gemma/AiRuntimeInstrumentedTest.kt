@@ -59,6 +59,9 @@ class AiRuntimeInstrumentedTest {
             val started = SystemClock.elapsedRealtime()
             val initialized = manager.initializeIfEnabled(true)
             assertTrue(manager.getModelSummary(), initialized)
+            arguments.getString("aiExpectedBackend")?.let { expected ->
+                assertEquals(expected, (manager.loadState.value as GemmaLoadState.Ready).backend)
+            }
             println("AI fixture=$filename initMs=${SystemClock.elapsedRealtime() - started} state=${manager.loadState.value}")
             val expectedFlags = arguments.getString("aiFlags")?.toInt() ?: 0
             assertEquals(expectedFlags, (manager.loadState.value as GemmaLoadState.Ready).modalityFlags)

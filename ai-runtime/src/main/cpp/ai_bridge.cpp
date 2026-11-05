@@ -2,6 +2,7 @@
 #include "llama.h"
 #include "llama-cpp.h"
 #include "gguf.h"
+#include "ggml-backend.h"
 #include "chat.h"
 #include "mtmd.h"
 #include "mtmd-helper.h"
@@ -172,13 +173,19 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_kazumaproject_ai_GgufEngine_inspec
         return java_string(env, common_json{{"name", metadata_string(info.get(), "general.name")}, {"flags", flags}, {"projector", projector}}.dump());
     } catch (const std::exception & error) { report(env, error); return nullptr; }
 }
-extern "C" JNIEXPORT jlong JNICALL Java_com_kazumaproject_ai_GgufEngine_initialize(JNIEnv * env, jobject, jstring path, jstring projector, jint threads) {
+extern "C" JNIEXPORT jlong JNICALL Java_com_kazumaproject_ai_GgufEngine_initialize(JNIEnv * env, jobject, jstring path, jstring projector, jint threads, jboolean use_gpu) {
     try {
         static std::once_flag once;
         std::call_once(once, [] { llama_backend_init(); });
         auto engine = std::make_shared<Engine>();
+        auto device = use_gpu ? ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_GPU) : nullptr;
+        if (use_gpu && !device) device = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_IGPU);
+        if (use_gpu && !device) throw std::runtime_error("No compatible Vulkan GPU is available.");
+        ggml_backend_dev_t devices[] = {device, nullptr};
         auto model_params = llama_model_default_params();
-        model_params.n_gpu_layers = 0;
+        // An empty device list prevents opportunistic GPU offload in CPU-only mode.
+        model_params.devices = devices;
+        model_params.n_gpu_layers = use_gpu ? -1 : 0;
         engine->model = llama_model_load_from_file(utf8(env, path).c_str(), model_params);
         if (!engine->model) throw std::runtime_error("Could not load this GGUF model. Its architecture, quantization, or memory requirements may be unsupported.");
         auto context_params = llama_context_default_params();
@@ -187,14 +194,23 @@ extern "C" JNIEXPORT jlong JNICALL Java_com_kazumaproject_ai_GgufEngine_initiali
         context_params.n_ubatch = 256;
         context_params.n_threads = std::clamp<int>(threads, 1, 4);
         context_params.n_threads_batch = context_params.n_threads;
+        context_params.offload_kqv = use_gpu;
+        context_params.op_offload = use_gpu;
         context_params.abort_callback = [](void * data) { return static_cast<Engine *>(data)->cancelled.load(); };
         context_params.abort_callback_data = engine.get();
         engine->context = llama_init_from_model(engine->model, context_params);
         if (!engine->context) throw std::runtime_error("Could not allocate the AI context.");
         const auto projector_path = utf8(env, projector);
         if (!projector_path.empty()) {
+            gguf_init_params info_params{true, nullptr};
+            std::unique_ptr<gguf_context, decltype(&gguf_free)> info(
+                gguf_init_from_file(projector_path.c_str(), info_params), gguf_free);
+            if (!info) throw std::runtime_error("Could not inspect the multimodal projector.");
             auto params = mtmd_context_params_default();
-            params.use_gpu = false;
+            // Like LiteRT-LM, keep audio encoding on CPU while language generation
+            // uses the selected backend.
+            params.use_gpu = use_gpu && !metadata_bool(info.get(), "clip.has_audio_encoder");
+            params.device = params.use_gpu ? device : nullptr;
             params.n_threads = context_params.n_threads;
             engine->media = mtmd_init_from_file(projector_path.c_str(), engine->model, params);
             if (!engine->media) throw std::runtime_error("The projector could not be loaded with this GGUF model.");
