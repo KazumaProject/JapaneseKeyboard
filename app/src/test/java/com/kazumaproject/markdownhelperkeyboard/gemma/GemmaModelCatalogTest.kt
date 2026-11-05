@@ -1,41 +1,29 @@
 package com.kazumaproject.markdownhelperkeyboard.gemma
 
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
 
 class GemmaModelCatalogTest {
-    @Test
-    fun recognizesAllSupportedFamilies() {
-        val cases = mapOf(
-            "gemma-3-270m-it-q8.litertlm" to "gemma3_270m_it",
-            "Gemma3-1B-IT-int4.litertlm" to "gemma3_1b_it",
-            "gemma-3n-E2B-it-litert-lm.litertlm" to "gemma3n_e2b_it",
-            "gemma-3n-E4B-it-litert-lm.litertlm" to "gemma3n_e4b_it",
-            "gemma-4-E2B-it.litertlm" to "gemma4_e2b_it",
-            "gemma-4-E4B-it.litertlm" to "gemma4_e4b_it",
-            "functiongemma-270m-ft-mobile-actions.litertlm" to "functiongemma_270m",
-        )
-        cases.forEach { (filename, expectedId) ->
-            assertEquals(expectedId, GemmaModelCatalog.descriptorFor(filename).id)
-        }
+    @Test fun acceptsFormatsWithoutANameAllowlist() {
+        assertEquals(AiModelFormat.LITERT_LM, AiModelFormat.fromFilename("renamed-model.LiteRTLM"))
+        assertEquals(AiModelFormat.GGUF, AiModelFormat.fromFilename("Qwen3-0.6B.gguf"))
+        assertEquals(AiModelFormat.GGUF, AiModelFormat.fromFilename("model.gguf?download=true"))
+        assertNull(AiModelFormat.fromFilename("weights.safetensors"))
+        assertNull(AiModelFormat.fromFilename("model.gguf.zip"))
     }
 
-    @Test
-    fun multimodalModelsAdvertiseImageAndAudio() {
+    @Test fun filenameDoesNotGrantImageOrAudioCapabilities() {
         val model = GemmaModelCatalog.descriptorFor("gemma-4-E2B-it.litertlm")
-        assertTrue(model.supports(GemmaMediaType.TEXT))
-        assertTrue(model.supports(GemmaMediaType.IMAGE))
-        assertTrue(model.supports(GemmaMediaType.AUDIO))
-    }
-
-    @Test
-    fun textModelDoesNotAdvertiseMedia() {
-        val model = GemmaModelCatalog.descriptorFor("gemma-3-1b-it.litertlm")
         assertTrue(model.supports(GemmaMediaType.TEXT))
         assertFalse(model.supports(GemmaMediaType.IMAGE))
         assertFalse(model.supports(GemmaMediaType.AUDIO))
+    }
+
+    @Test fun runtimeCapabilitiesWorkWithAnyModelName() {
+        val model = GemmaModelCatalog.descriptorFor("my-model.gguf").withCapabilities(3)
+        assertEquals("my-model", model.displayName)
+        assertTrue(model.supports(GemmaMediaType.IMAGE))
+        assertTrue(model.supports(GemmaMediaType.AUDIO))
     }
 }
