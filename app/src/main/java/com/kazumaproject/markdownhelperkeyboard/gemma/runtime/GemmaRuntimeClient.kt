@@ -22,7 +22,7 @@ import kotlinx.coroutines.withTimeout
 class GemmaRuntimeClient @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private data class InitializationConfig(
+    data class ModelConfig(
         val modelPath: String,
         val backend: String,
         val projectorPath: String,
@@ -53,7 +53,12 @@ class GemmaRuntimeClient @Inject constructor(
     private var previewRequestId: Long = NO_REQUEST
 
     @Volatile
-    private var initializationConfig: InitializationConfig? = null
+    private var initializationConfig: ModelConfig? = null
+
+    private var residentConfig: ModelConfig? = null
+    private var residentBackend = ""
+    @Volatile private var voiceRequest = false
+    private val voiceRevision = AtomicLong()
 
     @Volatile
     private var initializedBinder: IBinder? = null
@@ -96,7 +101,7 @@ class GemmaRuntimeClient @Inject constructor(
         modalityFlags: Int = 0,
         projectorPath: String = "",
     ): String = operationMutex.withLock {
-        val config = InitializationConfig(modelPath, backend, projectorPath)
+        val config = ModelConfig(modelPath, backend, projectorPath)
         initializationConfig = config
         val service = connect()
         initializeLocked(service, config)
@@ -104,7 +109,7 @@ class GemmaRuntimeClient @Inject constructor(
 
     private suspend fun initializeLocked(
         service: IGemmaRuntime,
-        config: InitializationConfig,
+        config: ModelConfig,
     ): String {
         val completion = CompletableDeferred<String>()
         activeCompletion = completion
@@ -124,6 +129,8 @@ class GemmaRuntimeClient @Inject constructor(
             }
         }
         return try {
+            residentConfig = null
+            initializedBinder = null
             modalityFlags = 0
             modelName = ""
             service.initializeModel(
@@ -134,6 +141,8 @@ class GemmaRuntimeClient @Inject constructor(
             )
             withTimeout(INITIALIZE_TIMEOUT_MS) { completion.await() }.also {
                 initializedBinder = service.asBinder()
+                residentConfig = config
+                residentBackend = it
             }
         } finally {
             if (activeCompletion === completion) activeCompletion = null
@@ -198,12 +207,12 @@ class GemmaRuntimeClient @Inject constructor(
         mediaType: GemmaMediaType,
         preview: Boolean,
         instruction: String = "",
+        config: ModelConfig = initializationConfig
+            ?: throw GemmaProcessException("AI runtime has not been initialized."),
     ): String {
         val service = connect()
         val binder = service.asBinder()
-        if (initializedBinder !== binder || !binder.isBinderAlive) {
-            val config = initializationConfig
-                ?: throw GemmaProcessException("AI runtime has not been initialized.")
+        if (initializedBinder !== binder || !binder.isBinderAlive || residentConfig != config) {
             initializeLocked(service, config)
         }
         val requestId = nextRequestId.getAndIncrement()
@@ -240,9 +249,39 @@ class GemmaRuntimeClient @Inject constructor(
     }
 
     fun cancelActive() {
+        if (voiceRequest) return
         val requestId = activeRequestId
         if (requestId == NO_REQUEST) return
         runCatching { runtime?.cancel(requestId) }
+    }
+
+    /** Initialization, capability validation and inference form one serialized operation. */
+    suspend fun runVoiceModel(config: ModelConfig, prompt: String? = null, audioPath: String = ""): String {
+        val revision = voiceRevision.get()
+        cancelPreview()
+        return operationMutex.withLock {
+            check(revision == voiceRevision.get()) { "Voice input was cancelled." }
+            voiceRequest = true
+            try {
+                val service = connect()
+                if (residentConfig != config || initializedBinder !== service.asBinder()) {
+                    initializeLocked(service, config)
+                }
+                check(revision == voiceRevision.get()) { "Voice input was cancelled." }
+                check(modalityFlags and 2 != 0) { "The selected model does not support audio input." }
+                if (prompt == null) residentBackend
+                else generateLocked(prompt, audioPath, GemmaMediaType.AUDIO, false, config = config)
+                    .also { check(revision == voiceRevision.get()) { "Voice input was cancelled." } }
+            } finally { voiceRequest = false }
+        }
+    }
+
+    fun cancelVoice() {
+        voiceRevision.incrementAndGet()
+        if (voiceRequest) {
+            val id = activeRequestId
+            if (id != NO_REQUEST) runCatching { runtime?.cancel(id) }
+        }
     }
 
     suspend fun close() {
@@ -251,6 +290,7 @@ class GemmaRuntimeClient @Inject constructor(
         operationMutex.withLock {
             modalityFlags = 0
             initializationConfig = null
+            residentConfig = null
             initializedBinder = null
             runCatching { runtime?.closeEngine() }
             disconnect()

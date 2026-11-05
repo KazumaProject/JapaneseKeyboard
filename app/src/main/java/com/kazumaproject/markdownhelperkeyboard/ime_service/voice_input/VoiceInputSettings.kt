@@ -18,6 +18,9 @@ data class VoiceInputSettings(
     val enabled: Boolean = false,
     val replacement: VoiceInputSpaceReplacement = VoiceInputSpaceReplacement.REMOVE,
     val customText: String = "",
+    val engine: String = "system",
+    val modelPath: String = "",
+    val backend: String = "cpu",
 ) {
     fun transform(text: String, recognitionLanguage: String): String {
         if (!enabled || !recognitionLanguage.substringBefore('-').equals("ja", ignoreCase = true)) {
