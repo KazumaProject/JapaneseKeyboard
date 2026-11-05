@@ -33,6 +33,9 @@ class VoiceInputPreferenceTest {
         AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY,
         AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_KEY,
         AppPreference.VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY,
+        AppPreference.VOICE_INPUT_ENGINE_KEY,
+        AppPreference.VOICE_INPUT_MODEL_KEY,
+        AppPreference.VOICE_INPUT_BACKEND_KEY,
     )
 
     @Before
