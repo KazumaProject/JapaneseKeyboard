@@ -187,6 +187,13 @@ class GemmaRuntimeClient @Inject constructor(
         }
     }
 
+    suspend fun generateTranslation(text: String, instruction: String, targetLanguage: String): String {
+        cancelPreview()
+        return operationMutex.withLock {
+            generateLocked(text, "", GemmaMediaType.TEXT, false, instruction, targetLanguage = targetLanguage)
+        }
+    }
+
     suspend fun generatePreview(prompt: String, instruction: String = ""): String? {
         if (!operationMutex.tryLock()) return null
         return try {
@@ -209,6 +216,7 @@ class GemmaRuntimeClient @Inject constructor(
         instruction: String = "",
         config: ModelConfig = initializationConfig
             ?: throw GemmaProcessException("AI runtime has not been initialized."),
+        targetLanguage: String = "",
     ): String {
         val service = connect()
         val binder = service.asBinder()
@@ -236,7 +244,8 @@ class GemmaRuntimeClient @Inject constructor(
             }
         }
         return try {
-            if (preview) service.generatePreview(requestId, prompt, instruction, callback)
+            if (targetLanguage.isNotBlank()) service.generateTranslation(requestId, prompt, instruction, targetLanguage, callback)
+            else if (preview) service.generatePreview(requestId, prompt, instruction, callback)
             else if (mediaType == GemmaMediaType.TEXT && instruction.isNotBlank()) service.generateText(requestId, prompt, instruction, callback)
             else service.generate(requestId, prompt, mediaPath, mediaType.runtimeValue, callback)
             withTimeout(GENERATE_TIMEOUT_MS) { completion.await() }

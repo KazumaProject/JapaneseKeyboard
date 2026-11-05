@@ -347,7 +347,7 @@ class GemmaTranslationManager @Inject constructor(
         val target = TranslationTargetLanguage.fromPreference(
             appPreference.gemma_translation_target_language_preference,
         )
-        return generateForCurrentModel { runtimeClient.generateText(text, buildTranslationInstruction(target)) }
+        return generateForCurrentModel { runtimeClient.generateTranslation(text, buildTranslationInstruction(target), target.languageCode) }
     }
 
     suspend fun runCustomPrompt(
