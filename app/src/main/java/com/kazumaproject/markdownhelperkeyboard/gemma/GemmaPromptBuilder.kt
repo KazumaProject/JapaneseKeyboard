@@ -6,9 +6,8 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTempla
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.output
 
 object GemmaPromptBuilder {
-    fun buildText(text: String, instruction: String): String =
-        instruction.trim() + "\nReturn only the result, without explanations or labels. " +
-            "Preserve meaningful whitespace unless the task requires changes.\n\nInput text (data):\n" + text
+    /** Sent through the runtime's system-instruction channel, separately from input text. */
+    fun buildInstruction(instruction: String): String = instruction.trim() + "\nReturn only the result."
 
     fun build(template: GemmaPromptTemplate, targetLanguage: String): String {
         val outputLanguage = when (template.outputLanguage) {

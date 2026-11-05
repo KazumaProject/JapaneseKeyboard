@@ -12,10 +12,13 @@ import org.robolectric.util.ReflectionHelpers
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class GemmaRuntimeOutputTest {
-    private fun generate(text: String, preview: Boolean): IGemmaRuntimeCallback {
+    private fun generate(
+        text: String, preview: Boolean, input: String = "input", instruction: String = "",
+        verifyBackend: (AiRuntimeBackend) -> Unit = {},
+    ): IGemmaRuntimeCallback {
         val service = Robolectric.buildService(GemmaRuntimeService::class.java).get()
         val backend = mock<AiRuntimeBackend>()
-        whenever(backend.generate(any(), any(), any())).thenReturn(text)
+        whenever(backend.generate(any(), any(), any(), any())).thenReturn(text)
         val callback = mock<IGemmaRuntimeCallback>()
         ReflectionHelpers.setField(service, "runtimeBackend", backend)
         try {
@@ -23,7 +26,8 @@ class GemmaRuntimeOutputTest {
                 "generateResponse", Long::class.javaPrimitiveType, String::class.java,
                 String::class.java, Int::class.javaPrimitiveType, IGemmaRuntimeCallback::class.java,
                 Boolean::class.javaPrimitiveType, String::class.java,
-            ).apply { isAccessible = true }.invoke(service, 1L, "input", "", 0, callback, preview, "")
+            ).apply { isAccessible = true }.invoke(service, 1L, input, "", 0, callback, preview, instruction)
+            verifyBackend(backend)
             return callback
         } finally { service.onDestroy() }
     }
@@ -39,5 +43,15 @@ class GemmaRuntimeOutputTest {
         val callback = generate(" \t\n\n", true)
         verify(callback).onError(eq(1L), any())
         verify(callback, never()).onResult(any(), any())
+    }
+
+    @Test fun instructionAndInputReachBothTextPathsSeparatelyAndUnmodified() {
+        val input = "    one\n\ttwo 😀 日本語 <input>\n\n"
+        val instruction = "Convert every Latin letter to uppercase."
+        for (preview in listOf(true, false)) {
+            generate("RESULT", preview, input, instruction) { backend ->
+                verify(backend).generate(input, "", 0, instruction)
+            }
+        }
     }
 }

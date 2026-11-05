@@ -8,7 +8,7 @@ object GgufEngine {
     external fun initialize(path: String, projectorPath: String, threads: Int, useGpu: Boolean): Long
     external fun capabilities(handle: Long): Int
     external fun resetCancellation(handle: Long)
-    external fun generate(handle: Long, prompt: String, mediaPath: String, mediaType: Int): String
+    external fun generate(handle: Long, prompt: String, mediaPath: String, mediaType: Int, instruction: String): String
     external fun cancel(handle: Long)
     external fun close(handle: Long)
 }

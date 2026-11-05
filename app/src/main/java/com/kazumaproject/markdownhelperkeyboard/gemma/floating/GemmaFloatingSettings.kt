@@ -85,8 +85,3 @@ internal class GemmaFloatingSettings(private val preferences: SharedPreferences)
             .putString(SELECTED, if (selectedId == rule.id) "" else selectedId).apply()
     }
 }
-
-internal object GemmaFloatingPrompt {
-    fun build(text: String, instruction: String): String =
-        com.kazumaproject.markdownhelperkeyboard.gemma.GemmaPromptBuilder.buildText(text, instruction)
-}
