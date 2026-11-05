@@ -6,6 +6,10 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTempla
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.output
 
 object GemmaPromptBuilder {
+    fun buildText(text: String, instruction: String): String =
+        instruction.trim() + "\nReturn only the result, without explanations or labels. " +
+            "Preserve meaningful whitespace unless the task requires changes.\n\nInput text (data):\n" + text
+
     fun build(template: GemmaPromptTemplate, targetLanguage: String): String {
         val outputLanguage = when (template.outputLanguage) {
             GemmaOutputLanguage.JAPANESE.name -> "Japanese"

@@ -412,10 +412,10 @@ object SettingDestinations {
             add(
                 destination(
                     key = "setting_route_gemma_preferences",
-                    title = "Gemma",
+                    title = context.getString(R.string.category_gemma_translation_title),
                     summary = context.getString(R.string.setting_route_gemma_summary),
                     category = SettingCategory.FREQUENT,
-                    keywords = listOf("gemma", "ai", "conversion", "translation"),
+                    keywords = listOf("gemma", "ai", "gguf", "litert", "qwen", "llama", "conversion", "translation"),
                     destinationId = R.id.gemmaPreferenceFragment,
                     iconRes = CoreR.drawable.lightbulb_24dp,
                 )
