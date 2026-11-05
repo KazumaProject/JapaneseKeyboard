@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="setting_category_voice_input_title">Voice input</string>
-    <string name="setting_category_voice_input_summary">Replace spaces in Japanese speech recognition results</string>
+    <string name="setting_category_voice_input_summary">Choose a speech recognizer or a local AI model, and replace spaces</string>
     <string name="voice_input_space_replacement_enabled_title">Automatically replace spaces</string>
     <string name="voice_input_space_replacement_enabled_summary">Replace each half-width space in Japanese voice input, including spaces between English words. English voice input is kept unchanged.</string>
     <string name="voice_input_space_replacement_title">Replace spaces with</string>
@@ -30,4 +30,21 @@
         <item>full_width_space</item>
         <item>custom</item>
     </string-array>
+    <string name="voice_input_engine_title">Speech recognition engine</string>
+    <string name="voice_input_system">System speech recognizer</string>
+    <string name="voice_input_ai_title">Local AI voice input</string>
+    <string name="voice_input_model_title">Voice model</string>
+    <string name="voice_input_import_model_title">Import voice model</string>
+    <string name="voice_input_backend_title">Voice model backend</string>
+    <string name="voice_input_projector_title">Audio projector (mmproj)</string>
+    <string name="voice_input_import_projector_title">Import audio projector</string>
+    <string name="voice_input_load_model_title">Load and check voice model</string>
+    <string name="voice_input_load_model_summary">Uses a separate model selection from translation. Audio support is checked when loading.</string>
+    <string name="voice_input_model_missing">Select a voice model</string>
+    <string name="voice_input_stop">Stop and transcribe</string>
+    <string name="voice_input_recording">Recording… Stop when finished (up to 30 seconds).</string>
+    <string name="voice_input_transcribing">Transcribing…</string>
+    <string name="voice_input_no_audio">No audio was recorded.</string>
+    <string-array name="voice_input_engine_entries"><item>@string/voice_input_system</item><item>@string/voice_input_ai_title</item></string-array>
+    <string-array name="voice_input_engine_values" translatable="false"><item>system</item><item>ai</item></string-array>
 </resources>
