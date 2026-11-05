@@ -192,7 +192,7 @@ class AiInteractionInstrumentedTest {
                 assertNull("Old selection menu leaked into normal composition", text("大文字QA"))
                 await("Floating preview did not resume after foreground candidate action") {
                     node("gemma_floating_result")?.let {
-                        it.isClickable && !it.text.isNullOrBlank() && it.text.toString() !in setOf("HELLO", "WORLD")
+                        it.isClickable && it.text?.toString() == "NEXT"
                     } == true
                 }
                 val resumedResult = requireNotNull(node("gemma_floating_result")).text.toString()

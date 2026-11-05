@@ -26,10 +26,8 @@ class AiModelProfilesTest {
         assertEquals("/projectors/audio.gguf", restored.projectorPath("/models/audio.gguf"))
     }
 
-    @Test fun commonTextPromptPreservesInputAndSeparatesInstructions() {
-        val source = "    one\n\ttwo 😀\n\n"
-        val prompt = GemmaPromptBuilder.buildText(source, "Translate into English.")
-        assertTrue(prompt.contains("Input text (data):\n$source"))
+    @Test fun textInstructionContainsNoModelSpecificRoleTokens() {
+        val prompt = GemmaPromptBuilder.buildInstruction("Translate into English.")
         assertTrue(prompt.contains("Translate into English."))
         assertFalse(prompt.contains("Gemma", true))
         assertFalse(prompt.contains("<start_of_turn>"))

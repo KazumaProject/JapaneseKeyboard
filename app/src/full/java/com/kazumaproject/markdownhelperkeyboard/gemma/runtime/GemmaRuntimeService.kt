@@ -48,6 +48,10 @@ class GemmaRuntimeService : Service() {
             scope.launch { generateResponse(requestId, prompt, "", MEDIA_TEXT, callback, true, instruction) }
         }
 
+        override fun generateText(requestId: Long, text: String, instruction: String, callback: IGemmaRuntimeCallback) {
+            scope.launch { generateResponse(requestId, text, "", MEDIA_TEXT, callback, false, instruction) }
+        }
+
         override fun cancel(requestId: Long) {
             if (activeRequestId == requestId) runtimeBackend?.cancel()
         }
@@ -109,8 +113,7 @@ class GemmaRuntimeService : Service() {
             backend.resetCancellation()
             activeRequestId = requestId
             callback.state("RUNNING", requestId.toString())
-            val input = if (instruction.isBlank()) prompt else "$instruction\n<input>\n$prompt\n</input>"
-            val result = backend.generate(input, mediaPath, mediaType)
+            val result = backend.generate(prompt, mediaPath, mediaType, instruction)
             (if (preview) result else result.trim()).ifBlank { error("AI returned an empty response.") }
         }.onSuccess { callback.result(requestId, it) }
             .onFailure { callback.error(requestId, it) }
