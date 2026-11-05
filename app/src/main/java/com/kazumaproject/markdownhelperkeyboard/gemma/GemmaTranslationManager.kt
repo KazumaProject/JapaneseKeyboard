@@ -333,7 +333,7 @@ class GemmaTranslationManager @Inject constructor(
         val target = TranslationTargetLanguage.fromPreference(
             appPreference.gemma_translation_target_language_preference,
         )
-        return sanitizeSingleLine(generateForCurrentModel { runtimeClient.generateText(text, buildTranslationInstruction(target)) })
+        return generateForCurrentModel { runtimeClient.generateText(text, buildTranslationInstruction(target)) }
     }
 
     suspend fun runCustomPrompt(
@@ -344,9 +344,7 @@ class GemmaTranslationManager @Inject constructor(
         require(text.isNotBlank()) { "The selected candidate is empty." }
         require(promptBody.isNotBlank()) { "The AI prompt is empty." }
         ensureEngineReady()
-        return sanitizeSingleLine(
-            generateForCurrentModel { runtimeClient.generateText(text, GemmaPromptBuilder.buildInstruction(promptBody)) },
-        )
+        return generateForCurrentModel { runtimeClient.generateText(text, GemmaPromptBuilder.buildInstruction(promptBody)) }
     }
 
     suspend fun runMediaPrompt(
@@ -489,12 +487,6 @@ class GemmaTranslationManager @Inject constructor(
             Detect the source language and translate the input into ${targetLanguage.promptLanguageName} (${targetLanguage.languageCode}).
             If it is already primarily ${targetLanguage.promptLanguageName}, return it unchanged.
         """.trimIndent())
-
-    private fun sanitizeSingleLine(output: String): String {
-        val noFence = output.replace("```", "").trim()
-        return noFence.lineSequence().firstOrNull { it.isNotBlank() }
-            .orEmpty().trim().trim('"', '\'', '「', '」')
-    }
 
     private fun Throwable.rootMessage(): String {
         val root = generateSequence(this) { it.cause }.last()
