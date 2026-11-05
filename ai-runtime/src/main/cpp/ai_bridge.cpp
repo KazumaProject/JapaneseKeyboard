@@ -66,7 +66,7 @@ void check_cancelled(const Engine & engine) {
     if (engine.cancelled.load()) throw std::runtime_error("AI request was cancelled.");
 }
 
-std::string generate(Engine & engine, const std::string & input, const std::string & media_path, int media_type) {
+std::string generate(Engine & engine, const std::string & input, const std::string & media_path, int media_type, const std::string & instruction) {
     check_cancelled(engine);
     llama_memory_clear(llama_get_memory(engine.context), true);
     auto * vocab = llama_model_get_vocab(engine.model);
@@ -80,9 +80,16 @@ std::string generate(Engine & engine, const std::string & input, const std::stri
         user_input = media_type == 2 ? input + "\n" + marker : marker + "\n" + input;
     }
     std::unique_ptr<common_chat_session> session;
-    std::string prompt = user_input;
+    std::string prompt = instruction.empty() ? user_input :
+        "Instruction:\n" + instruction + "\n\nInput:\n" + user_input + "\n\nOutput:";
     if (engine.templates) {
         common_chat_templates_inputs inputs;
+        if (!instruction.empty()) {
+            common_chat_msg system;
+            system.role = "system";
+            system.content = instruction;
+            inputs.messages.push_back(system);
+        }
         common_chat_msg message;
         message.role = "user";
         message.content = user_input;
@@ -231,8 +238,8 @@ extern "C" JNIEXPORT jint JNICALL Java_com_kazumaproject_ai_GgufEngine_capabilit
 extern "C" JNIEXPORT void JNICALL Java_com_kazumaproject_ai_GgufEngine_resetCancellation(JNIEnv * env, jobject, jlong handle) {
     try { get_engine(handle)->cancelled = false; } catch (const std::exception & error) { report(env, error); }
 }
-extern "C" JNIEXPORT jstring JNICALL Java_com_kazumaproject_ai_GgufEngine_generate(JNIEnv * env, jobject, jlong handle, jstring prompt, jstring media, jint type) {
-    try { return java_string(env, generate(*get_engine(handle), utf8(env, prompt), utf8(env, media), type)); }
+extern "C" JNIEXPORT jstring JNICALL Java_com_kazumaproject_ai_GgufEngine_generate(JNIEnv * env, jobject, jlong handle, jstring prompt, jstring media, jint type, jstring instruction) {
+    try { return java_string(env, generate(*get_engine(handle), utf8(env, prompt), utf8(env, media), type, utf8(env, instruction))); }
     catch (const std::exception & error) { report(env, error); return nullptr; }
 }
 extern "C" JNIEXPORT void JNICALL Java_com_kazumaproject_ai_GgufEngine_cancel(JNIEnv *, jobject, jlong handle) {

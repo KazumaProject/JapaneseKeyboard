@@ -333,7 +333,7 @@ class GemmaTranslationManager @Inject constructor(
         val target = TranslationTargetLanguage.fromPreference(
             appPreference.gemma_translation_target_language_preference,
         )
-        return sanitizeSingleLine(generateForCurrentModel { runtimeClient.generate(buildTranslationPrompt(text, target)) })
+        return sanitizeSingleLine(generateForCurrentModel { runtimeClient.generateText(text, buildTranslationInstruction(target)) })
     }
 
     suspend fun runCustomPrompt(
@@ -345,7 +345,7 @@ class GemmaTranslationManager @Inject constructor(
         require(promptBody.isNotBlank()) { "The AI prompt is empty." }
         ensureEngineReady()
         return sanitizeSingleLine(
-            generateForCurrentModel { runtimeClient.generate(buildCustomPrompt(text, promptBody)) },
+            generateForCurrentModel { runtimeClient.generateText(text, GemmaPromptBuilder.buildInstruction(promptBody)) },
         )
     }
 
@@ -376,7 +376,7 @@ class GemmaTranslationManager @Inject constructor(
         check(_loadState.value is GemmaLoadState.Ready) { "AI is not ready." }
         val revision = modelRevision.get()
         val result = runtimeClient.generatePreview(
-            com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.build(text, instruction),
+            text, GemmaPromptBuilder.buildInstruction(instruction),
         )
         return result.takeIf { revision == modelRevision.get() && _loadState.value is GemmaLoadState.Ready }
     }
@@ -484,15 +484,11 @@ class GemmaTranslationManager @Inject constructor(
         return buffer.copyOf(offset)
     }
 
-    private fun buildTranslationPrompt(text: String, targetLanguage: TranslationTargetLanguage): String =
-        GemmaPromptBuilder.buildText(text, """
+    private fun buildTranslationInstruction(targetLanguage: TranslationTargetLanguage): String =
+        GemmaPromptBuilder.buildInstruction("""
             Detect the source language and translate the input into ${targetLanguage.promptLanguageName} (${targetLanguage.languageCode}).
             If it is already primarily ${targetLanguage.promptLanguageName}, return it unchanged.
         """.trimIndent())
-
-    // Action titles label the UI; only the instruction body belongs in the model prompt.
-    private fun buildCustomPrompt(text: String, body: String): String =
-        GemmaPromptBuilder.buildText(text, body)
 
     private fun sanitizeSingleLine(output: String): String {
         val noFence = output.replace("```", "").trim()

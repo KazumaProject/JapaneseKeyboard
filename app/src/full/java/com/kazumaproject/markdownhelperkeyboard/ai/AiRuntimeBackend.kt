@@ -21,7 +21,7 @@ internal interface AiRuntimeBackend : AutoCloseable {
     fun inspect(path: String): AiModelInfo
     fun initialize(path: String, backend: String, projectorPath: String): String
     fun resetCancellation()
-    fun generate(prompt: String, mediaPath: String, mediaType: Int): String
+    fun generate(prompt: String, mediaPath: String, mediaType: Int, instruction: String = ""): String
     fun cancel()
 }
 
@@ -56,8 +56,8 @@ internal class GgufRuntimeBackend : AiRuntimeBackend {
     }
 
     override fun resetCancellation() = GgufEngine.resetCancellation(handle)
-    override fun generate(prompt: String, mediaPath: String, mediaType: Int): String =
-        GgufEngine.generate(handle, prompt, mediaPath, mediaType)
+    override fun generate(prompt: String, mediaPath: String, mediaType: Int, instruction: String): String =
+        GgufEngine.generate(handle, prompt, mediaPath, mediaType, instruction)
     override fun cancel() = GgufEngine.cancel(handle)
     override fun close() {
         val previous = handle

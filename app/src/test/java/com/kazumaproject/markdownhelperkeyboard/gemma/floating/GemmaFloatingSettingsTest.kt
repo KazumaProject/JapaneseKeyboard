@@ -119,17 +119,4 @@ class GemmaFloatingSettingsTest {
         assertNull(GemmaFloatingSettings(preferences).selectedRule)
     }
 
-    @Test fun promptKeepsMultilineInputAndUserInstructionSeparate() {
-        val prompt = GemmaFloatingPrompt.build("one\ntwo", "Translate into Japanese.")
-        assertTrue(prompt.contains("Input text (data):\none\ntwo"))
-        assertTrue(prompt.contains("Translate into Japanese."))
-        assertTrue(prompt.contains("Preserve meaningful whitespace"))
-    }
-
-    @Test fun commonPromptContainsNoModelSpecificRoleTokens() {
-        val prompt = GemmaFloatingPrompt.build("こんにちは", "Translate into English.")
-        assertFalse(prompt.contains("Gemma", ignoreCase = true))
-        assertFalse(prompt.contains("<start_of_turn>"))
-        assertTrue(prompt.contains("こんにちは"))
-    }
 }

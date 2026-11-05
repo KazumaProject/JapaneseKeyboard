@@ -60,14 +60,14 @@ internal class LiteRtRuntimeBackend(private val cachePath: String) : AiRuntimeBa
 
     override fun resetCancellation() { cancelled.set(false) }
 
-    override fun generate(prompt: String, mediaPath: String, mediaType: Int): String {
+    override fun generate(prompt: String, mediaPath: String, mediaType: Int, instruction: String): String {
         val activeEngine = requireNotNull(engine) { "AI model is not ready." }
         val configClass = Class.forName(PREFIX + "ConversationConfig")
         val samplerClass = Class.forName(PREFIX + "SamplerConfig")
         val sampler = samplerClass.getConstructor(Int::class.javaPrimitiveType, Double::class.javaPrimitiveType,
             Double::class.javaPrimitiveType, Int::class.javaPrimitiveType).newInstance(1, 1.0, 0.0, 0)
         val config = configClass.getConstructor(Class.forName(PREFIX + "Contents"), List::class.java,
-            List::class.java, samplerClass).newInstance(null, emptyList<Any>(), emptyList<Any>(), sampler)
+            List::class.java, samplerClass).newInstance(if (instruction.isBlank()) null else contents(instruction, "", 0), emptyList<Any>(), emptyList<Any>(), sampler)
         val activeConversation = requireNotNull(activeEngine.javaClass
             .getMethod("createConversation", configClass).invoke(activeEngine, config))
         conversation = activeConversation
