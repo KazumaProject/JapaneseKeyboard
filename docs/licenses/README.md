@@ -21,11 +21,12 @@ MITは第三者の辞書・ライブラリ・モデルのライセンスを変�
 | 対象 | 出典・確認した条件 | 版・適用範囲・原文 |
 | --- | --- | --- |
 | `flexbox` のGoogle由来コード | Apache License 2.0。Copyright 2016 Google Inc. | [ソースの表示](../../flexbox/src/main/java/com/kazumaproject/android/flexbox/AlignContent.java)、[Apache 2.0全文](../../app/src/main/assets/licenses/sources/apache-2.txt)。元の全取得版は未確認 |
+| `ggml-org/llama.cpp` / `libmtmd`（汎用 AI） | MIT および同梱依存の個別通知 | 固定コミット `cd959bae99ff4bed22bef2604f45241c09bbb8c8`（v0.9.0）。[ビルド構成](../../ai-runtime/src/main/cpp/CMakeLists.txt)、[アプリに配布する通知原文](../../app/src/full/assets/software-licenses/ai-runtime-notices.txt) |
 | `azooKey/llama.cpp` | MIT。Copyright (c) 2023–2024 The ggml authors | git submoduleの固定コミット `88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c` の [LICENSE](https://github.com/azooKey/llama.cpp/blob/88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c/LICENSE)。コードの実ビルド範囲は [CMakeLists.txt](../../zenz/src/main/cpp/CMakeLists.txt) を参照 |
 | llama.cpp内のGGUF Pythonツール | MIT。Copyright (c) 2023 Georgi Gerganov | [固定版のgguf-py/LICENSE](https://github.com/azooKey/llama.cpp/blob/88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c/gguf-py/LICENSE)。ビルド時ツールとアプリ内の実行コードを区別 |
 | llama.cpp内のlinenoise例 | BSD 2-Clause形式の個別表示・免責。Copyright 2010–2014 Salvatore Sanfilippo、2010–2013 Pieter Noordhuis、2025 Eric Curtin | [固定版の原文](https://github.com/azooKey/llama.cpp/blob/88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c/examples/run/linenoise.cpp/LICENSE)。例に付属する資料で、現行アプリへの組込みは未確認 |
 | Zenz GGUFモデル | 公開モデルカードはApache 2.0を宣言 | [固定版モデルカード](https://huggingface.co/Miwa-Keita/zenz-v3.2-xsmall-gguf/blob/4f5423f0fad41a73b1242eb96fe5c12ae4fdca83/README.md)、[保持したメタデータ](notices/zenz-model-card.md)。[zenz/build.gradle](../../zenz/build.gradle) の既定値は `Miwa-Keita/zenz-v3.2-xsmall-gguf`、同リビジョン、Q5_K_M。ビルド設定による差替え、個々の重みの追加帰属・生成来歴は別途確認が必要で、網羅確認は未確認 |
-| LiteRT-LM Androidランタイム | `com.google.ai.edge.litertlm:litertlm-android:0.14.0` のPOMはApache 2.0を宣言 | [依存ライブラリ一覧](DEPENDENCIES.md)。Fullのみ。ランタイムの条件を持ち込むモデルへ一律に適用しない |
+| LiteRT-LM Androidランタイム | `com.google.ai.edge.litertlm:litertlm-android:0.19.0` のPOMはApache 2.0を宣言 | [依存ライブラリ一覧](DEPENDENCIES.md)。Fullのみ。ランタイムの条件を持ち込むモデルへ一律に適用しない |
 | Gemmaモデル | GoogleはGemma 4用の [Apache 2.0](https://ai.google.dev/gemma/apache_2) と、対象を限定した従来の [Gemma Terms of Use](https://ai.google.dev/gemma/terms) を区別 | アプリはユーザーが指定したモデルファイルを読み込む。実際の持込み版・モデル派生物・付随する条件は未確認。モデル名だけから同一条件と断定しない |
 | 持込み辞書・フォント・ユーザー登録・その他の外部入力 | 提供者またはユーザーの元資料の条件 | 同梱品の表から外部入力へ一律の許諾を与えない。個々の取得版・権利情報は本リポジトリから確認できない |
 

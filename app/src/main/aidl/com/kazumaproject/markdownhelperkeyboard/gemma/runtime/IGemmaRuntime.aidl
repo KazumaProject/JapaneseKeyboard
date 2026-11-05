@@ -5,6 +5,8 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.IGemmaRuntimeCallb
 oneway interface IGemmaRuntime {
     void initialize(String modelPath, String backend, int modalityFlags,
         IGemmaRuntimeCallback callback);
+    void initializeModel(String modelPath, String backend, String projectorPath, IGemmaRuntimeCallback callback);
+    void inspect(long requestId, String modelPath, String format, IGemmaRuntimeCallback callback);
     void generate(long requestId, String prompt, String mediaPath, int mediaType,
         IGemmaRuntimeCallback callback);
     void cancel(long requestId);

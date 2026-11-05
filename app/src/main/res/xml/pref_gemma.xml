@@ -39,6 +39,11 @@
             app:summary="@string/gemma_translation_model_summary_default" />
 
         <Preference
+            android:key="ai_projector_preference"
+            android:title="@string/ai_projector_title"
+            android:summary="@string/ai_projector_none" />
+
+        <Preference
             android:key="gemma_supported_models_preference"
             android:title="@string/gemma_supported_models_title"
             app:summary="@string/gemma_supported_models_summary" />

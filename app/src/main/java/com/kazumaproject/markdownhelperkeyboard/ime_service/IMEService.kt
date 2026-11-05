@@ -24959,11 +24959,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun launchGemmaImageAction() {
+        if (!gemmaTranslationManager.supportsMedia(com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType.IMAGE)) {
+            showToastMessage(getString(R.string.gemma_handwriting_unavailable))
+            return
+        }
         prepareForGemmaMediaPanel()
         ensureGemmaMediaPanelController().openImage()
     }
 
     private fun launchGemmaAudioAction() {
+        if (!gemmaTranslationManager.supportsMedia(com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType.AUDIO)) {
+            showToastMessage(getString(R.string.ai_audio_model_required))
+            return
+        }
         prepareForGemmaMediaPanel()
         ensureGemmaMediaPanelController().openAudio()
     }
