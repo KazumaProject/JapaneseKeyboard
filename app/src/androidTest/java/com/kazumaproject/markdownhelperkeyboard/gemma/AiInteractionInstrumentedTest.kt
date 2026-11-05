@@ -205,6 +205,25 @@ class AiInteractionInstrumentedTest {
                     node("gemma_floating_result")?.let { it.isClickable && it.text?.toString() == resumedResult } == true
                 }
                 assertEquals("PREFIX next", editorText())
+
+                if (args.getString("aiFormattedText") == "true") {
+                    val formattedAction = requireNotNull(inserted).copy(
+                        title = "日本語・改行QA",
+                        prompt = "Replace the word next with NEXT. Keep all other characters unchanged. Return only the result.",
+                    )
+                    runBlocking { repository!!.update(formattedAction) }
+                    val source = "「こんにちは next」\n\"日本語 next\" 😀"
+                    val expected = "「こんにちは NEXT」\n\"日本語 NEXT\" 😀"
+                    reset("PREFIX $source SUFFIX")
+                    scene.onActivity { it.editText.setSelection(7, 7 + source.length) }
+                    await("Formatted text selection action missing") { text(formattedAction.title) != null }
+                    capture("14-formatted-selection")
+                    touch(requireNotNull(text(formattedAction.title)))
+                    await("AI text lost Japanese characters, quotes, emoji, line breaks or surrounding text") {
+                        editorText() == "PREFIX $expected SUFFIX"
+                    }
+                    capture("15-formatted-selection-replaced")
+                }
             }
         } finally {
             inserted?.let { row -> runBlocking { repository?.delete(row) } }

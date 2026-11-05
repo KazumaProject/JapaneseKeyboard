@@ -36,8 +36,9 @@ class GemmaRuntimeOutputTest {
         val text = "    Markdown code\n\tsecond line 😀\n\n"
         verify(generate(text, true)).onResult(1L, text)
     }
-    @Test fun foregroundTranslationTrimsSurroundingWhitespace() {
-        verify(generate("  Translation\n\n", false)).onResult(1L, "Translation")
+    @Test fun foregroundTextKeepsSurroundingWhitespace() {
+        val result = "  Translation\n\n"
+        verify(generate(result, false)).onResult(1L, result)
     }
     @Test fun whitespaceOnlyPreviewIsRejected() {
         val callback = generate(" \t\n\n", true)
