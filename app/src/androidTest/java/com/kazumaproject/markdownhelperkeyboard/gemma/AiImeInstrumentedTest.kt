@@ -10,9 +10,11 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.ProgressBar
 import androidx.preference.PreferenceManager
 import androidx.preference.ListPreference
 import androidx.preference.Preference
+import androidx.preference.SwitchPreferenceCompat
 import androidx.navigation.fragment.NavHostFragment
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -30,6 +32,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import kotlinx.coroutines.runBlocking
 
 /** Touch input -> production IME -> selected AI backend -> floating result -> editor insertion. */
 @RunWith(AndroidJUnit4::class)
@@ -163,9 +166,100 @@ class AiImeInstrumentedTest {
                     assertTrue(models.entryValues.any { value -> value.toString().endsWith(".gguf") })
                     assertTrue(models.entryValues.any { value -> value.toString().endsWith(".litertlm") })
                     assertEquals(model.extension == "gguf", fragment.findPreference<Preference>("ai_projector_preference")?.isEnabled)
+                    val backend = requireNotNull(fragment.findPreference<ListPreference>("gemma_translation_backend_preference"))
+                    assertTrue("Select a backend before enabling AI", backend.isEnabled)
+                    assertEquals(listOf("cpu", "gpu_if_available"), backend.entryValues.map { it.toString() })
+                    assertFalse(requireNotNull(fragment.findPreference<Preference>("ai_model_loading_preference")).isVisible)
                 }
             }
         } finally {
+            restorePreferences(preferences, saved)
+            AppPreference.init(context)
+        }
+    }
+
+    @Test(timeout = 240_000)
+    fun modelLoadingShowsProgressAndRestoresControlsOnSuccessAndFailure() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assumeTrue("Use the isolated QA application ID", context.packageName == "com.kazumaproject.universalaiqa")
+        val arguments = InstrumentationRegistry.getArguments()
+        val filename = arguments.getString("aiModel")
+        assumeTrue("Supply aiModel", filename != null)
+        val model = File(context.getExternalFilesDir(null), "gemma/$filename")
+        assertTrue(model.isFile)
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val saved = preferences.all.toMap()
+        val invalid = File(context.cacheDir, "invalid-loading-model.gguf")
+        var manager: GemmaTranslationManager? = null
+        try {
+            preferences.edit().putBoolean("gemma_translation_enable_preference", false)
+                .putString("gemma_translation_model_path_preference", model.absolutePath).commit()
+            AppPreference.init(context)
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.awaitSettingsContentReady()
+                scenario.onActivity {
+                    (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment)
+                        .navController.navigate(R.id.gemmaPreferenceFragment)
+                }
+                fun fragment(activity: MainActivity): GemmaPreferenceFragment? =
+                    (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment)
+                        .childFragmentManager.primaryNavigationFragment as? GemmaPreferenceFragment
+                fun await(message: String, condition: (MainActivity) -> Boolean) {
+                    val deadline = SystemClock.uptimeMillis() + 120_000
+                    while (true) {
+                        var ready = false
+                        scenario.onActivity { ready = condition(it) }
+                        if (ready) return
+                        check(SystemClock.uptimeMillis() < deadline) { message }
+                        SystemClock.sleep(20)
+                    }
+                }
+                await("AI preferences did not load") {
+                    fragment(it)?.findPreference<ListPreference>("gemma_model_selection_preference")?.entryValues?.isNotEmpty() == true
+                }
+                scenario.onActivity {
+                    val current = requireNotNull(fragment(it))
+                    manager = current.gemmaTranslationManager
+                    assertTrue(manager!!.selectModel(model.absolutePath))
+                    val backend = requireNotNull(current.findPreference<ListPreference>("gemma_translation_backend_preference"))
+                    val requested = arguments.getString("aiBackend") ?: "cpu"
+                    assertTrue(backend.isEnabled)
+                    assertTrue(backend.callChangeListener(requested))
+                    backend.value = requested
+                    val enabled = requireNotNull(current.findPreference<SwitchPreferenceCompat>("gemma_translation_enable_preference"))
+                    assertTrue(enabled.callChangeListener(true))
+                    enabled.isChecked = true
+                }
+                await("Visible indeterminate model progress did not appear") {
+                    val progress = it.findViewById<ProgressBar>(R.id.ai_model_loading_progress)
+                    progress?.isShown == true && progress.isIndeterminate &&
+                        fragment(it)?.findPreference<ListPreference>("gemma_translation_backend_preference")?.isEnabled == false
+                }
+                await("Model did not finish loading") {
+                    manager!!.loadState.value is GemmaLoadState.Ready &&
+                        fragment(it)?.findPreference<Preference>("ai_model_loading_preference")?.isVisible == false &&
+                        fragment(it)?.findPreference<ListPreference>("gemma_translation_backend_preference")?.isEnabled == true
+                }
+                arguments.getString("aiExpectedBackend")?.let { expected ->
+                    assertEquals(expected, (manager!!.loadState.value as GemmaLoadState.Ready).backend)
+                }
+
+                invalid.outputStream().use { it.write("GGUF".toByteArray()); it.write(ByteArray(1_048_576)) }
+                scenario.onActivity {
+                    assertTrue(manager!!.selectModel(invalid.absolutePath))
+                    val backend = requireNotNull(fragment(it)?.findPreference<ListPreference>("gemma_translation_backend_preference"))
+                    assertTrue(backend.callChangeListener("cpu"))
+                    backend.value = "cpu"
+                }
+                await("A failed load left progress or disabled controls") {
+                    manager!!.loadState.value is GemmaLoadState.Failed &&
+                        fragment(it)?.findPreference<Preference>("ai_model_loading_preference")?.isVisible == false &&
+                        fragment(it)?.findPreference<ListPreference>("gemma_translation_backend_preference")?.isEnabled == true
+                }
+            }
+        } finally {
+            runBlocking { manager?.disable() }
+            invalid.delete()
             restorePreferences(preferences, saved)
             AppPreference.init(context)
         }

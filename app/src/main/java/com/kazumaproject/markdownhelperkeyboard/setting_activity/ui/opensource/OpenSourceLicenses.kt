@@ -112,7 +112,7 @@ internal class OpenSourceLicenses(private val context: Context) {
                         "88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c",
                         text(R.string.license_llama_changes), "MIT License", original("software-licenses/llama-mit.txt"))
                 },
-                LicenseItem("ai-runtime", "ggml-org/llama.cpp / libmtmd", "MIT and bundled third-party notices") {
+                LicenseItem("ai-runtime", "ggml-org/llama.cpp / libmtmd / Vulkan headers", "MIT, Apache-2.0 and bundled third-party notices") {
                     "<h1>llama.cpp / libmtmd</h1>" +
                         link("https://github.com/ggml-org/llama.cpp/tree/cd959bae99ff4bed22bef2604f45241c09bbb8c8") +
                         original("software-licenses/ai-runtime-notices.txt")
