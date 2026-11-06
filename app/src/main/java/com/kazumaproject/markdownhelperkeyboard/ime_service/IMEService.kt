@@ -24940,7 +24940,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             return
         }
-        val canReconnect = (mushroomEditor?.fieldId ?: 0) > 0 && mushroomEditor?.token != null
+        // Some editors, including GeckoView, reopen the connection without a view ID.
+        // The binding and editor metadata matched above; apply() still checks the text and selection.
+        val canReconnect = mushroomEditor?.token != null
         mushroomTarget = null
         mushroomResult = null
         mushroomEditor = null

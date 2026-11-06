@@ -7,7 +7,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.view.View;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -43,7 +46,15 @@ public final class MushroomPluginActivity extends Activity {
             registerReceiver(closeReceiver, closeFilter);
         }
         if (getIntent().getBooleanExtra("editor", false)) {
-            editor = new EditText(this);
+            editor = new EditText(this) {
+                @Override public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+                    InputConnection connection = super.onCreateInputConnection(outAttrs);
+                    if (getIntent().getBooleanExtra("no_editor_field_id", false)) {
+                        outAttrs.fieldId = View.NO_ID;
+                    }
+                    return connection;
+                }
+            };
             editor.setId(android.R.id.input);
             editor.setText("abc");
             editor.setSelection(1, 2);
