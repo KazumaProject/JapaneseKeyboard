@@ -7304,7 +7304,7 @@ seem	-	seems	-	seemed	seemed
 seems	seem	-	seem	seemed	seemed
 seep	-	seeps	-	seeped	seeped
 seeps	seep	-	seep	seeped	seeped
-sees	see	-	see	-	-
+sees	see	-	see	saw	saw
 seethe	-	-	-	seethed	seethed
 segment	-	segments	-	segmented	segmented
 segments	segment	-	segment	segmented	segmented
@@ -9129,6 +9129,7 @@ warranties	warranty	-	warranty	-	-
 warrants	warrant	-	warrant	warranted	warranted
 warranty	-	warranties	-	-	-
 wars	war	-	war	warred	warred
+was	-	-	were	-	were
 wash	-	washes	-	washed	washed
 washes	wash	-	wash	washed	washed
 waste	-	wastes	-	wasted	wasted
@@ -9189,6 +9190,7 @@ wells	well	-	well	welled	welled
 wels	-	-	-	welled	welled
 welt	-	welts	-	-	-
 welts	welt	-	welt	-	-
+were	was	was	-	was	-
 wets	wet	-	wet	-	-
 whack	-	whacks	-	whacked	whacked
 whacks	whack	-	whack	whacked	whacked
@@ -9296,8 +9298,8 @@ woods	wood	-	wood	wooded	wooded
 woos	woo	-	woo	wooed	wooed
 word	-	words	-	worded	worded
 words	word	-	word	worded	worded
-work	-	works	-	-	-
-works	work	-	work	-	-
+work	-	works	-	worked	worked
+works	work	-	work	worked	worked
 worm	-	worms	-	wormed	wormed
 worms	worm	-	worm	wormed	wormed
 worries	worry	-	worry	worried	worried
