@@ -27,16 +27,56 @@ internal class PhraseConverter(
     private val beamWidth: Int = 96,
     private val completionLimit: Int = 128,
 ) {
-    private data class Path(
-        val text: String = "",
-        val segments: List<Segment> = emptyList(),
+    private class Path(
+        val previous: Path? = null,
+        val segment: Segment? = null,
         val cost: Int = 0,
         val evidence: PhraseEvidence = PhraseEvidence(),
         val splits: Int = 0,
         val splitDirectPrefix: Boolean = false,
         val unknownChars: Int = 0,
         val addedChars: Int = 0,
-    )
+    ) {
+        val segmentCount: Int = (previous?.segmentCount ?: -1) + 1
+        private val textLength: Int = (previous?.textLength ?: 0) + (segment?.surface?.length ?: 0) +
+            if (segment?.inferredSpace == true) 1 else 0
+        private var rendered: String? = null
+
+        fun copySurfacesInto(destination: Array<String?>) {
+            var path = this
+            for (index in segmentCount - 1 downTo 0) {
+                destination[index] = checkNotNull(path.segment).surface
+                path = checkNotNull(path.previous)
+            }
+        }
+
+        fun render(): String {
+            rendered?.let { return it }
+            val characters = CharArray(textLength)
+            var end = characters.size
+            var path: Path? = this
+            while (path != null) {
+                val part = path.segment ?: break
+                val surface = part.surface
+                end -= surface.length
+                surface.toCharArray(characters, end)
+                if (part.inferredSpace) characters[--end] = ' '
+                path = path.previous
+            }
+            return characters.concatToString().also { rendered = it }
+        }
+
+        fun collectSegments(): List<Segment> {
+            val result = ArrayList<Segment>(segmentCount)
+            var path: Path? = this
+            while (path != null) {
+                result.add(path.segment ?: break)
+                path = path.previous
+            }
+            result.reverse()
+            return result
+        }
+    }
 
     fun convert(text: String, prefixMode: Boolean, limit: Int): List<PhraseCandidate> {
         require(text.isNotBlank() && text.length <= MAX_INPUT) {
@@ -48,25 +88,35 @@ internal class PhraseConverter(
         val edges = lattice(text, prefixMode)
         val order = if (prefixMode) prefixOrder else exactOrder
         val paths = Array(text.length + 1) { mutableListOf<Path>() }
+        val surfaces = arrayOfNulls<String>(text.length)
         paths[0].add(Path())
         for (offset in text.indices) {
             val current = paths[offset]
             if (current.isEmpty()) continue
             for (segment in edges[offset]) {
                 val next = paths[segment.end]
+                val addedChars = if (segment.kind == SegmentKind.COMPLETION) {
+                    var typed = 0
+                    for (index in segment.start until segment.end) {
+                        val character = text[index]
+                        if (character !in keyboardPunctuation && character != '’') typed++
+                    }
+                    checkNotNull(segment.reading).length - typed
+                } else {
+                    0
+                }
                 for (path in current) {
-                    val segments = path.segments + segment
+                    path.copySurfacesInto(surfaces)
+                    surfaces[path.segmentCount] = segment.surface
                     next += Path(
-                        path.text + (if (segment.inferredSpace) " " else "") + segment.surface,
-                        segments,
-                        path.cost + segment.cost,
-                        grammar.score(segments.map { it.surface }),
-                        path.splits + if (segment.inferredSpace) 1 else 0,
-                        path.splitDirectPrefix || segment.splitDirectPrefix,
-                        path.unknownChars + if (segment.unknown) segment.end - segment.start else 0,
-                        path.addedChars + if (segment.kind == SegmentKind.COMPLETION)
-                            segment.reading!!.length - text.substring(segment.start, segment.end)
-                                .count { it !in keyboardPunctuation && it != '’' } else 0,
+                        previous = path,
+                        segment = segment,
+                        cost = path.cost + segment.cost,
+                        evidence = grammar.score(surfaces, path.segmentCount + 1),
+                        splits = path.splits + if (segment.inferredSpace) 1 else 0,
+                        splitDirectPrefix = path.splitDirectPrefix || segment.splitDirectPrefix,
+                        unknownChars = path.unknownChars + if (segment.unknown) segment.end - segment.start else 0,
+                        addedChars = path.addedChars + addedChars,
                     )
                 }
                 if (next.size > beamWidth) {
@@ -74,10 +124,15 @@ internal class PhraseConverter(
                     next.subList(beamWidth, next.size).clear()
                 }
             }
+            current.clear()
         }
-        return paths.last().sortedWith(order).distinctBy { it.text }.take(limit).map {
-            PhraseCandidate(it.text, it.segments, it.cost, it.evidence)
-        }
+        val finalPaths = paths.last()
+        finalPaths.sortWith(order)
+        return finalPaths.asSequence()
+            .distinctBy(Path::render)
+            .take(limit)
+            .map { PhraseCandidate(it.render(), it.collectSegments(), it.cost, it.evidence) }
+            .toList()
     }
 
     private fun lattice(text: String, prefixMode: Boolean): Array<MutableList<Segment>> {
@@ -186,8 +241,8 @@ internal class PhraseConverter(
             .thenByDescending { it.evidence.score }
             .thenBy { it.splits }
         private val exactOrder = coverageOrder.then(grammarOrder)
-            .thenBy { it.addedChars }.thenBy { it.cost }.thenBy { it.text }
+            .thenBy { it.addedChars }.thenBy { it.cost }.thenBy(Path::render)
         private val prefixOrder = coverageOrder.thenBy { it.splitDirectPrefix }.then(grammarOrder)
-            .thenBy { it.cost }.thenBy { it.addedChars }.thenBy { it.text }
+            .thenBy { it.cost }.thenBy { it.addedChars }.thenBy(Path::render)
     }
 }
