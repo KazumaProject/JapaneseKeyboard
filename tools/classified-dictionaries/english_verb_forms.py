@@ -33,15 +33,35 @@ def build_english_verb_forms(data):
 
     def replacement(source, targets, *, past):
         roles = by_surface[source]
+        if source in {'was', 'were'}:
+            be_target = 'aux_be_past_other' if targets in (OTHER, PAST_OTHER) else 'aux_be_past_1sg_3sg'
+            be_roles = {'aux_be_past_other', 'aux_be_past_1sg_3sg'}
+            if any(be_target in categories for categories in roles.values()):
+                return ''
+            be_choices = {
+                form for lexeme, categories in roles.items() if categories & be_roles
+                for form in by_lexeme[lexeme].get(be_target, ())
+            }
+            return next(iter(be_choices)) if len(be_choices) == 1 else ''
+
         # An already-valid reading or a valid past-tense homograph takes precedence.
         if any(categories & (targets | PAST) for categories in roles.values()):
             return ''
         if past and source in {'have', 'has', 'do', 'does'}:
             return ''
-        choices = {
-            form for lexeme, categories in roles.items() if categories & PRESENT
-            for target in targets for form in by_lexeme[lexeme].get(target, ())
-        }
+        choices = set()
+        reviewed_choices = set()
+        for lexeme, categories in roles.items():
+            if not categories & PRESENT:
+                continue
+            forms = {form for target in targets for form in by_lexeme[lexeme].get(target, ())}
+            choices.update(forms)
+            if lexeme.startswith('v-'):
+                reviewed_choices.update(forms)
+        # The reviewed grammar's v-* seed lexemes supply the ordinary forms of
+        # common verbs such as work, even when other sources list rare variants.
+        if past and len(choices) > 1 and len(reviewed_choices) == 1:
+            choices = reviewed_choices
         if len(choices) == 1:
             choice = next(iter(choices))
             if choice != source:
