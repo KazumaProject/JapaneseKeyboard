@@ -300,6 +300,10 @@ class GemmaTranslationManager @Inject constructor(
                     "CPU_FALLBACK" -> context.getString(
                         R.string.gemma_translation_backend_runtime_cpu_fallback,
                     )
+                    "NPU_CPU_FALLBACK" -> context.getString(
+                        R.string.ai_npu_cpu_fallback,
+                    )
+                    "NPU" -> context.getString(R.string.ai_backend_npu)
                     "GPU" -> context.getString(R.string.gemma_translation_backend_runtime_gpu)
                     else -> context.getString(R.string.gemma_translation_backend_runtime_cpu)
                 }

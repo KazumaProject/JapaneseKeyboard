@@ -524,10 +524,12 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
                     File(state.modelPath).name,
                     state.backend,
                 )
-                if (state.backend == getString(R.string.gemma_translation_backend_runtime_cpu_fallback)) {
-                    "$ready\n${getString(R.string.gemma_translation_model_summary_cpu_fallback_ready)}"
-                } else {
-                    ready
+                when (state.backend) {
+                    getString(R.string.gemma_translation_backend_runtime_cpu_fallback) ->
+                        "$ready\n${getString(R.string.gemma_translation_model_summary_cpu_fallback_ready)}"
+                    getString(R.string.ai_npu_cpu_fallback) ->
+                        "$ready\n${getString(R.string.ai_npu_cpu_fallback_summary)}"
+                    else -> ready
                 }
             }
             is GemmaLoadState.Failed ->
@@ -538,6 +540,7 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
     private fun loadingSummary(backendPreference: String): String {
         val backendLabel = when (backendPreference) {
             "gpu_if_available" -> getString(R.string.gemma_translation_backend_runtime_gpu)
+            "npu_if_available" -> getString(R.string.ai_backend_npu)
             else -> getString(R.string.gemma_translation_backend_runtime_cpu)
         }
         return getString(R.string.gemma_translation_model_summary_loading_backend, backendLabel)
