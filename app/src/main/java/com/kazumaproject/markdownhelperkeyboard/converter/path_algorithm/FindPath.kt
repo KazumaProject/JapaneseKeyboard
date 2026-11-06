@@ -1101,12 +1101,14 @@ class FindPath(
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         originalInput: String? = null,
+        latticeEdgeCost: LatticeEdgeCost? = null,
     ): MutableList<Candidate> {
         cancellationCheck()
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
         val incrementalMetadata = graph as? IncrementalGraphMetadata
         val activeCache = if (sessionState != null) sessionState.forwardDpCache else forwardDpCache
         val reusableForwardDp = activeCache?.takeIf { cached ->
+            latticeEdgeCost == null &&
             incrementalMetadata != null &&
                 incrementalMetadata.forwardDpReusableThroughEndIndex == cached.inputLength &&
                 incrementalMetadata.conversionSignature == cached.conversionSignature &&
@@ -1131,10 +1133,11 @@ class FindPath(
             connectionMatrix = connectionMatrix,
             beamWidth = effectiveBeamWidth,
             startPosition = forwardDpStartPosition,
+            latticeEdgeCost = latticeEdgeCost,
             cancellationCheck = cancellationCheck,
         )
         sessionState?.afterForwardDpForTest?.invoke()
-        val updatedCache = incrementalMetadata?.let {
+        val updatedCache = incrementalMetadata?.takeIf { latticeEdgeCost == null }?.let {
             ForwardDpCache(
                 inputLength = length,
                 conversionSignature = it.conversionSignature,
@@ -1247,6 +1250,7 @@ class FindPath(
                         ngramRuleScorer = ngramRuleScorer,
                         boundaryChecker = null,
                         scratch = searchScratch,
+                        latticeEdgeCost = latticeEdgeCost,
                     )
                     for (index in 0 until expansions.size) {
                         enqueueBackwardExpansion(
@@ -1267,7 +1271,8 @@ class FindPath(
                             rid = prevNode.r.toInt(),
                             lid = currentNode.l.toInt(),
                             connectionMatrix = connectionMatrix,
-                        ) + currentNode.adjustedScore + ngramRuleScorer.score(
+                        ) + currentNode.adjustedScore +
+                            (latticeEdgeCost?.cost(prevNode, currentNode) ?: 0) + ngramRuleScorer.score(
                             prevNode = prevNode,
                             currentNode = currentNode,
                             nextNode1 = element.next?.node,
@@ -1290,6 +1295,7 @@ class FindPath(
         beamWidth: Int = 20,
         startPosition: Int = 1,
         cancellationCheck: () -> Unit = {},
+        latticeEdgeCost: LatticeEdgeCost? = null,
     ) {
         for (i in startPosition..length + 1) {
             cancellationCheck()
@@ -1307,7 +1313,7 @@ class FindPath(
                         lid = node.l.toInt(),
                         connectionMatrix = connectionMatrix,
                     )
-                    val tempCost = prev.f + nodeScore + edgeCost
+                    val tempCost = prev.f + nodeScore + edgeCost + (latticeEdgeCost?.cost(prev, node) ?: 0)
                     if (tempCost < score) {
                         score = tempCost
                         bestPrev = prev
@@ -1423,6 +1429,7 @@ class FindPath(
         ngramRuleScorer: NgramRuleScorer,
         boundaryChecker: MozcBoundaryChecker?,
         scratch: BackwardSearchScratch,
+        latticeEdgeCost: LatticeEdgeCost? = null,
     ): ExpansionList {
         val currentNode = element.node
         val nodeIds = scratch.nodeIds
@@ -1478,7 +1485,8 @@ class FindPath(
                 rid = previousNode.r.toInt(),
                 lid = currentNode.l.toInt(),
                 connectionMatrix = connectionMatrix,
-            ) + currentNode.adjustedScore + ngramRuleScorer.score(
+            ) + currentNode.adjustedScore +
+                (latticeEdgeCost?.cost(previousNode, currentNode) ?: 0) + ngramRuleScorer.score(
                 prevNode = previousNode,
                 currentNode = currentNode,
                 nextNode1 = element.next?.node,
@@ -1711,6 +1719,7 @@ class FindPath(
         sessionState: SessionState? = null,
         candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
         originalInput: String? = null,
+        latticeEdgeCost: LatticeEdgeCost? = null,
     ): BunsetsuCandidateResult {
         cancellationCheck()
         val performanceState = sessionState?.takeIf { it.performanceProbeEnabled }
@@ -1760,6 +1769,7 @@ class FindPath(
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
         val activeCache = if (sessionState != null) sessionState.forwardDpCache else forwardDpCache
         val reusableForwardDp = activeCache?.takeIf { cached ->
+            latticeEdgeCost == null &&
             forwardDpTrace == null &&
                 incrementalMetadata != null &&
                 incrementalMetadata.forwardDpReusableThroughEndIndex == cached.inputLength &&
@@ -1789,6 +1799,7 @@ class FindPath(
                 connectionMatrix = connectionMatrix,
                 beamWidth = effectiveBeamWidth,
                 startPosition = forwardDpStartPosition,
+                latticeEdgeCost = latticeEdgeCost,
                 cancellationCheck = cancellationCheck,
             )
         } finally {
@@ -1799,7 +1810,7 @@ class FindPath(
         }
         sessionState?.afterForwardDpForTest?.invoke()
 
-        val updatedCache = if (incrementalMetadata != null) {
+        val updatedCache = if (incrementalMetadata != null && latticeEdgeCost == null) {
             ForwardDpCache(
                 inputLength = length,
                 conversionSignature = incrementalMetadata.conversionSignature,
@@ -2030,6 +2041,7 @@ class FindPath(
                         ngramRuleScorer = ngramRuleScorer,
                         boundaryChecker = boundaryChecker,
                         scratch = searchScratch,
+                        latticeEdgeCost = latticeEdgeCost,
                     )
                     for (index in 0 until expansions.size) {
                         enqueueBackwardExpansion(
@@ -2067,7 +2079,8 @@ class FindPath(
                             rid = prevNode.r.toInt(),
                             lid = currentNode.l.toInt(),
                             connectionMatrix = connectionMatrix,
-                        ) + currentNode.adjustedScore + ngramRuleScorer.score(
+                        ) + currentNode.adjustedScore +
+                            (latticeEdgeCost?.cost(prevNode, currentNode) ?: 0) + ngramRuleScorer.score(
                             prevNode = prevNode,
                             currentNode = currentNode,
                             nextNode1 = element.next?.node,

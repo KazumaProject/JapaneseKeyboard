@@ -9,6 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateComp
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
+import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.LatticeEdgeCost
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import kotlinx.coroutines.CancellationException
@@ -88,7 +89,20 @@ class KanaKanjiConversionSession(
         incrementalState?.pathState?.afterForwardDpForTest = callback
     }
 
-    suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
+    suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = query(request, null)
+
+    internal suspend fun queryWithLatticeCost(
+        request: KanaKanjiQueryRequest,
+        latticeEdgeCost: LatticeEdgeCost,
+    ): KanaKanjiQueryResult {
+        require(request.mode == CandidateQueryMode.CONVERSION)
+        return query(request, latticeEdgeCost)
+    }
+
+    private suspend fun query(
+        request: KanaKanjiQueryRequest,
+        latticeEdgeCost: LatticeEdgeCost?,
+    ): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
             val nBestCollector = NBestCandidateCollector(measureNBestSelection)
@@ -102,7 +116,7 @@ class KanaKanjiConversionSession(
 
                 CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request, nBestCollector)
                 CandidateQueryMode.PREDICTION -> queryPrediction(request, nBestCollector)
-                CandidateQueryMode.CONVERSION -> queryConversion(request, nBestCollector)
+                CandidateQueryMode.CONVERSION -> queryConversion(request, nBestCollector, latticeEdgeCost)
             }
             val composedResult = result.copy(
                 bestNBestCandidate = nBestCollector.best,
@@ -225,7 +239,11 @@ class KanaKanjiConversionSession(
         }
     }
 
-    private suspend fun queryConversion(request: KanaKanjiQueryRequest, nBestCollector: NBestCandidateCollector): KanaKanjiQueryResult {
+    private suspend fun queryConversion(
+        request: KanaKanjiQueryRequest,
+        nBestCollector: NBestCandidateCollector,
+        latticeEdgeCost: LatticeEdgeCost?,
+    ): KanaKanjiQueryResult {
         val segmentCollector = request.newCandidateSegmentCollector()
         return if (request.bunsetsuSeparation) {
             engine.getCandidatesWithoutPredictionWithBunsetsu(
@@ -246,6 +264,7 @@ class KanaKanjiConversionSession(
                 ),
                 candidateSegmentCollector = segmentCollector,
                 nBestCandidateCollector = nBestCollector,
+                latticeEdgeCost = latticeEdgeCost,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
@@ -267,6 +286,7 @@ class KanaKanjiConversionSession(
                     ),
                     candidateSegmentCollector = segmentCollector,
                     nBestCandidateCollector = nBestCollector,
+                    latticeEdgeCost = latticeEdgeCost,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )
