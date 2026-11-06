@@ -20064,24 +20064,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 !NgWordMatcher.matchesAny(displayInput, it.string, ngWords)
         } ?: return null
         val input = reading.hiraganaToKatakana()
-        val result = reviewZenzaiDraft(
-            initialDraft = draft.string,
-            evaluationLimit = ZENZAI_EVALUATION_LIMIT,
-            evaluate = { candidate ->
-                zenzRuntimeClient.evaluate(
-                    config = config,
-                    profile = zenzProfilePreference.orEmpty(),
-                    topic = "",
-                    style = "",
-                    preference = "",
-                    leftContext = context.leftContext,
-                    rightContext = context.rightContext,
-                    input = input,
-                    candidate = candidate,
-                )
-            },
-            search = drafts.constrainedSearch::find,
-        )
+        val result = zenzRuntimeClient.withDraftReview { reviewId ->
+            reviewZenzaiDraft(
+                initialDraft = draft.string,
+                evaluationLimit = ZENZAI_EVALUATION_LIMIT,
+                evaluate = { candidate ->
+                    zenzRuntimeClient.evaluate(
+                        config = config,
+                        profile = zenzProfilePreference.orEmpty(),
+                        topic = "",
+                        style = "",
+                        preference = "",
+                        leftContext = context.leftContext,
+                        rightContext = context.rightContext,
+                        input = input,
+                        candidate = candidate,
+                        draftReviewId = reviewId,
+                    )
+                },
+                search = drafts.constrainedSearch::find,
+            )
+        }
         return result.text.takeUnless { NgWordMatcher.matchesAny(displayInput, it, ngWords) }
     }
 
