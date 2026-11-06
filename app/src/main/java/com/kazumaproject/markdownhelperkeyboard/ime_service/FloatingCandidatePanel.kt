@@ -19,7 +19,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.Floa
 import timber.log.Timber
 
 /** Candidate-strip coordinates work even when the editor does not expose character bounds. */
-internal class ZenzFloatingWindow(
+internal class FloatingCandidatePanel(
     private val context: Context,
     private val anchor: () -> View?,
     private val windowToken: () -> IBinder?,
@@ -27,6 +27,7 @@ internal class ZenzFloatingWindow(
     private val colors: () -> CandidatePanelColors,
     private val validRequest: (Long) -> Boolean,
     private val commit: (Long, String) -> Boolean,
+    private val textViewId: Int = R.id.zenz_floating_candidate_text,
 ) {
     private val manager = context.getSystemService(WindowManager::class.java)
     private val coordinates = FloatingWindowCoordinates(manager)
@@ -132,7 +133,7 @@ internal class ZenzFloatingWindow(
             clipToOutline = true
             elevation = dp(8).toFloat()
             addView(TextView(context).apply {
-                id = R.id.zenz_floating_candidate_text
+                id = textViewId
                 textSize = 18f
                 minHeight = dp(48)
                 gravity = Gravity.CENTER_VERTICAL
