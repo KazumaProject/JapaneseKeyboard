@@ -45,7 +45,12 @@ class OpenSourceLicensesTest {
         }
         items.forEach {
             val html = it.document()
-            assertTrue(it.id, html.contains("v1.7.283 (b9f3375a1cfb0ce5e56f4da622ecc4e983364581)"))
+            val revision = if (it.id == "dictionary/english") {
+                "english-dictionary-preview.1 (dbbb97fc9b7cdd32441d3719b76eb0493fa787a2)"
+            } else {
+                "v1.7.283 (b9f3375a1cfb0ce5e56f4da622ecc4e983364581)"
+            }
+            assertTrue(it.id, html.contains(revision))
             assertTrue(it.id, html.contains("<pre>"))
         }
     }

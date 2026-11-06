@@ -2033,5 +2033,18 @@
     "app/src/main/assets/system/tango.dat.zip": "5fbaf9bbd620d2766b46cd247d1d862f83bf012d988900361970e988b7d62965",
     "app/src/main/assets/system/token.dat.zip": "02c560fb0e1a39bfa9bba09d4453416c3d0232a0e8380466351cd0401d44945f",
     "app/src/main/assets/system/yomi.dat.zip": "716297c927aaeeb6630f50b371953ae0343b5126bfdd512240e5310e1cbfa74a"
+  },
+  "englishDictionary": {
+    "version": "english-dictionary-preview.1",
+    "revision": "dbbb97fc9b7cdd32441d3719b76eb0493fa787a2",
+    "archiveSha256": "17844989533be48541ac187ce030142f8d3e95f146415fe206e16d2a9cf44796",
+    "assets": {
+      "app/src/main/assets/english/reading.dat.zip": "bff698664719f26761b55e30251d97962b36bc1f17c2a8aa942b5e4b2f7503ee",
+      "app/src/main/assets/english/word.dat": "6008c66d95f74c215b2c3bd0a2d124d60323cdfeedc66abb3e8d2364883dc52e",
+      "app/src/main/assets/english/token.dat.zip": "4d6a9494f5bd0a4d26246dae680d66295d719d90639fc2e5e3d1302a4d9ffa14",
+      "app/src/main/assets/english/qwerty_glide_index.dat": "54a332d4bbac08f58481b86ed8a37cc6a76957d219ab0e4687a5c46305cb7ee3",
+      "app/src/main/assets/english/grammar/categories.erol": "9ebc4470332ce08a727b953f9fa510513f5edbdc839586aa396d94d9e40ddfeb",
+      "app/src/main/assets/licenses/english.html": "cd5cc274c5f4377b9c74af6a86ef62e21895f4a72ee3f39d1328e2925fb717ce"
+    }
   }
 }
