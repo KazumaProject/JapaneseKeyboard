@@ -73,7 +73,7 @@ class GemmaRuntimeService : Service() {
     }
 
     private fun newBackend(format: String): AiRuntimeBackend = when (format.lowercase()) {
-        "litertlm" -> LiteRtRuntimeBackend(cacheDir.absolutePath)
+        "litertlm" -> LiteRtRuntimeBackend(this)
         "gguf" -> GgufRuntimeBackend()
         else -> error("Select a .litertlm or .gguf model.")
     }
