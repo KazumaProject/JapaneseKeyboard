@@ -7,13 +7,21 @@ import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.English
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.PhraseConverter
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.RuntimeGrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltLoadResult
+import com.kazumaproject.markdownhelperkeyboard.converter.session.CandidateQueryMode
+import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiConversionSession
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryRequest
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.UUID
@@ -73,6 +81,40 @@ class EnglishPhraseDictionaryInstrumentedTest {
         store.setExternalEnabledForCategory(DictionaryCategory.ENGLISH, false)
         engine.reloadDictionariesFromCurrentSources(reader)
         assertTrue(query(true).any { it.string == "he can take" })
+    }
+
+    @Test
+    fun conversionTabShowsExactPhrasesWithoutCompletions() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(context, KanaKanjiEngineEntryPoint::class.java)
+        val engine = entryPoint.kanaKanjiEngine()
+        val repository = entryPoint.userDictionaryRepository()
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (bunsetsu in listOf(false, true)) {
+                suspend fun query(input: String, englishPrediction: Boolean = true) = session.query(
+                    KanaKanjiQueryRequest(
+                        input = input,
+                        mode = CandidateQueryMode.CONVERSION,
+                        bunsetsuSeparation = bunsetsu,
+                        n = 4,
+                        userDictionaryRepository = repository,
+                        learnRepository = null,
+                        omissionSearchEnabled = false,
+                        typoCorrectionJapaneseFlickEnabled = false,
+                        typoCorrectionQwertyEnglishEnabled = false,
+                        typoCorrectionOffsetScore = 3000,
+                        omissionSearchOffsetScore = 1900,
+                        beamWidth = 20,
+                        predictionConfig = PredictionConfig(englishPredictionEnabled = englishPrediction),
+                    ),
+                ).candidates
+
+                assertTrue(query("hecantake").any { it.string == "he can take" && it.length.toInt() == 9 })
+                assertFalse(query("he tak").any { it.string == "he takes" })
+                assertFalse(query("hecantake", englishPrediction = false).any { it.string == "he can take" })
+            }
+        }
     }
 
     @Test
