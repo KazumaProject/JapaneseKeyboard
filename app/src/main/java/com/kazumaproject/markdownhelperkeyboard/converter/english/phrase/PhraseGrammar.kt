@@ -1,16 +1,23 @@
 // Adapted from kotlin-kana-kanji-converter at dbbb97f (MIT). See the bundled English dictionary notices.
 package com.kazumaproject.markdownhelperkeyboard.converter.english.phrase
 
-internal data class PhraseEvidence(
-    val score: Int = 0,
-    val clauses: Int = 0,
-    val reasons: List<String> = emptyList(),
-) {
-    operator fun plus(other: PhraseEvidence) =
-        PhraseEvidence(score + other.score, clauses + other.clauses, reasons + other.reasons)
+@JvmInline
+internal value class PhraseEvidence private constructor(private val packed: Long) : Comparable<PhraseEvidence> {
+    constructor(score: Int = 0, clauses: Int = 0) :
+        this((clauses.toLong() shl 32) or (score.toLong() and 0xffff_ffffL))
 
-    fun add(points: Int, reason: String, clause: Boolean = false) =
-        PhraseEvidence(score + points, clauses + if (clause) 1 else 0, reasons + reason)
+    val score: Int get() = packed.toInt()
+    val clauses: Int get() = (packed ushr 32).toInt()
+
+    operator fun plus(other: PhraseEvidence) = PhraseEvidence(score + other.score, clauses + other.clauses)
+
+    fun add(points: Int, clause: Boolean = false) =
+        PhraseEvidence(score + points, clauses + if (clause) 1 else 0)
+
+    override fun compareTo(other: PhraseEvidence): Int {
+        val byScore = score.compareTo(other.score)
+        return if (byScore != 0) byScore else clauses.compareTo(other.clauses)
+    }
 }
 
 /** Scores local constructions. A missing or ambiguous analysis is not a rejection. */
@@ -24,12 +31,13 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
     private data class NounPhrase(val end: Int, val agreement: Agreement, val evidence: PhraseEvidence)
     private data class Predicate(val end: Int, val evidence: PhraseEvidence)
     private val words = mutableMapOf<String, Word>()
+    private val clause = ArrayList<Word>()
 
-    fun score(surfaces: List<String>): PhraseEvidence {
-        if (surfaces.size < 2) return PhraseEvidence()
+    fun score(surfaces: Array<String?>, size: Int): PhraseEvidence {
+        if (size < 2) return PhraseEvidence()
         var evidence = PhraseEvidence()
-        val clause = mutableListOf<Word>()
-        for (surface in surfaces) {
+        for (index in 0 until size) {
+            val surface = checkNotNull(surfaces[index])
             when {
                 surface.any { it in clausePunctuation } && surface.none(Char::isLetterOrDigit) -> {
                     evidence += scoreClause(clause)
@@ -38,7 +46,9 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
                 surface.isNotBlank() -> clause.add(word(surface))
             }
         }
-        return evidence + scoreClause(clause)
+        evidence += scoreClause(clause)
+        clause.clear()
+        return evidence
     }
 
     private fun word(surface: String): Word = words.getOrPut(surface) {
@@ -56,7 +66,12 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
             val variants = expansions.map { expansion -> expansion.map(::word) } + listOf(listOf(token))
             alternatives = alternatives.flatMap { prefix -> variants.map { prefix + it } }.take(MAX_ANALYSES)
         }
-        return alternatives.map(::scoreExpanded).maxWith(evidenceOrder)
+        var best = noAnalysis
+        for (alternative in alternatives) {
+            val evidence = scoreExpanded(alternative)
+            if (evidence > best) best = evidence
+        }
+        return best
     }
 
     private fun scoreExpanded(words: List<Word>): PhraseEvidence {
@@ -67,107 +82,131 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
             val subordinate = marker.text in subordinators
             if (!subordinate && !marker.has("conjunction_coordinating")) continue
             val nextClause = words.subList(index + 1, words.size)
-            val hasSubjectAndVerb = nounPhrases(nextClause, 0, subject = true).any {
-                nextClause.getOrNull(skipAdverbs(nextClause, it.end))?.any(finiteRoles) == true
-            }
-            if (!hasSubjectAndVerb) continue
+            if (!hasSubjectAndVerb(nextClause)) continue
             val first = simpleClause(words.subList(start, index))
             if (first.clauses == 0) continue
-            total += first.add(1, if (subordinate) "SUBORDINATE_CLAUSE" else "COORDINATED_CLAUSE")
+            total += first.add(1)
             start = index + 1
         }
         return total + simpleClause(words.subList(start, words.size))
     }
 
+    private fun hasSubjectAndVerb(words: List<Word>): Boolean {
+        forEachNounPhrase(words, 0, subject = true) { subject ->
+            if (words.getOrNull(skipAdverbs(words, subject.end))?.any(finiteRoles) == true) return true
+        }
+        return false
+    }
+
     private fun simpleClause(words: List<Word>): PhraseEvidence {
-        val analyses = mutableListOf<PhraseEvidence>()
-        for (subject in subjects(words, 0)) {
+        var best = noAnalysis
+        forEachSubject(words, 0) { subject ->
             val position = skipAdverbs(words, subject.end)
-            val verb = words.getOrNull(position)
-            if (verb == null) {
-                analyses += subject.evidence
+            val evidence = if (position >= words.size) {
+                subject.evidence
             } else {
                 val predicate = predicate(words, position, position + 1, subject.agreement)
-                analyses += subject.evidence + predicate.evidence + objectPhrase(words, predicate.end)
+                subject.evidence + predicate.evidence + objectPhrase(words, predicate.end)
             }
+            if (evidence > best) best = evidence
         }
         if (words.firstOrNull()?.any(auxiliaries) == true) {
-            for (subject in subjects(words, skipAdverbs(words, 1))) {
-                if (subject.end >= words.size) continue
-                val predicate = predicate(words, 0, subject.end, subject.agreement)
-                if (predicate.evidence.clauses > 0 && predicate.end > subject.end) {
-                    analyses += subject.evidence + predicate.evidence.add(1, "QUESTION_INVERSION") +
-                        objectPhrase(words, predicate.end)
+            forEachSubject(words, skipAdverbs(words, 1)) { subject ->
+                if (subject.end < words.size) {
+                    val predicate = predicate(words, 0, subject.end, subject.agreement)
+                    if (predicate.evidence.clauses > 0 && predicate.end > subject.end) {
+                        val evidence = subject.evidence + predicate.evidence.add(1) + objectPhrase(words, predicate.end)
+                        if (evidence > best) best = evidence
+                    }
                 }
             }
         }
         // Prefer a grounded analysis, including a mismatch, over a no-evidence fallback.
-        return analyses.maxWithOrNull(evidenceOrder) ?: PhraseEvidence()
+        return if (best == noAnalysis) PhraseEvidence() else best
     }
 
     private fun predicate(words: List<Word>, position: Int, complementStart: Int, agreement: Agreement): Predicate {
         val verb = words[position]
         if (!verb.any(finiteByAgreement.getValue(agreement))) {
-            val evidence = if (verb.any(finiteRoles)) PhraseEvidence().add(-3, "EXPECTED_FINITE_$agreement")
+            val evidence = if (verb.any(finiteRoles)) PhraseEvidence(score = -3)
             else PhraseEvidence()
             return Predicate(complementStart, evidence)
         }
-        val finite = PhraseEvidence().add(3, "FINITE_$agreement")
+        val finite = PhraseEvidence(score = 3)
         val requirement = when {
-            verb.has("aux_modal") || verb.family("aux_do_") -> "BARE_AFTER_MODAL_OR_DO" to bare
-            verb.family("aux_have_") -> "PERFECT_PARTICIPLE" to participle
-            verb.family("aux_be_") -> "BE_COMPLEMENT" to beComplement
-            else -> return Predicate(complementStart, finite.copy(clauses = 1))
+            verb.has("aux_modal") || verb.family("aux_do_") -> bare
+            verb.family("aux_have_") -> participle
+            verb.family("aux_be_") -> beComplement
+            else -> return Predicate(complementStart, finite.add(0, clause = true))
         }
         val complementIndex = skipAdverbs(words, complementStart)
         val complement = words.getOrNull(complementIndex) ?: return Predicate(complementStart, finite)
-        if (complement.any(requirement.second)) {
-            return Predicate(complementIndex + 1, finite.add(3, requirement.first, clause = true))
+        if (complement.any(requirement)) {
+            return Predicate(complementIndex + 1, finite.add(3, clause = true))
         }
-        if (requirement.first == "BE_COMPLEMENT" && complement.has("adjective")) {
-            return Predicate(complementIndex + 1, finite.add(1, requirement.first, clause = true))
+        if (requirement === beComplement && complement.has("adjective")) {
+            return Predicate(complementIndex + 1, finite.add(1, clause = true))
         }
-        val nominal = nounPhrases(words, complementIndex).maxByOrNull { it.end }
+        val nominal = longestNounPhrase(words, complementIndex)
         if (nominal != null && nominal.evidence.score > 0) {
-            if (requirement.first == "BE_COMPLEMENT") {
-                return Predicate(nominal.end, finite.add(2, requirement.first, clause = true) + nominal.evidence)
+            if (requirement === beComplement) {
+                return Predicate(nominal.end, finite.add(2, clause = true) + nominal.evidence)
             }
             if (verb.family("aux_have_") || verb.family("aux_do_")) {
-                return Predicate(nominal.end, finite.copy(clauses = 1) + nominal.evidence)
+                return Predicate(nominal.end, finite.add(0, clause = true) + nominal.evidence)
             }
         }
-        val evidence = if (complement.any(verbForms)) finite.add(-4, "EXPECTED_${requirement.first}") else finite
+        val evidence = if (complement.any(verbForms)) finite.add(-4) else finite
         return Predicate(complementStart, evidence)
     }
 
-    private fun subjects(words: List<Word>, start: Int): List<NounPhrase> {
-        val heads = nounPhrases(words, start, subject = true).map { withPrepositionalPhrase(words, it) }
-        val coordinated = heads.flatMap { head ->
-            if (words.getOrNull(head.end)?.text != "and") emptyList() else
-                nounPhrases(words, head.end + 1, subject = true).map {
-                    NounPhrase(it.end, Agreement.OTHER, head.evidence + it.evidence)
+    private inline fun forEachSubject(words: List<Word>, start: Int, visit: (NounPhrase) -> Unit) {
+        forEachNounPhrase(words, start, subject = true) {
+            val head = withPrepositionalPhrase(words, it)
+            visit(head)
+            if (words.getOrNull(head.end)?.text == "and") {
+                forEachNounPhrase(words, head.end + 1, subject = true) { next ->
+                    visit(NounPhrase(next.end, Agreement.OTHER, head.evidence + next.evidence))
                 }
+            }
         }
-        return heads + coordinated
     }
 
     private fun withPrepositionalPhrase(words: List<Word>, head: NounPhrase): NounPhrase {
         var end = head.end
         var evidence = head.evidence
         while (words.getOrNull(end)?.has("preposition") == true) {
-            val objectHead = nounPhrases(words, end + 1).maxByOrNull { it.end } ?: break
+            val objectHead = longestNounPhrase(words, end + 1) ?: break
             end = objectHead.end
-            evidence += objectHead.evidence.add(1, "PREPOSITIONAL_PHRASE")
+            evidence += objectHead.evidence.add(1)
         }
-        return head.copy(end = end, evidence = evidence)
+        return if (end == head.end) head else head.copy(end = end, evidence = evidence)
     }
 
-    private fun objectPhrase(words: List<Word>, start: Int): PhraseEvidence =
-        nounPhrases(words, start).maxOfWithOrNull(evidenceOrder) { withPrepositionalPhrase(words, it).evidence }
-            ?: PhraseEvidence()
+    private fun longestNounPhrase(words: List<Word>, start: Int): NounPhrase? {
+        var longest: NounPhrase? = null
+        forEachNounPhrase(words, start) { phrase ->
+            if (phrase.end > (longest?.end ?: -1)) longest = phrase
+        }
+        return longest
+    }
 
-    private fun nounPhrases(words: List<Word>, start: Int, subject: Boolean = false): List<NounPhrase> {
-        val first = words.getOrNull(start) ?: return emptyList()
+    private fun objectPhrase(words: List<Word>, start: Int): PhraseEvidence {
+        var best = noAnalysis
+        forEachNounPhrase(words, start) {
+            val evidence = withPrepositionalPhrase(words, it).evidence
+            if (evidence > best) best = evidence
+        }
+        return if (best == noAnalysis) PhraseEvidence() else best
+    }
+
+    private inline fun forEachNounPhrase(
+        words: List<Word>,
+        start: Int,
+        subject: Boolean = false,
+        visit: (NounPhrase) -> Unit,
+    ) {
+        val first = words.getOrNull(start) ?: return
         if (subject) {
             val pronoun = when {
                 first.has("pronoun_subject_1sg") -> Agreement.FIRST_SINGULAR
@@ -175,24 +214,25 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
                 first.any(singularPronoun) -> Agreement.THIRD_SINGULAR
                 else -> null
             }
-            if (pronoun != null) return listOf(NounPhrase(start + 1, pronoun, PhraseEvidence()))
+            if (pronoun != null) {
+                visit(NounPhrase(start + 1, pronoun, PhraseEvidence()))
+                return
+            }
         }
         val determiner = first.family("det_")
-        val result = mutableListOf<NounPhrase>()
+        val needsSingular = determiner && first.any(singularDeterminer)
+        val needsPlural = determiner && first.any(pluralDeterminer)
+        val evidence = PhraseEvidence(score = if (determiner) 1 else 0)
         var position = start + if (determiner) 1 else 0
         while (position < words.size) {
             val head = words[position]
             val singular = head.any(bareSingular) || (determiner || !subject) && head.has("noun_count_singular")
             val plural = head.any(pluralNoun)
-            val needsSingular = determiner && first.any(singularDeterminer)
-            val needsPlural = determiner && first.any(pluralDeterminer)
-            val evidence = if (determiner) PhraseEvidence().add(1, "NOUN_PHRASE") else PhraseEvidence()
-            if (singular && !needsPlural) result += NounPhrase(position + 1, Agreement.THIRD_SINGULAR, evidence)
-            if (plural && !needsSingular) result += NounPhrase(position + 1, Agreement.OTHER, evidence)
+            if (singular && !needsPlural) visit(NounPhrase(position + 1, Agreement.THIRD_SINGULAR, evidence))
+            if (plural && !needsSingular) visit(NounPhrase(position + 1, Agreement.OTHER, evidence))
             if (!determiner || !head.has("adjective")) break
             position++
         }
-        return result
     }
 
     private fun skipAdverbs(words: List<Word>, start: Int): Int {
@@ -207,7 +247,7 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
 
     private companion object {
         const val MAX_ANALYSES = 8
-        val evidenceOrder = compareBy<PhraseEvidence> { it.score }.thenBy { it.clauses }
+        val noAnalysis = PhraseEvidence(score = Int.MIN_VALUE)
         val clausePunctuation = ".!?;:,\r\n"
         val contractions = mapOf(
             "it's" to listOf(listOf("it", "is"), listOf("it", "has")),
