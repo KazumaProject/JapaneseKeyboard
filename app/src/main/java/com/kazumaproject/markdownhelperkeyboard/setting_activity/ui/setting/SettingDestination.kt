@@ -575,6 +575,7 @@ object SettingDestinations {
         "text_macro_candidate_preference",
         "enable_ai_conversion_zenz_preference",
         "enable_zenz_rerank_preference",
+        "enable_ai_conversion_zenzai_preference",
         "zenz_model_select_preference",
         "enable_zenz_right_context_preference",
         "zenz_debounce_time_preference",
