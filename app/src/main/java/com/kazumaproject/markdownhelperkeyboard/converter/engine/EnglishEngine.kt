@@ -526,7 +526,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         if (legacyInput == null && !usePhrases) return fallback
         val data = ensureDictionariesLoaded()
         val legacy = if (legacyInput != null) {
-            getCandidates(legacyInput, enableTypoCorrection, enablePrediction, data.dictionary)
+            // The Conversion tab uses the English setting for exact phrases while
+            // leaving single-word completion to the prediction modes.
+            getCandidates(legacyInput, enableTypoCorrection, enablePrediction && prefixMode, data.dictionary)
         } else {
             fallback
         }
