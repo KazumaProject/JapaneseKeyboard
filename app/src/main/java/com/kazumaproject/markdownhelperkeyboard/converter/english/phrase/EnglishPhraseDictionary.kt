@@ -26,7 +26,7 @@ internal class EnglishPhraseDictionary(
         val best = PriorityQueue(completionOrder.reversed())
         val terms = dictionary.readingTrie.termsStartingWith(prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex)
         for ((key, term) in terms) {
-            if (key == prefix || !completionKey.matches(key)) continue
+            if (key == prefix || key.any { it !in 'a'..'z' && it !in '0'..'9' }) continue
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
             forEachCandidate(key, term, maxCost) { candidate ->
                 if (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix)) {
@@ -57,7 +57,6 @@ internal class EnglishPhraseDictionary(
     }
 
     private companion object {
-        val completionKey = Regex("[a-z0-9]+")
         val completionOrder = compareBy<DictionaryCandidate> { it.cost }
             .thenBy { it.reading.length }.thenBy { it.reading }.thenBy { it.surface }
     }

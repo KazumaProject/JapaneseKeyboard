@@ -240,10 +240,7 @@ class KanaKanjiConversionSession(
                 omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
-                predictionConfig = request.predictionConfig.copy(
-                    japanesePredictionEnabled = false,
-                    englishPredictionEnabled = false,
-                ),
+                predictionConfig = request.predictionConfig.copy(japanesePredictionEnabled = false),
                 candidateSegmentCollector = segmentCollector,
                 nBestCandidateCollector = nBestCollector,
             ).asQueryResult(segmentCollector)
@@ -261,10 +258,7 @@ class KanaKanjiConversionSession(
                     omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
-                    predictionConfig = request.predictionConfig.copy(
-                        japanesePredictionEnabled = false,
-                        englishPredictionEnabled = false,
-                    ),
+                    predictionConfig = request.predictionConfig.copy(japanesePredictionEnabled = false),
                     candidateSegmentCollector = segmentCollector,
                     nBestCandidateCollector = nBestCollector,
                 ),
