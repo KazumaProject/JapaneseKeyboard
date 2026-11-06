@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ai_backend_npu">NPU</string>
-    <string name="ai_npu_if_available">対応する Google Tensor モデルでは NPU、それ以外は CPU</string>
+    <string name="ai_npu_if_available">NPU を優先（Google Tensor G5/G6）</string>
     <string name="ai_npu_cpu_fallback">NPU から CPU に切り替え</string>
     <string name="ai_npu_cpu_fallback_summary">このモデルは CPU で実行しています。NPU には、この端末の Google Tensor 向けにコンパイルされた LiteRT-LM モデルが必要です。</string>
     <string name="ai_npu_requires_tensor_model">NPU には、Google Tensor G5 または G6 向けにコンパイルされた LiteRT-LM モデルが必要です。</string>

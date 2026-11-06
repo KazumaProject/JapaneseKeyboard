@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ai_backend_npu">NPU</string>
-    <string name="ai_npu_if_available">NPU for compatible Google Tensor models (otherwise CPU)</string>
+    <string name="ai_npu_if_available">Prefer NPU (Google Tensor G5/G6)</string>
     <string name="ai_npu_cpu_fallback">CPU fallback from NPU</string>
     <string name="ai_npu_cpu_fallback_summary">This model uses CPU. NPU requires a LiteRT-LM model compiled for the device’s Google Tensor chip.</string>
     <string name="ai_npu_requires_tensor_model">NPU requires a LiteRT-LM model compiled for Google Tensor G5 or G6.</string>
