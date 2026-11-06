@@ -27,6 +27,20 @@ SOURCES = {
     'web': ('src/main/bin/wiki_neologd_common.txt.zip', 'wiki_neologd_common.txt'),
 }
 CACHE = ROOT / '.cache/classified-distribution'
+ENGLISH_PREVIEW_TAG = 'english-dictionary-preview.1'
+ENGLISH_PREVIEW_REVISION = 'dbbb97fc9b7cdd32441d3719b76eb0493fa787a2'
+ENGLISH_PREVIEW_PAGE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/{ENGLISH_PREVIEW_TAG}'
+ENGLISH_PREVIEW_DOWNLOAD = ENGLISH_PREVIEW_PAGE.replace('/tag/', '/download/') + '/'
+ENGLISH_PREVIEW_SHA256 = '17844989533be48541ac187ce030142f8d3e95f146415fe206e16d2a9cf44796'
+ENGLISH_ASSET_ROOT = 'app/src/main/assets/english/'
+ENGLISH_PREVIEW_ASSETS = {
+    'reading.dat.zip': 'reading.dat.zip',
+    'word.dat': 'word.dat',
+    'token.dat.zip': 'token.dat.zip',
+    'runtime-support/qwerty_glide_index.dat': 'qwerty_glide_index.dat',
+    'grammar/categories.erol': 'grammar/categories.erol',
+}
+ENGLISH_NOTICE = 'app/src/main/assets/licenses/english.html'
 
 def fetch(url):
     CACHE.mkdir(parents=True, exist_ok=True)
@@ -385,9 +399,67 @@ def notices(counts):
         ('english-reading', 'English reading dictionary / 英語読み辞書', ['converter','release-data','jmdict','cmudict','cc-by-sa-4']),
         ('ngram', 'N-gram / Unigram dictionaries', ['data','corpus','mozc','ipadic','cc-by-sa-4']),
         ('auxiliary', 'Reading correction / Proverbs / 読み修正・ことわざ辞書', ['converter','mozc']),
-        ('english', 'English word dictionary / 英単語辞書', ['converter']),
     ]:
-        write(assets/(ident+'.html'), page(title, common + ('<p>Source and applicable data license: unconfirmed / 元データ・適用されるデータライセンス: 未確認。This asset is not part of the pinned dictionary release / この資源は当該配布ZIPには含まれません。</p>' if ident == 'english' else ''), keys))
+        write(assets/(ident+'.html'), page(title, common, keys))
+
+def english_preview():
+    data = fetch(ENGLISH_PREVIEW_DOWNLOAD + 'japanese_keyboard_dictionary_assets.zip')
+    assert sha(data) == ENGLISH_PREVIEW_SHA256
+    manifest_file = ROOT / 'tools/classified-dictionaries/distribution-manifest.json'
+    distribution = json.loads(manifest_file.read_text())
+    assets = {}
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        manifest = json.loads(archive.read('dictionary-distribution-manifest.json'))
+        assert manifest['englishDictionary']['builderRevision'] == ENGLISH_PREVIEW_REVISION
+
+        def verified(path):
+            name = ENGLISH_ASSET_ROOT + path
+            content = archive.read(name)
+            assert sha(content) == manifest['files'][name], name
+            return content
+
+        for source, destination in ENGLISH_PREVIEW_ASSETS.items():
+            path = ENGLISH_ASSET_ROOT + destination
+            content = verified(source)
+            write(ROOT / path, content)
+            assets[path] = sha(content)
+
+        notices = collections.defaultdict(list)
+        for name in sorted(manifest['files']):
+            prefix = ENGLISH_ASSET_ROOT + 'grammar/notices/'
+            if name.startswith(prefix):
+                notices[verified(name.removeprefix(ENGLISH_ASSET_ROOT)).decode('utf-8')].append(name.removeprefix(prefix))
+
+        title = 'English word dictionary / 英単語辞書'
+        source = 'https://github.com/KazumaProject/kotlin-louds-english/releases/tag/v24-preview.1'
+        page = (
+            f'<!doctype html><meta charset="utf-8"><title>{title}</title><h1>{title}</h1>'
+            '<h2>出典と配布版 / Source and version</h2>'
+            f'<p>配布: {ENGLISH_PREVIEW_TAG} ({ENGLISH_PREVIEW_REVISION})</p>'
+            f'<p><a href="{ENGLISH_PREVIEW_PAGE}">Android dictionary distribution / Android 向け配布</a></p>'
+            f'<p><a href="{source}">English Dictionary v24 Preview 1 / 英語辞書の出典</a></p>'
+            '<p>Android bundles the reading, word, token, Glide and grammar files. '
+            'The build repackages the reading, word and token arrays for Android. '
+            'Each source retains the terms reproduced below.</p>'
+            '<p>読み・表記・トークン・Glide・文法のデータを収録しています。'
+            '読み・表記・トークンはビルド時に Android 向けの形式に再格納します。'
+            '出典ごとの利用条件を以下に掲載します。</p>'
+            '<h2>著作権表示・ライセンス原文 / Copyright notices and original license texts</h2>'
+        )
+        for original, names in notices.items():
+            escaped = html.escape(original).replace('\r', '&#13;').replace('\n', '&#10;')
+            page += '<h3>' + html.escape(', '.join(names)) + '</h3><pre>' + escaped + '</pre>\n'
+        write(ROOT / ENGLISH_NOTICE, page)
+        assets[ENGLISH_NOTICE] = sha((ROOT / ENGLISH_NOTICE).read_bytes())
+
+    distribution['englishDictionary'] = {
+        'version': ENGLISH_PREVIEW_TAG,
+        'revision': ENGLISH_PREVIEW_REVISION,
+        'archiveSha256': ENGLISH_PREVIEW_SHA256,
+        'assets': assets,
+    }
+    write(manifest_file, json.dumps(distribution, ensure_ascii=False, indent=2) + '\n')
+
 
 def check():
     m=json.loads((ROOT/'tools/classified-dictionaries/distribution-manifest.json').read_text())
@@ -402,9 +474,17 @@ def check():
     for metadata in (m, provenance_manifest):
         assert metadata['version'] == VERSION, 'Dictionary version does not match the importer'
         assert metadata['revision'] == REVISION, 'Dictionary revision does not match the importer'
+    english = m['englishDictionary']
+    assert (english['version'], english['revision'], english['archiveSha256']) == (
+        ENGLISH_PREVIEW_TAG, ENGLISH_PREVIEW_REVISION, ENGLISH_PREVIEW_SHA256,
+    )
+    assert set(english['assets']) == {ENGLISH_ASSET_ROOT + name for name in ENGLISH_PREVIEW_ASSETS.values()} | {ENGLISH_NOTICE}
+    for path, checksum in english['assets'].items():
+        assert sha((ROOT / path).read_bytes()) == checksum, path
     for path in (ROOT / 'app/src/main/assets/licenses').rglob('*.html'):
         text = path.read_text()
-        assert f'配布: {VERSION} ({REVISION})' in text, f'Stale dictionary notice: {path}'
+        version, revision = (ENGLISH_PREVIEW_TAG, ENGLISH_PREVIEW_REVISION) if path == ROOT / ENGLISH_NOTICE else (VERSION, REVISION)
+        assert f'配布: {version} ({revision})' in text, f'Stale dictionary notice: {path}'
     for key, snapshot in json.loads((ROOT/'app/src/main/assets/licenses/notice-snapshots.json').read_text()).items():
         if 'KazumaProject/kotlin-kana-kanji-converter' in snapshot['url']:
             assert REVISION in snapshot['url'] or f'/{VERSION}/' in snapshot['url'], key
@@ -425,4 +505,4 @@ if __name__ == '__main__':
     if args.check:
         check()
     else:
-        archive();notices(provenance());check()
+        archive();notices(provenance());english_preview();check()

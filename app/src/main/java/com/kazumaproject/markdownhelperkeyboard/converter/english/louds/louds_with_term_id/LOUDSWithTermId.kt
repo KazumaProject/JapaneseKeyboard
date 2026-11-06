@@ -118,6 +118,23 @@ class LOUDSWithTermId {
             { node -> if (isLeaf[node]) getTermId(node, leaves) else -1 },
         )
 
+    internal fun termsStartingWith(
+        prefix: String,
+        lbs: SuccinctBitVector,
+        leaves: SuccinctBitVector,
+    ): Iterator<Pair<String, Int>> {
+        var node = 0
+        for (char in prefix) {
+            node = traverse(node, char, lbs)
+            if (node < 0) return emptyList<Pair<String, Int>>().iterator()
+        }
+        return com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
+            LBS, lbs, labels.size, { index -> labels[index] },
+            { position -> if (isLeaf[position]) getTermId(position, leaves) else -1 },
+            startNode = node, prefix = prefix,
+        )
+    }
+
     fun getNodeIndex(
         s: String,
         rank1Array: IntArray,
