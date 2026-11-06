@@ -139,7 +139,7 @@ android {
     androidResources {
         // These assets are already compact binary images. Keeping them stored lets
         // Android read them directly instead of inflating them on the IME's cold path.
-        noCompress += ['kdict', 'compact', 'index']
+        noCompress += ['kdict', 'compact', 'index', 'erol']
     }
 
     sourceSets {
