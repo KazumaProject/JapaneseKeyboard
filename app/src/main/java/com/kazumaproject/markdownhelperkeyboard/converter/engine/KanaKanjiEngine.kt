@@ -39,6 +39,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTable
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
+import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.LatticeEdgeCost
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.BoundaryTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.CandidateTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.ConversionTrace
@@ -2894,8 +2895,10 @@ class KanaKanjiEngine {
         isOmissionSearchEnable: Boolean = false,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         nBestCandidateCollector: NBestCandidateCollector? = null,
+        latticeEdgeCost: LatticeEdgeCost? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
+        val searchState = if (latticeEdgeCost == null) incrementalSessionState else createIncrementalSessionState()
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -2916,7 +2919,7 @@ class KanaKanjiEngine {
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
-            sessionState = incrementalSessionState?.graphState,
+            sessionState = searchState?.graphState,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2938,8 +2941,9 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
-                sessionState = incrementalSessionState?.pathState,
+                sessionState = searchState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                latticeEdgeCost = latticeEdgeCost,
             )
         }
         nBestCandidateCollector?.collect(resultNBestFinalDeferred)
@@ -3379,8 +3383,10 @@ class KanaKanjiEngine {
         isOmissionSearchEnable: Boolean = false,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         nBestCandidateCollector: NBestCandidateCollector? = null,
+        latticeEdgeCost: LatticeEdgeCost? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
+        val searchState = if (latticeEdgeCost == null) incrementalSessionState else createIncrementalSessionState()
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -3401,7 +3407,7 @@ class KanaKanjiEngine {
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
             beamWidth = beamWidth,
-            sessionState = incrementalSessionState?.graphState,
+            sessionState = searchState?.graphState,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -3425,8 +3431,9 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
-                sessionState = incrementalSessionState?.pathState,
+                sessionState = searchState?.pathState,
                 candidateSegmentCollector = candidateSegmentCollector,
+                latticeEdgeCost = latticeEdgeCost,
             )
         }
         nBestCandidateCollector?.collect(resultNBestFinalDeferred.candidates)
