@@ -25,13 +25,15 @@ class OpenSourceLicensesTest {
             assertEquals(items.size, items.map { it.id }.toSet().size)
             assertTrue(items.all { it.title.isNotBlank() && it.summary.isNotBlank() })
         }
-        assertEquals(137, full.count { it.id.startsWith("library/") })
+        assertEquals(138, full.count { it.id.startsWith("library/") })
         assertEquals(136, lite.count { it.id.startsWith("library/") })
         assertEquals(lite.map { it.id }.toSet(), fdroid.map { it.id }.toSet())
         assertTrue(full.any { it.id == "zenz-model" })
         assertFalse(lite.any { it.id in listOf("zenz-model", "llama.cpp", "external-models") })
         assertTrue(full.any { it.id.contains("litertlm-android") })
         assertFalse(lite.any { it.id.contains("litertlm-android") })
+        assertTrue(full.any { it.id.contains("litert-npu-runtime-google-tensor") })
+        assertFalse(lite.any { it.id.contains("litert-npu-runtime-google-tensor") })
         assertTrue(full.any { it.id == "library/androidx.core:core/1.17.0" })
         assertTrue(lite.any { it.id == "library/androidx.core:core/1.16.0" })
     }

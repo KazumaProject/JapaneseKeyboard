@@ -27,7 +27,7 @@ MITは第三者の辞書・ライブラリ・モデルのライセンスを変�
 | llama.cpp内のGGUF Pythonツール | MIT。Copyright (c) 2023 Georgi Gerganov | [固定版のgguf-py/LICENSE](https://github.com/azooKey/llama.cpp/blob/88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c/gguf-py/LICENSE)。ビルド時ツールとアプリ内の実行コードを区別 |
 | llama.cpp内のlinenoise例 | BSD 2-Clause形式の個別表示・免責。Copyright 2010–2014 Salvatore Sanfilippo、2010–2013 Pieter Noordhuis、2025 Eric Curtin | [固定版の原文](https://github.com/azooKey/llama.cpp/blob/88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c/examples/run/linenoise.cpp/LICENSE)。例に付属する資料で、現行アプリへの組込みは未確認 |
 | Zenz GGUFモデル | 公開モデルカードはApache 2.0を宣言 | [固定版モデルカード](https://huggingface.co/Miwa-Keita/zenz-v3.2-xsmall-gguf/blob/4f5423f0fad41a73b1242eb96fe5c12ae4fdca83/README.md)、[保持したメタデータ](notices/zenz-model-card.md)。[zenz/build.gradle](../../zenz/build.gradle) の既定値は `Miwa-Keita/zenz-v3.2-xsmall-gguf`、同リビジョン、Q5_K_M。ビルド設定による差替え、個々の重みの追加帰属・生成来歴は別途確認が必要で、網羅確認は未確認 |
-| LiteRT-LM Androidランタイム | `com.google.ai.edge.litertlm:litertlm-android:0.19.0` のPOMはApache 2.0を宣言 | [依存ライブラリ一覧](DEPENDENCIES.md)。Fullのみ。ランタイムの条件を持ち込むモデルへ一律に適用しない |
+| LiteRT-LM AndroidランタイムとGoogle Tensor NPUランタイム | `litertlm-android:0.19.0` と `litert-npu-runtime-google-tensor:2.3.2` のPOMはApache 2.0を宣言 | [配布版の依存一覧と通知原文](../../app/src/main/assets/software-licenses/catalog.json)。Fullのみ。ランタイムの条件を持ち込むモデルへ一律に適用しない |
 | Gemmaモデル | GoogleはGemma 4用の [Apache 2.0](https://ai.google.dev/gemma/apache_2) と、対象を限定した従来の [Gemma Terms of Use](https://ai.google.dev/gemma/terms) を区別 | アプリはユーザーが指定したモデルファイルを読み込む。実際の持込み版・モデル派生物・付随する条件は未確認。モデル名だけから同一条件と断定しない |
 | 持込み辞書・フォント・ユーザー登録・その他の外部入力 | 提供者またはユーザーの元資料の条件 | 同梱品の表から外部入力へ一律の許諾を与えない。個々の取得版・権利情報は本リポジトリから確認できない |
 
@@ -35,7 +35,7 @@ MITは第三者の辞書・ライブラリ・モデルのライセンスを変�
 
 アプリの「ライセンスと出典」は、概要、辞書・データ、ライブラリ、Full版のAIモデル・ネイティブコードに分けて表示します。辞書はv1.7.283の固定入力・同梱HTML・通知原文に対応します。ライセンス原文と取得した通知はオフラインで閲覧できます。
 
-ライブラリはFull Standard Releaseの137件、Lite Standard/F-Droid Releaseの136件の解決結果に対応します（BOM等のメタデータ依存を含む）。版別一覧とPOMの根拠は `app/src/main/assets/software-licenses/catalog.json` に保持しています。対象版のPOM照合に加え、取得できたAAR/JARとそのclasses.jarのLICENSE/NOTICE/COPYINGを原文のまま保存し、表示します。解決されたモジュールと縮小後APKの到達可能コードとの一対一対応を示すものではありません。
+ライブラリはFull Standard Releaseの138件、Lite Standard/F-Droid Releaseの136件の解決結果に対応します（BOM等のメタデータ依存を含む）。版別一覧とPOMの根拠は `app/src/main/assets/software-licenses/catalog.json` に保持しています。対象版のPOM照合に加え、取得できたAAR/JARとそのclasses.jarのLICENSE/NOTICE/COPYINGを原文のまま保存し、表示します。解決されたモジュールと縮小後APKの到達可能コードとの一対一対応を示すものではありません。
 
 コルーチンは対象版のPOMに基づくApache 2.0、Zenzモデルは固定版モデルカードのApache 2.0として表示します。根拠のない一律の著作権表示は付与しません。個別著作権表示を取得できない場合は、その範囲を詳細画面に明記します。ユーザーが追加するモデルの利用条件は提供元の資料によります。
 
