@@ -25,8 +25,8 @@ collect_unit_results() {
 if [[ "$phase" == build ]]; then
 trap collect_unit_results EXIT
 
-# Use identical benchmark sources with the baseline converter. The feature-specific
-# device assertion needs the new API and is deliberately not copied into baseline.
+# Use identical benchmark sources with the baseline converter. Feature-specific
+# device assertions need the new API and are deliberately not copied into baseline.
 git worktree add --detach "$baseline_root" "$baseline_ref"
 git -C "$baseline_root" submodule update --init --recursive
 python3 - "$head_root" "$baseline_root" <<'PY'
@@ -34,8 +34,17 @@ from pathlib import Path
 import sys
 head, baseline = map(Path, sys.argv[1:])
 prefix = Path('app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard')
-for relative in ['converter/ZenzCorrectionPerformanceInstrumentedTest.kt', 'zenz/ZenzRuntimeInstrumentedTest.kt']:
-    (baseline/prefix/relative).write_text((head/prefix/relative).read_text())
+relative = prefix/'converter/ZenzCorrectionPerformanceInstrumentedTest.kt'
+(baseline/relative).write_text((head/relative).read_text())
+relative = prefix/'zenz/ZenzRuntimeInstrumentedTest.kt'
+source = (head/relative).read_text()
+benchmark_marker = '    @Test(timeout = 900_000)\n    fun measureGenerationPerformance()'
+helper_marker = '    private fun bindRuntime()'
+start = source.index(benchmark_marker)
+end = source.index(helper_marker, start)
+original = (baseline/relative).read_text()
+position = original.index(benchmark_marker) if benchmark_marker in original else original.index(helper_marker)
+(baseline/relative).write_text(original[:position]+source[start:end]+original[original.index(helper_marker):])
 relative = prefix/'zenz/ZenzFloatingCandidateInstrumentedTest.kt'
 source = (head/relative).read_text()
 start = source.index('    // Keep these probe helpers with measureFloatingResultLatency')
