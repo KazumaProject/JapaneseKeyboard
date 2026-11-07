@@ -42,6 +42,49 @@ internal class EnglishPhraseDictionary(
         return best.sortedWith(completionOrder)
     }
 
+    /** Finds only dictionary-backed multiword surfaces, including joined-input aliases. */
+    fun phrases(input: String, prefixMode: Boolean, limit: Int): List<DictionaryCandidate> {
+        val prefix = lookupKey(input).trim().replace(whitespace, " ")
+        if (prefix.length < 2 || !phraseKey.matches(prefix)) return emptyList()
+        val compact = prefix.replace(" ", "")
+        val order = compareBy<DictionaryCandidate> { if (it.reading.replace(" ", "") == compact) 0 else 1 }
+            .then(completionOrder)
+        val best = PriorityQueue(order.reversed())
+
+        fun collect(readingPrefix: String) {
+            val terms = dictionary.readingTrie.termsStartingWith(
+                readingPrefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
+            )
+            for ((reading, term) in terms) {
+                if (' ' !in reading || !phraseKey.matches(reading)) continue
+                val matches = if (' ' in prefix) {
+                    if (prefixMode) reading.startsWith(prefix) else reading == prefix
+                } else {
+                    val joined = reading.replace(" ", "")
+                    if (prefixMode) joined.startsWith(compact) else joined == compact
+                }
+                if (!matches) continue
+                forEachCandidate(reading, term) { candidate ->
+                    if (' ' in candidate.surface) {
+                        if (best.size < limit) best.add(candidate)
+                        else if (order.compare(candidate, best.element()) < 0) {
+                            best.remove()
+                            best.add(candidate)
+                        }
+                    }
+                }
+            }
+        }
+
+        collect(prefix)
+        if (' ' !in prefix) {
+            // Each subtree has a different first space. This avoids a second full
+            // dictionary index and does not guess word boundaries in the surface.
+            for (end in 1 until prefix.length) collect(prefix.take(end) + " ")
+        }
+        return best.sortedWith(order)
+    }
+
     private fun forEachCandidate(
         reading: String,
         term: Int,
@@ -57,6 +100,8 @@ internal class EnglishPhraseDictionary(
     }
 
     private companion object {
+        val whitespace = Regex("\\s+")
+        val phraseKey = Regex("[a-z0-9]+(?: [a-z0-9]+)*")
         val completionOrder = compareBy<DictionaryCandidate> { it.cost }
             .thenBy { it.reading.length }.thenBy { it.reading }.thenBy { it.surface }
     }
