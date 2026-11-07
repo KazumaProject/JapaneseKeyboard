@@ -35,6 +35,38 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
     @Test
+    fun registeredMultiwordSurfacesKeepSpacesInCandidateCommitText() = withDictionary { _, _, reader ->
+        val words = EnglishPhraseDictionary(
+            checkNotNull(reader.loadBundledEnglishForEngine()),
+            checkNotNull(reader.loadBundledEnglishGrammar()),
+        )
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        fun query(input: String, prediction: Boolean = true, prefixMode: Boolean = true) =
+            engine.getConversionCandidates(input, input, false, prediction, prefixMode, emptyList())
+        for ((input, expected) in listOf(
+            "android" to "Android Studio", "androidstudio" to "Android Studio",
+            "android s" to "Android Studio", "googlemaps" to "Google Maps",
+        )) {
+            val phrases = words.phrases(input, prefixMode = true, limit = 12)
+            assertTrue(input, phrases.any { it.surface == expected })
+            assertTrue(input, phrases.all { it in words.exact(it.reading) })
+            val candidates = query(input)
+            val canonical = candidates.first { it.string == expected }
+            assertTrue(input, candidates.indexOf(canonical) in 1..4)
+            assertEquals(expected, canonical.commitText)
+            assertEquals(input.length, canonical.length.toInt())
+        }
+        val android = query("android").map { it.string }
+        assertTrue(android.indexOf("Android Studio") < android.indexOf("AndroidStudio"))
+        assertTrue(query("AndroidStudio").any { it.commitText == "AndroidStudio" })
+        assertFalse(query("googlemaps").any { it.string.equals("Google ma ps", ignoreCase = true) })
+        assertTrue(query("TextView").any { it.commitText == "TextView" })
+        assertFalse(query("android", prediction = false).any { it.string == "Android Studio" })
+        assertFalse(query("android", prefixMode = false).any { it.string == "Android Studio" })
+        assertTrue(query("androidstudio", prefixMode = false).any { it.string == "Android Studio" })
+    }
+
+    @Test
     fun registeredWordsAndDirectPrefixesDoNotInventWordBoundaries() = withDictionary { _, _, reader ->
         val dictionary = EnglishPhraseDictionary(
             checkNotNull(reader.loadBundledEnglishForEngine()),
