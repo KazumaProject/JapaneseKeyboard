@@ -35,6 +35,36 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
     @Test
+    fun registeredWordsAndDirectPrefixesDoNotInventWordBoundaries() = withDictionary { _, _, reader ->
+        val dictionary = EnglishPhraseDictionary(
+            checkNotNull(reader.loadBundledEnglishForEngine()),
+            checkNotNull(reader.loadBundledEnglishGrammar()),
+        )
+        val converter = PhraseConverter(dictionary, beamWidth = 24, completionLimit = 32)
+        for (input in listOf("android", "hello", "keyboard", "important", "morning", "therapist")) {
+            assertTrue(input, dictionary.exact(input).isNotEmpty())
+            for (prefixMode in listOf(false, true)) {
+                val candidates = converter.convert(input, prefixMode, limit = 12)
+                assertTrue(input, candidates.isNotEmpty())
+                assertFalse(input, candidates.any { phrase -> phrase.segments.any { it.inferredSpace } })
+            }
+        }
+        val prefix = converter.convert("keybo", prefixMode = true, limit = 12)
+        assertTrue(prefix.any { it.text == "keyboard" })
+        assertFalse(prefix.any { phrase -> phrase.segments.any { it.inferredSpace } })
+
+        val joined = converter.convert("hecantak", prefixMode = true, limit = 12)
+        assertTrue(joined.any { it.text == "he can take" })
+        assertTrue(converter.convert("hecantake", prefixMode = false, limit = 12).any { it.text == "he can take" })
+        assertTrue(converter.convert("goodmorning", prefixMode = true, limit = 12).any { it.text == "good morning" })
+        assertTrue(converter.convert("twofactorauthentication", prefixMode = true, limit = 12)
+            .any { it.text == "two-factor authentication" })
+        assertTrue(converter.convert("twofactorauthentication", prefixMode = true, limit = 12)
+            .any { it.text == "two factor authentication" })
+        assertEquals("he takes", converter.convert("he tak", prefixMode = true, limit = 12).first().text)
+    }
+
+    @Test
     fun packagedDictionaryMatchesReferenceExamples() = withDictionary { _, resolver, reader ->
         val dictionary = checkNotNull(reader.loadBundledEnglishForEngine())
         val grammar = checkNotNull(reader.loadBundledEnglishGrammar())

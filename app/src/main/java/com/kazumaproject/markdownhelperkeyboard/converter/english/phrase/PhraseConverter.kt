@@ -27,6 +27,11 @@ internal class PhraseConverter(
     private val beamWidth: Int = 96,
     private val completionLimit: Int = 128,
 ) {
+    private data class Lattice(
+        val edges: Array<MutableList<Segment>>,
+        val protectSingleWord: Boolean,
+    )
+
     private class Path(
         val previous: Path? = null,
         val segment: Segment? = null,
@@ -85,7 +90,11 @@ internal class PhraseConverter(
         require(limit in 1..MAX_RESULTS) { "Limit must be in 1..$MAX_RESULTS" }
 
         val grammar = PhraseGrammar(dictionary.grammarRoles)
-        val edges = lattice(text, prefixMode)
+        val lattice = lattice(text, prefixMode)
+        val edges = lattice.edges
+        val lexicalSpacing = if (lattice.protectSingleWord) {
+            dictionary.exact(lookupKey(text)).map { lookupKey(it.surface.replace('-', ' ')) }.toSet()
+        } else emptySet()
         val order = if (prefixMode) prefixOrder else exactOrder
         val paths = Array(text.length + 1) { mutableListOf<Path>() }
         val surfaces = arrayOfNulls<String>(text.length)
@@ -108,7 +117,7 @@ internal class PhraseConverter(
                 for (path in current) {
                     path.copySurfacesInto(surfaces)
                     surfaces[path.segmentCount] = segment.surface
-                    next += Path(
+                    val nextPath = Path(
                         previous = path,
                         segment = segment,
                         cost = path.cost + segment.cost,
@@ -118,6 +127,17 @@ internal class PhraseConverter(
                         unknownChars = path.unknownChars + if (segment.unknown) segment.end - segment.start else 0,
                         addedChars = path.addedChars + addedChars,
                     )
+                    if (segment.end == text.length && lattice.protectSingleWord && nextPath.splits > 0) {
+                        // Keep lexicalized phrases such as "good morning", including
+                        // phrases present only in the bundled grammar lexicon. Arbitrary
+                        // segmentation and suffix expansion are not evidence of a phrase.
+                        if (nextPath.addedChars > 0) continue
+                        val formatted = nextPath.render()
+                        val key = lookupKey(formatted)
+                        if (key !in lexicalSpacing && dictionary.exact(key).isEmpty() &&
+                            dictionary.grammarRoles.lookup(formatted, key).isEmpty()) continue
+                    }
+                    next += nextPath
                 }
                 if (next.size > beamWidth) {
                     next.sortWith(order)
@@ -135,8 +155,9 @@ internal class PhraseConverter(
             .toList()
     }
 
-    private fun lattice(text: String, prefixMode: Boolean): Array<MutableList<Segment>> {
+    private fun lattice(text: String, prefixMode: Boolean): Lattice {
         val edges = Array(text.length) { mutableListOf<Segment>() }
+        var protectSingleWord = false
         val spans = inputWords.findAll(text).map { it.range }.toMutableList()
         val last = spans.lastOrNull()
         if (prefixMode && last != null && last.last == text.lastIndex - 1 && text.last() in prefixPunctuation) {
@@ -167,6 +188,9 @@ internal class PhraseConverter(
                 edges[start] += (candidates + restored).distinct().map { it.segment(start, end, start) }
             } else {
                 val whole = lookup(reading)
+                if (spans.size == 1 && (whole.isNotEmpty() || directCompletions.isNotEmpty())) {
+                    protectSingleWord = true
+                }
                 // Explicit word boundaries take precedence when the word is registered.
                 if (spans.size > 1 && whole.isNotEmpty()) {
                     edges[start] += whole.map { it.segment(start, end, start) }
@@ -200,7 +224,7 @@ internal class PhraseConverter(
             }
         }
         if (previousEnd < text.length) edges[previousEnd] += literal(text, previousEnd, text.length)
-        return edges
+        return Lattice(edges, protectSingleWord)
     }
 
     private fun completions(
@@ -208,8 +232,14 @@ internal class PhraseConverter(
     ): List<Segment> {
         val key = reading.filterNot { it in prefixPunctuation }
         if (key.length < MIN_COMPLETION_PREFIX || !completionKey.matches(key)) return emptyList()
+        val inferredBoundary = start != wordStart
+        if (inferredBoundary && key.length < MIN_INFERRED_COMPLETION_PREFIX) return emptyList()
         val surfacePrefix = reading.takeIf { it != key }
-        return dictionary.complete(key, surfacePrefix, completionLimit).map {
+        return dictionary.complete(key, surfacePrefix, completionLimit).filter {
+            // Completing an explicitly typed word is different from guessing both a
+            // boundary and a long replacement for a short suffix of a joined input.
+            !inferredBoundary || it.reading.length - key.length <= MAX_INFERRED_COMPLETION_ADDITION
+        }.map {
             it.segment(start, end, wordStart, SegmentKind.COMPLETION, splitDirectPrefix)
         }
     }
@@ -230,6 +260,8 @@ internal class PhraseConverter(
         private const val MAX_INPUT = 256
         private const val MAX_RESULTS = 50
         private const val MIN_COMPLETION_PREFIX = 2
+        private const val MIN_INFERRED_COMPLETION_PREFIX = 3
+        private const val MAX_INFERRED_COMPLETION_ADDITION = 2
         private const val keyboardPunctuation = "'-./"
         private const val prefixPunctuation = "'’-"
         private val completionKey = Regex("[a-z0-9]+")
