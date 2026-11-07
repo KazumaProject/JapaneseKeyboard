@@ -90,7 +90,11 @@ internal class PhraseConverter(
         require(limit in 1..MAX_RESULTS) { "Limit must be in 1..$MAX_RESULTS" }
 
         val grammar = PhraseGrammar(dictionary.grammarRoles)
-        val lattice = lattice(text, prefixMode)
+        val registeredPhrases = dictionary.phrases(text, prefixMode, limit)
+        val compactInput = lookupKey(text).filterNot(Char::isWhitespace)
+        val lattice = lattice(text, prefixMode, protectCompound = registeredPhrases.any {
+            it.reading.replace(" ", "") == compactInput
+        })
         val edges = lattice.edges
         val lexicalSpacing = if (lattice.protectSingleWord) {
             dictionary.exact(lookupKey(text)).map { lookupKey(it.surface.replace('-', ' ')) }.toSet()
@@ -148,14 +152,35 @@ internal class PhraseConverter(
         }
         val finalPaths = paths.last()
         finalPaths.sortWith(order)
-        return finalPaths.asSequence()
+        val candidates = finalPaths.asSequence()
             .distinctBy(Path::render)
             .take(limit)
             .map { PhraseCandidate(it.render(), it.collectSegments(), it.cost, it.evidence) }
             .toList()
+        val phrases = registeredPhrases.map { candidate ->
+            val exact = candidate.reading.replace(" ", "") == compactInput
+            PhraseCandidate(
+                candidate.surface,
+                listOf(
+                    Segment(0, text.length, candidate.surface,
+                        if (exact) SegmentKind.EXACT else SegmentKind.COMPLETION,
+                        candidate.reading, candidate.cost),
+                ),
+                candidate.cost,
+                grammar.score(arrayOf<String?>(candidate.surface), 1),
+            )
+        }
+        // Once the phrase's first word is fully typed, offer its registered spelling
+        // before ordinary completions. Short prefixes still favor word completion.
+        val exactWords = candidates.filter { it.segments.singleOrNull()?.kind == SegmentKind.EXACT }
+        val typedLength = text.count { !it.isWhitespace() }
+        val completedFirstWord = phrases.filter {
+            checkNotNull(it.segments.single().reading).substringBefore(' ').length <= typedLength
+        }
+        return (exactWords + completedFirstWord + candidates + phrases).distinctBy { it.text }.take(limit)
     }
 
-    private fun lattice(text: String, prefixMode: Boolean): Lattice {
+    private fun lattice(text: String, prefixMode: Boolean, protectCompound: Boolean): Lattice {
         val edges = Array(text.length) { mutableListOf<Segment>() }
         var protectSingleWord = false
         val spans = inputWords.findAll(text).map { it.range }.toMutableList()
@@ -188,7 +213,7 @@ internal class PhraseConverter(
                 edges[start] += (candidates + restored).distinct().map { it.segment(start, end, start) }
             } else {
                 val whole = lookup(reading)
-                if (spans.size == 1 && (whole.isNotEmpty() || directCompletions.isNotEmpty())) {
+                if (spans.size == 1 && (whole.isNotEmpty() || directCompletions.isNotEmpty() || protectCompound)) {
                     protectSingleWord = true
                 }
                 // Explicit word boundaries take precedence when the word is registered.
