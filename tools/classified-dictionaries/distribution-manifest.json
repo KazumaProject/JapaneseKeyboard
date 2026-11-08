@@ -2035,16 +2035,17 @@
     "app/src/main/assets/system/yomi.dat.zip": "716297c927aaeeb6630f50b371953ae0343b5126bfdd512240e5310e1cbfa74a"
   },
   "englishDictionary": {
-    "version": "english-dictionary-preview.1",
-    "revision": "dbbb97fc9b7cdd32441d3719b76eb0493fa787a2",
-    "archiveSha256": "17844989533be48541ac187ce030142f8d3e95f146415fe206e16d2a9cf44796",
+    "version": "english-dictionary-preview.3",
+    "revision": "f4c7151ac69d41586135037e658364bf48dae7a8",
+    "archiveSha256": "76a2a8f029260dfb865eabe4f25beb56172c627b271736411d616d15248a44ae",
+    "supportArchiveSha256": "4d8109de90d2afff02fbf96380110edcaa15f93a1cef004a36473600357fd435",
     "assets": {
-      "app/src/main/assets/english/reading.dat.zip": "bff698664719f26761b55e30251d97962b36bc1f17c2a8aa942b5e4b2f7503ee",
-      "app/src/main/assets/english/word.dat": "6008c66d95f74c215b2c3bd0a2d124d60323cdfeedc66abb3e8d2364883dc52e",
-      "app/src/main/assets/english/token.dat.zip": "4d6a9494f5bd0a4d26246dae680d66295d719d90639fc2e5e3d1302a4d9ffa14",
-      "app/src/main/assets/english/qwerty_glide_index.dat": "54a332d4bbac08f58481b86ed8a37cc6a76957d219ab0e4687a5c46305cb7ee3",
-      "app/src/main/assets/english/grammar/categories.erol": "9ebc4470332ce08a727b953f9fa510513f5edbdc839586aa396d94d9e40ddfeb",
-      "app/src/main/assets/licenses/english.html": "cd5cc274c5f4377b9c74af6a86ef62e21895f4a72ee3f39d1328e2925fb717ce"
+      "app/src/main/assets/english/reading.dat.zip": "d16b7d669b28f6c5a0859a67db1234884d98464febb4e21f7eb79fd4ff6fe0e0",
+      "app/src/main/assets/english/word.dat": "cd0679d884ef452ff0fca1432a58c6b7a9d2bbcfd216615f099f0c3d636f6259",
+      "app/src/main/assets/english/token.dat.zip": "d6a3d0ec90a4f126262cd4175aa555b500240cbaaa745f7bf44b38039f82df23",
+      "app/src/main/assets/english/qwerty_glide_index.dat": "76882e4be7b0ea3ce4cdbdc74315fc40954fff2998d97521bf2dc3fbb0f9afe3",
+      "app/src/main/assets/english/grammar/categories.erol": "de5d9a15c9b4a67a4c35cdf4a11e80736042a3945ac80b78b50de9619af7794d",
+      "app/src/main/assets/licenses/english.html": "21334faff60b4a7737c258a39e82dd9efdb1144eab620da316728da5d4626c5c"
     }
   }
 }
