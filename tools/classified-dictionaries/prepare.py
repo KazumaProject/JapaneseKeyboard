@@ -27,11 +27,13 @@ SOURCES = {
     'web': ('src/main/bin/wiki_neologd_common.txt.zip', 'wiki_neologd_common.txt'),
 }
 CACHE = ROOT / '.cache/classified-distribution'
-ENGLISH_PREVIEW_TAG = 'english-dictionary-preview.1'
-ENGLISH_PREVIEW_REVISION = 'dbbb97fc9b7cdd32441d3719b76eb0493fa787a2'
+ENGLISH_PREVIEW_TAG = 'english-dictionary-preview.3'
+ENGLISH_PREVIEW_REVISION = 'f4c7151ac69d41586135037e658364bf48dae7a8'
 ENGLISH_PREVIEW_PAGE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/{ENGLISH_PREVIEW_TAG}'
 ENGLISH_PREVIEW_DOWNLOAD = ENGLISH_PREVIEW_PAGE.replace('/tag/', '/download/') + '/'
-ENGLISH_PREVIEW_SHA256 = '17844989533be48541ac187ce030142f8d3e95f146415fe206e16d2a9cf44796'
+ENGLISH_PREVIEW_SHA256 = '76a2a8f029260dfb865eabe4f25beb56172c627b271736411d616d15248a44ae'
+ENGLISH_SUPPORT_FILE = 'english_dictionary_runtime_support.zip'
+ENGLISH_SUPPORT_SHA256 = '4d8109de90d2afff02fbf96380110edcaa15f93a1cef004a36473600357fd435'
 ENGLISH_ASSET_ROOT = 'app/src/main/assets/english/'
 ENGLISH_PREVIEW_ASSETS = {
     'reading.dat.zip': 'reading.dat.zip',
@@ -405,17 +407,36 @@ def notices(counts):
 def english_preview():
     data = fetch(ENGLISH_PREVIEW_DOWNLOAD + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == ENGLISH_PREVIEW_SHA256
+    support_data = fetch(ENGLISH_PREVIEW_DOWNLOAD + ENGLISH_SUPPORT_FILE)
+    assert sha(support_data) == ENGLISH_SUPPORT_SHA256
     manifest_file = ROOT / 'tools/classified-dictionaries/distribution-manifest.json'
     distribution = json.loads(manifest_file.read_text())
     assets = {}
-    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+    with zipfile.ZipFile(io.BytesIO(data)) as archive, zipfile.ZipFile(io.BytesIO(support_data)) as support:
         manifest = json.loads(archive.read('dictionary-distribution-manifest.json'))
-        assert manifest['englishDictionary']['builderRevision'] == ENGLISH_PREVIEW_REVISION
+        english = manifest['englishDictionary']
+        support_manifest = json.loads(support.read('english-runtime-support-manifest.json'))
+        assert english['builderRevision'] == support_manifest['builderRevision'] == ENGLISH_PREVIEW_REVISION
+        assert english['optionalSupport']['file'] == ENGLISH_SUPPORT_FILE
+        assert english['optionalSupport']['sha256'] == ENGLISH_SUPPORT_SHA256
+        for payload, checksum in support_manifest['requiredCorePayloadSha256'].items():
+            assert english['runtimePayloadSha256'][payload] == checksum, payload
+        for zipped in (archive, support):
+            assert len(zipped.namelist()) == len(set(zipped.namelist()))
 
         def verified(path):
             name = ENGLISH_ASSET_ROOT + path
-            content = archive.read(name)
-            assert sha(content) == manifest['files'][name], name
+            checksums, zipped = (manifest['files'], archive) if name in manifest['files'] else (support_manifest['files'], support)
+            content = zipped.read(name)
+            assert sha(content) == checksums[name], name
+            runtime_path = path.removeprefix('runtime-support/')
+            payload = content
+            if path in ('reading.dat.zip', 'token.dat.zip'):
+                runtime_path = path.removesuffix('.zip')
+                with zipfile.ZipFile(io.BytesIO(content)) as wrapper:
+                    assert wrapper.namelist() == [runtime_path], path
+                    payload = wrapper.read(runtime_path)
+            assert sha(payload) == english['runtimePayloadSha256'][runtime_path], path
             return content
 
         for source, destination in ENGLISH_PREVIEW_ASSETS.items():
@@ -431,13 +452,13 @@ def english_preview():
                 notices[verified(name.removeprefix(ENGLISH_ASSET_ROOT)).decode('utf-8')].append(name.removeprefix(prefix))
 
         title = 'English word dictionary / 英単語辞書'
-        source = 'https://github.com/KazumaProject/kotlin-louds-english/releases/tag/v24-preview.1'
+        source = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/{ENGLISH_PREVIEW_REVISION}/english-ime/data/catalog/NAMED-VOCABULARY.md'
         page = (
             f'<!doctype html><meta charset="utf-8"><title>{title}</title><h1>{title}</h1>'
             '<h2>出典と配布版 / Source and version</h2>'
             f'<p>配布: {ENGLISH_PREVIEW_TAG} ({ENGLISH_PREVIEW_REVISION})</p>'
             f'<p><a href="{ENGLISH_PREVIEW_PAGE}">Android dictionary distribution / Android 向け配布</a></p>'
-            f'<p><a href="{source}">English Dictionary v24 Preview 1 / 英語辞書の出典</a></p>'
+            f'<p><a href="{source}">English dictionary catalog / 英語辞書の出典・語彙台帳</a></p>'
             '<p>Android bundles the reading, word, token, Glide and grammar files. '
             'The build repackages the reading, word and token arrays for Android. '
             'Each source retains the terms reproduced below.</p>'
@@ -456,6 +477,7 @@ def english_preview():
         'version': ENGLISH_PREVIEW_TAG,
         'revision': ENGLISH_PREVIEW_REVISION,
         'archiveSha256': ENGLISH_PREVIEW_SHA256,
+        'supportArchiveSha256': ENGLISH_SUPPORT_SHA256,
         'assets': assets,
     }
     write(manifest_file, json.dumps(distribution, ensure_ascii=False, indent=2) + '\n')
@@ -478,6 +500,7 @@ def check():
     assert (english['version'], english['revision'], english['archiveSha256']) == (
         ENGLISH_PREVIEW_TAG, ENGLISH_PREVIEW_REVISION, ENGLISH_PREVIEW_SHA256,
     )
+    assert english['supportArchiveSha256'] == ENGLISH_SUPPORT_SHA256
     assert set(english['assets']) == {ENGLISH_ASSET_ROOT + name for name in ENGLISH_PREVIEW_ASSETS.values()} | {ENGLISH_NOTICE}
     for path, checksum in english['assets'].items():
         assert sha((ROOT / path).read_bytes()) == checksum, path

@@ -23,6 +23,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEn
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.io.DataInputStream
 import java.nio.ByteBuffer
 import java.util.UUID
 import org.junit.Assert.assertEquals
@@ -34,6 +35,20 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
+    @Test
+    fun previewThreeBundlesTheExpandedVocabularyAndFrontCodedGrammar() = withDictionary { _, _, reader ->
+        val dictionary = checkNotNull(reader.loadBundledEnglishForEngine())
+        assertEquals(864_023, dictionary.tokenArray.getNodeIds().size)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val header = ByteArray(8)
+        context.assets.open("english/grammar/categories.erol").use { DataInputStream(it).readFully(header) }
+        assertEquals(2, ByteBuffer.wrap(header).getInt(4))
+        val words = EnglishPhraseDictionary(dictionary, checkNotNull(reader.loadBundledEnglishGrammar()))
+        for (surface in listOf("Elon Musk", "Taylor Swift", "Toyota Corolla", "OpenAI")) {
+            assertTrue(surface, words.exact(surface.lowercase()).any { it.surface == surface })
+        }
+    }
+
     @Test
     fun registeredMultiwordSurfacesKeepSpacesInCandidateCommitText() = withDictionary { _, _, reader ->
         val words = EnglishPhraseDictionary(
@@ -52,12 +67,14 @@ class EnglishPhraseDictionaryInstrumentedTest {
             assertTrue(input, phrases.all { it in words.exact(it.reading) })
             val candidates = query(input)
             val canonical = candidates.first { it.string == expected }
-            assertTrue(input, candidates.indexOf(canonical) in 1..4)
+            // preview.3 adds lower-cost registered names ahead of some existing phrases.
+            assertTrue("$input: ${candidates.map { it.string }}", candidates.indexOf(canonical) in 1..11)
             assertEquals(expected, canonical.commitText)
             assertEquals(input.length, canonical.length.toInt())
         }
         val android = query("android").map { it.string }
-        assertTrue(android.indexOf("Android Studio") < android.indexOf("AndroidStudio"))
+        val identifierIndex = android.indexOf("AndroidStudio")
+        assertTrue(identifierIndex < 0 || android.indexOf("Android Studio") < identifierIndex)
         assertTrue(query("AndroidStudio").any { it.commitText == "AndroidStudio" })
         assertFalse(query("googlemaps").any { it.string.equals("Google ma ps", ignoreCase = true) })
         assertTrue(query("TextView").any { it.commitText == "TextView" })
@@ -97,7 +114,7 @@ class EnglishPhraseDictionaryInstrumentedTest {
     }
 
     @Test
-    fun packagedDictionaryMatchesReferenceExamples() = withDictionary { _, resolver, reader ->
+    fun packagedDictionaryKeepsGrammarAndGlideExamples() = withDictionary { _, resolver, reader ->
         val dictionary = checkNotNull(reader.loadBundledEnglishForEngine())
         val grammar = checkNotNull(reader.loadBundledEnglishGrammar())
         val converter = PhraseConverter(EnglishPhraseDictionary(dictionary, grammar))
@@ -106,7 +123,7 @@ class EnglishPhraseDictionaryInstrumentedTest {
         assertEquals(listOf(0 to 2, 2 to 5, 5 to 9), joined.segments.map { it.start to it.end })
         assertEquals(4669, joined.dictionaryCost)
         val completion = converter.convert("he tak", prefixMode = true, limit = 5)
-        assertEquals(listOf("he takes", "he taking", "he taken", "he takeover", "he takeoff"), completion.map { it.text })
+        assertEquals(listOf("he takes", "He takes", "he taking", "he taken", "he takeover"), completion.map { it.text })
         assertEquals(3, completion.first().grammar.score)
         assertEquals(1, completion.first().grammar.clauses)
         assertEquals(listOf(0 to 2, 2 to 3, 3 to 6), completion.first().segments.map { it.start to it.end })

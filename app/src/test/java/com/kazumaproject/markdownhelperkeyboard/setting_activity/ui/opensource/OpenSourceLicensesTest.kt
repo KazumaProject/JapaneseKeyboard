@@ -46,7 +46,7 @@ class OpenSourceLicensesTest {
         items.forEach {
             val html = it.document()
             val revision = if (it.id == "dictionary/english") {
-                "english-dictionary-preview.1 (dbbb97fc9b7cdd32441d3719b76eb0493fa787a2)"
+                "english-dictionary-preview.3 (f4c7151ac69d41586135037e658364bf48dae7a8)"
             } else {
                 "v1.7.283 (b9f3375a1cfb0ce5e56f4da622ecc4e983364581)"
             }
