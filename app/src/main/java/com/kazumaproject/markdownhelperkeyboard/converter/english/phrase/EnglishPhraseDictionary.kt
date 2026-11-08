@@ -13,6 +13,14 @@ internal class EnglishPhraseDictionary(
     fun prefixes(text: String): List<String> =
         dictionary.readingTrie.commonPrefixSearch(text, dictionary.readingLbsIndex)
 
+    fun hasCompletion(prefix: String): Boolean {
+        val terms = dictionary.readingTrie.termsStartingWith(prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex)
+        for ((key, _) in terms) {
+            if (key.length > prefix.length && key.all { it in 'a'..'z' || it in '0'..'9' }) return true
+        }
+        return false
+    }
+
     fun exact(text: String): List<DictionaryCandidate> {
         val node = dictionary.readingTrie.getNodeIndex(text, dictionary.readingLbsIndex)
         if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return emptyList()
