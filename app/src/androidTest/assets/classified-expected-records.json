@@ -1,7 +1,7 @@
 {
   "character": {
-    "count": 6854,
-    "digestSum": "e149a7e338da1be29a44a08aa0155e72bfc4c05f7b681aaff0b904e31906c4bd",
+    "count": 6856,
+    "digestSum": "be07c424f9c2cc08ded6919fd1aa9404ccddcbea24bca37837a0adbddf80fa50",
     "sample": {
       "reading": "あかざあかね",
       "surface": "赤座あかね"
@@ -168,8 +168,8 @@
     }
   },
   "facility/cultural/art_museum": {
-    "count": 378,
-    "digestSum": "800ddfbe60a9008fb2d8690fb2f3073dac9ff79f2024cebf553b86e15b8244fb",
+    "count": 380,
+    "digestSum": "70ebfcf76581fa3e1875159a46b6c7d026cf40b7ce3b345789aa0c0425673507",
     "sample": {
       "reading": "えろーら",
       "surface": "エローラ"
@@ -184,8 +184,8 @@
     }
   },
   "facility/cultural/memorial": {
-    "count": 1183,
-    "digestSum": "7519a3d564ec3b01de2388ecbc37e087c4a4c00e9ab68087744804163a59e236",
+    "count": 1184,
+    "digestSum": "54b7c85722443c37a2a4154a0feea07e4a0b5b83113d0fe3642f3f44c9d75c6e",
     "sample": {
       "reading": "えくらほーる",
       "surface": "エクラホール"
@@ -208,24 +208,24 @@
     }
   },
   "facility/entertainment/live_venue": {
-    "count": 148,
-    "digestSum": "3e25941742efb0a4c36f758b581d9891bb79314631a918cd1f203ef120a7cb41",
+    "count": 149,
+    "digestSum": "3d2e6f3c20e48185adc328147eadade52ef405cdfb62744cdae32fce31eaefdc",
     "sample": {
       "reading": "しぶちか",
       "surface": "しぶちか"
     }
   },
   "facility/entertainment/amusement": {
-    "count": 141,
-    "digestSum": "be11fcd3f06caeab1bea836475ef9156d3b47f5f579997fa6bd350d740956e9a",
+    "count": 142,
+    "digestSum": "167cf6089aafe7acf783f5e7cf0931453f958660be3395434061161add8e0e89",
     "sample": {
       "reading": "とうげき",
       "surface": "東劇"
     }
   },
   "facility/sports/stadium": {
-    "count": 624,
-    "digestSum": "f6f31ad7a6f326d57b31cc1feb42af4dc50e16107eb0aff35902bd74d906808b",
+    "count": 626,
+    "digestSum": "0268d0f9bd9fd19f867117778a7e0b71c662d09724da0d068cf680df9136352e",
     "sample": {
       "reading": "よこすた",
       "surface": "横スタ"
@@ -264,8 +264,8 @@
     }
   },
   "facility/commercial/shopping": {
-    "count": 1300,
-    "digestSum": "b26ecb9ed0dd1ec7bbfb66eeee457520a9be097713a98387a18559f1f62bc6f9",
+    "count": 1302,
+    "digestSum": "413b26d26580eb100db6b03eb7adfa84a93003f859eb34870f1e0cc7731b9830",
     "sample": {
       "reading": "きくのま",
       "surface": "菊の間"
@@ -480,8 +480,8 @@
     }
   },
   "facility/residential/mixed_use_building": {
-    "count": 94,
-    "digestSum": "e16f93e70a1312cd02afce62bd5327d1aef26e1714a3a87fda418b20227428f2",
+    "count": 95,
+    "digestSum": "febb7e1db2cf3a44073242291760945953fd8197f239fdeef7e6cdf778228088",
     "sample": {
       "reading": "くずだて",
       "surface": "くず館"
@@ -520,8 +520,8 @@
     }
   },
   "organization": {
-    "count": 47518,
-    "digestSum": "753627ff6bc5cae6b21f1bb3cfb8bcf09f4bdf87af7b2bb2be5ab0404f05de49",
+    "count": 47519,
+    "digestSum": "92d411144249a96ae3dcdea4202864c08f44e517c9d7e3fb1621357327fe76cc",
     "sample": {
       "reading": "のべるず",
       "surface": "NOVELS"
@@ -536,16 +536,16 @@
     }
   },
   "product": {
-    "count": 10162,
-    "digestSum": "cc72256dfa3c0bdef33c4c8e1f0727f72eaf0975250d6404a4a83276bba54d40",
+    "count": 10198,
+    "digestSum": "73d4f52ad45b6de51a0bbf3775bc43871f70161635d4cadded1dbd1ee5cd5068",
     "sample": {
       "reading": "ぽたぽたやき",
       "surface": "ぽたぽた焼"
     }
   },
   "vehicle": {
-    "count": 2580,
-    "digestSum": "abe9df9ed271f0046752a614722e56ca52d6b0aff414489b46496d70657c4e2e",
+    "count": 2581,
+    "digestSum": "91de78c9e19513fe6ad0b4cf42e578c5c4161411cf8730fe1441fe4470d31b7f",
     "sample": {
       "reading": "あくせら",
       "surface": "AXELA"
@@ -680,8 +680,8 @@
     }
   },
   "term/specialist/chemistry_life_sciences": {
-    "count": 27570,
-    "digestSum": "b8ac06775cdabc3200b3e75c8fb7a8739cb0704bae94e3bcb5300777db758c19",
+    "count": 27574,
+    "digestSum": "61ad416a3b8175956e3010ccbfa36b12580ac6fa89dabb6263286b27e845a6fa",
     "sample": {
       "reading": "あかひめ",
       "surface": "赤姫"
@@ -696,24 +696,24 @@
     }
   },
   "term/specialist/earth_environment_resources": {
-    "count": 2114,
-    "digestSum": "d0332e3bdc88dca875011434dd70a5b2a8092fa7d4a5b082a46fa3f05d58342d",
+    "count": 2117,
+    "digestSum": "fa6b1f47b38201e242614c5fa9e5b5b9b8c0beb8b4a646c9f9a805587356219f",
     "sample": {
       "reading": "あなはぜ",
       "surface": "孔鯊"
     }
   },
   "term/specialist/economics_management": {
-    "count": 5909,
-    "digestSum": "98073e5584527337d75650204fedabd196a9da6984651fe1a3deaded5a60e303",
+    "count": 5911,
+    "digestSum": "14de6abf1880d80f1b0111ad7465cd5022d83792ca2da542953837fe6be88c26",
     "sample": {
       "reading": "あいずごよう",
       "surface": "会津五葉"
     }
   },
   "term/specialist/law_politics": {
-    "count": 5719,
-    "digestSum": "5e915c57e30d7784cb8e898ec2bd298ea545199b86b7ea8d87789ed92ae6332f",
+    "count": 5721,
+    "digestSum": "c7d43ce7dc4dca4554beb80ea969e0b6e0d89865322e3419ad1c5b56290d1b14",
     "sample": {
       "reading": "ぎいんせき",
       "surface": "議院石"
@@ -736,8 +736,8 @@
     }
   },
   "term/specialist/transport_safety_defense": {
-    "count": 4063,
-    "digestSum": "ec532ce4355e5fa06b24446ecc1a28dfcd71bb4a905b6e6a8d2544780997413e",
+    "count": 4064,
+    "digestSum": "55e4a19ecb5964645e36c7ee9b64b093d3048756ff96c762dbd6d22e7001d525",
     "sample": {
       "reading": "あこうぎし",
       "surface": "赤穂義士"
@@ -752,40 +752,40 @@
     }
   },
   "work_manga": {
-    "count": 5093,
-    "digestSum": "1fd7cf3cca2b171787edb3f2b07315758aab32ae0f47ad61e948ea52b6f88974",
+    "count": 5095,
+    "digestSum": "7610ed9a3917530fdfa2629b02c96dd1fc326506f99e296186d8e4f1ec7961f9",
     "sample": {
       "reading": "あきそら",
       "surface": "あきそら"
     }
   },
   "work_anime": {
-    "count": 1092,
-    "digestSum": "75fe99943c43862aed988123b061d1abb8ed3250591d57dd25ba1efd8abd0af6",
+    "count": 1093,
+    "digestSum": "51932e57b9ca1533ac3127dbaace118dd1248268175c50dd52646609c5d795b3",
     "sample": {
       "reading": "あいどるじへん",
       "surface": "アイドル事変"
     }
   },
   "media_demographic/audience/shonen": {
-    "count": 4126,
-    "digestSum": "27cabaa828e9087cf710463b903b3442edf07ffdf3643c6df36a8a6a52da99d2",
+    "count": 4127,
+    "digestSum": "9d0f509d0fb2957dd652513e7abfe940ae1d636a659c91aef8529751370ae4ea",
     "sample": {
       "reading": "あかかげ",
       "surface": "赤影"
     }
   },
   "media_demographic/audience/seinen": {
-    "count": 1735,
-    "digestSum": "2f8ddf20c706dccaa215b1c38ddad9b3eeb321a744f65a07fab56a37d0e7b766",
+    "count": 1737,
+    "digestSum": "0c4bfb6287ef8cf0e6a7a2d8bf700f45fbcc2d31ee4ae2d0419d13129761ecf9",
     "sample": {
       "reading": "あきそら",
       "surface": "あきそら"
     }
   },
   "media_demographic/audience/shojo": {
-    "count": 826,
-    "digestSum": "59f58683a2d08a3fd72f0c6080236074ffa280ba7f58c3c52cefda7e160c9721",
+    "count": 827,
+    "digestSum": "3aea0eec2af339374fa1b005e7f503d3b0fccfa6f776ea83c597c836675d248e",
     "sample": {
       "reading": "ういらぶ",
       "surface": "ういらぶ"
@@ -816,8 +816,8 @@
     }
   },
   "media_demographic/audience/unspecified": {
-    "count": 5105,
-    "digestSum": "f57a7d87a8fcb07520d3c8433d78644c616b375ef829a7e5d8395bbba79151c3",
+    "count": 5106,
+    "digestSum": "d10f124b26833f7ddf6c6efb37e4a42e79a28776b668a0e604e3a2c7e2abdc80",
     "sample": {
       "reading": "あいばゆみ",
       "surface": "相葉夕美"
@@ -832,8 +832,8 @@
     }
   },
   "work_film": {
-    "count": 6506,
-    "digestSum": "c8379b5bc9e94832927cfff3cbeec2f889d6995ee793cfbbb73075935bdc6776",
+    "count": 6509,
+    "digestSum": "721e7993717be9978999789c0c446f72fcbace7899bc046fa36c945017a0191e",
     "sample": {
       "reading": "あいびき",
       "surface": "逢びき"
@@ -856,16 +856,16 @@
     }
   },
   "work_game": {
-    "count": 3167,
-    "digestSum": "35274c902be3a248b4c3729a86d81e3b2ad1c3969caf730c30162de84d165925",
+    "count": 3179,
+    "digestSum": "43b1d3a1826a67c9317f056cfacde28e2aa43258c65a7c0f09f2c2e6bbfcbfde",
     "sample": {
       "reading": "あじとつー",
       "surface": "AZITO2"
     }
   },
   "work_music": {
-    "count": 10352,
-    "digestSum": "7e28c26515b85a6c578cb420b574cfb8a906bc991dccfb089ae99c7b59c2c131",
+    "count": 10353,
+    "digestSum": "aed8aaeaa39884260d1d72cafb5c48e29b87844c89cf74ad5291d9dbea2198b6",
     "sample": {
       "reading": "あいをくれ",
       "surface": "アイヲクレ"
@@ -912,24 +912,24 @@
     }
   },
   "person/surname_origin_unconfirmed": {
-    "count": 23820,
-    "digestSum": "4b3ed66073bb656b29963f0dfa811876d6a5cdf22b1c2ef4fa32721f334aa4a5",
+    "count": 23814,
+    "digestSum": "db8d7a29905761cb92fecc80cbeffc4187285d76342be1a529a64eae013a3882",
     "sample": {
       "reading": "そうくら",
       "surface": "惣倉"
     }
   },
   "person/given_name_origin_unconfirmed": {
-    "count": 4247,
-    "digestSum": "c07fd8b89dca83d0852b9f9eac7411398e6acf1eaf7a255da2918a01d7acfc7e",
+    "count": 4245,
+    "digestSum": "17bb0eb7447083b297599ef282166d30a2c956acee07c4fb02f8cbdd765183d7",
     "sample": {
       "reading": "おおみちとせ",
       "surface": "おおみちとせ"
     }
   },
   "person/personal_name_origin_unconfirmed": {
-    "count": 91922,
-    "digestSum": "a256704608c056fad08944914266cd46370387de25ed52579b2b2d90b032b788",
+    "count": 91915,
+    "digestSum": "8f6a420b211568ab6c75185c72232c17bb369f35d20643d2a594f16bfafa8e87",
     "sample": {
       "reading": "あいかりお",
       "surface": "愛香梨央"
@@ -1096,48 +1096,48 @@
     }
   },
   "person/surname_origin_japanese": {
-    "count": 24627,
-    "digestSum": "25c19d5a2be2c1379decaca75cc77d446dab799ab628e33e2439ecb97d234563",
+    "count": 24616,
+    "digestSum": "1f7dc7fe9a827a85748dfc3998c272a254b220c52bd41cbd61ff7d5e819c1593",
     "sample": {
       "reading": "あいきょう",
       "surface": "哀姜"
     }
   },
   "person/surname_origin_foreign": {
-    "count": 64,
-    "digestSum": "2c127e7056cfd172e1d8219237e79eaa2f805374a1ffa2a63e9ebc198c97bf2a",
+    "count": 69,
+    "digestSum": "c4ce964e1d2cae781304a7513d23001aca364d802e2381c245bbe5e8c76842c9",
     "sample": {
       "reading": "きゃっしゅまん",
       "surface": "キャッシュマン"
     }
   },
   "person/given_name_origin_japanese": {
-    "count": 2249,
-    "digestSum": "cd379c34c6b463a5c57e2193ca61e2aa83e2e1b668bea12132ca490192dca23e",
+    "count": 2246,
+    "digestSum": "5472cf8970b6eaff0838e52a019ed33317bbc4fe68441f4137a88ce32a836532",
     "sample": {
       "reading": "おがたさき",
       "surface": "緒方咲"
     }
   },
   "person/given_name_origin_foreign": {
-    "count": 48,
-    "digestSum": "9587b7302e6e3bb15cab933885022fd567ee7970aa2893aeeb9a422548811af6",
+    "count": 50,
+    "digestSum": "9e390880ac08158bf84c47cea7d9fc73adbec70fce5d637258b209bb7f2c8578",
     "sample": {
       "reading": "くいんてぃっるす",
       "surface": "クインティッルス"
     }
   },
   "person/personal_name_origin_japanese": {
-    "count": 73178,
-    "digestSum": "5ce807bc4fc6596131b85070c04d00e277bb50bbaea6a16c07655fcf461e1995",
+    "count": 73170,
+    "digestSum": "badff487e47671e92f45798678c7bf63004a59f38b99d8f2404d2c68aa7b6d9d",
     "sample": {
       "reading": "あいかわいち",
       "surface": "会川いち"
     }
   },
   "person/personal_name_origin_foreign": {
-    "count": 2359,
-    "digestSum": "83a95946027a4ad9b7fa3ab776a57d088845d44aa784903205256908c530a2a8",
+    "count": 2387,
+    "digestSum": "1e743cb90eea6498a2796a6edea62e221d769612f2173dc58062e96cdfd774c6",
     "sample": {
       "reading": "ありたっく",
       "surface": "アリタック"
