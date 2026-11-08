@@ -45,6 +45,14 @@ class EnglishPhraseDictionaryInstrumentedTest {
         val failures = mutableListOf<String>()
         for (sample in samples) {
             val compact = sample.reading.replace(" ", "")
+            var rawEnd = 0
+            for (length in 1..compact.length) {
+                while (sample.reading[rawEnd++] == ' ') { /* Skip stored word boundaries. */ }
+                val expectedPrefix = sample.reading.take(rawEnd)
+                assertTrue(expectedPrefix, data.readingTrie.prefixesMatchingJoinedInput(
+                    compact.take(length), data.readingLbsIndex,
+                ).contains(expectedPrefix))
+            }
             val inputs = ((2..compact.length).map(compact::take) +
                 listOf(compact.uppercase(), compact.replaceFirstChar(Char::uppercaseChar))).distinct()
             for (word in inputs) for (context in listOf("", "hello ")) for (prefix in listOf(false, true)) {
@@ -284,6 +292,38 @@ class EnglishPhraseDictionaryInstrumentedTest {
                 }
                 assertFalse(query("he tak").any { it.string == "he takes" })
                 assertFalse(query("hecantake", englishPrediction = false).any { it.string == "he can take" })
+            }
+        }
+    }
+
+    @Test
+    fun contextualPrefixesUseRegisteredSpacesAcrossBothBackends() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entry = EntryPointAccessors.fromApplication(context, KanaKanjiEngineEntryPoint::class.java)
+        val reader = entry.dictionaryBinaryReader()
+        val words = EnglishPhraseDictionary(checkNotNull(reader.loadBundledEnglishForEngine()),
+            checkNotNull(reader.loadBundledEnglishGrammar()))
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(entry.kanaKanjiEngine(), backend)
+            for (bunsetsu in listOf(false, true)) for (mode in listOf(
+                CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.CONVERSION,
+            )) for (input in listOf("hello froste", "hello noki", "hello sourceseri", "hello bolind", "hello chanelim")) {
+                val candidates = session.query(KanaKanjiQueryRequest(
+                    input = input, mode = mode, bunsetsuSeparation = bunsetsu, n = 4,
+                    userDictionaryRepository = entry.userDictionaryRepository(), learnRepository = null,
+                    omissionSearchEnabled = false, typoCorrectionJapaneseFlickEnabled = false,
+                    typoCorrectionQwertyEnglishEnabled = false, typoCorrectionOffsetScore = 3000,
+                    omissionSearchOffsetScore = 1900, beamWidth = 20,
+                    predictionConfig = PredictionConfig(englishPredictionEnabled = true),
+                )).candidates
+                assertTrue(input, candidates.isNotEmpty())
+                for (candidate in candidates) {
+                    val suffix = candidate.string.substringAfter(' ', "")
+                    if (suffix.none(Char::isWhitespace)) continue
+                    val keys = listOf(suffix.lowercase(), suffix.lowercase().filterNot(Char::isWhitespace))
+                    assertTrue("$backend $mode bunsetsu=$bunsetsu $input => ${candidate.string}",
+                        keys.any { key -> words.exact(key).any { it.surface.equals(suffix, ignoreCase = true) } })
+                }
             }
         }
     }
