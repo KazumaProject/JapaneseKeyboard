@@ -36,6 +36,62 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
     @Test
+    fun sampledVocabularyPrefixesPreserveTypedWordBoundaries() = withDictionary { _, _, reader ->
+        val data = checkNotNull(reader.loadBundledEnglishForEngine())
+        val words = EnglishPhraseDictionary(data, checkNotNull(reader.loadBundledEnglishGrammar()))
+        val converter = PhraseConverter(words, beamWidth = 24, completionLimit = 32)
+        val samples = EnglishBoundaryCorpus.sample(data, words)
+        var cases = 0
+        val failures = mutableListOf<String>()
+        for (sample in samples) {
+            val compact = sample.reading.replace(" ", "")
+            val inputs = ((2..compact.length).map(compact::take) +
+                listOf(compact.uppercase(), compact.replaceFirstChar(Char::uppercaseChar))).distinct()
+            for (word in inputs) for (context in listOf("", "hello ")) for (prefix in listOf(false, true)) {
+                val input = context + word
+                val bad = converter.convert(input, prefix, 12).filter { candidate ->
+                    candidate.segments.any { it.inferredSpace && it.start >= context.length }
+                }
+                if (bad.isNotEmpty() && failures.size < 20) failures +=
+                    "${sample.bucket}: $input prefix=$prefix => ${bad.map { it.text }}"
+                cases++
+            }
+        }
+        android.util.Log.i("WordBoundaryHarness", "samples=${samples.size} cases=$cases failures=${failures.size}")
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
+    }
+
+    @Test
+    fun joinedSentencesKeepTheirWordsAndUnknownTextDoesNotBecomeAcronymChains() = withDictionary { _, _, reader ->
+        val words = EnglishPhraseDictionary(checkNotNull(reader.loadBundledEnglishForEngine()),
+            checkNotNull(reader.loadBundledEnglishGrammar()))
+        val converter = PhraseConverter(words, beamWidth = 24, completionLimit = 32)
+        for (sentence in listOf("he can take", "we are working", "the cat is sleeping", "cats are cute",
+            "I love you", "I am happy", "they can read", "we will come", "she is ready")) {
+            val input = sentence.replace(" ", "").lowercase()
+            var position = 0
+            val allowed = sentence.split(' ').dropLast(1).mapTo(hashSetOf()) { word ->
+                position += word.length
+                position
+            }
+            for (prefix in listOf(false, true)) {
+                val candidates = converter.convert(input, prefix, 12)
+                assertTrue("$input prefix=$prefix: ${candidates.map { it.text }}",
+                    candidates.any { it.text.equals(sentence, ignoreCase = true) })
+                assertTrue("$input prefix=$prefix: ${candidates.map { it.text }}", candidates.all { candidate ->
+                    candidate.segments.none { it.inferredSpace && it.start !in allowed }
+                })
+            }
+        }
+        val random = java.util.Random(76021)
+        repeat(40) {
+            val input = (0 until 10).map { "qxz"[random.nextInt(3)] }.joinToString("")
+            for (prefix in listOf(false, true)) assertTrue(input,
+                converter.convert(input, prefix, 12).all { candidate -> candidate.segments.none { it.inferredSpace } })
+        }
+    }
+
+    @Test
     fun everyNamePrefixAvoidsInventedWordBoundariesInBothModes() = withDictionary { _, _, reader ->
         val words = EnglishPhraseDictionary(checkNotNull(reader.loadBundledEnglishForEngine()),
             checkNotNull(reader.loadBundledEnglishGrammar()))

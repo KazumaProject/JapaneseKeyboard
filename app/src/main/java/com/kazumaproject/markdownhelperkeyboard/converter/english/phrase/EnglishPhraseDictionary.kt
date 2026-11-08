@@ -16,7 +16,7 @@ internal class EnglishPhraseDictionary(
     fun hasCompletion(prefix: String): Boolean {
         val terms = dictionary.readingTrie.termsStartingWith(prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex)
         for ((key, _) in terms) {
-            if (key.length > prefix.length && key.all { it in 'a'..'z' || it in '0'..'9' }) return true
+            if (key.length > prefix.length && key.none(Char::isWhitespace)) return true
         }
         return false
     }
