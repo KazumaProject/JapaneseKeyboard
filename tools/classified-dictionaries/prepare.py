@@ -15,8 +15,8 @@ import zipfile
 import unicodedata
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = 'b9f3375a1cfb0ce5e56f4da622ecc4e983364581'
-VERSION = 'v1.7.283'
+REVISION = 'f14e2793ef07c93f0d7136f14bbd5270eb3e0c07'
+VERSION = 'v1.7.285'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -27,11 +27,11 @@ SOURCES = {
     'web': ('src/main/bin/wiki_neologd_common.txt.zip', 'wiki_neologd_common.txt'),
 }
 CACHE = ROOT / '.cache/classified-distribution'
-ENGLISH_PREVIEW_TAG = 'english-dictionary-preview.3'
+ENGLISH_PREVIEW_TAG = 'v1.7.285'
 ENGLISH_PREVIEW_REVISION = 'f4c7151ac69d41586135037e658364bf48dae7a8'
 ENGLISH_PREVIEW_PAGE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/{ENGLISH_PREVIEW_TAG}'
 ENGLISH_PREVIEW_DOWNLOAD = ENGLISH_PREVIEW_PAGE.replace('/tag/', '/download/') + '/'
-ENGLISH_PREVIEW_SHA256 = '76a2a8f029260dfb865eabe4f25beb56172c627b271736411d616d15248a44ae'
+ENGLISH_PREVIEW_SHA256 = '8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69'
 ENGLISH_SUPPORT_FILE = 'english_dictionary_runtime_support.zip'
 ENGLISH_SUPPORT_SHA256 = '4d8109de90d2afff02fbf96380110edcaa15f93a1cef004a36473600357fd435'
 ENGLISH_ASSET_ROOT = 'app/src/main/assets/english/'
@@ -62,9 +62,10 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = '2c13311ce86c3dbec45c8b6a8f8fad7200dcfdaac24aab9f93a9e0fb1656f724'
-    assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
-    licenses_sha = 'ec74cdd99e434b17081944759e07aef3b388dda6fad0d9c9616bc4dd3988ebf6'
+    archive_sha = '8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69'
+    checksums = dict(line.split()[::-1] for line in fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().splitlines())
+    assert checksums['japanese_keyboard_dictionary_assets.zip'] == archive_sha
+    licenses_sha = '38d0c6acb59eec1f6daf4bbaf5721960bd86d3edc67e9cd85554887cb4ce810d'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == archive_sha
@@ -76,6 +77,9 @@ def archive():
         path = Path(name)
         assert name.startswith('app/src/main/assets/') and not path.is_absolute() and '..' not in path.parts, name
         assert sha(zipped.read(name)) == checksum, name
+    # English payloads and notices are imported separately into the app layout.
+    manifest['files'] = {name: digest for name, digest in manifest['files'].items()
+                         if not name.startswith(ENGLISH_ASSET_ROOT)}
     old = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())
     for name in set(old['assets']) - set(manifest['files']):
         path = Path(name)
@@ -206,6 +210,12 @@ def provenance():
         frozen = fetch(RAW + addition['path'])
         assert sha(frozen) == addition['sha256']
         person_additions.extend(json.loads(line) for line in frozen.decode().splitlines())
+    updates = distribution.get('dictionaryUpdates')
+    if updates:
+        assert sha(fetch(RAW + 'src/main/classification/distribution-manifest.json')) == updates['classificationManifestSha256']
+        review = fetch(RAW + updates['reviewPath'])
+        assert sha(review) == updates['reviewSha256']
+        result['releaseReview'] = dict(updates, records=[json.loads(line) for line in review.decode().splitlines()])
     result['personAdditions'] = person_additions
     result['specialist'] = specialist
     result['collectedTerms'] = collected_terms
@@ -343,6 +353,9 @@ def notices(counts):
     common += heading('出典', 'Source') + '<p><a href="https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/' + VERSION + '">' + translated('辞書データの配布元', 'Dictionary distribution') + '</a></p>'
     common += heading('対象版', 'Version') + '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
     common += heading('加工内容', 'Modifications') + '<p>' + translated('分類・正規化・重複処理・品詞とコストの割当を行い、IME 用の辞書バイナリに変換しています。', 'Categorized, normalized, deduplicated, assigned parts of speech and costs, and converted to IME dictionary binaries.') + '</p>'
+    if provenance.get('releaseReview'):
+        review = provenance['releaseReview']
+        common += '<p>Reviewed release additions / 配布版の追加語・出典確認: <a href="' + html.escape(RAW + review['reviewPath']) + '">' + html.escape(review['reviewPath']) + '</a> (SHA-256: ' + review['reviewSha256'] + ')</p>'
     common += heading('利用条件', 'License terms') + '<p>' + translated('各出典には、それぞれの利用条件が適用されます。元データの取得版および各語の著作権者との対応は、配布元の資料からは確認できていません。', 'Each source retains its respective terms. The original acquisition revision and per-entry copyright attribution could not be confirmed from the distributor’s materials.') + '</p>'
     person_pairs = collections.defaultdict(set)
     for line in gzip.decompress(fetch(RAW + 'src/main/classification/person-dictionary-candidates.tsv.gz')).decode().splitlines():
