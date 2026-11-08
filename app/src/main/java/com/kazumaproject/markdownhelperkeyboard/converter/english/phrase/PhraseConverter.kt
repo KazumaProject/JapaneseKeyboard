@@ -92,9 +92,11 @@ internal class PhraseConverter(
         val grammar = PhraseGrammar(dictionary.grammarRoles)
         val registeredPhrases = dictionary.phrases(text, prefixMode, limit)
         val compactInput = lookupKey(text).filterNot(Char::isWhitespace)
-        val lattice = lattice(text, prefixMode, protectCompound = registeredPhrases.any {
-            it.reading.replace(" ", "") == compactInput
-        })
+        // Exact mode must recognize an unfinished registered phrase as well, without
+        // emitting its completion in the Conversion tab.
+        val protectCompound = registeredPhrases.isNotEmpty() ||
+            (!prefixMode && latinWord.matches(compactInput) && dictionary.phrases(text, true, 1).isNotEmpty())
+        val lattice = lattice(text, prefixMode, protectCompound)
         val edges = lattice.edges
         val lexicalSpacing = if (lattice.protectSingleWord) {
             dictionary.exact(lookupKey(text)).map { lookupKey(it.surface.replace('-', ' ')) }.toSet()
@@ -213,7 +215,8 @@ internal class PhraseConverter(
                 edges[start] += (candidates + restored).distinct().map { it.segment(start, end, start) }
             } else {
                 val whole = lookup(reading)
-                if (spans.size == 1 && (whole.isNotEmpty() || directCompletions.isNotEmpty() || protectCompound)) {
+                if (spans.size == 1 && (whole.isNotEmpty() || directCompletions.isNotEmpty() || protectCompound ||
+                        !prefixMode && dictionary.hasCompletion(reading))) {
                     protectSingleWord = true
                 }
                 // Explicit word boundaries take precedence when the word is registered.

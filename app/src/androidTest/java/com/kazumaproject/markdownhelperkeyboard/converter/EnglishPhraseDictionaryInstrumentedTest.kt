@@ -36,6 +36,37 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
     @Test
+    fun everyNamePrefixAvoidsInventedWordBoundariesInBothModes() = withDictionary { _, _, reader ->
+        val words = EnglishPhraseDictionary(checkNotNull(reader.loadBundledEnglishForEngine()),
+            checkNotNull(reader.loadBundledEnglishGrammar()))
+        val converter = PhraseConverter(words, beamWidth = 24, completionLimit = 32)
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        var cases = 0
+        for (name in listOf("Elon Musk", "Taylor Swift", "Bill Gates", "Steve Jobs",
+            "Mark Zuckerberg", "Sundar Pichai", "Satya Nadella")) {
+            val joined = name.lowercase().replace(" ", "")
+            for (length in 2..joined.length) for (prefixMode in listOf(false, true)) {
+                val input = joined.take(length)
+                val phrases = converter.convert(input, prefixMode, 12)
+                val invented = phrases.filter { phrase ->
+                    phrase.segments.any { it.inferredSpace } && !phrase.text.equals(name, ignoreCase = true)
+                }
+                assertTrue("$input prefix=$prefixMode: ${invented.map { it.text }}", invented.isEmpty())
+                val candidates = engine.getConversionCandidates(input, input, false, true, prefixMode, emptyList())
+                assertFalse("$input prefix=$prefixMode", candidates.any {
+                    it.string in listOf("elon mu", "Elon mu", "el on mu", "El on mu")
+                })
+                if (length == joined.length || prefixMode && input == "elonmu") {
+                    assertTrue("$input prefix=$prefixMode: ${candidates.map { it.string }}",
+                        candidates.any { it.commitText == name })
+                }
+                cases++
+            }
+        }
+        android.util.Log.i("NamePrefixHarness", "Passed $cases name-prefix/mode cases")
+    }
+
+    @Test
     fun previewThreeBundlesTheExpandedVocabularyAndFrontCodedGrammar() = withDictionary { _, _, reader ->
         val dictionary = checkNotNull(reader.loadBundledEnglishForEngine())
         assertEquals(864_023, dictionary.tokenArray.getNodeIds().size)
@@ -190,6 +221,11 @@ class EnglishPhraseDictionaryInstrumentedTest {
                 ).candidates
 
                 assertTrue(query("hecantake").any { it.string == "he can take" && it.length.toInt() == 9 })
+                for (unfinished in listOf("elonm", "elonmu")) {
+                    val candidates = query(unfinished)
+                    assertFalse("$backend bunsetsu=$bunsetsu $unfinished: ${candidates.map { it.string }}",
+                        candidates.any { it.string.any(Char::isWhitespace) })
+                }
                 assertFalse(query("he tak").any { it.string == "he takes" })
                 assertFalse(query("hecantake", englishPrediction = false).any { it.string == "he can take" })
             }
