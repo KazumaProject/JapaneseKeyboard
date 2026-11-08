@@ -87,7 +87,7 @@ internal class PhraseConverter(
         val grammar = PhraseGrammar(dictionary.grammarRoles)
         val registeredPhrases = dictionary.phrases(text, prefixMode, limit)
         val compactInput = lookupKey(text).filterNot(Char::isWhitespace)
-        val edges = lattice(text, prefixMode)
+        val edges = lattice(text, prefixMode, registeredPhrases)
         val order = if (prefixMode) prefixOrder else exactOrder
         val paths = Array(text.length + 1) { mutableListOf<Path>() }
         val surfaces = arrayOfNulls<String>(text.length)
@@ -168,7 +168,11 @@ internal class PhraseConverter(
         return (exactWords + completedFirstWord + candidates + phrases).distinctBy { it.text }.take(limit)
     }
 
-    private fun lattice(text: String, prefixMode: Boolean): Array<MutableList<Segment>> {
+    private fun lattice(
+        text: String,
+        prefixMode: Boolean,
+        registeredPhrases: List<DictionaryCandidate>,
+    ): Array<MutableList<Segment>> {
         val edges = Array(text.length) { mutableListOf<Segment>() }
         val spans = inputWords.findAll(text).map { it.range }.toMutableList()
         val last = spans.lastOrNull()
@@ -200,7 +204,8 @@ internal class PhraseConverter(
                 edges[start] += (candidates + restored).distinct().map { it.segment(start, end, start) }
             } else {
                 val whole = lookup(reading)
-                val phrases = dictionary.phrases(reading, complete, completionLimit)
+                val phrases = if (start == 0 && end == text.length) registeredPhrases
+                    else dictionary.phrases(reading, complete, completionLimit)
                 edges[start] += phrases.map { candidate ->
                     val compactReading = candidate.reading.replace(" ", "")
                     candidate.copy(reading = compactReading).segment(start, end, start,
@@ -211,7 +216,7 @@ internal class PhraseConverter(
                 // inside it. Do not build speculative split paths and prune them later.
                 val protected = whole.isNotEmpty() || directCompletions.isNotEmpty() ||
                     dictionary.hasCompletion(reading) || phrases.isNotEmpty() ||
-                    (!complete && dictionary.phrases(reading, true, 1).isNotEmpty())
+                    (!complete && dictionary.hasPhraseCompletion(reading))
                 if (protected) {
                     edges[start] += whole.map { it.segment(start, end, start) }
                     // Preserve the established space spelling of hyphenated

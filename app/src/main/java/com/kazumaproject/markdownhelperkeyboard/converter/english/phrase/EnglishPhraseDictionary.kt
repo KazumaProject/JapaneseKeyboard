@@ -21,6 +21,20 @@ internal class EnglishPhraseDictionary(
         return false
     }
 
+    fun hasPhraseCompletion(input: String): Boolean {
+        if (!phraseKey.matches(input)) return false
+        for (prefix in dictionary.readingTrie.prefixesMatchingJoinedInput(input, dictionary.readingLbsIndex)) {
+            val terms = dictionary.readingTrie.termsStartingWith(prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex)
+            for ((reading, term) in terms) {
+                if (' ' !in reading || !phraseKey.matches(reading)) continue
+                var found = false
+                forEachCandidate(reading, term) { if (' ' in it.surface) found = true }
+                if (found) return true
+            }
+        }
+        return false
+    }
+
     fun exact(text: String): List<DictionaryCandidate> {
         val node = dictionary.readingTrie.getNodeIndex(text, dictionary.readingLbsIndex)
         if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return emptyList()
@@ -60,9 +74,13 @@ internal class EnglishPhraseDictionary(
         val best = PriorityQueue(order.reversed())
 
         fun collect(readingPrefix: String) {
-            val terms = dictionary.readingTrie.termsStartingWith(
+            val terms = if (prefixMode) dictionary.readingTrie.termsStartingWith(
                 readingPrefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
-            )
+            ) else {
+                val node = dictionary.readingTrie.getNodeIndex(readingPrefix, dictionary.readingLbsIndex)
+                if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return
+                listOf(readingPrefix to dictionary.readingTrie.getTermId(node, dictionary.readingLeafIndex)).iterator()
+            }
             for ((reading, term) in terms) {
                 if (' ' !in reading || !phraseKey.matches(reading)) continue
                 val matches = if (' ' in prefix) {
@@ -84,11 +102,10 @@ internal class EnglishPhraseDictionary(
             }
         }
 
-        collect(prefix)
-        if (' ' !in prefix) {
-            // Each subtree has a different first space. This avoids a second full
-            // dictionary index and does not guess word boundaries in the surface.
-            for (end in 1 until prefix.length) collect(prefix.take(end) + " ")
+        if (' ' in prefix) collect(prefix) else {
+            // Follow all typed characters before enumerating completions. A word
+            // such as "thecat..." must not scan the entire "the " subtree.
+            for (matching in dictionary.readingTrie.prefixesMatchingJoinedInput(prefix, dictionary.readingLbsIndex)) collect(matching)
         }
         return best.sortedWith(order)
     }

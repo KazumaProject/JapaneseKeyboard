@@ -135,6 +135,28 @@ class LOUDSWithTermId {
         )
     }
 
+    /** Trie prefixes matching the typed characters with optional dictionary spaces. */
+    internal fun prefixesMatchingJoinedInput(input: String, lbs: SuccinctBitVector): List<String> {
+        var states = listOf(0 to "")
+        for (char in input) {
+            val next = ArrayList<Pair<Int, String>>()
+            for ((node, prefix) in states) {
+                val direct = traverse(node, char, lbs)
+                if (direct >= 0) next += direct to (prefix + char)
+                if (prefix.isNotEmpty()) {
+                    val space = traverse(node, ' ', lbs)
+                    if (space >= 0) {
+                        val spaced = traverse(space, char, lbs)
+                        if (spaced >= 0) next += spaced to (prefix + ' ' + char)
+                    }
+                }
+            }
+            if (next.isEmpty()) return emptyList()
+            states = next
+        }
+        return states.map { it.second }
+    }
+
     fun getNodeIndex(
         s: String,
         rank1Array: IntArray,
