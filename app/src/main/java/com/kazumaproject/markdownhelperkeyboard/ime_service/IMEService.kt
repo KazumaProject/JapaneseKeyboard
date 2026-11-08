@@ -22832,11 +22832,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         _inputString.update { rawInput }
         if (shouldForceRefresh) {
-            mainLayoutBinding?.let { mainView ->
-                scope.launch {
-                    processInputString(rawInput, mainView)
-                }
-            }
+            // The reading was already restored above. Reprocessing unchanged input clears
+            // hasConvertedKatakana and lets live conversion overwrite the cancelled reading.
+            requestCandidateRefresh(CandidateShowFlag.Updating, rawInput)
         }
     }
 
