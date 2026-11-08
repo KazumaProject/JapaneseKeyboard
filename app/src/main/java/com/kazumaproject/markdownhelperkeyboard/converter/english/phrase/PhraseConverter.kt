@@ -27,11 +27,6 @@ internal class PhraseConverter(
     private val beamWidth: Int = 96,
     private val completionLimit: Int = 128,
 ) {
-    private data class Lattice(
-        val edges: Array<MutableList<Segment>>,
-        val protectSingleWord: Boolean,
-    )
-
     private class Path(
         val previous: Path? = null,
         val segment: Segment? = null,
@@ -92,15 +87,7 @@ internal class PhraseConverter(
         val grammar = PhraseGrammar(dictionary.grammarRoles)
         val registeredPhrases = dictionary.phrases(text, prefixMode, limit)
         val compactInput = lookupKey(text).filterNot(Char::isWhitespace)
-        // Exact mode must recognize an unfinished registered phrase as well, without
-        // emitting its completion in the Conversion tab.
-        val protectCompound = registeredPhrases.isNotEmpty() ||
-            (!prefixMode && latinWord.matches(compactInput) && dictionary.phrases(text, true, 1).isNotEmpty())
-        val lattice = lattice(text, prefixMode, protectCompound)
-        val edges = lattice.edges
-        val lexicalSpacing = if (lattice.protectSingleWord) {
-            dictionary.exact(lookupKey(text)).map { lookupKey(it.surface.replace('-', ' ')) }.toSet()
-        } else emptySet()
+        val edges = lattice(text, prefixMode)
         val order = if (prefixMode) prefixOrder else exactOrder
         val paths = Array(text.length + 1) { mutableListOf<Path>() }
         val surfaces = arrayOfNulls<String>(text.length)
@@ -133,16 +120,6 @@ internal class PhraseConverter(
                         unknownChars = path.unknownChars + if (segment.unknown) segment.end - segment.start else 0,
                         addedChars = path.addedChars + addedChars,
                     )
-                    if (segment.end == text.length && lattice.protectSingleWord && nextPath.splits > 0) {
-                        // Keep lexicalized phrases such as "good morning", including
-                        // phrases present only in the bundled grammar lexicon. Arbitrary
-                        // segmentation and suffix expansion are not evidence of a phrase.
-                        if (nextPath.addedChars > 0) continue
-                        val formatted = nextPath.render()
-                        val key = lookupKey(formatted)
-                        if (key !in lexicalSpacing && dictionary.exact(key).isEmpty() &&
-                            dictionary.grammarRoles.lookup(formatted, key).isEmpty()) continue
-                    }
                     next += nextPath
                 }
                 if (next.size > beamWidth) {
@@ -154,11 +131,20 @@ internal class PhraseConverter(
         }
         val finalPaths = paths.last()
         finalPaths.sortWith(order)
-        val candidates = finalPaths.asSequence()
+        // An unregistered chain of dictionary fragments is not evidence of a
+        // sentence. Among grounded analyses, alternatives may change spelling or
+        // completion, but must not add boundaries inside the best analysis's words.
+        val supported = finalPaths.filter { it.splits == 0 || it.evidence.clauses > 0 }
+        val boundaries = supported.firstOrNull()?.collectSegments().orEmpty()
+            .filter { it.inferredSpace }.mapTo(hashSetOf()) { it.start }
+        val candidates = supported.asSequence()
+            .filter { path -> path.collectSegments().none { it.inferredSpace && it.start !in boundaries } }
             .distinctBy(Path::render)
             .take(limit)
             .map { PhraseCandidate(it.render(), it.collectSegments(), it.cost, it.evidence) }
-            .toList()
+            .toList().ifEmpty {
+                listOf(PhraseCandidate(text, listOf(literal(text, 0, text.length, unknown = true)), 0, PhraseEvidence()))
+            }
         val phrases = registeredPhrases.map { candidate ->
             val exact = candidate.reading.replace(" ", "") == compactInput
             PhraseCandidate(
@@ -182,9 +168,8 @@ internal class PhraseConverter(
         return (exactWords + completedFirstWord + candidates + phrases).distinctBy { it.text }.take(limit)
     }
 
-    private fun lattice(text: String, prefixMode: Boolean, protectCompound: Boolean): Lattice {
+    private fun lattice(text: String, prefixMode: Boolean): Array<MutableList<Segment>> {
         val edges = Array(text.length) { mutableListOf<Segment>() }
-        var protectSingleWord = false
         val spans = inputWords.findAll(text).map { it.range }.toMutableList()
         val last = spans.lastOrNull()
         if (prefixMode && last != null && last.last == text.lastIndex - 1 && text.last() in prefixPunctuation) {
@@ -215,13 +200,25 @@ internal class PhraseConverter(
                 edges[start] += (candidates + restored).distinct().map { it.segment(start, end, start) }
             } else {
                 val whole = lookup(reading)
-                if (spans.size == 1 && (whole.isNotEmpty() || directCompletions.isNotEmpty() || protectCompound ||
-                        !prefixMode && dictionary.hasCompletion(reading))) {
-                    protectSingleWord = true
+                val phrases = dictionary.phrases(reading, complete, completionLimit)
+                edges[start] += phrases.map { candidate ->
+                    val compactReading = candidate.reading.replace(" ", "")
+                    candidate.copy(reading = compactReading).segment(start, end, start,
+                        if (compactReading == reading) SegmentKind.EXACT else SegmentKind.COMPLETION)
                 }
-                // Explicit word boundaries take precedence when the word is registered.
-                if (spans.size > 1 && whole.isNotEmpty()) {
+                // A registered word or unfinished word is one typed span, including
+                // after other words. Only dictionary-backed aliases may add spaces
+                // inside it. Do not build speculative split paths and prune them later.
+                val protected = whole.isNotEmpty() || directCompletions.isNotEmpty() ||
+                    dictionary.hasCompletion(reading) || phrases.isNotEmpty() ||
+                    (!complete && dictionary.phrases(reading, true, 1).isNotEmpty())
+                if (protected) {
                     edges[start] += whole.map { it.segment(start, end, start) }
+                    // Preserve the established space spelling of hyphenated
+                    // compounds. These boundaries come from the stored surface.
+                    edges[start] += whole.filter { '-' in it.surface && ' ' in it.surface }.map {
+                        it.copy(surface = it.surface.replace('-', ' ')).segment(start, end, start)
+                    }
                 } else {
                     val reachable = BooleanArray(end - start).apply { this[0] = true }
                     for (offset in start until end) {
@@ -252,7 +249,7 @@ internal class PhraseConverter(
             }
         }
         if (previousEnd < text.length) edges[previousEnd] += literal(text, previousEnd, text.length)
-        return Lattice(edges, protectSingleWord)
+        return edges
     }
 
     private fun completions(
