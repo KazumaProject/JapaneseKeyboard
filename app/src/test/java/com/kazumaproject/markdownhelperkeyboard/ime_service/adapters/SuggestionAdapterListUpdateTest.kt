@@ -58,6 +58,33 @@ class SuggestionAdapterListUpdateTest {
     }
 
     @Test
+    fun firstCandidatesCommitBeforePendingDiffOnEmptyStrip() {
+        val executor = QueuedExecutor()
+        val adapter = SuggestionAdapter(executor)
+        adapter.submitContent(
+            CandidateStripContent.CustomLayoutPicker(
+                layouts = listOf(CustomKeyboardLayout(name = "Custom", columnCount = 5, rowCount = 4))
+            )
+        )
+        assertEquals(1, executor.pendingTaskCount)
+
+        val candidates = listOf(candidate("a"), candidate("A"))
+        adapter.submitContent(
+            CandidateStripContent.Candidates(candidates),
+            InlineSuggestionStripState(),
+            commitInitialCandidates = true,
+        )
+        assertEquals(2, adapter.itemCount)
+        assertEquals(1, executor.pendingTaskCount)
+
+        executor.runAll()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(2, adapter.itemCount)
+        assertEquals(candidates, adapter.suggestions)
+        adapter.release()
+    }
+
+    @Test
     fun settingEqualSuggestionListDoesNotNotifyListUpdated() {
         val adapter = SuggestionAdapter()
         val candidates = listOf(candidate("今日"), candidate("京"))

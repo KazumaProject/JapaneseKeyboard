@@ -1275,23 +1275,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
             if (!shouldApplyCandidateResult(insertString, token)) return@withContext
-            collapseShortcutEntryExpansion(refreshContent = false)
-            currentCandidateStripCandidates = candidates
-            currentCandidateStripFullCandidates = fullCandidates
-            refreshCandidateStripContent()
-            customScreenCandidateResult.value = insertString to candidates
+            publishSuggestionCandidates(insertString, candidates, fullCandidates)
         }
+    }
+
+    private fun publishSuggestionCandidates(
+        input: String,
+        candidates: List<Candidate>,
+        fullCandidates: List<Candidate> = candidates,
+        commitInitialCandidates: Boolean = false,
+    ) {
+        collapseShortcutEntryExpansion(refreshContent = false)
+        currentCandidateStripCandidates = candidates
+        currentCandidateStripFullCandidates = fullCandidates
+        refreshCandidateStripContent(
+            candidatesShown = commitInitialCandidates || shortcutToolbarHiddenForCandidates,
+            commitInitialCandidates = commitInitialCandidates,
+        )
+        customScreenCandidateResult.value = input to candidates
     }
 
     private fun refreshCandidateStripContent(
         candidatesShown: Boolean = shortcutToolbarHiddenForCandidates,
-        resetCandidateTabSelection: Boolean = false
+        resetCandidateTabSelection: Boolean = false,
+        commitInitialCandidates: Boolean = false,
     ) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             runOnMainThread {
                 refreshCandidateStripContent(
                     candidatesShown = candidatesShown,
-                    resetCandidateTabSelection = resetCandidateTabSelection
+                    resetCandidateTabSelection = resetCandidateTabSelection,
+                    commitInitialCandidates = commitInitialCandidates,
                 )
             }
             return
@@ -1325,7 +1339,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     currentInlineSuggestionViews.isNotEmpty(),
             toggle = inlineSuggestionToggleForCandidateStrip(),
         )
-        suggestionAdapter?.submitContent(content, inlineSuggestionState)
+        suggestionAdapter?.submitContent(content, inlineSuggestionState, commitInitialCandidates)
         refreshGeometryCandidates()
         if (floatingCandidateSurfaceActive || isKeyboardFloatingMode != true) {
             mainLayoutBinding?.let { binding ->
@@ -22083,6 +22097,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 refreshReconversionUi()
                 return
             }
+            showInitialEnglishCaseCandidates(string, mainView)
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
                 handleTenKeyQwertyInput(string)
             } else {
@@ -28318,7 +28333,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         pendingZenzReading?.completion?.cancel()
         pendingZenzReading = pending
         try {
-            showInitialEnglishCaseCandidates(input, mode, token)
             when (mode) {
                 CandidateQueryMode.NO_TAB_DEFAULT -> setCandidatesOriginal(input, mainView, token)
                 CandidateQueryMode.PREDICTION -> setCandidates(input, mainView, token)
@@ -28331,27 +28345,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private suspend fun showInitialEnglishCaseCandidates(
-        input: String,
-        mode: CandidateQueryMode,
-        token: CandidateRequestToken,
-    ) {
+    private fun showInitialEnglishCaseCandidates(input: String, mainView: MainLayoutBinding) {
         if (currentInputModeForSession != InputMode.ModeEnglish ||
             input.length != 1 || !input.isAllEnglishLetters() ||
-            (mode != CandidateQueryMode.PREDICTION && mode != CandidateQueryMode.NO_TAB_DEFAULT) ||
-            currentCandidateStripCandidates.isNotEmpty() ||
+            suggestionClickNum > 0 || currentCandidateStripCandidates.isNotEmpty() ||
             physicalKeyboardEnable.replayCache.firstOrNull() == true ||
             stringInTail.get().isNotEmpty() ||
-            !shouldApplyCandidateResult(input, token)
+            !shouldApplyCandidateResult(input)
         ) return
+        val mode = CandidateQueryModeResolver.resolve(
+            tabVisible = candidateTabVisibility == true,
+            tabOrder = candidateTabOrder,
+            selectedPosition = mainView.candidateTabLayout.selectedTabPosition,
+        )
+        if (mode != CandidateQueryMode.PREDICTION && mode != CandidateQueryMode.NO_TAB_DEFAULT) return
 
-        // Case variants are available before the dictionary and other sources are queried.
+        // Publish case variants in the same main-thread turn as the composing text.
         val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
         val preview = candidateCaseVariants(input, input)
             .filterNot { (text, _) -> NgWordMatcher.matchesAny(input, text, ngWords) }
             .map { (text, penalty) -> Candidate(text, CANDIDATE_TYPE_ENGLISH, 1u, 500 + penalty) }
         if (preview.isNotEmpty()) {
-            updateSuggestionAdaptersOnMain(preview, input, token = token)
+            publishSuggestionCandidates(input, preview, commitInitialCandidates = true)
         }
     }
 
@@ -28467,7 +28482,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             emitZenzLiveRequest(insertString, token)
         }
-        val candidates = getSuggestionListOriginal(insertString, mainView, token)
+        val candidates = if (currentInputModeForSession == InputMode.ModeEnglish) {
+            getSuggestionList(insertString, mainView, token)
+        } else {
+            getSuggestionListOriginal(insertString, mainView, token)
+        }
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -28854,12 +28873,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isNgWordEnable == true) ngWordsList.value else emptyList()
         }
 
-        val zenzContext = zenzCorrectionContextForQuery(CandidateQueryMode.PREDICTION)
+        val mode = token?.mode ?: CandidateQueryMode.PREDICTION
+        val zenzContext = zenzCorrectionContextForQuery(mode)
         val coreResultDeferred = async(kanaKanjiConversionDispatcher) {
             measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
                 queryKanaKanjiCore(
                     input = insertString,
-                    mode = CandidateQueryMode.PREDICTION,
+                    mode = mode,
                     learnRepository = suggestionLearnRepository,
                 )
             }
