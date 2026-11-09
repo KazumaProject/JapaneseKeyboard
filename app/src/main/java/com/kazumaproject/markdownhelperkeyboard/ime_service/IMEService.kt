@@ -433,6 +433,7 @@ import com.kazumaproject.markdownhelperkeyboard.ai.rerank.CandidateScoringModels
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.AndroidZeroQueryAssetReader
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.LazyZeroQueryProvider
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZERO_QUERY_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryLookupUseCase
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryProvider
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeClient
@@ -1548,7 +1549,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (keyboardSymbolViewState.value.isShown) return false
         if (
             currentInputModeForSession != InputMode.ModeJapanese &&
-            !committedText.isZeroQueryNumberKey()
+            !committedText.isZeroQueryNumberKey() &&
+            !(currentInputModeForSession == InputMode.ModeEnglish && predictionConfig.englishPredictionEnabled)
         ) {
             return false
         }
@@ -1609,14 +1611,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        val includeExisting = currentInputModeForSession == InputMode.ModeJapanese || key.isZeroQueryNumberKey()
+        val includeEnglish = currentInputModeForSession != InputMode.ModeNumber && predictionConfig.englishPredictionEnabled
+        val revision = editorMutationRevision.current()
+        val connection = currentInputConnection ?: return
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        // The editor can report the commit before the lookup returns.
+        zeroQuerySelectionUpdateSuppressCount = 1
         zeroQueryLookupJob = scope.launch {
             val candidates = withContext(Dispatchers.IO) {
-                zeroQueryLookupUseCase.lookup(key)
+                val existing = if (includeExisting) zeroQueryLookupUseCase.lookup(key) else emptyList()
+                if (!includeEnglish) return@withContext existing
+
+                val continuations = englishEngine.getPhraseContinuations(key).mapNotNull { suffix ->
+                    if (NgWordMatcher.matchesAny(key, suffix, ngWords)) return@mapNotNull null
+                    Candidate(
+                        string = suffix,
+                        type = ZERO_QUERY_CANDIDATE_TYPE,
+                        length = suffix.length.coerceAtMost(UByte.MAX_VALUE.toInt()).toUByte(),
+                        score = 0,
+                        commitText = " $suffix",
+                    )
+                }
+                existing + continuations
             }
                 .filter { it.string.isNotBlank() }
                 .distinctBy { it.string }
 
-            if (!canShowZeroQueryAfterCommit(key)) {
+            if (!canShowZeroQueryAfterCommit(key) || currentInputConnection !== connection ||
+                !editorMutationRevision.isCurrent(revision)
+            ) {
                 clearZeroQueryShownState(refresh = true)
                 return@launch
             }
@@ -1627,7 +1651,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             zeroQueryCandidates = candidates
             zeroQueryVisible = true
-            zeroQuerySelectionUpdateSuppressCount += 1
             zeroQueryLookupJob = null
             refreshCandidateStripContent(candidatesShown = false)
         }
@@ -1641,7 +1664,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (!zeroQueryVisible && zeroQueryCandidates.isEmpty() &&
             pendingZeroQueryKeyAfterCommit == null &&
-            zeroQuerySelectionUpdateSuppressCount == 0
+            zeroQuerySelectionUpdateSuppressCount == 0 && zeroQueryLookupJob == null
         ) {
             return
         }
@@ -1669,12 +1692,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun commitZeroQueryCandidate(candidate: Candidate) {
-        if (!canCommitZeroQueryCandidate()) {
+        if (!canCommitZeroQueryCandidate() || candidate !in zeroQueryCandidates) {
             clearZeroQueryAllState(refresh = true)
             return
         }
         endCursorSelectionForInput()
-        currentInputConnection?.commitText(candidate.string, 1)
+        currentInputConnection?.commitText(candidate.commitText, 1)
         clearZeroQueryAllState(refresh = true)
     }
 

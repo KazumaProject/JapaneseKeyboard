@@ -28,7 +28,7 @@ internal class EnglishPhraseDictionary(
             for ((reading, term) in terms) {
                 if (' ' !in reading || !phraseKey.matches(reading)) continue
                 var found = false
-                forEachCandidate(reading, term) { if (' ' in it.surface) found = true }
+                dictionary.forEachCandidate(reading, term) { if (' ' in it.surface) found = true }
                 if (found) return true
             }
         }
@@ -40,7 +40,7 @@ internal class EnglishPhraseDictionary(
         if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return emptyList()
         val term = dictionary.readingTrie.getTermId(node, dictionary.readingLeafIndex)
         return buildList {
-            forEachCandidate(text, term) { candidate -> add(candidate) }
+            dictionary.forEachCandidate(text, term) { candidate -> add(candidate) }
         }
     }
 
@@ -58,7 +58,7 @@ internal class EnglishPhraseDictionary(
         for ((key, term) in terms) {
             if (key == prefix || key.any { it !in 'a'..'z' && it !in '0'..'9' }) continue
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
-            forEachCandidate(key, term, maxCost) { candidate ->
+            dictionary.forEachCandidate(key, term, maxCost) { candidate ->
                 if (candidate.surface.none(Char::isWhitespace) &&
                     (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix))
                 ) {
@@ -121,7 +121,7 @@ internal class EnglishPhraseDictionary(
                     if (cutoff.reading.count { it != ' ' } == compact.length) continue
                     cutoff.cost
                 } else Int.MAX_VALUE
-                forEachCandidate(reading, term, maxCost) { candidate ->
+                dictionary.forEachCandidate(reading, term, maxCost) { candidate ->
                     if (' ' in candidate.surface) {
                         if (best.size < limit) best.add(candidate)
                         else if (order.compare(candidate, best.element()) < 0) {
@@ -154,27 +154,89 @@ internal class EnglishPhraseDictionary(
         } else joined
     }
 
-    private fun completionRank(candidate: DictionaryCandidate): Int =
-        (candidate.cost shl 16) or candidate.reading.length.coerceAtMost(65_534)
-
-    private fun forEachCandidate(
-        reading: String,
-        term: Int,
-        maxCost: Int = Int.MAX_VALUE,
-        emit: (DictionaryCandidate) -> Unit,
-    ) {
-        dictionary.tokenArray.forEachDictionaryByYomiTermId(term, dictionary.tokenIndex) { wordCost, nodeId ->
-            val cost = wordCost.toInt()
-            if (cost > maxCost) return@forEachDictionaryByYomiTermId
-            val surface = if (nodeId == -1) reading else dictionary.wordTrie.getLetter(nodeId, dictionary.wordLbsIndex)
-            emit(DictionaryCandidate(reading, surface, cost))
-        }
-    }
-
     private companion object {
         val whitespace = Regex("\\s+")
         val phraseKey = Regex("[a-z0-9]+(?: [a-z0-9]+)*")
-        val completionOrder = compareBy<DictionaryCandidate> { it.cost }
-            .thenBy { it.reading.length }.thenBy { it.reading }.thenBy { it.surface }
+    }
+}
+
+/** Searches only phrases whose reading and surface continue the committed words. */
+internal fun CompactEnglishDictionary.phraseContinuations(prefix: String, limit: Int): List<String> {
+    val best = PriorityQueue(completionOrder.reversed())
+    val bySuffix = HashMap<String, DictionaryCandidate>()
+    val terms = readingTrie.termsStartingWith(
+        "$prefix ", readingLbsIndex, readingLeafIndex,
+        phraseCompletionBounds?.let { bounds ->
+            { label ->
+                val bound = bounds[label]
+                // The packed bound describes the phrase cost. The suffix cost is nonnegative.
+                bound != Int.MAX_VALUE && (best.size < limit || (bound shr 16) <= best.element().cost)
+            }
+        },
+    )
+    for ((reading, term) in terms) {
+        val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
+        forEachCandidate(reading, term, maxCost) { candidate ->
+            val surface = candidate.surface
+            if (surface.getOrNull(prefix.length) != ' ' ||
+                lookupKey(surface.substring(0, prefix.length)) != prefix
+            ) return@forEachCandidate
+            val suffix = surface.substring(prefix.length + 1).trim()
+            if (suffix.isEmpty()) return@forEachCandidate
+            val suffixKey = lookupKey(suffix)
+            val continuation = candidate.copy(
+                surface = suffix,
+                cost = candidate.cost + standaloneContinuationCost(suffixKey),
+            )
+            val duplicate = bySuffix[suffixKey]
+            if (duplicate != null) {
+                if (completionOrder.compare(continuation, duplicate) >= 0) return@forEachCandidate
+                best.remove(duplicate)
+            } else if (best.size == limit) {
+                if (completionOrder.compare(continuation, best.element()) >= 0) return@forEachCandidate
+                bySuffix.remove(lookupKey(best.remove().surface))
+            }
+            best.add(continuation)
+            bySuffix[suffixKey] = continuation
+        }
+    }
+    return best.sortedWith(completionOrder).map { it.surface }
+}
+
+private const val UNREGISTERED_SUFFIX_COST = 9000
+
+// Prefer a suffix with its own dictionary evidence when registered phrases have similar costs.
+private fun CompactEnglishDictionary.standaloneContinuationCost(key: String): Int {
+    val node = readingTrie.getNodeIndex(key, readingLbsIndex)
+    if (node < 0 || !readingTrie.isLeaf[node]) return UNREGISTERED_SUFFIX_COST
+    val term = readingTrie.getTermId(node, readingLeafIndex)
+    var cost = UNREGISTERED_SUFFIX_COST
+    tokenArray.forEachDictionaryByYomiTermId(term, tokenIndex) { wordCost, nodeId ->
+        if (wordCost < cost &&
+            (nodeId == -1 || lookupKey(wordTrie.getLetter(nodeId, wordLbsIndex)) == key)
+        ) {
+            cost = wordCost.toInt()
+        }
+    }
+    return cost.coerceAtLeast(0)
+}
+
+private val completionOrder = compareBy<DictionaryCandidate> { it.cost }
+    .thenBy { it.reading.length }.thenBy { it.reading }.thenBy { it.surface }
+
+private fun completionRank(candidate: DictionaryCandidate): Int =
+    (candidate.cost shl 16) or candidate.reading.length.coerceAtMost(65_534)
+
+private fun CompactEnglishDictionary.forEachCandidate(
+    reading: String,
+    term: Int,
+    maxCost: Int = Int.MAX_VALUE,
+    emit: (DictionaryCandidate) -> Unit,
+) {
+    tokenArray.forEachDictionaryByYomiTermId(term, tokenIndex) { wordCost, nodeId ->
+        val cost = wordCost.toInt()
+        if (cost > maxCost) return@forEachDictionaryByYomiTermId
+        val surface = if (nodeId == -1) reading else wordTrie.getLetter(nodeId, wordLbsIndex)
+        emit(DictionaryCandidate(reading, surface, cost))
     }
 }
