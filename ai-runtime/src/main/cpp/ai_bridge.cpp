@@ -4,6 +4,7 @@
 #include "gguf.h"
 #include "ggml-backend.h"
 #include "chat.h"
+#include "nlohmann/json.hpp"
 #include "mtmd.h"
 #include "mtmd-helper.h"
 #include <algorithm>
@@ -47,6 +48,7 @@ struct Engine {
     llama_context * context = nullptr;
     mtmd_context * media = nullptr;
     common_chat_templates_ptr templates;
+    bool pfml_translation = false;
     std::atomic<bool> cancelled{false};
     int flags = 0;
     ~Engine() {
@@ -183,7 +185,7 @@ std::vector<float> score_candidates(Engine & engine, const std::string & prefix,
     return scores;
 }
 
-std::string generate(Engine & engine, const std::string & input, const std::string & media_path, int media_type, const std::string & instruction) {
+std::string generate(Engine & engine, const std::string & input, const std::string & media_path, int media_type, const std::string & instruction, const std::string & target_language) {
     check_cancelled(engine);
     llama_memory_clear(llama_get_memory(engine.context), true);
     auto * vocab = llama_model_get_vocab(engine.model);
@@ -197,11 +199,14 @@ std::string generate(Engine & engine, const std::string & input, const std::stri
         user_input = media_type == 2 ? input + "\n" + marker : marker + "\n" + input;
     }
     std::unique_ptr<common_chat_session> session;
+    const bool structured_translation = engine.pfml_translation && !target_language.empty();
     std::string prompt = instruction.empty() ? user_input :
         "Instruction:\n" + instruction + "\n\nInput:\n" + user_input + "\n\nOutput:";
     if (engine.templates) {
         common_chat_templates_inputs inputs;
-        if (!instruction.empty()) {
+        // PFML3 carries the task and target language in the template. A system instruction
+        // would be folded into the source text by common_chat_session and translated literally.
+        if (!instruction.empty() && !structured_translation) {
             common_chat_msg system;
             system.role = "system";
             system.content = instruction;
@@ -212,6 +217,7 @@ std::string generate(Engine & engine, const std::string & input, const std::stri
         message.content = user_input;
         inputs.messages.push_back(message);
         inputs.enable_thinking = false;
+        if (!target_language.empty()) inputs.chat_template_kwargs["target_lang"] = nlohmann::json(target_language).dump();
         inputs.reasoning_format = COMMON_REASONING_FORMAT_DEEPSEEK;
         session = std::make_unique<common_chat_session>(engine.templates.get(), vocab, inputs);
         prompt = session->prompt().str();
@@ -251,6 +257,11 @@ std::string generate(Engine & engine, const std::string & input, const std::stri
     }
     std::unique_ptr<llama_sampler, decltype(&llama_sampler_free)> sampler(llama_sampler_init_greedy(), llama_sampler_free);
     common_chat_input generated;
+    std::vector<std::string> stops = session ? session->additional_stops() : std::vector<std::string>{};
+    if (engine.pfml_translation) {
+        stops.emplace_back("<|plamo:tag|>");
+        stops.emplace_back("<|plamo:bos|>");
+    }
     for (int i = 0; i < max_output && position < static_cast<llama_pos>(context_size); ++i) {
         check_cancelled(engine);
         auto token = llama_sampler_sample(sampler.get(), engine.context, -1);
@@ -264,7 +275,7 @@ std::string generate(Engine & engine, const std::string & input, const std::stri
         if (length < 0) throw std::runtime_error("Could not decode AI output.");
         generated.append(std::string(piece.data(), length), token);
         bool stop = false;
-        if (session) for (const auto & marker : session->additional_stops()) {
+        for (const auto & marker : stops) {
             if (!marker.empty() && generated.text.size() >= marker.size() &&
                 generated.text.compare(generated.text.size() - marker.size(), marker.size(), marker) == 0) {
                 generated.truncate(generated.text.size() - marker.size());
@@ -342,7 +353,10 @@ extern "C" JNIEXPORT jlong JNICALL Java_com_kazumaproject_ai_GgufEngine_initiali
         }
         if (!mtmd_helper_get_capabilities(engine->model, engine->media).text_gen) throw std::runtime_error("This model does not generate text.");
         const char * chat_template = llama_model_chat_template(engine->model, nullptr);
-        if (chat_template && *chat_template) engine->templates = common_chat_templates_init(engine->model, "");
+        if (chat_template && *chat_template) {
+            engine->templates = common_chat_templates_init(engine->model, "");
+            engine->pfml_translation = std::string(chat_template).find("<|plamo:tag|>dataset<|plamo:msg|>translation") != std::string::npos;
+        }
         const auto handle = next_handle.fetch_add(1);
         std::lock_guard<std::mutex> lock(registry_mutex);
         engines.emplace(handle, engine);
@@ -355,8 +369,8 @@ extern "C" JNIEXPORT jint JNICALL Java_com_kazumaproject_ai_GgufEngine_capabilit
 extern "C" JNIEXPORT void JNICALL Java_com_kazumaproject_ai_GgufEngine_resetCancellation(JNIEnv * env, jobject, jlong handle) {
     try { get_engine(handle)->cancelled = false; } catch (const std::exception & error) { report(env, error); }
 }
-extern "C" JNIEXPORT jstring JNICALL Java_com_kazumaproject_ai_GgufEngine_generate(JNIEnv * env, jobject, jlong handle, jstring prompt, jstring media, jint type, jstring instruction) {
-    try { return java_string(env, generate(*get_engine(handle), utf8(env, prompt), utf8(env, media), type, utf8(env, instruction))); }
+extern "C" JNIEXPORT jstring JNICALL Java_com_kazumaproject_ai_GgufEngine_generate(JNIEnv * env, jobject, jlong handle, jstring prompt, jstring media, jint type, jstring instruction, jstring target_language) {
+    try { return java_string(env, generate(*get_engine(handle), utf8(env, prompt), utf8(env, media), type, utf8(env, instruction), utf8(env, target_language))); }
     catch (const std::exception & error) { report(env, error); return nullptr; }
 }
 extern "C" JNIEXPORT jfloatArray JNICALL Java_com_kazumaproject_ai_GgufEngine_score(
