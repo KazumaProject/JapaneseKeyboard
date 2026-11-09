@@ -2067,5 +2067,6 @@
     "app/src/main/assets/system/tango.dat.zip": "5fbaf9bbd620d2766b46cd247d1d862f83bf012d988900361970e988b7d62965",
     "app/src/main/assets/system/token.dat.zip": "02c560fb0e1a39bfa9bba09d4453416c3d0232a0e8380466351cd0401d44945f",
     "app/src/main/assets/system/yomi.dat.zip": "716297c927aaeeb6630f50b371953ae0343b5126bfdd512240e5310e1cbfa74a"
-  }
+  },
+  "licensePagesSha256": "7c577b48537c47bbb91258c1db25756c52169fe2c4229e5e43da427da5ac70c3"
 }
