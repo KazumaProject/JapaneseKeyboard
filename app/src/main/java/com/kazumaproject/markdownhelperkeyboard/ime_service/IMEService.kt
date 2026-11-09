@@ -814,6 +814,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var conversionKeySwipePreference: Boolean? = false
 
     private var speechRecognizer: SpeechRecognizer? = null
+    @Inject lateinit var aiVoiceInputManager: com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.AiVoiceInputManager
+    private var aiVoiceInputController: com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.AiVoiceInputController? = null
     private var voiceInputSettings = VoiceInputSettings()
     private var activeVoiceInputSettings = VoiceInputSettings()
     private var activeVoiceInputLanguage = ""
@@ -4074,6 +4076,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickPreviewEditorSessionId += 1L
         flickInputPreviewCoordinator.resetForEditorSession()
         clearGemmaFloating()
+        aiVoiceInputController?.cancel()
         gemmaInputSessionId += 1L
         gemmaMediaPanelController?.onInputSessionChanged()
         gemmaHandwritingController?.onInputSessionChanged()
@@ -6803,6 +6806,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        aiVoiceInputController?.cancel()
         backspaceHistoryCoordinator.cancel()
         deletedBuffer.clear()
         resetSoftwareModifiers()
@@ -6852,6 +6856,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         clearPhysicalCandidateCompositionSession("finish input view")
         flickInputPreviewCoordinator.cancel(restore = false)
+        aiVoiceInputController?.cancel()
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
         candidateRequestTracker.invalidate()
@@ -6902,6 +6907,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inlineAutofillController?.clear()
         }
         flickInputPreviewCoordinator.cancel(restore = true)
+        aiVoiceInputController?.cancel()
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
         clearAndPauseSuminagashiInkEffects()
@@ -6946,6 +6952,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainHandler.removeCallbacks(refreshLegacySizePreference)
         updateGemmaBackInvokedCallback(registered = false)
         updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
+        aiVoiceInputController?.destroy()
+        aiVoiceInputController = null
         gemmaMediaPanelController?.destroy()
         gemmaMediaPanelController = null
         gemmaHandwritingController?.destroy()
@@ -7981,7 +7989,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             visible = false
         )
         if (isListening) return
-        if (speechRecognizer == null) return
 
         val languageValue: String = when {
             physicalKeyboardEnable.replayCache.firstOrNull() == true -> {
@@ -8008,6 +8015,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+        val settings = AppPreference.voice_input_settings
+        if (settings.engine == "ai" && AppVariantConfig.hasGemma) {
+            val controller = aiVoiceInputController ?: com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.AiVoiceInputController(
+                this, scope, aiVoiceInputManager,
+                sessionId = { gemmaInputSessionId },
+                onResult = { text -> _inputString.update { text } },
+                onBusy = { busy -> setSuggestionProgressVisible(SuggestionProgressReason.VoiceInput, busy) },
+                onMessage = { message -> showToastMessage(message) },
+            ).also { created ->
+                aiVoiceInputController = created
+                keyboardContainer?.let(created::attachTo)
+            }
+            gemmaTranslationManager.cancelFloatingText()
+            controller.start(settings, languageValue)
+            return
+        }
+        if (speechRecognizer == null) return
+
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
@@ -8030,6 +8055,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun stopVoiceInput() {
+        aiVoiceInputController?.cancel()
         if (!isListening) return
         try {
             speechRecognizer?.stopListening()
@@ -8508,6 +8534,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainLayoutBinding?.root?.let { newRootView ->
                 container.addView(newRootView)
                 gemmaMediaPanelController?.attachTo(container)
+                aiVoiceInputController?.attachTo(container)
                 mainLayoutBinding?.let { mainView ->
                     when (keyboardThemeMode) {
                         "default" -> {
@@ -8826,6 +8853,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 editor.dispatchKeyEvent(event)
                 return true
             }
+        }
+        if (keyCode == KeyEvent.KEYCODE_BACK && aiVoiceInputController?.isActive == true) {
+            aiVoiceInputController?.cancel()
+            consumeGemmaBackKeyUp = true
+            return true
         }
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             gemmaMediaPanelController?.handleBack() == true

@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+    <ListPreference
+        android:key="voice_input_engine"
+        android:title="@string/voice_input_engine_title"
+        android:entries="@array/voice_input_engine_entries"
+        android:entryValues="@array/voice_input_engine_values"
+        android:defaultValue="system"
+        app:useSimpleSummaryProvider="true" />
+    <PreferenceCategory android:key="voice_input_ai_options" android:title="@string/voice_input_ai_title">
+        <Preference android:key="voice_input_loading" android:title="@string/ai_model_loading_title"
+            android:selectable="false" app:isPreferenceVisible="false" android:widgetLayout="@layout/preference_ai_model_loading" />
+        <ListPreference android:key="voice_input_model" android:title="@string/voice_input_model_title"
+            android:defaultValue="" />
+        <Preference android:key="voice_input_import_model" android:title="@string/voice_input_import_model_title" />
+        <ListPreference android:key="voice_input_backend" android:title="@string/voice_input_backend_title"
+            android:entries="@array/gemma_translation_backend_entries" android:entryValues="@array/gemma_translation_backend_values"
+            android:defaultValue="cpu" app:useSimpleSummaryProvider="true" />
+        <ListPreference android:key="voice_input_projector" android:title="@string/voice_input_projector_title" android:persistent="false" />
+        <Preference android:key="voice_input_import_projector" android:title="@string/voice_input_import_projector_title" />
+        <Preference android:key="voice_input_load_model" android:title="@string/voice_input_load_model_title"
+            android:summary="@string/voice_input_load_model_summary" />
+    </PreferenceCategory>
     <SwitchPreferenceCompat
         android:key="voice_input_space_replacement_enabled"
         android:title="@string/voice_input_space_replacement_enabled_title"

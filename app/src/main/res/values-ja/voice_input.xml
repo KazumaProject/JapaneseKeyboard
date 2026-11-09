@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="setting_category_voice_input_title">音声入力</string>
-    <string name="setting_category_voice_input_summary">日本語の音声入力に含まれる半角スペースを置換します</string>
+    <string name="setting_category_voice_input_summary">音声認識方式・端末内AIモデルの選択と半角スペースの置換</string>
     <string name="voice_input_space_replacement_enabled_title">日本語の音声入力の半角スペースを置換</string>
     <string name="voice_input_space_replacement_enabled_summary">日本語の音声入力に含まれる半角スペースを置換します。英単語間のスペースも対象です。英語の音声入力はそのまま保持します。</string>
     <string name="voice_input_space_replacement_title">置換先</string>
@@ -14,4 +14,19 @@
     <string name="voice_input_space_newline">改行</string>
     <string name="voice_input_space_full_width">全角スペース</string>
     <string name="voice_input_space_custom">自由入力</string>
+    <string name="voice_input_engine_title">音声認識の方式</string>
+    <string name="voice_input_system">従来の音声認識</string>
+    <string name="voice_input_ai_title">端末内AIによる音声入力</string>
+    <string name="voice_input_model_title">音声入力用モデル</string>
+    <string name="voice_input_import_model_title">音声入力用モデルを取り込む</string>
+    <string name="voice_input_backend_title">音声入力モデルの実行先</string>
+    <string name="voice_input_projector_title">音声投影モデル（mmproj）</string>
+    <string name="voice_input_import_projector_title">音声投影モデルを取り込む</string>
+    <string name="voice_input_load_model_title">音声入力モデルを読み込んで確認</string>
+    <string name="voice_input_load_model_summary">翻訳とは別のモデルを選択します。読み込み時に音声対応を確認します。</string>
+    <string name="voice_input_model_missing">音声入力用モデルを選択してください</string>
+    <string name="voice_input_stop">停止して文字起こし</string>
+    <string name="voice_input_recording">録音中… 話し終わったら停止してください（最大30秒）。</string>
+    <string name="voice_input_transcribing">文字起こし中…</string>
+    <string name="voice_input_no_audio">音声が録音されていません。</string>
 </resources>
