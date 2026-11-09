@@ -52,6 +52,10 @@ class GemmaRuntimeService : Service() {
             scope.launch { generateResponse(requestId, text, "", MEDIA_TEXT, callback, false, instruction) }
         }
 
+        override fun generateTranslation(requestId: Long, text: String, instruction: String, targetLanguage: String, callback: IGemmaRuntimeCallback) {
+            scope.launch { generateResponse(requestId, text, "", MEDIA_TEXT, callback, false, instruction, targetLanguage) }
+        }
+
         override fun cancel(requestId: Long) {
             if (activeRequestId == requestId) runtimeBackend?.cancel()
         }
@@ -101,6 +105,7 @@ class GemmaRuntimeService : Service() {
     private fun generateResponse(
         requestId: Long, prompt: String, mediaPath: String, mediaType: Int,
         callback: IGemmaRuntimeCallback, preview: Boolean = false, instruction: String = "",
+        targetLanguage: String = "",
     ) {
         runCatching {
             val backend = requireNotNull(runtimeBackend) { "AI model is not ready." }
@@ -113,7 +118,7 @@ class GemmaRuntimeService : Service() {
             backend.resetCancellation()
             activeRequestId = requestId
             callback.state("RUNNING", requestId.toString())
-            val result = backend.generate(prompt, mediaPath, mediaType, instruction)
+            val result = backend.generate(prompt, mediaPath, mediaType, instruction, targetLanguage.lowercase(java.util.Locale.ROOT))
             (if (preview || mediaType == MEDIA_TEXT) result else result.trim())
                 .ifBlank { error("AI returned an empty response.") }
         }.onSuccess { callback.result(requestId, it) }
