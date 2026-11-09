@@ -27,47 +27,32 @@ fun interface EnglishCompletionBounds {
     operator fun get(labelIndex: Int): Int
 }
 
-/** Loads the English dictionary's final arrays only when English conversion is first requested. */
-object CompactEnglishDictionaryReader {
-    private const val MAGIC = 0x4B444531 // KDE1
-    private const val VERSION = 2
+/** Maps the precomputed lookup index for the serialized English dictionary. */
+object EnglishLookupIndexReader {
+    private const val MAGIC = 0x4B454931 // KEI1
 
-    fun read(descriptor: AssetFileDescriptor): CompactEnglishDictionary {
+    fun read(
+        descriptor: AssetFileDescriptor,
+        reading: LOUDSWithTermId,
+        word: LOUDS,
+        token: TokenArray,
+    ): CompactEnglishDictionary {
         require(descriptor.length > 0L) {
-            "Compact English dictionary must be an uncompressed asset with a known length"
+            "English lookup index must be an uncompressed asset with a known length"
         }
-        return FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
-            read(
-                channel.map(
-                    FileChannel.MapMode.READ_ONLY,
-                    descriptor.startOffset,
-                    descriptor.length,
-                ),
-            )
+        val source = FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
+            channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.length)
         }
-    }
 
-    internal fun read(source: ByteBuffer): CompactEnglishDictionary {
-        val input = Cursor(source.duplicate().order(ByteOrder.BIG_ENDIAN))
-        require(input.readInt() == MAGIC) { "Invalid compact English dictionary magic" }
-        val version = input.readInt()
-        require(version in 1..VERSION) { "Unsupported compact English dictionary version" }
-        val readingLbs = input.readBitSet()
-        val readingLeaf = input.readBitSet()
-        val reading = LOUDSWithTermId(
-            readingLbs,
-            input.readCharArray(),
-            readingLeaf,
-            input.readIntArray(),
-        )
-        val wordLbs = input.readBitSet()
-        val wordLeaf = input.readBitSet()
-        val word = LOUDS(wordLbs, input.readCharArray(), wordLeaf)
-        val token = TokenArray.fromArrays(
-            wordCosts = input.readShortArray(),
-            nodeIds = input.readIntArray(),
-            bitvector = input.readBitSet(),
-        )
+        val input = Cursor(source.order(ByteOrder.BIG_ENDIAN))
+        require(input.readInt() == MAGIC) { "Invalid English lookup index magic" }
+        // The build indexes the used words of each BitSet. A serialized BitSet may
+        // also retain spare words that would make its runtime rank table larger.
+        reading.LBS = reading.LBS.withoutSpareCapacity()
+        reading.isLeaf = reading.isLeaf.withoutSpareCapacity()
+        word.LBS = word.LBS.withoutSpareCapacity()
+        word.isLeaf = word.isLeaf.withoutSpareCapacity()
+        token.bitvector = token.bitvector.withoutSpareCapacity()
         val result = CompactEnglishDictionary(
             readingTrie = reading,
             wordTrie = word,
@@ -76,14 +61,18 @@ object CompactEnglishDictionaryReader {
             readingLeafIndex = input.readSuccinctBitVector(reading.isLeaf),
             wordLbsIndex = input.readSuccinctBitVector(word.LBS),
             tokenIndex = input.readSuccinctBitVector(token.bitvector),
-            wordCompletionBounds = if (version >= 2) input.readBounds(reading.labels.size) else null,
-            phraseCompletionBounds = if (version >= 2) input.readBounds(reading.labels.size) else null,
+            wordCompletionBounds = input.readBounds(reading.labels.size),
+            phraseCompletionBounds = input.readBounds(reading.labels.size),
         )
         require(input.remaining == 0) {
-            "Compact English dictionary has ${input.remaining} trailing bytes"
+            "English lookup index has ${input.remaining} trailing bytes"
         }
         return result
     }
+
+    private fun BitSet.withoutSpareCapacity(): BitSet =
+        if (size() == (length() + Long.SIZE_BITS - 1) / Long.SIZE_BITS * Long.SIZE_BITS) this
+        else BitSet.valueOf(toLongArray())
 
     private class Cursor(private val buffer: ByteBuffer) {
         val remaining: Int
@@ -93,8 +82,6 @@ object CompactEnglishDictionaryReader {
             requireRemaining(Int.SIZE_BYTES)
             return buffer.int
         }
-
-        fun readBitSet(): BitSet = BitSet.valueOf(readLongArray())
 
         fun readSuccinctBitVector(bitSet: BitSet): SuccinctBitVector {
             val totalOnes = readInt()
@@ -106,11 +93,6 @@ object CompactEnglishDictionaryReader {
             )
         }
 
-        fun readCharArray(): CharArray {
-            val size = readSizedCount(Char.SIZE_BYTES)
-            return CharArray(size).also { take(size * Char.SIZE_BYTES).asCharBuffer().get(it) }
-        }
-
         fun readIntArray(): IntArray {
             val size = readSizedCount(Int.SIZE_BYTES)
             return IntArray(size).also { take(size * Int.SIZE_BYTES).asIntBuffer().get(it) }
@@ -119,27 +101,25 @@ object CompactEnglishDictionaryReader {
         fun readBounds(labelCount: Int): EnglishCompletionBounds {
             val ranks = readIntArray()
             require(ranks.size <= 65_536) { "Invalid English completion rank table" }
-            val elementBytes = if (ranks.isEmpty()) Int.SIZE_BYTES else Short.SIZE_BYTES
+            val elementBytes = when {
+                ranks.isEmpty() -> Int.SIZE_BYTES
+                ranks.size <= 256 -> Byte.SIZE_BYTES
+                else -> Short.SIZE_BYTES
+            }
             val size = readSizedCount(elementBytes)
             require(size == labelCount) { "English completion bounds do not match reading labels" }
             val data = take(size * elementBytes)
-            return if (ranks.isEmpty()) {
-                val bounds = data.asIntBuffer()
-                EnglishCompletionBounds { bounds.get(it) }
-            } else {
-                val bounds = data.asShortBuffer()
-                EnglishCompletionBounds { ranks[bounds.get(it).toInt() and 0xffff] }
+            return when (elementBytes) {
+                Int.SIZE_BYTES -> {
+                    val bounds = data.asIntBuffer()
+                    EnglishCompletionBounds { bounds.get(it) }
+                }
+                Byte.SIZE_BYTES -> EnglishCompletionBounds { ranks[data.get(it).toInt() and 0xff] }
+                else -> {
+                    val bounds = data.asShortBuffer()
+                    EnglishCompletionBounds { ranks[bounds.get(it).toInt() and 0xffff] }
+                }
             }
-        }
-
-        fun readShortArray(): ShortArray {
-            val size = readSizedCount(Short.SIZE_BYTES)
-            return ShortArray(size).also { take(size * Short.SIZE_BYTES).asShortBuffer().get(it) }
-        }
-
-        private fun readLongArray(): LongArray {
-            val size = readSizedCount(Long.SIZE_BYTES)
-            return LongArray(size).also { take(size * Long.SIZE_BYTES).asLongBuffer().get(it) }
         }
 
         private fun readByteArray(): ByteArray {
@@ -150,7 +130,7 @@ object CompactEnglishDictionaryReader {
         private fun readSizedCount(elementBytes: Int): Int {
             val size = readInt()
             require(size >= 0 && size <= remaining / elementBytes) {
-                "Invalid compact English array size: $size elements of $elementBytes bytes"
+                "Invalid English lookup array size: $size elements of $elementBytes bytes"
             }
             return size
         }
@@ -165,7 +145,7 @@ object CompactEnglishDictionaryReader {
 
         private fun requireRemaining(byteCount: Int) {
             require(byteCount >= 0 && buffer.remaining() >= byteCount) {
-                "Truncated compact English dictionary: need=$byteCount remaining=${buffer.remaining()}"
+                "Truncated English lookup index: need=$byteCount remaining=${buffer.remaining()}"
             }
         }
     }
