@@ -1044,6 +1044,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY,
         AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
+        AppPreference.TENKEY_SHOW_FLICK_POPUP_KEY,
+        AppPreference.TENKEY_SHOW_LONG_PRESS_POPUP_KEY,
+        AppPreference.SUMIRE_SHOW_FLICK_POPUP_KEY,
+        AppPreference.SUMIRE_SHOW_LONG_PRESS_POPUP_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_NUMBER_KEY,
@@ -4463,6 +4467,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customLayoutFloating.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
             customLayoutFloating.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         }
+        syncKeyPopupVisibility()
         applyIndependentMultiTouchPreference()
         syncCustomKeyboardHitTestPreference()
         if (sumireModeKeyHighlightChanged || sumireFlickRotationChanged ||
@@ -4470,6 +4475,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             refreshSumireLayouts(hiraganaOnly = !sumireModeKeyHighlightChanged)
         }
+    }
+
+    private fun syncKeyPopupVisibility() {
+        mainLayoutBinding?.keyboardView?.let(::applyTenKeyPopupVisibility)
+        buildList {
+            floatingKeyboardBinding?.let(::add)
+            splitInputs.values.forEach { add(it.binding) }
+        }.distinct().forEach { applyTenKeyPopupVisibility(it.keyboardViewFloating) }
+
+        if (splitController != null) {
+            splitInputs.values
+                .filter { it.presentedMode == TenKeyQWERTYMode.Sumire }
+                .forEach { applySumirePopupVisibility(it.binding.customLayoutFloating) }
+        } else if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
+            mainLayoutBinding?.customLayoutDefault?.let(::applySumirePopupVisibility)
+            floatingKeyboardBinding?.customLayoutFloating?.let(::applySumirePopupVisibility)
+        }
+    }
+
+    private fun applyTenKeyPopupVisibility(view: TenKey) {
+        view.setKeyPopupVisibility(
+            showFlickPopup = appPreference.tenkey_show_flick_popup_preference,
+            showLongPressPopup = appPreference.tenkey_show_long_press_popup_preference
+        )
+    }
+
+    private fun applySumirePopupVisibility(view: FlickKeyboardView) {
+        view.setKeyPopupVisibility(
+            showFlickPopup = appPreference.sumire_show_flick_popup_preference,
+            showLongPressPopup = appPreference.sumire_show_long_press_popup_preference
+        )
     }
 
     private fun applyIndependentMultiTouchPreference() {
@@ -11352,6 +11388,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDefinedCustomLayout: Boolean = false
     ) {
         flickView.clearSumireSpecialKeyActionResolver()
+        flickView.setKeyPopupVisibility(showFlickPopup = true, showLongPressPopup = true)
         flickView.applyKeySizing(
             appPreference.flick_key_width_scale_percent ?: 160,
             appPreference.flick_key_height_scale_percent ?: 160,
@@ -11419,6 +11456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setSumireLayoutTo(flickView, customKeyboardMode)
 
     private fun setSumireLayoutTo(flickView: FlickKeyboardView, mode: KeyboardInputMode) {
+        applySumirePopupVisibility(flickView)
         applySumireModeSizing(flickView, mode)
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
         flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
@@ -11789,6 +11827,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun configureFloatingTenKeyView(
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        applyTenKeyPopupVisibility(floatingKeyboardLayoutBinding.keyboardViewFloating)
         floatingKeyboardLayoutBinding.keyboardViewFloating.setOnFlickTextPreviewListener(
             tenKeyFlickTextPreviewListener
         )
@@ -12029,6 +12068,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnAttachedToWindowListener {
                 rebindMainKeyboardInputListeners(mainView)
             }
+            applyTenKeyPopupVisibility(this)
             setOnFlickTextPreviewListener(tenKeyFlickTextPreviewListener)
             applyKeyboardTheme(
                 skinId = keyboardSkinId,

@@ -156,6 +156,10 @@ object AppPreference {
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
         "flick_tfbi_flick_start_position_preference"
     const val FLICK_EDITOR_PREVIEW_KEY = "flick_editor_preview_preference"
+    const val TENKEY_SHOW_FLICK_POPUP_KEY = "tenkey_show_flick_popup_preference"
+    const val TENKEY_SHOW_LONG_PRESS_POPUP_KEY = "tenkey_show_long_press_popup_preference"
+    const val SUMIRE_SHOW_FLICK_POPUP_KEY = "sumire_show_flick_popup_preference"
+    const val SUMIRE_SHOW_LONG_PRESS_POPUP_KEY = "sumire_show_long_press_popup_preference"
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
@@ -1969,6 +1973,18 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putString(SUMIRE_FLICK_INPUT_MODE_KEY, value.preferenceValue)
         }
+
+    val tenkey_show_flick_popup_preference: Boolean
+        get() = preferences.getBoolean(TENKEY_SHOW_FLICK_POPUP_KEY, true)
+
+    val tenkey_show_long_press_popup_preference: Boolean
+        get() = preferences.getBoolean(TENKEY_SHOW_LONG_PRESS_POPUP_KEY, true)
+
+    val sumire_show_flick_popup_preference: Boolean
+        get() = preferences.getBoolean(SUMIRE_SHOW_FLICK_POPUP_KEY, true)
+
+    val sumire_show_long_press_popup_preference: Boolean
+        get() = preferences.getBoolean(SUMIRE_SHOW_LONG_PRESS_POPUP_KEY, true)
 
     var sumire_mode_key_highlight_preference: Boolean
         get() = preferences.getBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, false)
