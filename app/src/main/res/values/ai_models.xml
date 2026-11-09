@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_projector_title">Multimodal projector (GGUF)</string>
+    <string name="ai_projector_none">No projector selected</string>
+    <string name="ai_projector_import">Add projector…</string>
+    <string name="ai_model_loading_title">Loading AI model…</string>
+    <string name="ai_model_importing_title">Importing AI model…</string>
+    <string name="ai_supported_models_details">Import local models supported by LiteRT-LM or llama.cpp. Model names are unrestricted. Available image and audio actions are determined from model capabilities. For multimodal GGUF, add the matching mmproj file and select it for the language model. A text-only model does not support image or audio actions. Select CPU or GPU execution; GPU initialization falls back to CPU if unavailable. GGUF GPU execution requires Vulkan 1.2 or later. Audio encoders run on CPU even when GPU text generation is selected. Model compatibility and memory requirements depend on the model and device.</string>
+    <string name="ai_audio_model_required">Load an audio-capable AI model first.</string>
+</resources>

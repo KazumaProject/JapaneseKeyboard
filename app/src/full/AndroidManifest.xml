@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <service
+            android:name=".ai.rerank.CandidateScorerService"
+            android:exported="false"
+            android:process=":candidate_scorer" />
+        <service
             android:name=".gemma.runtime.GemmaRuntimeService"
             android:exported="false"
             android:process=":gemma"
