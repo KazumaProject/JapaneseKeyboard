@@ -34,6 +34,14 @@ class NativeSymbolsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, patch.object(symbols.subprocess, 'check_output', side_effect=self.readelf), contextlib.redirect_stdout(io.StringIO()):
             symbols.verify(self.bundle(directory), 'llvm-readelf')
 
+    def test_onnx_only_32_bit_abi_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.bundle(directory)
+            with zipfile.ZipFile(path, 'a') as archive:
+                archive.writestr('base/lib/armeabi-v7a/libonnxruntime.so', 'abc123')
+            with self.assertRaisesRegex(ValueError, 'Unexpected Full bundle native ABIs'):
+                symbols.verify(path, 'llvm-readelf')
+
     def test_missing_abi_symbol_table_fails(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(symbols.subprocess, 'check_output', side_effect=self.readelf):
             path = self.bundle(directory, remove='BUNDLE-METADATA/com.android.tools.build.debugsymbols/x86_64/libzenz.so.sym')
