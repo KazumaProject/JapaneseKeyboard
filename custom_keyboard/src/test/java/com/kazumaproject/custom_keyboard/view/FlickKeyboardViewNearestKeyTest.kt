@@ -36,21 +36,27 @@ import java.util.concurrent.TimeUnit
 class FlickKeyboardViewNearestKeyTest {
     private val actions = mutableListOf<KeyAction>()
 
-    @Test fun curvedSumireKeysReceiveTouchesAtTheirDisplayedCenters() {
+    @Test fun legacySumireCurveKeepsKeyCentersAndTapsUnchanged() {
         val view = keyboard()
-        view.setSumireGeometry(KeyboardGeometry(curveDegrees = 20), 400)
-        layout(view)
-        val key = view.getChildAt(0)
-        assertTrue(key.rotation != 0f)
-        val (x, y) = KeyboardViewGeometry.centerInParent(key)
-        tap(view, x, y)
-        assertEquals(listOf(KeyAction.Text("a")), actions)
-        view.setSumireGeometry(KeyboardGeometry(), 400)
-        layout(view)
-        assertEquals(0f, key.rotation, 0f)
+        val buttons = (0 until view.childCount).map(view::getChildAt)
+        val flatCenters = buttons.map(KeyboardViewGeometry::centerInParent)
+
+        for (direction in KeyboardCurveDirection.entries) {
+            actions.clear()
+            view.setSumireGeometry(KeyboardGeometry(curveDegrees = 20, curveDirection = direction), 400)
+            layout(view)
+
+            buttons.forEachIndexed { index, key ->
+                assertEquals("direction=$direction key=$index rotation", 0f, key.rotation, 0f)
+                val center = KeyboardViewGeometry.centerInParent(key)
+                assertEquals("direction=$direction key=$index center", flatCenters[index], center)
+                tap(view, center.first, center.second)
+            }
+            assertEquals("direction=$direction", keys().keys.map { it.action }, actions)
+        }
     }
 
-    @Test fun curvedStandardFlickUsesTheKeyDirection() {
+    @Test fun legacySumireCurveKeepsStandardFlickVertical() {
         for (direction in KeyboardCurveDirection.entries) {
             actions.clear()
             val view = keyboard()
@@ -63,13 +69,12 @@ class FlickKeyboardViewNearestKeyTest {
             view.setSumireGeometry(KeyboardGeometry(curveDegrees = 25, curveDirection = direction), 400)
             layout(view)
             val key = view.getChildAt(0)
-            val (x, y) = KeyboardViewGeometry.centerInParent(key)
-            val radians = Math.toRadians(key.rotation.toDouble())
-            val dx = kotlin.math.sin(radians).toFloat() * 100f
-            val dy = -kotlin.math.cos(radians).toFloat() * 100f
+            assertEquals("direction=$direction rotation", 0f, key.rotation, 0f)
+            val x = key.cx()
+            val y = key.cy()
             event(view, MotionEvent.ACTION_DOWN, x, y)
-            event(view, MotionEvent.ACTION_MOVE, x + dx, y + dy)
-            event(view, MotionEvent.ACTION_UP, x + dx, y + dy)
+            event(view, MotionEvent.ACTION_MOVE, x, y - 100f)
+            event(view, MotionEvent.ACTION_UP, x, y - 100f)
             assertEquals("direction=$direction", listOf(KeyAction.Text("a-up")), actions)
         }
     }
