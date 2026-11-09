@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.BuildConfig
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -27,7 +28,7 @@ class OpenSourceLicensesTest {
             assertEquals(items.size, items.map { it.id }.toSet().size)
             assertTrue(items.all { it.title.isNotBlank() && it.summary.isNotBlank() })
         }
-        assertEquals(138, full.count { it.id.startsWith("library/") })
+        assertEquals(139, full.count { it.id.startsWith("library/") })
         assertEquals(136, lite.count { it.id.startsWith("library/") })
         assertEquals(lite.map { it.id }.toSet(), fdroid.map { it.id }.toSet())
         assertTrue(full.any { it.id == "zenz-model" })
@@ -36,6 +37,15 @@ class OpenSourceLicensesTest {
         assertFalse(lite.any { it.id.contains("litertlm-android") })
         assertTrue(full.any { it.id.contains("litert-npu-runtime-google-tensor") })
         assertFalse(lite.any { it.id.contains("litert-npu-runtime-google-tensor") })
+        val onnx = full.single { it.id == "library/com.microsoft.onnxruntime:onnxruntime-android/1.23.2" }
+        assertEquals("1.23.2 · MIT License", onnx.summary)
+        assertFalse(lite.any { it.id == onnx.id })
+        assertFalse(fdroid.any { it.id == onnx.id })
+        if (BuildConfig.HAS_ZENZ) {
+            val document = onnx.document()
+            assertTrue(document.contains("Copyright (c) Microsoft Corporation"))
+            assertTrue(document.contains("THIRD PARTY SOFTWARE NOTICES AND INFORMATION"))
+        }
         assertTrue(full.any { it.id == "library/androidx.core:core/1.17.0" })
         assertTrue(lite.any { it.id == "library/androidx.core:core/1.16.0" })
     }
@@ -99,6 +109,7 @@ class OpenSourceLicensesTest {
             val notices = module.getJSONArray("notices")
             for (j in 0 until notices.length()) {
                 val notice = notices.getJSONObject(j)
+                if (notice.optString("sourceSet") == "full" && !BuildConfig.HAS_ZENZ) continue
                 val bytes = context.assets.open(notice.getString("asset")).use { it.readBytes() }
                 val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
                 assertEquals(notice.getString("asset"), notice.getString("sha256"), hash)
