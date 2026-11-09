@@ -1403,6 +1403,8 @@
     <string name="done_text">完了</string>
     <string name="qwerty_button_size_preference_title">キーのサイズ</string>
     <string name="qwerty_button_size_preference_summary">キー、文字、特殊キーのアイコンサイズを変更します</string>
+    <string name="show_flick_key_popup_title">フリック時にポップアップを表示</string>
+    <string name="show_long_press_key_popup_title">長押し時にポップアップを表示</string>
     <string name="tenkey_popup_view_style_preference_title">タップ・フリック PopupView のサイズ</string>
     <string name="tenkey_popup_view_style_preference_summary">TenKey の PopupView サイズと文字サイズを設定します</string>
     <string name="qwerty_popup_view_style_preference_title">タップ・フリック PopupView のサイズ</string>
@@ -1911,6 +1913,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="sizing_height">キーの高さ</string>
     <string name="sizing_icon">アイコン</string>
     <string name="sizing_special">特殊キーの文字</string>
+    <string name="tenkey_sizing_switch_labels">切替キーの文字サイズ</string>
+    <string name="tenkey_sizing_switch_labels_help">入力モード・数字・記号の切替キーの文字を調整します。狭いキーでは文字が収まる大きさまで拡大します。</string>
     <string name="sizing_reset_mode">このモードの文字サイズを戻す</string>
     <string name="sizing_reset_all">すべてのサイズを初期化</string>
     <string name="sizing_reset_message">すべてのモードの文字サイズと、共通のキーサイズを初期化しますか？</string>
