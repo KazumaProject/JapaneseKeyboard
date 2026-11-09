@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.security.MessageDigest
 
 @RunWith(RobolectricTestRunner::class)
@@ -16,6 +17,7 @@ import java.security.MessageDigest
 class OpenSourceLicensesTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val catalog get() = OpenSourceLicenses(context)
+    private val distribution get() = JSONObject(File("../tools/classified-dictionaries/distribution-manifest.json").readText())
 
     @Test fun editionsHaveOnlyTheirResolvedLibrariesAndModelsWithoutDuplicates() {
         val full = catalog.sections("full", false).flatMap { it.items }
@@ -56,16 +58,23 @@ class OpenSourceLicensesTest {
         ClassifiedDictionaries.all.forEach { spec ->
             assertTrue(items.any { it.id == "dictionary/classified/${spec.id}" })
         }
+        val manifest = distribution
+        val version = manifest.getString("version")
+        val revision = manifest.getString("revision")
         items.forEach {
             val html = it.document()
-            val revision = if (it.id == "dictionary/english") {
-                "v1.7.285 (f4c7151ac69d41586135037e658364bf48dae7a8)"
-            } else {
-                "v1.7.285 (f14e2793ef07c93f0d7136f14bbd5270eb3e0c07)"
-            }
-            assertTrue(it.id, html.contains(revision))
+            assertTrue(it.id, html.contains("配布: $version ($revision)"))
             assertTrue(it.id, html.contains("<pre>"))
         }
+    }
+
+    @Test fun dictionaryDetailsShowPinnedEnglishInputs() {
+        val english = catalog.sections("lite", false).flatMap { it.items }
+            .single { it.id == "dictionary/english" }.document()
+        val manifest = distribution.getJSONObject("englishDictionary")
+        assertTrue(english.contains("<code>${manifest.getString("revision")}</code>"))
+        assertTrue(english.contains(manifest.getString("catalogUrl")))
+        assertTrue(english.contains(manifest.getString("reviewedGrammarSourceUrl")))
     }
 
     @Test fun correctedModelAndCoroutinesLicensesKeepOfflineOriginals() {
