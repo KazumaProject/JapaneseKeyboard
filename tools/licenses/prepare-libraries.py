@@ -15,6 +15,12 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def verify_notice(notice):
+    source_set = notice.get('sourceSet', 'main')
+    body = (ROOT/'app/src'/source_set/'assets'/notice['asset']).read_bytes()
+    assert hashlib.sha256(body).hexdigest() == notice['sha256'], notice['asset']
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('resolved', type=Path)
@@ -36,9 +42,10 @@ def main():
         for module in catalog['modules']:
             key = (module['group'], module['name'], module['version'])
             assert module['licenses'] == declared[key]['licenses'], key
+            assert all(notice in module['notices']
+                       for notice in declared[key].get('sourceNotices', [])), key
             for notice in module['notices']:
-                body = (ROOT/'app/src/main/assets'/notice['asset']).read_bytes()
-                assert hashlib.sha256(body).hexdigest() == notice['sha256'], notice['asset']
+                verify_notice(notice)
         print('Verified release module coverage, declarations, and all preserved notice hashes')
         return
     output.mkdir(parents=True, exist_ok=True)
@@ -63,7 +70,13 @@ def main():
             key = (row['group'], row['name'], row['version'])
             if key not in modules:
                 original = declared[key]
-                assert all('apache' in license['name'].lower() for license in original['licenses']), f'Audit license text mapping before adding {key}'
+                source_notices = original.get('sourceNotices', [])
+                names = {license['name'].lower() for license in original['licenses']}
+                assert (names and all('apache' in name for name in names)) or (
+                    names == {'mit license'} and source_notices
+                ), f'Audit license text mapping before adding {key}'
+                for notice in source_notices:
+                    verify_notice(notice)
                 # Recheck the exact POM evidence against cached bytes when available.
                 for item in original['evidence']:
                     if item['url'].endswith('.pom'):
@@ -73,7 +86,7 @@ def main():
                                 assert hashlib.sha256(pom.read_bytes()).hexdigest() == item['sha256'], key
                 module = {k: original[k] for k in ('group', 'name', 'version', 'pomUrl', 'licenses', 'evidence')}
                 module['variants'] = []
-                module['notices'] = []
+                module['notices'] = list(source_notices)
                 for archive in sorted(args.gradle_cache.joinpath(*key).glob('*/*')):
                     if archive.suffix in ('.aar', '.jar') and not any(x in archive.name for x in ('-sources', '-javadoc')):
                         notices(archive.read_bytes(), archive.name + '/', module['notices'])
