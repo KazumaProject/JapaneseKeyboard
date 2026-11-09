@@ -41,11 +41,15 @@ data class PredictionConfig(
             MAX_LOOKAHEAD_CHARACTER_COUNT,
         )
 
+    internal fun maxJapanesePredictionReadingLength(inputLength: Int): Int? {
+        if (!japanesePredictionEnabled) return null
+        if (inputLength !in normalizedMinimumInputLength..MAX_PREDICTION_INPUT_LENGTH) return null
+        return inputLength + normalizedLookaheadCharacterCount
+    }
+
     fun acceptsJapaneseReading(inputLength: Int, readingLength: Int): Boolean {
-        if (!japanesePredictionEnabled) return false
-        if (inputLength !in normalizedMinimumInputLength..MAX_PREDICTION_INPUT_LENGTH) return false
-        if (readingLength <= inputLength) return false
-        return readingLength <= inputLength + normalizedLookaheadCharacterCount
+        val maxReadingLength = maxJapanesePredictionReadingLength(inputLength) ?: return false
+        return readingLength > inputLength && readingLength <= maxReadingLength
     }
 
     fun completionPenalty(
