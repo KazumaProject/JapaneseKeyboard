@@ -134,7 +134,9 @@ class CenterGuideFlickInputController(
 
                 val tapText = resolveText(TfbiFlickDirection.TAP)
                 listener?.onPress(tapText)
-                showGuide(view, deltaX = 0f, deltaY = 0f)
+                if (currentGestureConfig().showFlickPopup) {
+                    showGuide(view, deltaX = 0f, deltaY = 0f)
+                }
                 return true
             }
 
@@ -152,7 +154,7 @@ class CenterGuideFlickInputController(
                 val directionChanged = newDirection != currentDirection
                 currentDirection = newDirection
 
-                updateGuide(view, deltaX, deltaY)
+                if (currentGestureConfig().showFlickPopup) updateGuide(view, deltaX, deltaY)
                 if (directionChanged) {
                     listener?.onSelectionChanged(
                         resolveText(newDirection).takeIf(String::isNotEmpty),
