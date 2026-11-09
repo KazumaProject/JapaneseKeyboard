@@ -10,9 +10,12 @@ import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDiction
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.GrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.RuntimeGrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
-import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionaryReader
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionaryReader
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.EnglishLookupIndexReader
+import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS as EnglishWordTrie
+import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId as EnglishReadingTrie
+import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray as EnglishTokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -204,47 +207,47 @@ class DictionaryBinaryReader @Inject constructor(
         return BufferedReader(InputStreamReader(ByteArrayInputStream(bytes), Charsets.UTF_8))
     }
 
-    fun loadEnglishReading(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId =
-        compactBundledEnglishDictionaryIfActive()?.readingTrie ?: loadWithBundledFallback(key) { input ->
-            openZipAwareObjectInputStream(input, key.name).use {
-                com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
-                    .readExternalNotCompress(it)
-            }
+    fun loadEnglishReading(key: DictionaryFileKey): EnglishReadingTrie =
+        compactBundledEnglishDictionaryIfActive()?.readingTrie ?: loadWithBundledFallback(key, ::readEnglishReading)
+
+    fun loadEnglishWord(key: DictionaryFileKey): EnglishWordTrie =
+        compactBundledEnglishDictionaryIfActive()?.wordTrie ?: loadWithBundledFallback(key, ::readEnglishWord)
+
+    fun loadEnglishToken(key: DictionaryFileKey): EnglishTokenArray =
+        compactBundledEnglishDictionaryIfActive()?.tokenArray ?: loadWithBundledFallback(key, ::readEnglishToken)
+
+    private fun readEnglishReading(input: InputStream): EnglishReadingTrie =
+        openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_READING.name).use {
+            EnglishReadingTrie().readExternalNotCompress(it)
         }
 
-    fun loadEnglishWord(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS =
-        compactBundledEnglishDictionaryIfActive()?.wordTrie ?: loadWithBundledFallback(key) { input ->
-            openZipAwareObjectInputStream(input, key.name).use {
-                com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS()
-                    .readExternalNotCompress(it)
-            }
+    private fun readEnglishWord(input: InputStream): EnglishWordTrie =
+        openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_WORD.name).use {
+            EnglishWordTrie().readExternalNotCompress(it)
         }
 
-    fun loadEnglishToken(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray =
-        compactBundledEnglishDictionaryIfActive()?.tokenArray ?: loadWithBundledFallback(key) { input ->
-            openZipAwareObjectInputStream(input, key.name).use {
-                com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
-                    .readExternal(it)
-            }
+    private fun readEnglishToken(input: InputStream): EnglishTokenArray =
+        openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_TOKEN.name).use {
+            EnglishTokenArray().readExternal(it)
         }
 
     fun loadEnglishReadingLbsIndex(
-        trie: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId,
+        trie: EnglishReadingTrie,
     ): SuccinctBitVector =
         compactBundledEnglishDictionaryIfActive()?.readingLbsIndex ?: SuccinctBitVector(trie.LBS)
 
     fun loadEnglishReadingLeafIndex(
-        trie: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId,
+        trie: EnglishReadingTrie,
     ): SuccinctBitVector =
         compactBundledEnglishDictionaryIfActive()?.readingLeafIndex ?: SuccinctBitVector(trie.isLeaf)
 
     fun loadEnglishWordLbsIndex(
-        trie: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS,
+        trie: EnglishWordTrie,
     ): SuccinctBitVector =
         compactBundledEnglishDictionaryIfActive()?.wordLbsIndex ?: SuccinctBitVector(trie.LBS)
 
     fun loadEnglishTokenIndex(
-        tokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray,
+        tokenArray: EnglishTokenArray,
     ): SuccinctBitVector =
         compactBundledEnglishDictionaryIfActive()?.tokenIndex ?: SuccinctBitVector(tokenArray.bitvector)
 
@@ -351,13 +354,16 @@ class DictionaryBinaryReader @Inject constructor(
             compactEnglishDictionaryCache?.let { return@synchronized it }
             if (compactEnglishDictionaryLoadAttempted) return@synchronized null
             val loaded = runCatching {
-                resolver.openBundledAssetFileDescriptor(COMPACT_ENGLISH_DICTIONARY_ASSET).use(
-                    CompactEnglishDictionaryReader::read,
-                )
+                resolver.openBundledAssetFileDescriptor(ENGLISH_LOOKUP_INDEX_ASSET).use { index ->
+                    val reading = resolver.openBundledForKey(DictionaryFileKey.ENGLISH_READING).use(::readEnglishReading)
+                    val word = resolver.openBundledForKey(DictionaryFileKey.ENGLISH_WORD).use(::readEnglishWord)
+                    val token = resolver.openBundledForKey(DictionaryFileKey.ENGLISH_TOKEN).use(::readEnglishToken)
+                    EnglishLookupIndexReader.read(index, reading, word, token)
+                }
             }.onFailure { error ->
                 Timber.w(
                     error,
-                    "Compact English dictionary is unavailable. Falling back to serialized assets.",
+                    "English lookup index is unavailable. Falling back to the unindexed dictionary.",
                 )
             }.getOrNull()
             compactEnglishDictionaryCache = loaded
@@ -393,7 +399,7 @@ class DictionaryBinaryReader @Inject constructor(
         private const val COMPACT_CONNECTION_MATRIX_INDEX_ASSET =
             "connection/connection.compact.index"
         private const val COMPACT_SYSTEM_DICTIONARY_ASSET = "system/system.compact.kdict"
-        private const val COMPACT_ENGLISH_DICTIONARY_ASSET = "english/english.compact.kdict"
+        private const val ENGLISH_LOOKUP_INDEX_ASSET = "english/english.lookup.index"
         private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
         fun openZipAwareObject(input: InputStream, debugName: String): ObjectInputStream =
