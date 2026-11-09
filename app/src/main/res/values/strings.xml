@@ -1451,6 +1451,8 @@
     <string name="donuts_flick">Donuts Flick</string>
     <string name="qwerty_button_size_preference_title">Key size</string>
     <string name="qwerty_button_size_preference_summary">Change the size of keys, text, and special key icons.</string>
+    <string name="show_flick_key_popup_title">Show flick popup</string>
+    <string name="show_long_press_key_popup_title">Show long-press popup</string>
     <string name="tenkey_popup_view_style_preference_title">Tap/flick PopupView size</string>
     <string name="tenkey_popup_view_style_preference_summary">Configure TenKey PopupView size and text size.</string>
     <string name="qwerty_popup_view_style_preference_title">Tap/flick PopupView size</string>
@@ -1913,6 +1915,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="sizing_height">Key height</string>
     <string name="sizing_icon">Icons</string>
     <string name="sizing_special">Special key letters</string>
+    <string name="tenkey_sizing_switch_labels">Switch key text size</string>
+    <string name="tenkey_sizing_switch_labels_help">Changes the labels on the input mode, number, and symbol keys. On narrow keys, labels grow only as far as they fit.</string>
     <string name="sizing_reset_mode">Reset this mode’s letter sizes</string>
     <string name="sizing_reset_all">Reset all sizes</string>
     <string name="sizing_reset_message">Reset letter sizes for every mode and the shared key sizes?</string>
