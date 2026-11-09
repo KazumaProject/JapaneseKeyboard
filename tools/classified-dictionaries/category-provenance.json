@@ -3195,6 +3195,174 @@
         "reason": "Issue #300。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
         "surface": "魔法騎士レイアース"
       }
+    ],
+    "followupPath": "src/main/classification/reviews/2026-11-08-open-candidate-issues_demographics.jsonl",
+    "followupRecords": [
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "1138e49e0871e7bedd92bba9641e9fd2e7d5cd83274a35ee05a10ea25ebb390c",
+        "categories": [
+          "work_anime",
+          "media_demographic/audience/unspecified"
+        ],
+        "classification_origin": "verified",
+        "evidence": {
+          "categories": [
+            "work_anime",
+            "media_demographic/audience/unspecified"
+          ],
+          "kind": "media_demographic_source",
+          "reading": "めいでんぶらっど",
+          "reference": "https://news.ponycanyon.co.jp/2026/11/127564",
+          "related_references": [
+            "https://news.ponycanyon.co.jp/2026/11/127564"
+          ],
+          "source_note": "制作・提供元は完全オリジナルTVアニメと明記し、原作を制作スタッフとポニーキャニオンと記載。単一の漫画誌読者層を指定する原作ではないため対象層指定なしへ分類する。全年齢向け・成人内容不存在の確認ではない。",
+          "surface": "Maiden Blood"
+        },
+        "media_demographic": "unspecified",
+        "reading": "めいでんぶらっど",
+        "reason": "制作・提供元は完全オリジナルTVアニメと明記し、原作を制作スタッフとポニーキャニオンと記載。単一の漫画誌読者層を指定する原作ではないため対象層指定なしへ分類する。全年齢向け・成人内容不存在の確認ではない。",
+        "surface": "Maiden Blood"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "57dff9bfefab2756a550739bc76999c995d81a713ae519a28eb8a8df8b78b0d6",
+        "categories": [
+          "work_manga",
+          "media_demographic/audience/shonen"
+        ],
+        "classification_origin": "verified",
+        "evidence": {
+          "categories": [
+            "work_manga",
+            "media_demographic/audience/shonen"
+          ],
+          "kind": "media_demographic_source",
+          "reading": "じゅじゅつかいせんもじゅろ",
+          "reference": "https://sp.shonenjump.com/j/rensai/jujutsu-modulo/",
+          "related_references": [
+            "https://sp.shonenjump.com/j/rensai/jujutsu-modulo/"
+          ],
+          "source_note": "出版社の週刊少年ジャンプ作品ページに掲載される漫画として、掲載誌の少年向け分類を継承する。",
+          "surface": "呪術廻戦≡"
+        },
+        "media_demographic": "shonen",
+        "reading": "じゅじゅつかいせんもじゅろ",
+        "reason": "出版社の週刊少年ジャンプ作品ページに掲載される漫画として、掲載誌の少年向け分類を継承する。",
+        "surface": "呪術廻戦≡"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "fd94d49182ddde62e283720ac96199e6d04373a5c19bc4ffdb35262ca6a32c2c",
+        "categories": [
+          "work_manga",
+          "media_demographic/audience/shojo"
+        ],
+        "classification_origin": "verified",
+        "evidence": {
+          "categories": [
+            "work_manga",
+            "media_demographic/audience/shojo"
+          ],
+          "kind": "media_demographic_source",
+          "reading": "まじっくないとれいあーす",
+          "reference": "https://nakayosi.kodansha.co.jp/",
+          "related_references": [
+            "https://www.sega.jp/topics/detail/251020_2/"
+          ],
+          "source_note": "製作会社の公式紹介が原作をなかよし連載と明記。出版社の同誌公式サイトが少女漫画誌と明記するため、原作の対象読者を継承する。",
+          "surface": "魔法騎士レイアース"
+        },
+        "media_demographic": "shojo",
+        "reading": "まじっくないとれいあーす",
+        "reason": "製作会社の公式紹介が原作をなかよし連載と明記。出版社の同誌公式サイトが少女漫画誌と明記するため、原作の対象読者を継承する。",
+        "surface": "魔法騎士レイアース"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "3b87653455d49baedf60ffbc1cc7bb40b8b7acbf07915538ef6e91b65807a4bb",
+        "categories": [
+          "work_film"
+        ],
+        "evidence": {
+          "categories": [
+            "work_film"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/292",
+          "kind": "independent_source",
+          "reading": "ぐろてすく",
+          "reference": "https://www.aniplex.co.jp/lineup/movie-gtq123/",
+          "related_references": [
+            "https://movie-gtq123.com/",
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/news/detail/?id=70747"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "81ef1e36a24f8b4ee4a6568e144577d3e7c11a53c64cf5ca60f37a390ab23951",
+          "surface": "GROTESQQQUE"
+        },
+        "reading": "ぐろてすく",
+        "reason": "公式が示すアニメーション映画とその劇中エピソードとして映画作品カテゴリへ整理する。",
+        "surface": "GROTESQQQUE"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "ae52555cbb348b79c5c97acf9553b92497ce9abe2bd5d98d551a60927a31eac2",
+        "categories": [
+          "work_film"
+        ],
+        "evidence": {
+          "categories": [
+            "work_film"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/292",
+          "kind": "independent_source",
+          "reading": "えりぃあんず",
+          "reference": "https://movie-gtq123.com/",
+          "related_references": [
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/",
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/news/detail/?id=70747"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "a5b22d2036cc82408b2ec08b4ce08a31b32ccd729e768b517d313fc3462431c9",
+          "surface": "ÆLIENS"
+        },
+        "reading": "えりぃあんず",
+        "reason": "公式が示すアニメーション映画とその劇中エピソードとして映画作品カテゴリへ整理する。",
+        "surface": "ÆLIENS"
+      }
     ]
   },
   "personAdditions": [
@@ -131417,6 +131585,68 @@
       "Kana surfaces incompatible with the current sentinel encoding are withheld."
     ]
   },
+  "specialistSources": [
+    {
+      "id": "kampo_core",
+      "category": "kampo",
+      "version": "LATEST (取得時ハッシュ固定)",
+      "page": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-1.html",
+      "download": "https://dbarchive.biosciencedbc.jp/data/knapsack-kampo/LATEST/knapsack_kampo_core.zip",
+      "archiveSha256": "372d2d48aa51aedc8275bbcbcd8fe49417ab57857b56d72761ce0a5a5e66a63f",
+      "member": "knapsack_kampo_core.csv",
+      "encoding": "cp932",
+      "surfaceColumn": "漢方名[Kampo Name]",
+      "readingColumn": "漢方名[Kana]",
+      "license": "CC-BY-SA-2.1-JP",
+      "attribution": "KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本",
+      "notice": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/lic.html"
+    },
+    {
+      "id": "kampo_herb",
+      "category": "kampo",
+      "version": "LATEST (取得時ハッシュ固定)",
+      "page": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-2.html",
+      "download": "https://dbarchive.biosciencedbc.jp/data/knapsack-kampo/LATEST/knapsack_kampo_syoyaku.zip",
+      "archiveSha256": "b794a2c2f7b572bacec94594a9265919d21904f4431423e5907125d7c7193c7b",
+      "member": "knapsack_kampo_syoyaku.csv",
+      "encoding": "cp932",
+      "surfaceColumn": "生薬名 (漢字)",
+      "readingColumn": "生薬名 (カナ)",
+      "license": "CC-BY-SA-2.1-JP",
+      "attribution": "KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本",
+      "notice": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/lic.html"
+    },
+    {
+      "id": "manbyo",
+      "category": "medical",
+      "version": "MANBYO_202106",
+      "page": "https://sociocom.naist.jp/manbyou-dic/",
+      "download": "https://sociocom.naist.jp/download/manbyo_202106/",
+      "archiveSha256": "60daa90df38726d68a68bcdf4112a7a4daaab624e3587993ccffddc3d70b1140",
+      "member": "MANBYO_202106/MANBYO_20210602.csv",
+      "encoding": "utf-8-sig",
+      "surfaceColumn": "出現形",
+      "readingColumn": "出現形よみ",
+      "license": "CC-BY-4.0",
+      "attribution": "奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 万病辞書 MANBYO_202106",
+      "notice": "https://sociocom.naist.jp/manbyou-dic/"
+    },
+    {
+      "id": "hyakuyaku",
+      "category": "medical",
+      "version": "HYAKUYAKU_202107",
+      "page": "https://sociocom.naist.jp/hyakuyaku-dic/",
+      "download": "https://sociocom.naist.jp/download/hyakuyaku_202107/",
+      "archiveSha256": "87ea9b70e50620345543483039dd2f4da7746d57eff12c6c78356b71f79cb769",
+      "member": "HYAKUYAKU_v20210706/HYAKUYAKU_20210706.csv",
+      "encoding": "utf-8-sig",
+      "surfaceColumn": "出現形",
+      "readingColumn": "出現形よみ",
+      "license": "CC-BY-4.0",
+      "attribution": "奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 百薬辞書 HYAKUYAKU_202107",
+      "notice": "https://sociocom.naist.jp/hyakuyaku-dic/"
+    }
+  ],
   "collectedTerms": [
     {
       "category": "kampo",
