@@ -549,7 +549,8 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         }
         if (!usePhrases) return legacy
         val phraseConverter = data.phraseConverter ?: return legacy
-        val phraseTexts = phraseConverter.convert(input, prefixMode, limit = 12)
+        val phraseLimit = 12
+        val phraseTexts = phraseConverter.convert(input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit)
             .asSequence()
             .map { phrase ->
                 val text = resolveCandidateCase(input, phrase.text)
@@ -572,8 +573,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                     add(Candidate(text, CANDIDATE_TYPE_ENGLISH, input.length.toUByte(), 501 + index))
                 }
             }
+            val legacyScoreFloor = 501 + maxOf(phraseLimit, phraseTexts.size)
             legacy.forEach { candidate ->
-                if (seen.add(candidate.string)) add(candidate.copy(score = maxOf(513, candidate.score)))
+                if (seen.add(candidate.string)) add(candidate.copy(score = maxOf(legacyScoreFloor, candidate.score)))
             }
         }
     }

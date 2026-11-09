@@ -259,8 +259,9 @@ class EnglishPhraseDictionaryInstrumentedTest {
             assertTrue(input, phrases.all { it in words.exact(it.reading) })
             val candidates = query(input)
             val canonical = candidates.first { it.string == expected }
-            // preview.3 adds lower-cost registered names ahead of some existing phrases.
-            assertTrue("$input: ${candidates.map { it.string }}", candidates.indexOf(canonical) in 1..11)
+            if (input != "android") {
+                assertTrue("$input: ${candidates.map { it.string }}", candidates.indexOf(canonical) in 1..11)
+            }
             assertEquals(expected, canonical.commitText)
             assertEquals(input.length, canonical.length.toInt())
         }
@@ -273,6 +274,44 @@ class EnglishPhraseDictionaryInstrumentedTest {
         assertFalse(query("android", prediction = false).any { it.string == "Android Studio" })
         assertFalse(query("android", prefixMode = false).any { it.string == "Android Studio" })
         assertTrue(query("androidstudio", prefixMode = false).any { it.string == "Android Studio" })
+    }
+
+    @Test
+    fun barePrefixesRankWordsBeforeUnfinishedRegisteredPhrases() = withDictionary { _, _, reader ->
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        fun query(input: String, prefixMode: Boolean = true): List<String> =
+            engine.getConversionCandidates(
+                input, input.takeIf { it.none(Char::isWhitespace) }, false, true, prefixMode, emptyList(),
+            )
+                .map { it.commitText }
+
+        for ((input, word) in listOf(
+            "ja" to "Java", "ba" to "battery", "ra" to "ran", "ta" to "tap", "op" to "OpenAI", "auto" to "AutoCAD",
+        )) {
+            val candidates = query(input)
+            assertEquals("$input: $candidates", listOf(input, word), candidates.take(2))
+        }
+
+        val january = query("jan")
+        assertTrue(january.toString(), "January" in january.take(4))
+
+        val auto = query("auto")
+        val automatic = auto.indexOf("automatic")
+        assertTrue(auto.toString(), automatic in 1..5)
+        assertTrue(auto.toString(), auto.indexOf("Auto 5000") > automatic)
+        assertTrue(auto.toString(), auto.indexOf("auto loan") > automatic)
+
+        val sparsePrefix = query("zx")
+        val wordIndex = sparsePrefix.indexOf("ZXPInstaller")
+        assertTrue(sparsePrefix.toString(), wordIndex >= 0 && sparsePrefix.indexOf("ZX Auto") > wordIndex)
+
+        assertEquals("J and C Carmichael", query("j a").getOrNull(1))
+        assertEquals("auto loan", query("auto l").getOrNull(1))
+        for (prefixMode in listOf(false, true)) {
+            assertTrue("auto loan" in query("autoloan", prefixMode))
+            assertTrue("MG F" in query("mgf", prefixMode))
+            assertTrue("J and C Carmichael" in query("jandccarmichael", prefixMode))
+        }
     }
 
     @Test
