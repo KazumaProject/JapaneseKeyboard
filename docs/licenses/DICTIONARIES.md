@@ -1,14 +1,20 @@
 # 辞書のライセンス一覧 / Dictionary licenses
 
-本書はv1.7.285で採用した全143カテゴリ、その他の同梱辞書、共通資源、保持した通知全文への対応表です。辞書名の意味から適用条件を推測せず、固定入力と採用レコード・分類結果の対応を根拠にしています。
+本書は同梱する全カテゴリ、その他の辞書、共通資源、保持した通知全文への対応表です。辞書名の意味から適用条件を推測せず、固定入力と採用レコード・分類結果の対応を根拠にしています。
 
-配布版は [`v1.7.285`](https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/v1.7.285)、配布コミットは `f14e2793ef07c93f0d7136f14bbd5270eb3e0c07` です。[配布マニフェスト](../../tools/classified-dictionaries/distribution-manifest.json) に英単語辞書を除く463同梱ファイル、143カテゴリの863,362レコード、および英単語辞書の配布情報を記録しています。空の2カテゴリを除く141カテゴリがアプリの設定とライセンス画面に表示されます。
+<!-- BEGIN GENERATED: release -->
 
-[出典・固定入力・採用行対応](../../tools/classified-dictionaries/category-provenance.json) にハッシュと出典別件数を記録しています。専門辞書は固定元データの行・元読み・元表記と採用来歴を照合しています。各カテゴリの3ファイルは `app/src/main/assets/categories/<ID>/{tango,yomi,token}.dat.zip` です。分類・正規化・重複処理・品詞/コスト割当・バイナリ変換を行っています。人名のかな番兵で失われる3表記は、固定入力から導出したサイドカーで復元します。
+配布版は [`v1.7.285`](https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/v1.7.285)、配布コミットは `f14e2793ef07c93f0d7136f14bbd5270eb3e0c07` です。[配布マニフェスト](../../tools/classified-dictionaries/distribution-manifest.json) に英単語辞書を除く463同梱ファイル、143カテゴリの863,362レコード、および英単語辞書の配布情報を記録しています。語が収録されているカテゴリは141件です。
 
-## 全143カテゴリ
+<!-- END GENERATED: release -->
+
+[出典・固定入力・採用行対応](../../tools/classified-dictionaries/category-provenance.json) にハッシュと出典別件数を記録しています。専門辞書は固定元データの行・元読み・元表記と採用来歴を照合しています。各カテゴリの3ファイルは `app/src/main/assets/categories/<ID>/{tango,yomi,token}.dat.zip` です。分類・正規化・重複処理・品詞/コスト割当・バイナリ変換を行っています。かな番兵で失われる表記は、固定入力から導出したサイドカーで復元します。
+
+## 分類辞書の一覧
 
 W/N/P/J/K/M/L/Rは次節の出典を指します。WとNには共通Web入力の該当分を含み、併記は単独著作権者の断定や同じ語の二重計上を意味しません。共通品詞・接続情報にはMozcの通知も適用されます。
+
+<!-- BEGIN GENERATED: categories -->
 
 | ID | 辞書名 | レコード数 | 出典・適用条件の参照 | アプリで表示する詳細（同梱HTML） |
 | --- | --- | ---: | --- | --- |
@@ -150,11 +156,13 @@ W/N/P/J/K/M/L/Rは次節の出典を指します。WとNには共通Web入力の
 | `person/other_identified` | その他の特定人物 | 5,001 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/other_identified.html) |
 | `person/thought` | 哲学者・思想家 | 365 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/thought.html) |
 | `person/surname_origin_japanese` | 姓・名字（日本由来） | 24,616 | [W](#w) / [N](#n) / [P](#p) / [J](#j) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/surname_origin_japanese.html) |
-| `person/surname_origin_foreign` | 姓・名字（海外由来） | 69 | [W](#w) / [N](#n) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/surname_origin_foreign.html) |
+| `person/surname_origin_foreign` | 姓・名字（海外由来） | 69 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/surname_origin_foreign.html) |
 | `person/given_name_origin_japanese` | 名・下の名前（日本由来） | 2,246 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/given_name_origin_japanese.html) |
 | `person/given_name_origin_foreign` | 名・下の名前（海外由来） | 50 | [W](#w) / [N](#n) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/given_name_origin_foreign.html) |
 | `person/personal_name_origin_japanese` | 人名・姓名（日本由来） | 73,170 | [W](#w) / [N](#n) / [P](#p) / [J](#j) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/personal_name_origin_japanese.html) |
 | `person/personal_name_origin_foreign` | 人名・姓名（海外由来） | 2,387 | [W](#w) / [N](#n) / [P](#p) + [人物追加](#人物追加の出典) | [詳細](../../app/src/main/assets/licenses/classified/person/personal_name_origin_foreign.html) |
+
+<!-- END GENERATED: categories -->
 
 ## 元データ・帰属・条件
 
@@ -183,10 +191,14 @@ W/N/P/J/K/M/L/Rは次節の出典を指します。WとNには共通Web入力の
 
 KNApSAcK KAMPOの処方名・生薬名。KNApSAcK Family © 金谷 重彦（奈良先端科学技術大学院大学）。条件はCC BY-SA 2.1 Japanで、出典・著作権・加工表示と継承条件を保持します。
 
+<!-- BEGIN GENERATED: kampo -->
+
 | 入力 | 採用行数 | 取得版 | 出典 | 通知 |
 | --- | ---: | --- | --- | --- |
-| `kampo_core` | 250 | LATEST（取得ZIPをSHA-256で固定。日付付き版は未確認） | [KNApSAcK KAMPO](https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-1.html) | [kampo_core.txt](../../app/src/main/assets/licenses/sources/kampo_core.txt) |
-| `kampo_herb` | 182 | LATEST（取得ZIPをSHA-256で固定。日付付き版は未確認） | [KNApSAcK KAMPO](https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-2.html) | [kampo_herb.txt](../../app/src/main/assets/licenses/sources/kampo_herb.txt) |
+| `kampo_core` | 250 | LATEST (取得時ハッシュ固定) | [KNApSAcK KAMPO](https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-1.html) | [kampo_core.txt](../../app/src/main/assets/licenses/sources/kampo_core.txt) |
+| `kampo_herb` | 182 | LATEST (取得時ハッシュ固定) | [KNApSAcK KAMPO](https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-2.html) | [kampo_herb.txt](../../app/src/main/assets/licenses/sources/kampo_herb.txt) |
+
+<!-- END GENERATED: kampo -->
 
 [CC BY-SA 2.1 Japan全文](../../app/src/main/assets/licenses/sources/cc-by-sa-2.1-jp.txt)。元の自動読みの全件の正確性は未確認です。取得ZIPのハッシュは出典・採用行対応ファイルに保持しています。
 
@@ -195,26 +207,40 @@ KNApSAcK KAMPOの処方名・生薬名。KNApSAcK Family © 金谷 重彦（奈�
 
 奈良先端科学技術大学院大学ソーシャル・コンピューティング研究室の万病辞書・百薬辞書。由来データと編集・読み補完部分はCC BY 4.0。原本に記された作成者の帰属、ライセンス、出典・加工表示を保持します。
 
-| 入力 | 採用行数 | 版 | 出典 | 通知 |
+<!-- BEGIN GENERATED: medical -->
+
+| 入力 | 採用行数 | 取得版 | 出典 | 通知 |
 | --- | ---: | --- | --- | --- |
 | 万病辞書 | 72,027 | MANBYO_202106 | [万病辞書](https://sociocom.naist.jp/manbyou-dic/) | [manbyo.txt](../../app/src/main/assets/licenses/sources/manbyo.txt) |
 | 百薬辞書 | 20,656 | HYAKUYAKU_202107 | [百薬辞書](https://sociocom.naist.jp/hyakuyaku-dic/) | [hyakuyaku.txt](../../app/src/main/assets/licenses/sources/hyakuyaku.txt) |
 
 [CC BY 4.0全文](../../app/src/main/assets/licenses/sources/cc-by-4.0.txt)。空欄2,003件にはGeminiによる推定読みの補完があり、自動読み・推定読みの全件の正確性は未確認です。品詞・コストは配布元の割当です。
 
+<!-- END GENERATED: medical -->
+
 <a id="l"></a>
 ### L: 人事・労務の専門用語 / MHLW employment terms
 
-v1.7.278で追加した、厚生労働省の[雇用管理に役立つ多言語用語集](https://www.mhlw.go.jp/yougosyu/index.html)に基づく373件を、現行版の `term/specialist/law_politics` に収録しています。用語の表記と明記された日本語読みを選び、正規化・分類・品詞とコストの割当を行って辞書化しています。上流の確認記録では6件を再分類しています。
+厚生労働省の[雇用管理に役立つ多言語用語集](https://www.mhlw.go.jp/yougosyu/index.html)に基づく用語を収録しています。用語の表記と明記された日本語読みを選び、正規化・分類・品詞とコストの割当を行って辞書化しています。
 
-配布元の [LICENSE-DATA.md](../../app/src/main/assets/licenses/sources/release-data.txt) はこの出典に[公共データ利用規約（第1.0版）（PDL1.0）](https://www.digital.go.jp/resources/open_data/public_data_license_v1.0)を適用し、出典と加工内容を表示しています。厚生労働省の[利用規約](https://www.mhlw.go.jp/chosakuken/)も出典および編集・加工の表示を求めています。入力レビューのSHA-256と分類先は [出典・固定入力・採用行対応](../../tools/classified-dictionaries/category-provenance.json) に記録し、[固定した上流レビュー](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/f14e2793ef07c93f0d7136f14bbd5270eb3e0c07/src/main/classification/reviews/2026-10-26-business-mhlw.jsonl)から確認できます。
+配布元の [LICENSE-DATA.md](../../app/src/main/assets/licenses/sources/release-data.txt) はこの出典に[公共データ利用規約（第1.0版）（PDL1.0）](https://www.digital.go.jp/resources/open_data/public_data_license_v1.0)を適用し、出典と加工内容を表示しています。厚生労働省の[利用規約](https://www.mhlw.go.jp/chosakuken/)も出典および編集・加工の表示を求めています。
+
+<!-- BEGIN GENERATED: mhlw -->
+
+採用件数は373件です。上流の確認記録では6件を再分類しています。分類先とSHA-256は[来歴データ](../../tools/classified-dictionaries/category-provenance.json)、出典は[固定した上流レビュー](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/f14e2793ef07c93f0d7136f14bbd5270eb3e0c07/src/main/classification/reviews/2026-10-26-business-mhlw.jsonl)に掲載しています。
+
+<!-- END GENERATED: mhlw -->
 
 Mozc由来レコードには、Mozcおよび各辞書入力の条件が適用されます。[該当カテゴリのアプリ内詳細](../../app/src/main/assets/licenses/classified/term/specialist/law_politics.html) に配布元の `LICENSE-DATA.md` を掲載しています。
+
+<!-- BEGIN GENERATED: release-review -->
 
 <a id="r"></a>
 ### R: v1.7.285の追加語・対象層分類 / Reviewed additions and audience classifications
 
-上流の資料に基づく66組の読み・表記と、作品3件の対象層分類を収録しています。根拠URLは[追加語の確認記録](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/f14e2793ef07c93f0d7136f14bbd5270eb3e0c07/src/main/classification/reviews/2026-11-08-open-candidate-issues.jsonl)と[対象層分類・再分類の追記](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/f14e2793ef07c93f0d7136f14bbd5270eb3e0c07/src/main/classification/reviews/2026-11-08-open-candidate-issues_demographics.jsonl)に、SHA-256は[来歴データ](../../tools/classified-dictionaries/category-provenance.json)に記録しています。該当カテゴリのアプリ内詳細で、最終的な収録先ごとに読み・表記と出典URLを表示します。各語の著作権条件は未確認です。
+確認資料に基づく読み・表記の追加は66組、対象層分類の追加は3件です。確認記録は[追加語の確認記録](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/f14e2793ef07c93f0d7136f14bbd5270eb3e0c07/src/main/classification/reviews/2026-11-08-open-candidate-issues.jsonl)、[対象層分類・再分類の追記](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/f14e2793ef07c93f0d7136f14bbd5270eb3e0c07/src/main/classification/reviews/2026-11-08-open-candidate-issues_demographics.jsonl)、SHA-256は[来歴データ](../../tools/classified-dictionaries/category-provenance.json)に掲載しています。該当カテゴリのアプリ内詳細に、最終的な収録先ごとの読み・表記と出典URLを掲載しています。各語の著作権条件は未確認です。
+
+<!-- END GENERATED: release-review -->
 
 ### 人物追加の出典
 
@@ -222,7 +248,7 @@ Mozc由来レコードには、Mozcおよび各辞書入力の条件が適用さ
 
 ### 漢方追加の出典
 
-ツムラの公開製品項目から読みと名称を照合した2語を含みます。固定入力のハッシュと照合項目は `collectedTerms`、元URLは [漢方の詳細](../../app/src/main/assets/licenses/classified/kampo.html) に保持しています。原資料本文は転載せず、各語の著作権条件は未確認です。
+ツムラの公開製品項目から読みと名称を照合した語を含みます。固定入力のハッシュと照合項目は `collectedTerms`、元URLは [漢方の詳細](../../app/src/main/assets/licenses/classified/kampo.html) に保持しています。原資料本文は転載せず、各語の著作権条件は未確認です。
 
 ## その他の同梱辞書・共通資源
 
@@ -231,16 +257,24 @@ Mozc由来レコードには、Mozcおよび各辞書入力の条件が適用さ
 | 基本・単漢字・絵文字・顔文字・記号辞書 | Google/Mozc由来。Google、NAIST/IPAdic、ICOT、沖縄辞書等の各通知を保持。コードのBSD条件だけを全辞書へ適用しない | [core.html](../../app/src/main/assets/licenses/core.html)、[MOZC通知](../../app/src/main/assets/licenses/sources/mozc.txt)、[IPADIC COPYING](../../app/src/main/assets/licenses/sources/ipadic-copying.txt)、[IPADIC NOTICE](../../app/src/main/assets/licenses/sources/ipadic.txt) |
 | 接続コスト・品詞表・id.def・zero-query | Mozc関連資源。各データの通知を保持。元の個別行との網羅的な対応は未確認 | [MOZC通知](../../app/src/main/assets/licenses/sources/mozc.txt)、[merge-ut通知](../../app/src/main/assets/licenses/sources/merge-ut.txt) |
 | 読み修正・ことわざ | 配布元に保持されたMozc関連通知。各語の原本・帰属との全件対応は未確認 | [auxiliary.html](../../app/src/main/assets/licenses/auxiliary.html)、[converter.txt](../../app/src/main/assets/licenses/sources/converter.txt) |
-| 英語読み（5,138組） | JMdict: James William BREEN / EDRDG、CC BY-SA 4.0。NGSL 1.2: Charles Browne / Brent Culligan / Joseph Phillips、語選定・頻度調査。CMUdict: Copyright (C) 1993–2015 Carnegie Mellon University、原本の再配布条件・免責を保持。編集・追加部分はCC BY-SA 4.0で、CMUdictの条件を置き換えない | [english-reading.html](../../app/src/main/assets/licenses/english-reading.html)、[JMdict通知](../../app/src/main/assets/licenses/sources/jmdict.txt)、[CMUdict原文](../../app/src/main/assets/licenses/sources/cmudict.txt)、[配布元のデータ条件](../../app/src/main/assets/licenses/sources/release-data.txt) |
+| 英語読み | JMdict: James William BREEN / EDRDG、CC BY-SA 4.0。NGSL 1.2: Charles Browne / Brent Culligan / Joseph Phillips、語選定・頻度調査。CMUdict: Copyright (C) 1993–2015 Carnegie Mellon University、原本の再配布条件・免責を保持。編集・追加部分はCC BY-SA 4.0で、CMUdictの条件を置き換えない | [english-reading.html](../../app/src/main/assets/licenses/english-reading.html)、[JMdict通知](../../app/src/main/assets/licenses/sources/jmdict.txt)、[CMUdict原文](../../app/src/main/assets/licenses/sources/cmudict.txt)、[配布元のデータ条件](../../app/src/main/assets/licenses/sources/release-data.txt) |
 | N-gram / Unigram | JapaneseCorpus由来、生成物はCC BY-SA 4.0。日本語Wikipediaの帰属・継承、青空文庫の著作権フラグなしの作品と出典・書誌情報を保持。Mozcコンテキスト資源の原条件も保持 | [ngram.html](../../app/src/main/assets/licenses/ngram.html)、[data.txt](../../app/src/main/assets/licenses/sources/data.txt)、[corpus.txt](../../app/src/main/assets/licenses/sources/corpus.txt) |
-| 英単語・Glide・文法辞書（`english/`） | v1.7.285配布の英単語辞書はpreview.3由来。生成コミットは `f4c7151ac69d41586135037e658364bf48dae7a8`。読み・表記・トークンをAndroid向けに再格納し、動詞訂正表は固定したレビュー済み活用データから生成。出典別の帰属・条件は同梱HTMLに掲載 | [同梱通知原文](../../app/src/main/assets/licenses/english.html)、[出典・語彙台帳](https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/f4c7151ac69d41586135037e658364bf48dae7a8/english-ime/data/catalog/NAMED-VOCABULARY.md)、[動詞訂正表の入力原本](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz) |
+| 英単語・Glide・文法辞書（`english/`） | 読み・表記・トークンをAndroid向けに再格納。動詞訂正表は固定したレビュー済み活用データから生成 | [同梱通知原文](../../app/src/main/assets/licenses/english.html) |
 | Mozc segmenter / node attribute | 配布ZIPに含まれない現行資源。ローカルmanifestはboundary.def / segmenter.def / id.def由来を記録。取得コミット・原本との全件対応は未確認 | [segmenter manifest](../../app/src/main/assets/mozc/segmenter_manifest.json)、[node attribute manifest](../../app/src/main/assets/mozc/node_attribute_manifest.json)、[MOZC通知](../../app/src/main/assets/licenses/sources/mozc.txt) |
+
+<!-- BEGIN GENERATED: english -->
+
+英語読み辞書の採用件数は5,138組です。英単語辞書の配布版は `v1.7.285`、生成コミットは `f4c7151ac69d41586135037e658364bf48dae7a8` です。[出典・語彙台帳](https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/f4c7151ac69d41586135037e658364bf48dae7a8/english-ime/data/catalog/NAMED-VOCABULARY.md)と[動詞訂正表の入力原本](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz)を参照できます。
+
+<!-- END GENERATED: english -->
 
 旧 `english.dat` に対するSalesforce WikiTextの通知は [ENGLISH_DICTIOANRY_LICENSE](../../ENGLISH_DICTIOANRY_LICENSE) に保持しています。
 
 ## 保持した全通知・ライセンス全文
 
 以下の原文はリポジトリとアプリのアセットに保持しています。アプリでは辞書ごとの詳細に該当する通知を掲載します。各通知のSHA-256・固定URLは [notice-snapshots.json](../../app/src/main/assets/licenses/notice-snapshots.json) に記録しています。URLは通知の取得版を示し、元辞書データの来歴は出典別に記録しています。
+
+<!-- BEGIN GENERATED: notices -->
 
 | 資料 | リポジトリ内原文 | 取得元 |
 | --- | --- | --- |
@@ -268,7 +302,9 @@ Mozc由来レコードには、Mozcおよび各辞書入力の条件が適用さ
 | `manbyo` | [manbyo.txt](../../app/src/main/assets/licenses/sources/manbyo.txt) | [固定URL](https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/f14e2793ef07c93f0d7136f14bbd5270eb3e0c07/src/main/specialist/notices/manbyo.txt) |
 | `distribution-licenses` | [distribution-licenses.txt](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) | [固定URL](https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/v1.7.285/DICTIONARY-LICENSES.txt) |
 
-配布の全ライセンス文書 [DICTIONARY-LICENSES.txtの保持原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) は公開添付と同じバイト列です。SHA-256は `38d0c6acb59eec1f6daf4bbaf5721960bd86d3edc67e9cd85554887cb4ce810d`。アプリのMITと第三者データの条件は区別してください。
+配布の全ライセンス文書 [DICTIONARY-LICENSES.txtの保持原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) は公開添付と同じバイト列です。SHA-256は `38d0c6acb59eec1f6daf4bbaf5721960bd86d3edc67e9cd85554887cb4ce810d` です。
+
+<!-- END GENERATED: notices -->
 
 ## 再配布・更新時の表示
 
@@ -278,4 +314,4 @@ Mozc由来レコードには、Mozcおよび各辞書入力の条件が適用さ
 python3 tools/classified-dictionaries/prepare.py --check
 ```
 
-このコマンドで配布ファイル、同梱原文・通知、生成補正・期待レコードのハッシュを検証できます。配布版を変更する際は入力・来歴・同梱HTML・本対応表と通知スナップショットを一緒に更新してください。外部インポートした別辞書・ユーザー登録・任意の持ち込みデータの条件を、この同梱一覧で一律に与えることはできません。
+このコマンドで配布ファイル、同梱原文・通知、生成補正・期待レコードのハッシュを検証できます。配布版を変更する際は `python3 tools/classified-dictionaries/prepare.py --release <タグ>` を実行してください。外部インポートした別辞書・ユーザー登録・任意の持ち込みデータの条件を、この同梱一覧で一律に与えることはできません。

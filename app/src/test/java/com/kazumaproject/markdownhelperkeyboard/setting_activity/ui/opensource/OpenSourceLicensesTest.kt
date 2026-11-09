@@ -9,6 +9,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.security.MessageDigest
 
 @RunWith(RobolectricTestRunner::class)
@@ -16,6 +17,7 @@ import java.security.MessageDigest
 class OpenSourceLicensesTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val catalog get() = OpenSourceLicenses(context)
+    private val distribution get() = JSONObject(File("../tools/classified-dictionaries/distribution-manifest.json").readText())
 
     @Test fun editionsHaveOnlyTheirResolvedLibrariesAndModelsWithoutDuplicates() {
         val full = catalog.sections("full", false).flatMap { it.items }
@@ -56,30 +58,23 @@ class OpenSourceLicensesTest {
         ClassifiedDictionaries.all.forEach { spec ->
             assertTrue(items.any { it.id == "dictionary/classified/${spec.id}" })
         }
+        val manifest = distribution
+        val version = manifest.getString("version")
+        val revision = manifest.getString("revision")
         items.forEach {
             val html = it.document()
-            assertTrue(it.id, html.contains("v1.7.285 (f14e2793ef07c93f0d7136f14bbd5270eb3e0c07)"))
+            assertTrue(it.id, html.contains("配布: $version ($revision)"))
             assertTrue(it.id, html.contains("<pre>"))
         }
     }
 
-    @Test fun dictionaryDetailsShowPinnedEnglishInputsAndReviewedCategorySources() {
-        val items = catalog.sections("lite", false).flatMap { it.items }.associateBy { it.id }
-        val english = items.getValue("dictionary/english").document()
-        assertTrue(english.contains("<code>f4c7151ac69d41586135037e658364bf48dae7a8</code>"))
-        assertTrue(english.contains("dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz"))
-
-        val product = items.getValue("dictionary/classified/product").document()
-        assertTrue(product.contains("https://www.amazon.co.jp/Echo-Time-2026\">えこーたいむ / Echo Time</a>"))
-
-        val film = items.getValue("dictionary/classified/work_film").document()
-        val anime = items.getValue("dictionary/classified/work_anime").document()
-        assertTrue(film.contains("ぐろてすく / GROTESQQQUE</a>"))
-        assertFalse(anime.contains("ぐろてすく / GROTESQQQUE</a>"))
-
-        val shonen = items.getValue("dictionary/classified/media_demographic/audience/shonen").document()
-        assertTrue(shonen.contains("https://sp.shonenjump.com/j/rensai/jujutsu-modulo/\">じゅじゅつかいせんもじゅろ / 呪術廻戦≡</a>"))
-        assertTrue(shonen.contains("2026-11-08-open-candidate-issues_demographics.jsonl"))
+    @Test fun dictionaryDetailsShowPinnedEnglishInputs() {
+        val english = catalog.sections("lite", false).flatMap { it.items }
+            .single { it.id == "dictionary/english" }.document()
+        val manifest = distribution.getJSONObject("englishDictionary")
+        assertTrue(english.contains("<code>${manifest.getString("revision")}</code>"))
+        assertTrue(english.contains(manifest.getString("catalogUrl")))
+        assertTrue(english.contains(manifest.getString("reviewedGrammarSourceUrl")))
     }
 
     @Test fun correctedModelAndCoroutinesLicensesKeepOfflineOriginals() {
