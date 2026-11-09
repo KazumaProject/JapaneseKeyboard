@@ -247,12 +247,11 @@ class CrossFlickInputController(
 
                 notifyPressAction()
 
-                if (inputMode == InputMode.TEXT) {
+                if (inputMode == InputMode.TEXT && gestureConfig.showFlickPopup) {
                     (anchorView as? Button)?.let { button ->
                         originalKeyText = button.text
                         button.text = ""
                     }
-                    ensureDirectionalPopups()
                     showDirectionalPopup(FlickDirection.TAP)
                 }
 
@@ -332,13 +331,20 @@ class CrossFlickInputController(
     private fun onLongPressTriggered() {
         when (inputMode) {
             InputMode.ACTION -> {
-                showAllActionPopups()
-                highlightActionPopup(currentDirection)
+                if (currentGestureConfig().showLongPressPopup) {
+                    showAllActionPopups()
+                    highlightActionPopup(currentDirection)
+                } else {
+                    dismissAllActionPopups()
+                }
                 notifyLongPressActionPreview()
             }
 
             InputMode.TEXT -> {
-                if (currentDirection == FlickDirection.TAP) {
+                if (!currentGestureConfig().showLongPressPopup) {
+                    dismissDirectionalPopups()
+                    restoreOriginalButtonText()
+                } else if (currentDirection == FlickDirection.TAP) {
                     dismissDirectionalPopups()
                     showGridPopup()
                     highlightGrid(currentDirection)
@@ -412,6 +418,7 @@ class CrossFlickInputController(
 
     // 通常フリック中（長押し前）に方向が変わったときのポップアップ更新。ACTION_MOVE から呼ばれる。
     private fun updateNormalPopup(direction: FlickDirection) {
+        if (!currentGestureConfig().showFlickPopup) return
         when (inputMode) {
             InputMode.ACTION -> {
                 dismissAllActionPopups()
@@ -431,6 +438,7 @@ class CrossFlickInputController(
             }
 
             InputMode.TEXT -> {
+                if (!currentGestureConfig().showLongPressPopup) return
                 if (popupOverlay.isShowing(gridPopupView)) {
                     highlightGrid(direction)
                 } else {
@@ -683,6 +691,7 @@ class CrossFlickInputController(
     // TEXT モードで指定方向のポップアップを表示し、直前に表示していたものを閉じる。
     // 同じ方向が連続した場合はちらつき防止のためスキップする。
     private fun showDirectionalPopup(direction: FlickDirection) {
+        ensureDirectionalPopups()
         if (direction == currentVisibleDirectional) {
             return
         }
@@ -768,11 +777,8 @@ class CrossFlickInputController(
 
     // TEXT モードで ACTION_DOWN 時に消したボタンのラベルを復元する。ACTION_UP/CANCEL および cancel() から呼ばれる。
     private fun restoreOriginalButtonText() {
-        (anchorView as? Button)?.let { button ->
-            if (inputMode == InputMode.TEXT) {
-                button.text = originalKeyText
-            }
-        }
+        val text = originalKeyText ?: return
+        (anchorView as? Button)?.text = text
         originalKeyText = null
     }
 
