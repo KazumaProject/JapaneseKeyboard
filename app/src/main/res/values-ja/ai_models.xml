@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_projector_title">画像・音声用の投影モデル（GGUF）</string>
+    <string name="ai_projector_none">投影モデルを使用しない</string>
+    <string name="ai_projector_import">投影モデルを追加…</string>
+    <string name="ai_model_loading_title">AI モデルを読み込み中…</string>
+    <string name="ai_model_importing_title">AI モデルを取り込み中…</string>
+    <string name="ai_supported_models_details">LiteRT-LM または llama.cpp が対応する端末内のモデルを追加できます。モデル名による制限はありません。画像・音声の機能はモデルの対応能力に応じて利用できます。GGUF で画像・音声を使う場合は、本体に対応する mmproj ファイルを追加して選択してください。テキスト専用モデルでは画像・音声の機能を利用できません。CPU または GPU 実行を選択できます。GPU を初期化できない場合は CPU に切り替えます。GGUF の GPU 実行には Vulkan 1.2 以上が必要です。GPU を選択しても音声エンコーダーは CPU で実行します。互換性や必要なメモリはモデルと端末によって異なります。</string>
+    <string name="ai_audio_model_required">音声入力に対応する AI モデルを読み込んでください。</string>
+</resources>
