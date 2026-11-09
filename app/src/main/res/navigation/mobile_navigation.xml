@@ -233,7 +233,7 @@
     <fragment
         android:id="@+id/gemmaPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.GemmaPreferenceFragment"
-        android:label="Gemma" />
+        android:label="@string/category_gemma_translation_title" />
 
     <fragment
         android:id="@+id/kanaPreferenceFragment"

@@ -240,7 +240,7 @@ class GemmaImeMediaPanelController(
             val selectedResult = selectedResult()
             if (selectedResult.isBlank()) return@setOnClickListener
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("Gemma", selectedResult))
+            clipboard.setPrimaryClip(ClipData.newPlainText("AI", selectedResult))
             callbacks.showMessage(context.getString(R.string.gemma_result_copied))
         }
         buttonRetry.setOnClickListener {

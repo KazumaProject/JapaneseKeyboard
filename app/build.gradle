@@ -174,6 +174,14 @@ android {
 
 }
 
+androidComponents {
+    onVariants(selector().withFlavor("edition", "full")) { variant ->
+        // LiteRT-LM scans a filesystem directory for the Tensor dispatch library.
+        variant.packaging.jniLibs.useLegacyPackaging.set(true)
+        variant.packaging.jniLibs.useLegacyPackagingFromBundle.set(true)
+    }
+}
+
 def bundledConnectionMatrixZip = file("src/main/assets/connectionId.dat.zip")
 def compactConnectionMatrixAsset = layout.buildDirectory.file(
     "generated/compactConnectionMatrix/assets/connection/connection.compact"
@@ -1094,6 +1102,8 @@ dependencies {
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
     fullImplementation project(':zenz')
+    fullImplementation project(':ai-runtime')
+    fullImplementation 'com.microsoft.onnxruntime:onnxruntime-android:1.23.2'
 
     implementation 'androidx.fragment:fragment-ktx:1.8.8'
     implementation 'androidx.emoji2:emoji2:1.5.0'
@@ -1145,9 +1155,12 @@ dependencies {
     testImplementation "org.robolectric:robolectric:4.17"
 
     implementation 'com.google.code.gson:gson:2.13.1'
-    fullRuntimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.14.0') {
+    // The API is accessed reflectively. Keep upstream Kotlin 2.4 metadata out of Hilt's
+    // processing classpath; the used synchronous API runs with the app runtime dependencies.
+    fullRuntimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.19.0') {
         transitive = false
     }
+    fullRuntimeOnly 'com.google.ai.edge.litert:litert-npu-runtime-google-tensor:2.3.2'
 
     implementation "androidx.hilt:hilt-navigation-fragment:1.2.0"
 
