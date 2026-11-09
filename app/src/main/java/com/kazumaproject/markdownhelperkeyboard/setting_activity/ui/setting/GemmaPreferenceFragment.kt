@@ -21,7 +21,7 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaLoadState
-import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaModelCatalog
+import com.kazumaproject.markdownhelperkeyboard.gemma.AiModelFormat
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -47,9 +47,17 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
             importGemmaModel(uri)
         }
 
+    private val openProjectorLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) importGemmaModel(uri, projector = true)
+    }
+    private var projectorFiles: List<File> = emptyList()
+    private var selectedProjectorPath = ""
+    private var selectedFormat: AiModelFormat? = null
+
     private var installedModels: List<com.kazumaproject.markdownhelperkeyboard.gemma.InstalledGemmaModel> = emptyList()
     private var selectedModelPath: String? = null
     private var modelSummary: String? = null
+    private var importingModel = false
 
     override suspend fun preparePreferenceData(context: android.content.Context) {
         val snapshot = settingsIo(SettingsLoadStage.MODELS) {
@@ -62,6 +70,13 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
         installedModels = snapshot.first
         selectedModelPath = snapshot.second
         modelSummary = snapshot.third
+        val projectors = settingsIo(SettingsLoadStage.MODELS) {
+            Triple(gemmaTranslationManager.installedProjectors(), gemmaTranslationManager.projectorPath(),
+                gemmaTranslationManager.selectedModel()?.file?.name)
+        }
+        projectorFiles = projectors.first
+        selectedProjectorPath = projectors.second
+        selectedFormat = projectors.third?.let(AiModelFormat::fromFilename)
     }
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
@@ -263,14 +278,16 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
                     return@setOnPreferenceChangeListener false
                 }
                 val selected = newValue as String
-                launchPreferenceRefresh {
+                viewLifecycleOwner.lifecycleScope.launch {
                     val accepted = settingsIo(SettingsLoadStage.MODELS) {
                         gemmaTranslationManager.selectModel(selected)
                     }
                     if (accepted) {
-                        preparePreferenceData(requireContext())
-                        refreshInstalledModels()
-                        updateGemmaModelSummary()
+                        refreshPreferenceData {
+                            preparePreferenceData(requireContext())
+                            refreshInstalledModels()
+                            updateGemmaModelSummary()
+                        }
                         if (appPreference.enable_gemma_translation_preference) {
                             setGemmaLoadControlsEnabled(false)
                             gemmaTranslationManager.initializeIfEnabled(forceReload = true)
@@ -300,16 +317,43 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
         findPreference<Preference>("gemma_supported_models_preference")?.setOnPreferenceClickListener {
             AlertDialog.Builder(requireContext())
                 .setTitle(R.string.gemma_supported_models_title)
-                .setMessage(GemmaModelCatalog.supportedModelsSummary())
+                .setMessage(R.string.ai_supported_models_details)
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
             true
         }
 
+        findPreference<Preference>("ai_projector_preference")?.setOnPreferenceClickListener {
+            showProjectors()
+            true
+        }
         refreshInstalledModels()
         updateGemmaModelSummary()
         applyLegacySearchResultFilterIfNeeded()
         observeGemmaLoadState()
+    }
+
+    private fun showProjectors() {
+        val labels = listOf(getString(R.string.ai_projector_none)) + projectorFiles.map { it.name } + getString(R.string.ai_projector_import)
+        val paths = listOf("") + projectorFiles.map { it.absolutePath }
+        AlertDialog.Builder(requireContext()).setTitle(R.string.ai_projector_title)
+            .setSingleChoiceItems(labels.toTypedArray(), paths.indexOf(selectedProjectorPath)) { dialog, index ->
+                dialog.dismiss()
+                if (index == labels.lastIndex) {
+                    openProjectorLauncher.launch(arrayOf("application/octet-stream", "*/*"))
+                } else {
+                    setGemmaLoadControlsEnabled(false)
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        runCatching {
+                            gemmaTranslationManager.selectProjector(paths[index])
+                            gemmaTranslationManager.initializeIfEnabled(forceReload = true)
+                        }.onFailure {
+                            Toast.makeText(requireContext(), it.localizedMessage, Toast.LENGTH_LONG).show()
+                        }
+                        applyGemmaLoadState(gemmaTranslationManager.loadState.value)
+                    }
+                }
+            }.setNegativeButton(android.R.string.cancel, null).show()
     }
 
     private fun updateAdditionalInstructionSummary(preference: EditTextPreference) {
@@ -358,12 +402,16 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
         }
     }
 
-    private fun importGemmaModel(uri: Uri) {
-        setGemmaLoadControlsEnabled(false)
+    private fun importGemmaModel(uri: Uri, projector: Boolean = false) {
+        importingModel = true
+        renderGemmaLoadState(gemmaTranslationManager.loadState.value)
         updateGemmaModelSummary(loadingSummary(appPreference.gemma_translation_backend_preference))
         viewLifecycleOwner.lifecycleScope.launch {
             runCatching {
-                gemmaTranslationManager.importModelFromUri(uri)
+                if (projector) {
+                    val path = gemmaTranslationManager.importProjectorFromUri(uri)
+                    gemmaTranslationManager.selectProjector(path)
+                } else gemmaTranslationManager.importModelFromUri(uri)
                 preparePreferenceData(requireContext())
                 refreshInstalledModels()
                 gemmaTranslationManager.initializeIfEnabled(forceReload = true)
@@ -385,9 +433,8 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
                     Toast.LENGTH_LONG
                 ).show()
             }
-            if (gemmaTranslationManager.loadState.value !is GemmaLoadState.Loading) {
-                applyGemmaLoadState(gemmaTranslationManager.loadState.value)
-            }
+            importingModel = false
+            applyGemmaLoadState(gemmaTranslationManager.loadState.value)
         }
     }
 
@@ -399,6 +446,11 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
 
     private fun refreshInstalledModels() {
         val models = installedModels
+        findPreference<Preference>("ai_projector_preference")?.apply {
+            isEnabled = selectedFormat == AiModelFormat.GGUF && gemmaTranslationManager.loadState.value !is GemmaLoadState.Loading
+            summary = selectedProjectorPath.takeIf { it.isNotBlank() }?.let { File(it).name }
+                ?: getString(R.string.ai_projector_none)
+        }
         findPreference<ListPreference>("gemma_model_selection_preference")?.apply {
             entries = models.map { it.selectionLabel }.toTypedArray()
             entryValues = models.map { it.file.absolutePath }.toTypedArray()
@@ -412,10 +464,14 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 gemmaTranslationManager.loadState.collectLatest { state ->
-                    refreshPreferenceData {
-                        preparePreferenceData(requireContext())
-                        refreshInstalledModels()
-                        renderGemmaLoadState(state)
+                    // Publish progress immediately; model scans must not delay or cover it.
+                    renderGemmaLoadState(state)
+                    if (state !is GemmaLoadState.Loading) {
+                        refreshPreferenceData {
+                            preparePreferenceData(requireContext())
+                            refreshInstalledModels()
+                            renderGemmaLoadState(gemmaTranslationManager.loadState.value)
+                        }
                     }
                 }
             }
@@ -423,22 +479,32 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
     }
 
     private fun applyGemmaLoadState(state: GemmaLoadState) {
+        renderGemmaLoadState(state)
+        if (state is GemmaLoadState.Loading) return
         launchPreferenceRefresh {
             preparePreferenceData(requireContext())
             refreshInstalledModels()
-            renderGemmaLoadState(state)
+            renderGemmaLoadState(gemmaTranslationManager.loadState.value)
         }
     }
 
     private fun renderGemmaLoadState(state: GemmaLoadState) {
         val loading = state is GemmaLoadState.Loading
-        setGemmaLoadControlsEnabled(!loading)
+        findPreference<Preference>("ai_model_loading_preference")?.apply {
+            val wasVisible = isVisible
+            isVisible = loading || importingModel
+            setTitle(if (loading) R.string.ai_model_loading_title else R.string.ai_model_importing_title)
+            summary = if (state is GemmaLoadState.Loading) loadingSummary(state.backendPreference) else null
+            if (isVisible && !wasVisible) scrollToPreference(this)
+        }
+        setGemmaLoadControlsEnabled(!loading && !importingModel)
         updateGemmaModelSummary(summaryForState(state))
     }
 
     private fun setGemmaLoadControlsEnabled(enabled: Boolean) {
         findPreference<SwitchPreferenceCompat>("gemma_translation_enable_preference")?.isEnabled = enabled
         findPreference<ListPreference>("gemma_translation_backend_preference")?.isEnabled = enabled
+        findPreference<Preference>("ai_projector_preference")?.isEnabled = enabled && selectedFormat == AiModelFormat.GGUF
         findPreference<ListPreference>("gemma_model_selection_preference")?.isEnabled =
             enabled && installedModels.isNotEmpty()
         findPreference<Preference>("gemma_translation_model_preference")?.isEnabled = enabled
@@ -458,10 +524,12 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
                     File(state.modelPath).name,
                     state.backend,
                 )
-                if (state.backend == getString(R.string.gemma_translation_backend_runtime_cpu_fallback)) {
-                    "$ready\n${getString(R.string.gemma_translation_model_summary_cpu_fallback_ready)}"
-                } else {
-                    ready
+                when (state.backend) {
+                    getString(R.string.gemma_translation_backend_runtime_cpu_fallback) ->
+                        "$ready\n${getString(R.string.gemma_translation_model_summary_cpu_fallback_ready)}"
+                    getString(R.string.ai_npu_cpu_fallback) ->
+                        "$ready\n${getString(R.string.ai_npu_cpu_fallback_summary)}"
+                    else -> ready
                 }
             }
             is GemmaLoadState.Failed ->
@@ -472,6 +540,7 @@ class GemmaPreferenceFragment : AsyncPreferenceFragment() {
     private fun loadingSummary(backendPreference: String): String {
         val backendLabel = when (backendPreference) {
             "gpu_if_available" -> getString(R.string.gemma_translation_backend_runtime_gpu)
+            "npu_if_available" -> getString(R.string.ai_backend_npu)
             else -> getString(R.string.gemma_translation_backend_runtime_cpu)
         }
         return getString(R.string.gemma_translation_model_summary_loading_backend, backendLabel)

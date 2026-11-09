@@ -9,7 +9,9 @@ object ZenzEngine {
 
     external fun initModel(modelPath: String): Boolean
     external fun cancelCurrent()
+    external fun interruptCurrent()
     external fun closeModel()
+    external fun finishDraftReview(draftReviewId: String)
 
     external fun setRuntimeConfig(
         nCtx: Int,
@@ -67,6 +69,18 @@ object ZenzEngine {
         rightContext: String?,
         input: String,
         candidate: String
+    ): String
+
+    external fun candidateEvaluateDraftV32(
+        profile: String?,
+        topic: String?,
+        style: String?,
+        preference: String?,
+        leftContext: String?,
+        rightContext: String?,
+        input: String,
+        candidate: String,
+        draftReviewId: String,
     ): String
 
     external fun scoreCandidates(
