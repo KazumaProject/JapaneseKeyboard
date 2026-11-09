@@ -14,9 +14,12 @@ spec.loader.exec_module(symbols)
 
 
 class NativeSymbolsTest(unittest.TestCase):
-    def bundle(self, directory, remove=None, mismatch=False):
+    def bundle(self, directory, remove=None, mismatch=False, omit_abi=None):
         path = Path(directory)/'app.aab'
         with zipfile.ZipFile(path, 'w') as archive:
+            for abi in ('armeabi-v7a', 'x86'):
+                if abi != omit_abi:
+                    archive.writestr(f'base/lib/{abi}/libonnxruntime.so', 'abc123')
             for abi in ('arm64-v8a', 'x86_64'):
                 for library in ('libzenz.so', 'libomp.so'):
                     binary = f'base/lib/{abi}/{library}'
@@ -34,13 +37,12 @@ class NativeSymbolsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, patch.object(symbols.subprocess, 'check_output', side_effect=self.readelf), contextlib.redirect_stdout(io.StringIO()):
             symbols.verify(self.bundle(directory), 'llvm-readelf')
 
-    def test_onnx_only_32_bit_abi_fails(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = self.bundle(directory)
-            with zipfile.ZipFile(path, 'a') as archive:
-                archive.writestr('base/lib/armeabi-v7a/libonnxruntime.so', 'abc123')
-            with self.assertRaisesRegex(ValueError, 'Unexpected Full bundle native ABIs'):
-                symbols.verify(path, 'llvm-readelf')
+    def test_missing_32_bit_abi_fails(self):
+        for abi in ('armeabi-v7a', 'x86'):
+            with self.subTest(abi=abi), tempfile.TemporaryDirectory() as directory:
+                path = self.bundle(directory, omit_abi=abi)
+                with self.assertRaisesRegex(ValueError, 'Unexpected Full bundle native ABIs'):
+                    symbols.verify(path, 'llvm-readelf')
 
     def test_missing_abi_symbol_table_fails(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(symbols.subprocess, 'check_output', side_effect=self.readelf):
