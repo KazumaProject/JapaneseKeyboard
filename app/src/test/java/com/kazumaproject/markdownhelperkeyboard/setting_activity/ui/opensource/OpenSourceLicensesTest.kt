@@ -36,6 +36,17 @@ class OpenSourceLicensesTest {
         assertTrue(lite.any { it.id == "library/androidx.core:core/1.16.0" })
     }
 
+    @Test fun universalAiRuntimeKeepsPinnedNoticesInFullEditionOnly() {
+        val native = catalog.sections("full", false).flatMap { it.items }.first { it.id == "ai-runtime" }.document()
+        assertTrue(native.contains("cd959bae99ff4bed22bef2604f45241c09bbb8c8"))
+        assertTrue(native.contains("0d3f509e57041fbd073a1ee84cd9ccd36d148446"))
+        assertTrue(native.contains("04f10f650d514df88b76d25e83db360142c7b174"))
+        assertTrue(native.contains("The ggml authors"))
+        assertTrue(native.contains("Sean Barrett"))
+        assertTrue(native.contains("David Reid"))
+        assertFalse(catalog.sections("lite", false).flatMap { it.items }.any { it.id == "ai-runtime" })
+    }
+
     @Test fun dictionaryNoticesCoverEverySelectableCategoryAndCurrentRelease() {
         val items = catalog.sections("lite", false).flatMap { it.items }
             .filter { it.id.startsWith("dictionary/") }
