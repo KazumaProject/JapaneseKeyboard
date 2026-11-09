@@ -47,7 +47,7 @@ class GemmaHandwritingKanjiInstrumentedTest {
         val imageFile = File(context.cacheDir, "gemma_handwriting_test_kanji_nihon.png")
         try {
             val model = manager.installedModels()
-                .firstOrNull { installed -> installed.descriptor.supports(GemmaMediaType.IMAGE) }
+                .firstOrNull { installed -> manager.inspectModel(installed.file).supports(GemmaMediaType.IMAGE) }
             assumeTrue("Install an image-capable .litertlm model before this test", model != null)
             AppPreference.gemma_translation_model_path_preference =
                 requireNotNull(model).file.absolutePath
@@ -161,7 +161,7 @@ class GemmaHandwritingKanjiInstrumentedTest {
         val imageFile = File(context.cacheDir, "gemma_handwriting_test_kanji_yama.png")
         try {
             val model = manager.installedModels()
-                .firstOrNull { installed -> installed.descriptor.supports(GemmaMediaType.IMAGE) }
+                .firstOrNull { installed -> manager.inspectModel(installed.file).supports(GemmaMediaType.IMAGE) }
             assumeTrue("Install an image-capable .litertlm model before this test", model != null)
             AppPreference.gemma_translation_model_path_preference =
                 requireNotNull(model).file.absolutePath
