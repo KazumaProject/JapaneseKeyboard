@@ -1542,13 +1542,15 @@
     "revision": "f4c7151ac69d41586135037e658364bf48dae7a8",
     "archiveSha256": "8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69",
     "supportArchiveSha256": "4d8109de90d2afff02fbf96380110edcaa15f93a1cef004a36473600357fd435",
+    "catalogUrl": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/f4c7151ac69d41586135037e658364bf48dae7a8/english-ime/data/catalog/NAMED-VOCABULARY.md",
+    "reviewedGrammarSourceUrl": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz",
     "assets": {
       "app/src/main/assets/english/reading.dat.zip": "d16b7d669b28f6c5a0859a67db1234884d98464febb4e21f7eb79fd4ff6fe0e0",
       "app/src/main/assets/english/word.dat": "cd0679d884ef452ff0fca1432a58c6b7a9d2bbcfd216615f099f0c3d636f6259",
       "app/src/main/assets/english/token.dat.zip": "d6a3d0ec90a4f126262cd4175aa555b500240cbaaa745f7bf44b38039f82df23",
       "app/src/main/assets/english/qwerty_glide_index.dat": "76882e4be7b0ea3ce4cdbdc74315fc40954fff2998d97521bf2dc3fbb0f9afe3",
       "app/src/main/assets/english/grammar/categories.erol": "de5d9a15c9b4a67a4c35cdf4a11e80736042a3945ac80b78b50de9619af7794d",
-      "app/src/main/assets/licenses/english.html": "31b0bbe54f49df42ef1ea91b225ea295fb73afcb7f95384616039cf5879b4540",
+      "app/src/main/assets/licenses/english.html": "a96f003b6d5b43dbd08fbd866918705408d0599f70832924ab07d2b2612eec9c",
       "app/src/main/assets/english/grammar/verb-forms.tsv": "fc767d5e091304fb4fabcd86e5eb4b60be125a2c88191b5251d51bb8f2a1d77b"
     }
   },
@@ -2065,5 +2067,6 @@
     "app/src/main/assets/system/tango.dat.zip": "5fbaf9bbd620d2766b46cd247d1d862f83bf012d988900361970e988b7d62965",
     "app/src/main/assets/system/token.dat.zip": "02c560fb0e1a39bfa9bba09d4453416c3d0232a0e8380466351cd0401d44945f",
     "app/src/main/assets/system/yomi.dat.zip": "716297c927aaeeb6630f50b371953ae0343b5126bfdd512240e5310e1cbfa74a"
-  }
+  },
+  "licensePagesSha256": "7c577b48537c47bbb91258c1db25756c52169fe2c4229e5e43da427da5ac70c3"
 }
