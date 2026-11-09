@@ -7,6 +7,8 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDictionaryKind
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDictionaryTriple
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.GrammarRoles
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.RuntimeGrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionaryReader
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionary
@@ -330,6 +332,17 @@ class DictionaryBinaryReader @Inject constructor(
         }
     }
 
+    internal fun loadBundledEnglishForEngine(): CompactEnglishDictionary? =
+        compactBundledEnglishDictionaryIfActive()
+
+    internal fun loadBundledEnglishGrammar(): GrammarRoles? =
+        runCatching {
+            resolver.openBundledAssetFileDescriptor("english/grammar/categories.erol")
+                .use(RuntimeGrammarRoles::read)
+        }.onFailure { error ->
+            Timber.w(error, "Bundled English grammar is unavailable")
+        }.getOrNull()
+
     private fun compactBundledEnglishDictionaryIfActive(): CompactEnglishDictionary? {
         if (resolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return null
         compactEnglishDictionaryCache?.let { return it }
@@ -337,8 +350,7 @@ class DictionaryBinaryReader @Inject constructor(
         return synchronized(this) {
             compactEnglishDictionaryCache?.let { return@synchronized it }
             if (compactEnglishDictionaryLoadAttempted) return@synchronized null
-            compactEnglishDictionaryLoadAttempted = true
-            runCatching {
+            val loaded = runCatching {
                 resolver.openBundledAssetFileDescriptor(COMPACT_ENGLISH_DICTIONARY_ASSET).use(
                     CompactEnglishDictionaryReader::read,
                 )
@@ -347,7 +359,10 @@ class DictionaryBinaryReader @Inject constructor(
                     error,
                     "Compact English dictionary is unavailable. Falling back to serialized assets.",
                 )
-            }.getOrNull()?.also { compactEnglishDictionaryCache = it }
+            }.getOrNull()
+            compactEnglishDictionaryCache = loaded
+            compactEnglishDictionaryLoadAttempted = true
+            loaded
         }
     }
 
