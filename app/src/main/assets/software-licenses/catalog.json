@@ -2915,6 +2915,39 @@
       "notices": []
     },
     {
+      "group": "com.google.ai.edge.litert",
+      "name": "litert-npu-runtime-google-tensor",
+      "version": "2.3.2",
+      "pomUrl": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litert/litert-npu-runtime-google-tensor/2.3.2/litert-npu-runtime-google-tensor-2.3.2.pom",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "evidence": [
+        {
+          "url": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litert/litert-npu-runtime-google-tensor/2.3.2/litert-npu-runtime-google-tensor-2.3.2.pom",
+          "sha256": "63c37501388202aea61fe5f471542c61634ba90a2c101c40290b65339e6cc8e8"
+        }
+      ],
+      "variants": [
+        "fullStandardRelease"
+      ],
+      "notices": [
+        {
+          "title": "litert-npu-runtime-google-tensor-2.3.2.aar/LICENSE",
+          "asset": "software-licenses/71c6915d04265772a0339bed47276942c678b45cc01534210ebe6984fd1aec65.txt",
+          "sha256": "71c6915d04265772a0339bed47276942c678b45cc01534210ebe6984fd1aec65"
+        },
+        {
+          "title": "litert-npu-runtime-google-tensor-2.3.2.aar/THIRD_PARTY_NOTICE.txt",
+          "asset": "software-licenses/e1a57d3c031a43f9df1381bbb7806053f49b9ff7d770e69287160d77d387809e.txt",
+          "sha256": "e1a57d3c031a43f9df1381bbb7806053f49b9ff7d770e69287160d77d387809e"
+        }
+      ]
+    },
+    {
       "group": "com.google.ai.edge.litertlm",
       "name": "litertlm-android",
       "version": "0.19.0",

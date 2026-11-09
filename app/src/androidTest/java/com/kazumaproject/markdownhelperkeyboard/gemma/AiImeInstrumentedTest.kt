@@ -43,7 +43,8 @@ class AiImeInstrumentedTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         assumeTrue("Use the isolated QA application ID", context.packageName == "com.kazumaproject.universalaiqa")
-        val filename = InstrumentationRegistry.getArguments().getString("aiModel")
+        val arguments = InstrumentationRegistry.getArguments()
+        val filename = arguments.getString("aiModel")
         assumeTrue("Supply aiModel", filename != null)
         val model = File(context.getExternalFilesDir(null), "gemma/$filename")
         assertTrue(model.isFile)
@@ -81,7 +82,7 @@ class AiImeInstrumentedTest {
             preferences.edit()
                 .putBoolean("gemma_translation_enable_preference", true)
                 .putString("gemma_translation_model_path_preference", model.absolutePath)
-                .putString("gemma_translation_backend_preference", "cpu")
+                .putString("gemma_translation_backend_preference", arguments.getString("aiBackend") ?: "cpu")
                 .putBoolean(GemmaFloatingSettings.ENABLED, true)
                 .putBoolean("save_last_used_keyboard", false)
                 .putBoolean("allow_fullscreen_mode_preference", false)
@@ -168,7 +169,7 @@ class AiImeInstrumentedTest {
                     assertEquals(model.extension == "gguf", fragment.findPreference<Preference>("ai_projector_preference")?.isEnabled)
                     val backend = requireNotNull(fragment.findPreference<ListPreference>("gemma_translation_backend_preference"))
                     assertTrue("Select a backend before enabling AI", backend.isEnabled)
-                    assertEquals(listOf("cpu", "gpu_if_available"), backend.entryValues.map { it.toString() })
+                    assertEquals(listOf("cpu", "gpu_if_available", "npu_if_available"), backend.entryValues.map { it.toString() })
                     assertFalse(requireNotNull(fragment.findPreference<Preference>("ai_model_loading_preference")).isVisible)
                 }
             }

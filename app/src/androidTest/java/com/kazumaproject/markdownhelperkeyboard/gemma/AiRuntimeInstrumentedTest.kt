@@ -5,11 +5,14 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.markdownhelperkeyboard.BuildConfig
+import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaRuntimeClient
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -25,6 +28,31 @@ import org.junit.runner.RunWith
 /** Real Android runtime/manager test; fixtures are supplied externally, never bundled. */
 @RunWith(AndroidJUnit4::class)
 class AiRuntimeInstrumentedTest {
+    @Test
+    fun tensorDispatchIsExtractedOnArm64() {
+        assumeTrue(Build.SUPPORTED_ABIS.firstOrNull() == "arm64-v8a")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val dispatch = File(context.applicationInfo.nativeLibraryDir, "libLiteRtDispatch_GoogleTensor.so")
+        assertEquals("The Tensor dispatch library belongs to Full builds", BuildConfig.HAS_GEMMA, dispatch.isFile)
+    }
+
+    @Test(timeout = 60_000)
+    fun rejectsTensorModelOnIncompatibleDevice() = runBlocking {
+        val arguments = InstrumentationRegistry.getArguments()
+        val filename = arguments.getString("aiIncompatibleTensorModel")
+        assumeTrue("Supply a Tensor model built for a different SoC", filename != null)
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val model = File(File(context.getExternalFilesDir(null), "gemma"), requireNotNull(filename))
+        assertTrue("Missing fixture: $model", model.isFile)
+        val client = GemmaRuntimeClient(context)
+        try {
+            val error = runCatching { client.initialize(model.absolutePath, "npu_if_available") }.exceptionOrNull()
+            assertEquals(context.getString(R.string.ai_npu_incompatible_tensor_model), error?.message)
+        } finally {
+            client.close()
+        }
+    }
+
     @Test(timeout = 600_000)
     fun selectedModelHandlesDeclaredInputsAndRecovers() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
