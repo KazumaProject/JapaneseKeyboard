@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
+import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -51,17 +52,20 @@ class TenKeyCandidateLetterSizeFragment : Fragment(R.layout.fragment_tenkey_cand
             customBorderColor = AppPreference.custom_theme_border_color,
             liquidGlassKeyAlphaEnable = AppPreference.liquid_glass_key_alpha,
             borderWidth = AppPreference.custom_theme_border_width,
+            skinId = AppPreference.keyboardSkin,
         )
+        keyboard.setKeyboardFont(KeyboardFontApplicator.processSnapshot)
         keyboard.setUseThreeStateKeyboard(AppPreference.tenkey_use_three_state_keyboard_preference,
             AppPreference.tenkey_number_symbol_key_gap_preference)
         // Preview always shows the requested TenKey mode, including its numeric keys.
         keyboard.setUseQwertyNumberWhenThreeStateOff(false)
         keyboard.setOnTouchListener { _, _ -> true }
-        controls = KeyboardSizingControls(view, savedInstanceState, tenkey = true,
+        controls = KeyboardSizingControls(view, savedInstanceState, tenkey = true, specialLabelScaleControl = true,
             read = { mode, guides -> KeyboardSizingValues(
                 ModeKeySizing.tenkeyCenter(mode, guides), ModeKeySizing.tenkeyGuide(mode),
                 (AppPreference.tenkey_key_width_scale_percent ?: 100).toFloat(),
                 (AppPreference.tenkey_key_height_scale_percent ?: 100).toFloat(),
+                special = AppPreference.tenkey_special_key_label_scale_percent.toFloat(),
                 centerOverride = AppPreference.modeKeySize("tenkey", mode, false),
                 guideOverride = AppPreference.modeKeySize("tenkey", mode, true),
             ) },
@@ -70,6 +74,7 @@ class TenKeyCandidateLetterSizeFragment : Fragment(R.layout.fragment_tenkey_cand
                 SizingField.GUIDE -> AppPreference.setModeKeySize("tenkey", mode, true, value)
                 SizingField.WIDTH -> AppPreference.tenkey_key_width_scale_percent = value.toInt()
                 SizingField.HEIGHT -> AppPreference.tenkey_key_height_scale_percent = value.toInt()
+                SizingField.SPECIAL -> AppPreference.tenkey_special_key_label_scale_percent = value.toInt()
                 else -> Unit
             } },
             render = { mode, guides, values ->
@@ -81,6 +86,7 @@ class TenKeyCandidateLetterSizeFragment : Fragment(R.layout.fragment_tenkey_cand
                     values.guideOverride?.let { mapOf(ModeKeySizing.inputMode(mode) to it) } ?: emptyMap(),
                 )
                 keyboard.setKeySizeScale(values.width.toInt(), values.height.toInt())
+                keyboard.setSpecialKeyLabelScalePercent(values.special.toInt())
             },
             reset = { mode ->
                 AppPreference.resetModeKeySizes("tenkey", mode)
@@ -88,6 +94,7 @@ class TenKeyCandidateLetterSizeFragment : Fragment(R.layout.fragment_tenkey_cand
                     AppPreference.key_letter_size = 0f
                     AppPreference.tenkey_key_width_scale_percent = 100
                     AppPreference.tenkey_key_height_scale_percent = 100
+                    AppPreference.tenkey_special_key_label_scale_percent = 100
                 }
             },
             inherited = { mode -> AppPreference.modeKeySize("tenkey", mode, false) == null ||

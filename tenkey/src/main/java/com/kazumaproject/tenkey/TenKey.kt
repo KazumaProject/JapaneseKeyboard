@@ -1552,6 +1552,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
     }
 
+    fun setSpecialKeyLabelScalePercent(percent: Int) {
+        val scale = percent.coerceIn(60, 150) / 100f
+        binding.keySwitchKeyMode.labelScale = scale
+        binding.sideKeySymbolModeContainer.setLabelScale(scale)
+    }
+
     fun setUseThreeStateKeyboard(enabled: Boolean, numberSymbolKeyGapDp: Int = 4) {
         useThreeStateKeyboard = enabled
         binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled, numberSymbolKeyGapDp)
