@@ -17,6 +17,13 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:key="english_floating_grammar_correction_preference"
+            android:summary="@string/english_floating_correction_summary"
+            android:title="@string/english_floating_correction_title"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:key="conversion_bunsetsu_separation_preference"
             android:title="@string/conversion_separation_title"
             app:summary="@string/conversion_separation_summary" />
