@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w500dp-h1000dp-mdpi")
 class ZenzFloatingWindowTest {
-    private fun surface(window: ZenzFloatingWindow) = ZenzFloatingWindow::class.java
+    private fun surface(window: FloatingCandidatePanel) = FloatingCandidatePanel::class.java
         .getDeclaredField("surface").apply { isAccessible = true }.get(window) as ScrollView?
 
     @Test fun movingNearTheScreenTopKeepsProcessingAndResultsVisibleAndSelectable() {
@@ -39,7 +39,7 @@ class ZenzFloatingWindowTest {
         }
         layoutAt(700)
         val commits = mutableListOf<String>()
-        val window = ZenzFloatingWindow(activity, { anchor }, { activity.window.decorView.windowToken }, { true },
+        val window = FloatingCandidatePanel(activity, { anchor }, { activity.window.decorView.windowToken }, { true },
             { CandidatePanelColors(0, 0, 0, 0, 0, 0) }, { true }, { _, text -> commits += text; true })
         try {
             window.showProcessing(1L)
@@ -100,7 +100,7 @@ class ZenzFloatingWindowTest {
         val input = 1L
         var valid = true
         var eligible = true
-        val window = ZenzFloatingWindow(activity, { anchor }, { activity.window.decorView.windowToken }, { eligible },
+        val window = FloatingCandidatePanel(activity, { anchor }, { activity.window.decorView.windowToken }, { eligible },
             { CandidatePanelColors(0, 0, 0, 0, 0, 0) }, { valid },
             { _, text -> commits += text; true })
         try {
