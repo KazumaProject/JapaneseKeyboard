@@ -310,6 +310,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateR
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestToken
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestTracker
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
+import com.kazumaproject.markdownhelperkeyboard.ime_service.english.EnglishCorrectionEditor
+import com.kazumaproject.markdownhelperkeyboard.ime_service.english.EnglishGrammarCorrection
+import com.kazumaproject.markdownhelperkeyboard.ime_service.english.EnglishVerbForms
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsHentaigana
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.editor.EditorEnterAction
@@ -1131,6 +1134,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         else if (inputString.value.isNotEmpty()) requestCandidateRefresh(CandidateShowFlag.Updating)
                     }
                 }
+            }
+            if (key == null || key == "english_floating_grammar_correction_preference") {
+                runOnMainThread { clearEnglishCorrection() }
             }
             if (key == null || key in GemmaFloatingSettings.keys || key == "gemma_translation_enable_preference") {
                 runOnMainThread { refreshGemmaFloating() }
@@ -3906,7 +3912,101 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         controller.toggle(kind)
     }
 
-    private var zenzFloatingWindow: ZenzFloatingWindow? = null
+    private data class PendingEnglishCorrection(
+        val revision: Long,
+        val connection: InputConnection,
+        val editor: EnglishCorrectionEditor,
+        val correction: EnglishGrammarCorrection,
+    )
+
+    private var englishCorrectionJob: Job? = null
+    private var pendingEnglishCorrection: PendingEnglishCorrection? = null
+    private var englishCorrectionPanel: FloatingCandidatePanel? = null
+    private val englishVerbForms by lazy {
+        runCatching {
+            assets.open("english/grammar/verb-forms.tsv").reader(Charsets.UTF_8).use(EnglishVerbForms::read)
+        }.getOrNull()
+    }
+
+    private fun canShowEnglishCorrection(): Boolean =
+        ::runtimeInputSharedPreferences.isInitialized &&
+            runtimeInputSharedPreferences.getBoolean("english_floating_grammar_correction_preference", false) &&
+            currentInputModeForSession == InputMode.ModeEnglish &&
+            currentInputBehavior == ResolvedInputBehavior.COMPOSING_TEXT &&
+            isInputViewActive && !isFullscreenMode && !suppressSuggestions && !isPrivateMode &&
+            !currentInputType.isPassword() && dictionaryInputConnection == null &&
+            (currentInputEditorInfo?.imeOptions ?: 0) and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0 &&
+            keyboardLayoutEditState.value !is KeyboardLayoutEditState.Enabled &&
+            !shouldShowZenzFloatingCandidate(_zenzLiveSlotState.value) &&
+            !(gemmaFloatingText.isNotEmpty() && canUseGemmaFloating())
+
+    private fun englishCorrectionAnchor(): View? = gemmaFloatingAnchor()
+        ?: floatingKeyboardBinding?.root?.takeIf { it.isShown }
+        ?: mainLayoutBinding?.root
+
+    private fun clearEnglishCorrection() {
+        englishCorrectionJob?.cancel()
+        englishCorrectionJob = null
+        pendingEnglishCorrection = null
+        englishCorrectionPanel?.clear()
+    }
+
+    private fun scheduleEnglishCorrection(connection: InputConnection, committed: CharSequence?) {
+        if (!canShowEnglishCorrection() || committed.isNullOrBlank()) return
+        val suffix = committed.takeLast(160).toString()
+        if (suffix.none { it in 'a'..'z' || it in 'A'..'Z' }) return
+        if (dictionarySourceResolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return
+        val revision = editorMutationRevision.current()
+        englishCorrectionJob = scope.launch {
+            if (inputString.value.isNotEmpty() || stringInTail.get().isNotEmpty()) return@launch
+            val result = editorConnectionReadMutex.withLock {
+                withContext(Dispatchers.IO) {
+                    val editor = runCatching { EnglishCorrectionEditor.capture(connection) }.getOrNull()
+                        ?: return@withContext null
+                    if (!editor.before.endsWith(suffix)) return@withContext null
+                    val correction = englishVerbForms?.suggest(editor.before, editor.offset == 0)
+                        ?: return@withContext null
+                    PendingEnglishCorrection(revision, connection, editor, correction)
+                }
+            } ?: return@launch
+            if (!canShowEnglishCorrection() || !editorMutationRevision.isCurrent(revision) ||
+                currentInputConnection !== connection || inputString.value.isNotEmpty() ||
+                stringInTail.get().isNotEmpty()) return@launch
+            pendingEnglishCorrection = result
+            val panel = englishCorrectionPanel ?: FloatingCandidatePanel(
+                this@IMEService, ::englishCorrectionAnchor,
+                windowToken = { mainLayoutBinding?.root?.windowToken },
+                eligible = ::canShowEnglishCorrection,
+                colors = ::resolveCandidatePanelColors,
+                validRequest = { token ->
+                    pendingEnglishCorrection?.revision == token && editorMutationRevision.isCurrent(token)
+                },
+                commit = { token, _ -> applyEnglishCorrection(token) },
+                textViewId = R.id.english_floating_correction_text,
+            ).also { englishCorrectionPanel = it }
+            val correction = result.correction
+            panel.show(revision, getString(R.string.english_floating_correction_label, correction.original, correction.replacement))
+        }
+    }
+
+    private fun applyEnglishCorrection(revision: Long): Boolean {
+        val pending = pendingEnglishCorrection ?: return false
+        val valid = pending.revision == revision && editorMutationRevision.isCurrent(revision) &&
+            currentInputConnection === pending.connection && canShowEnglishCorrection() &&
+            inputString.value.isEmpty() && stringInTail.get().isEmpty() &&
+            !dictionarySourceResolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)
+        clearEnglishCorrection()
+        if (!valid) return false
+        val applied = runCatching { pending.editor.replace(pending.connection, pending.correction) }.getOrDefault(false)
+        if (applied) {
+            editorMutationRevision.advance()
+            clearZeroQueryAllState()
+            vibrate()
+        }
+        return applied
+    }
+
+    private var zenzFloatingWindow: FloatingCandidatePanel? = null
     private val zenzFloatingEnabled get() = AppVariantConfig.hasZenz &&
         runtimeInputSharedPreferences.getBoolean("enable_ai_conversion_zenz_preference", false) &&
         runtimeInputSharedPreferences.getBoolean(ComposingGuideSettings.ZENZ_ENABLED, false)
@@ -3954,7 +4054,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         val current = state ?: return
-        val window = zenzFloatingWindow ?: ZenzFloatingWindow(
+        val window = zenzFloatingWindow ?: FloatingCandidatePanel(
             this, ::zenzFloatingAnchor,
             windowToken = { mainLayoutBinding?.root?.windowToken },
             eligible = { canUseZenzFloatingPanel() && !suppressSuggestions },
@@ -4015,6 +4115,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onCreateInputView(): View? {
+        clearEnglishCorrection()
         // This method cancels the scope's children below. Do not retain a coordinator
         // whose worker belongs to the previous input view.
         clearGemmaFloating()
@@ -4072,6 +4173,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        clearEnglishCorrection()
         backspaceHistoryCoordinator.cancel()
         deletedBuffer.clear()
         if (!restarting) resetSoftwareModifiers()
@@ -6830,6 +6932,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInput() {
         aiVoiceInputController?.cancel()
         beginZenzRerankRequest()
+        clearEnglishCorrection()
         backspaceHistoryCoordinator.cancel()
         deletedBuffer.clear()
         resetSoftwareModifiers()
@@ -6857,6 +6960,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onFinishInputView(finishingInput: Boolean) {
         beginZenzRerankRequest()
+        clearEnglishCorrection()
         backspaceHistoryCoordinator.cancel()
         resetSoftwareModifiers()
         cancelMorseInputs(clearPattern = true)
@@ -6915,6 +7019,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        clearEnglishCorrection()
         cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
         floatingCursor?.stop()
@@ -6942,6 +7047,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         modelRerankWarmJob?.cancel()
         beginZenzRerankRequest()
         if (modelRerankClient.isInitialized()) modelRerankClient.value.close()
+        clearEnglishCorrection()
         cancelMorseInputs(clearPattern = true)
         gemmaFloatingCoordinator?.destroy()
         gemmaFloatingWindow?.clear()
@@ -8726,6 +8832,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         if (oldSelStart != newSelStart || oldSelEnd != newSelEnd) {
             horizontalCursorSelectionRevision.incrementAndGet()
+        }
+        pendingEnglishCorrection?.let {
+            if (newSelStart != it.editor.caret || newSelEnd != it.editor.caret) clearEnglishCorrection()
         }
         forwardDeleteCoordinator.onSelectionChanged(newSelStart, newSelEnd)
         invalidateCustomToggleStateForSelection(newSelStart, newSelEnd)
@@ -31916,7 +32025,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
         val deleted = connection.deleteSurroundingText(p0, p1)
-        if (deleted) editorMutationRevision.advance()
+        if (deleted) {
+            editorMutationRevision.advance()
+            runOnMainThread { clearEnglishCorrection() }
+        }
         return deleted
     }
 
@@ -31926,13 +32038,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
         val deleted = connection.deleteSurroundingTextInCodePoints(p0, p1)
-        if (deleted) editorMutationRevision.advance()
+        if (deleted) {
+            editorMutationRevision.advance()
+            runOnMainThread { clearEnglishCorrection() }
+        }
         return deleted
     }
 
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
         val connection = currentInputConnection ?: return false
         cancelCandidateTranslationIfComposingChanges(p0)
+        if (!p0.isNullOrEmpty()) runOnMainThread { clearEnglishCorrection() }
         val applied = composingTextArbiter.setCanonical(p0, p1)
         if (applied) {
             val next = p0?.toString().orEmpty()
@@ -31987,6 +32103,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             composingTextArbiter.markCanonicalFinished()
             composingGuide?.update(null)
             clearPhysicalCandidateCompositionSession("commit text")
+            runOnMainThread {
+                clearEnglishCorrection()
+                if (p1 == 1) scheduleEnglishCorrection(connection, p0)
+            }
         }
         return committed
     }
@@ -32019,7 +32139,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         val changed = connection.setSelection(p0, p1)
-        if (changed) editorMutationRevision.advance()
+        if (changed) {
+            editorMutationRevision.advance()
+            runOnMainThread { clearEnglishCorrection() }
+        }
         return changed
     }
 

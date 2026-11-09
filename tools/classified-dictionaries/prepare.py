@@ -14,6 +14,8 @@ import urllib.request
 import zipfile
 import unicodedata
 
+from english_verb_forms import build_english_verb_forms
+
 ROOT = Path(__file__).resolve().parents[2]
 REVISION = 'b9f3375a1cfb0ce5e56f4da622ecc4e983364581'
 VERSION = 'v1.7.283'
@@ -41,6 +43,11 @@ ENGLISH_PREVIEW_ASSETS = {
     'grammar/categories.erol': 'grammar/categories.erol',
 }
 ENGLISH_NOTICE = 'app/src/main/assets/licenses/english.html'
+ENGLISH_VERB_FORMS = ENGLISH_ASSET_ROOT + 'grammar/verb-forms.tsv'
+ENGLISH_REVIEWED_SOURCE = (
+    'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/'
+    + ENGLISH_PREVIEW_REVISION + '/english-ime/data/reviewed/reviewed-source.tar.gz'
+)
 
 def fetch(url):
     CACHE.mkdir(parents=True, exist_ok=True)
@@ -440,9 +447,11 @@ def english_preview():
             f'<p><a href="{source}">English Dictionary v24 Preview 1 / 英語辞書の出典</a></p>'
             '<p>Android bundles the reading, word, token, Glide and grammar files. '
             'The build repackages the reading, word and token arrays for Android. '
+            'The verb correction table is derived from the reviewed finite verb forms. '
             'Each source retains the terms reproduced below.</p>'
             '<p>読み・表記・トークン・Glide・文法のデータを収録しています。'
             '読み・表記・トークンはビルド時に Android 向けの形式に再格納します。'
+            '動詞の訂正用データはレビュー済みの活用形から生成しています。'
             '出典ごとの利用条件を以下に掲載します。</p>'
             '<h2>著作権表示・ライセンス原文 / Copyright notices and original license texts</h2>'
         )
@@ -452,6 +461,8 @@ def english_preview():
         write(ROOT / ENGLISH_NOTICE, page)
         assets[ENGLISH_NOTICE] = sha((ROOT / ENGLISH_NOTICE).read_bytes())
 
+    write(ROOT / ENGLISH_VERB_FORMS, build_english_verb_forms(fetch(ENGLISH_REVIEWED_SOURCE)))
+    assets[ENGLISH_VERB_FORMS] = sha((ROOT / ENGLISH_VERB_FORMS).read_bytes())
     distribution['englishDictionary'] = {
         'version': ENGLISH_PREVIEW_TAG,
         'revision': ENGLISH_PREVIEW_REVISION,
@@ -478,7 +489,7 @@ def check():
     assert (english['version'], english['revision'], english['archiveSha256']) == (
         ENGLISH_PREVIEW_TAG, ENGLISH_PREVIEW_REVISION, ENGLISH_PREVIEW_SHA256,
     )
-    assert set(english['assets']) == {ENGLISH_ASSET_ROOT + name for name in ENGLISH_PREVIEW_ASSETS.values()} | {ENGLISH_NOTICE}
+    assert set(english['assets']) == {ENGLISH_ASSET_ROOT + name for name in ENGLISH_PREVIEW_ASSETS.values()} | {ENGLISH_NOTICE, ENGLISH_VERB_FORMS}
     for path, checksum in english['assets'].items():
         assert sha((ROOT / path).read_bytes()) == checksum, path
     for path in (ROOT / 'app/src/main/assets/licenses').rglob('*.html'):
