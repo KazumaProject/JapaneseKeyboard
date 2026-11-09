@@ -5,14 +5,19 @@ import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.view.View.MeasureSpec
+import android.widget.ImageView
 import androidx.core.graphics.ColorUtils
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.core.R
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -121,6 +126,62 @@ class InputModeSwitchSkinHighlightTest {
                     }
                 }
             }
+        }
+    }
+
+    @Test
+    fun tenKeyKanaReturnLabelIsLargerThanTheOriginalAndSmallerThanTheJapaneseModeLabel() {
+        val view = newView().apply { scaleType = ImageView.ScaleType.CENTER_INSIDE }
+        view.setImageResource(R.drawable.input_mode_japanese_select_custom)
+        val originalHeight = inkBounds(view).height()
+        view.setInputMode(InputMode.ModeJapanese, isGojuon = false, useThreeStateKeyboard = false)
+        val japaneseHeight = inkBounds(view).height()
+        view.setInputMode(InputMode.ModeNumber, isGojuon = false, useThreeStateKeyboard = false)
+        val kanaReturnHeight = inkBounds(view).height()
+
+        assertTrue(
+            "Kana return label is ${kanaReturnHeight}px tall, original is ${originalHeight}px, Japanese mode label is ${japaneseHeight}px",
+            kanaReturnHeight > originalHeight && kanaReturnHeight < japaneseHeight,
+        )
+    }
+
+    @Test
+    fun tenKeyScaleGrowsFittedLabelsAndKeepsTheirInkInsideNarrowKeys() {
+        val view = newView().apply {
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setInputMode(InputMode.ModeJapanese, isGojuon = false, useThreeStateKeyboard = true)
+            setPadding(2, 2, 2, 2)
+            measure(MeasureSpec.makeMeasureSpec(26, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(32, MeasureSpec.EXACTLY))
+            layout(0, 0, 26, 32)
+        }
+
+        val initial = inkBounds(view)
+        view.labelScale = .6f
+        assertTrue(inkBounds(view).width() < initial.width())
+        view.labelScale = 1.5f
+        val large = inkBounds(view)
+        assertTrue("The label must grow even if the base image already fills the key", large.width() > initial.width())
+        assertTrue("The visible glyphs must fit inside the padding", Rect(3, 3, 23, 29).contains(large))
+        view.labelScale = 1f
+        val restored = inkBounds(view)
+        assertEquals(initial.width(), restored.width())
+        // Antialiasing can shift the threshold edge by a pixel after rasterizing at another scale.
+        assertEquals(initial.height().toFloat(), restored.height().toFloat(), 1f)
+    }
+
+    private fun inkBounds(view: InputModeSwitch): Rect {
+        val bitmap = render(view)
+        try {
+            val bounds = Rect()
+            for (y in 0 until bitmap.height) {
+                for (x in 0 until bitmap.width) {
+                    if (Color.alpha(bitmap.getPixel(x, y)) >= 128) bounds.union(x, y, x + 1, y + 1)
+                }
+            }
+            return bounds
+        } finally {
+            bitmap.recycle()
         }
     }
 
