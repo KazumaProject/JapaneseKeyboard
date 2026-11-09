@@ -69,7 +69,7 @@ object SettingTabRegistry {
         if (AppVariantConfig.hasGemma) {
             tabs += SettingTabSpec(
                 key = TAB_GEMMA,
-                title = { "Gemma" },
+                title = { it.getString(R.string.category_gemma_translation_title) },
                 xmlRes = R.xml.pref_gemma,
                 destinationId = R.id.gemmaPreferenceFragment,
                 fragmentFactory = { GemmaPreferenceFragment() },

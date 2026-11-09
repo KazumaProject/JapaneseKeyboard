@@ -88,4 +88,15 @@ class MushroomTargetTest {
         assertFalse(MushroomTarget.capture(ic, "")!!.apply(connection(extracted("abc", 1)), "result"))
         assertTrue(MushroomTarget.capture(ic, "")!!.apply(connection(extracted("abc", 1)), "result", true))
     }
+
+    @Test fun reconnectedEditorStillNeedsMatchingTextOffsetAndSelection() {
+        val original = connection(extracted("abc", 1, 2))
+        for (change in listOf(extracted("axc", 1, 2), extracted("abc", 2), extracted("abc", 1, 2, offset = 4))) {
+            val current = connection(change)
+            val target = requireNotNull(MushroomTarget.capture(original, ""))
+            assertFalse(target.apply(current, "result", sameEditorAfterRestart = true))
+            verify(current, never()).setSelection(any(), any())
+            verify(current, never()).commitText(any(), any())
+        }
+    }
 }
