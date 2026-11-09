@@ -41,6 +41,7 @@ internal class KeyboardSizingControls(
     private val modeSpecific: Boolean = true,
     private val guideControls: Boolean = true,
     private val specialKeyControls: Boolean = false,
+    private val specialLabelScaleControl: Boolean = false,
     private val read: (KeyboardInputMode, Boolean) -> KeyboardSizingValues,
     private val save: (KeyboardInputMode, SizingField, Float) -> Unit,
     private val render: (KeyboardInputMode, Boolean, KeyboardSizingValues) -> Unit,
@@ -61,6 +62,8 @@ internal class KeyboardSizingControls(
         if (guideControls) put(SizingField.GUIDE, R.id.sizingGuide to R.id.sizingGuideValue)
         if (!tenkey || specialKeyControls) {
             put(SizingField.ICON, R.id.sizingIcon to R.id.sizingIconValue)
+        }
+        if (!tenkey || specialKeyControls || specialLabelScaleControl) {
             put(SizingField.SPECIAL, R.id.sizingSpecial to R.id.sizingSpecialValue)
         }
         if (specialKeyControls) {
@@ -77,13 +80,13 @@ internal class KeyboardSizingControls(
                 // Legacy guide labels start at 11 sp and the old delta could be -7 sp.
                 SizingField.CENTER -> if (tenkey && guideControls) 4f..40f else 8f..32f
                 SizingField.GUIDE -> 6f..16f
-                SizingField.SPECIAL -> 8f..32f
+                SizingField.SPECIAL -> if (specialLabelScaleControl) 60f..150f else 8f..32f
                 SizingField.ICON -> if (specialKeyControls) 40f..200f else 40f..220f
                 else -> if (tenkey) 60f..140f else 40f..220f
             }
             slider.valueFrom = range.start
             slider.valueTo = range.endInclusive
-            slider.stepSize = if (field in listOf(SizingField.WIDTH, SizingField.HEIGHT, SizingField.ICON, SizingField.SPECIAL_WIDTH, SizingField.SPECIAL_HEIGHT) ||
+            slider.stepSize = if (usesPercent(field) ||
                 (field == SizingField.GUIDE && !modeSpecific)) 1f else 0f
             slider.setLabelFormatter { format(field, it) }
             var touchChanged = false
@@ -164,11 +167,16 @@ internal class KeyboardSizingControls(
             if (modeSpecific && inherited(mode)) View.VISIBLE else View.GONE
     }
 
-    private fun format(field: SizingField, value: Float): String = root.context.getString(
-        if (field in listOf(SizingField.WIDTH, SizingField.HEIGHT, SizingField.ICON, SizingField.SPECIAL_WIDTH, SizingField.SPECIAL_HEIGHT))
-            R.string.sizing_percent else R.string.sizing_sp,
-        if (field in listOf(SizingField.WIDTH, SizingField.HEIGHT, SizingField.ICON, SizingField.SPECIAL_WIDTH, SizingField.SPECIAL_HEIGHT)) value.toInt() else value,
-    )
+    private fun usesPercent(field: SizingField): Boolean = when (field) {
+        SizingField.WIDTH, SizingField.HEIGHT, SizingField.ICON,
+        SizingField.SPECIAL_WIDTH, SizingField.SPECIAL_HEIGHT -> true
+        SizingField.SPECIAL -> specialLabelScaleControl
+        else -> false
+    }
+
+    private fun format(field: SizingField, value: Float): String =
+        if (usesPercent(field)) root.context.getString(R.string.sizing_percent, value.toInt())
+        else root.context.getString(R.string.sizing_sp, value)
 
     private fun buttonFor(mode: KeyboardInputMode): Int = when (mode) {
         KeyboardInputMode.HIRAGANA -> R.id.sizingJapanese

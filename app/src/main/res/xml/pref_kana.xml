@@ -14,6 +14,16 @@
             android:key="tenkey_popup_view_style_preference"
             android:title="@string/tenkey_popup_view_style_preference_title"
             android:summary="@string/tenkey_popup_view_style_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="tenkey_show_flick_popup_preference"
+            android:title="@string/show_flick_key_popup_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="tenkey_show_long_press_popup_preference"
+            android:title="@string/show_long_press_key_popup_title" />
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="tenkey_show_switch_ime_button_preference"

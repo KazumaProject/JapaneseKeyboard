@@ -21,6 +21,16 @@
             android:title="@string/flick_keyboard_popup_view_style_preference_title"
             android:summary="@string/flick_keyboard_popup_view_style_preference_summary" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="sumire_show_flick_popup_preference"
+            android:title="@string/show_flick_key_popup_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="sumire_show_long_press_popup_preference"
+            android:title="@string/show_long_press_key_popup_title" />
+
         <ListPreference
             android:defaultValue="touch_point"
             android:dialogTitle="@string/tfbi_flick_start_position_dialog_title"

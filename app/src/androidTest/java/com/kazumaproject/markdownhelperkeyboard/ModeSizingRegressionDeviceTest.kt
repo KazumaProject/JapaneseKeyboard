@@ -26,8 +26,13 @@ import androidx.test.runner.lifecycle.Stage
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
+import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.ui.ScalableKeyLabelButton
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.tenkey.TenKey
+import com.kazumaproject.tenkey.R as TenKeyR
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -307,6 +312,86 @@ class ModeSizingRegressionDeviceTest {
         val actual=main { liveTenkeys().first().findViewById<TextView>(com.kazumaproject.tenkey.R.id.key_1).textSize/ctx.resources.displayMetrics.scaledDensity }
         assertEquals(saved,actual,.01f)
         record("center-drag","saved=$saved preview=$preview actual=$actual")
+    }
+
+    @Test fun tenkeySwitchLabelScalePreviewsPersistsAndResets() {
+        val key = AppPreference.TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY
+        prefs.edit().putBoolean(AppPreference.TENKEY_USE_THREE_STATE_KEY, false)
+            .putBoolean("tenkey_switch_number_to_qwerty_number_preference", false).commit()
+        val activity = openSettings()
+        val preview = main { activity.findViewById<TenKey>(R.id.tenkeyLetterSizePreview) }
+        val control = main { activity.findViewById<Slider>(R.id.sizingSpecial) }
+        assertFalse(prefs.contains(key))
+        assertEquals(100f, main { control.value }, .01f)
+        main { assertTenkeyLabelScale(preview, 100) }
+        for (percent in listOf(60, 150)) {
+            slider(activity, R.id.sizingSpecial, percent.toFloat())
+            assertEquals(percent, prefs.getInt(key, -1))
+            main { assertTenkeyLabelScale(preview, percent) }
+        }
+        main {
+            activity.findViewById<MaterialButtonToggleGroup>(R.id.sizingModes).check(R.id.sizingNumbers)
+            control.requestRectangleOnScreen(Rect(0, 0, control.width, control.height), true)
+        }
+        assertEquals(150f, main { control.value }, .01f)
+        main { assertTenkeyLabelScale(preview, 150) }
+        capture("tenkey-switch-label-setting")
+
+        val host = openEditor()
+        val keyboard = main { liveTenkeys().first() }
+        main { assertTenkeyLabelScale(keyboard, 150) }
+        tap(main { descendants(keyboard).first { it.contentDescription == "number_mode" } })
+        waitFor("tenkey-number-mode") { keyboard.currentInputMode.value == InputMode.ModeNumber }
+        main { assertTenkeyLabelScale(keyboard, 150) }
+        tap(main { keyboard.findViewById<View>(TenKeyR.id.key_switch_key_mode) })
+        waitFor("tenkey-kana-return") { keyboard.currentInputMode.value == InputMode.ModeJapanese }
+
+        main { host.finish() }
+        val reopened = openSettings()
+        assertEquals(150f, main { reopened.findViewById<Slider>(R.id.sizingSpecial).value }, .01f)
+        main { reopened.findViewById<View>(R.id.sizingResetAll).performClick() }
+        waitFor("tenkey-reset-dialog") { roots().any { it.findViewById<View>(android.R.id.button1)?.let(::shown) == true } }
+        main { roots().mapNotNull { it.findViewById<View>(android.R.id.button1) }.first(::shown).performClick() }
+        waitFor("tenkey-switch-label-reset") { !prefs.contains(key) }
+        assertEquals(100f, main { reopened.findViewById<Slider>(R.id.sizingSpecial).value }, .01f)
+        main { assertTenkeyLabelScale(reopened.findViewById(R.id.tenkeyLetterSizePreview), 100) }
+    }
+
+    @Test fun tenkeySwitchLabelScaleUpdatesFloatingAndSplitKeyboards() {
+        val key = AppPreference.TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY
+        for (split in listOf(false, true)) {
+            prefs.edit()
+                .putString("keyboard_order_preference", if (split) "[\"SPLIT\"]" else "[\"TENKEY\"]")
+                .putBoolean("keyboard_floating_preference", !split)
+                .putString("split_keyboard_main_type", "TENKEY")
+                .putString("split_keyboard_sub_type", "TENKEY")
+                .putInt(key, 150)
+                .commit()
+            val host = openEditor()
+            val expectedCount = if (split) 2 else 1
+            fun floatingTenkeys() = liveTenkeys().filter { it.id == R.id.keyboard_view_floating }
+            waitFor("tenkey-floating-mounted-$split") { floatingTenkeys().size == expectedCount }
+            main { floatingTenkeys().forEach { assertTenkeyLabelScale(it, 150) } }
+
+            prefs.edit().putInt(key, 60).commit()
+            waitFor("tenkey-floating-label-scale-$split") {
+                val keyboards = floatingTenkeys()
+                keyboards.size == expectedCount &&
+                    keyboards.all { keyboard ->
+                        keyboard.findViewById<ScalableKeyLabelButton>(TenKeyR.id.key_switch_key_mode).labelScale == .6f
+                    }
+            }
+            main {
+                floatingTenkeys().forEach { assertTenkeyLabelScale(it, 60) }
+                host.finish()
+            }
+        }
+    }
+
+    private fun assertTenkeyLabelScale(keyboard: TenKey, percent: Int) {
+        val labels = descendants(keyboard).filterIsInstance<ScalableKeyLabelButton>()
+        assertEquals(3, labels.size)
+        labels.forEach { assertEquals(percent / 100f, it.labelScale, .001f) }
     }
 
     @Test fun cancelledSliderTouchDoesNotSaveAnUnchangedCenter() {
