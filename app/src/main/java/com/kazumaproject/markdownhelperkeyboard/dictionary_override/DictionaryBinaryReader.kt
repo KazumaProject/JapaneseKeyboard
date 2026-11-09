@@ -112,7 +112,7 @@ class DictionaryBinaryReader @Inject constructor(
 
     fun loadLouds(key: DictionaryFileKey): LOUDS {
         compactBundledDictionary(key)?.tangoTrie?.let { return it }
-        return loadWithBundledFallback(key) { input ->
+        return loadWithBundledFallback(key, { bundledSystemDictionary(key)?.tangoTrie }) { input ->
             openZipAwareObjectInputStream(input, key.name).use {
                 LOUDS().readExternalNotCompress(it)
             }
@@ -121,7 +121,7 @@ class DictionaryBinaryReader @Inject constructor(
 
     fun loadLoudsWithTermId(key: DictionaryFileKey): LOUDSWithTermId {
         compactBundledDictionary(key)?.yomiTrie?.let { return it }
-        return loadWithBundledFallback(key) { input ->
+        return loadWithBundledFallback(key, { bundledSystemDictionary(key)?.yomiTrie }) { input ->
             openZipAwareObjectInputStream(input, key.name).use {
                 LOUDSWithTermId().readExternalNotCompress(it)
             }
@@ -130,11 +130,20 @@ class DictionaryBinaryReader @Inject constructor(
 
     fun loadTokenArray(key: DictionaryFileKey): TokenArray {
         compactBundledDictionary(key)?.tokenArray?.let { return it }
-        return TokenArray().also { tokenArray ->
-            loadTokenArrayInto(key, tokenArray)
-            readPosTableInto(tokenArray)
+        val (tokenArray, needsPosTable) = loadWithBundledFallback(
+            key,
+            { bundledSystemDictionary(key)?.tokenArray?.let { it to false } },
+        ) { input ->
+            TokenArray().also { tokenArray ->
+                openZipAwareObjectInputStream(input, key.name).use(tokenArray::readExternal)
+            } to true
         }
+        if (needsPosTable) readPosTableInto(tokenArray)
+        return tokenArray
     }
+
+    internal fun loadBundledSystemTokenArray(): TokenArray? =
+        bundledSystemDictionary(DictionaryFileKey.SYSTEM_TOKEN)?.tokenArray
 
     fun loadSystemYomiLbsIndex(yomiTrie: LOUDSWithTermId): SuccinctBitVector =
         loadYomiLbsIndex(DictionaryFileKey.SYSTEM_YOMI, yomiTrie)
@@ -159,14 +168,6 @@ class DictionaryBinaryReader @Inject constructor(
 
     fun loadTangoLbsIndex(key: DictionaryFileKey, tangoTrie: LOUDS): SuccinctBitVector =
         compactBundledDictionary(key)?.tangoLbsIndex ?: SuccinctBitVector(tangoTrie.LBS)
-
-    fun loadTokenArrayInto(key: DictionaryFileKey, tokenArray: TokenArray) {
-        loadWithBundledFallback(key) { input ->
-            openZipAwareObjectInputStream(input, key.name).use { objectInput ->
-                tokenArray.readExternal(objectInput)
-            }
-        }
-    }
 
     fun readPosTableInto(tokenArray: TokenArray) {
         val posTable = loadPosTable()
@@ -208,13 +209,13 @@ class DictionaryBinaryReader @Inject constructor(
     }
 
     fun loadEnglishReading(key: DictionaryFileKey): EnglishReadingTrie =
-        compactBundledEnglishDictionaryIfActive()?.readingTrie ?: loadWithBundledFallback(key, ::readEnglishReading)
+        compactBundledEnglishDictionaryIfActive()?.readingTrie ?: loadWithBundledFallback(key, loader = ::readEnglishReading)
 
     fun loadEnglishWord(key: DictionaryFileKey): EnglishWordTrie =
-        compactBundledEnglishDictionaryIfActive()?.wordTrie ?: loadWithBundledFallback(key, ::readEnglishWord)
+        compactBundledEnglishDictionaryIfActive()?.wordTrie ?: loadWithBundledFallback(key, loader = ::readEnglishWord)
 
     fun loadEnglishToken(key: DictionaryFileKey): EnglishTokenArray =
-        compactBundledEnglishDictionaryIfActive()?.tokenArray ?: loadWithBundledFallback(key, ::readEnglishToken)
+        compactBundledEnglishDictionaryIfActive()?.tokenArray ?: loadWithBundledFallback(key, loader = ::readEnglishToken)
 
     private fun readEnglishReading(input: InputStream): EnglishReadingTrie =
         openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_READING.name).use {
@@ -253,6 +254,7 @@ class DictionaryBinaryReader @Inject constructor(
 
     private fun <T> loadWithBundledFallback(
         key: DictionaryFileKey,
+        bundledValue: () -> T? = { null },
         loader: (InputStream) -> T,
     ): T {
         val shouldUseOverride = resolver.shouldUseOverride(key)
@@ -266,7 +268,7 @@ class DictionaryBinaryReader @Inject constructor(
                     store.markInvalid(key, error.message ?: error::class.java.simpleName)
                 }
         }
-        return resolver.openBundledForKey(key).use(loader)
+        return bundledValue() ?: resolver.openBundledForKey(key).use(loader)
     }
 
     private fun loadPosTable(): PosTableCache {
@@ -371,6 +373,13 @@ class DictionaryBinaryReader @Inject constructor(
             loaded
         }
     }
+
+    private fun bundledSystemDictionary(key: DictionaryFileKey): CompactDictionaryTriple? =
+        if (DictionaryFileSpecs.get(key).category == DictionaryCategory.SYSTEM) {
+            compactBundledSystemDictionary()?.get(CompactDictionaryKind.SYSTEM)
+        } else {
+            null
+        }
 
     private fun compactBundledDictionary(key: DictionaryFileKey): CompactDictionaryTriple? {
         val category = DictionaryFileSpecs.get(key).category
