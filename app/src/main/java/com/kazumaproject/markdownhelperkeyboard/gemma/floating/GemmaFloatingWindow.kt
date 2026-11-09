@@ -141,7 +141,7 @@ internal class GemmaFloatingWindow(
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
             gravity = Gravity.TOP or Gravity.LEFT
             token = view.windowToken
-            setTitle("Gemma floating result")
+            setTitle("AI floating result")
             coordinates.configure(this)
         }.also { params = it }
         val previousX = layout.x; val previousY = layout.y
