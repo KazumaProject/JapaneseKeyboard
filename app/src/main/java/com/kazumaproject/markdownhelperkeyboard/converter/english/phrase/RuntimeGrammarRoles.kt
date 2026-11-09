@@ -19,6 +19,7 @@ private const val MAX_KEY_BYTES = 1_048_576
 internal class RuntimeGrammarRoles private constructor(
     private val data: ByteBuffer,
     validation: ByteBuffer,
+    validateAllRecords: Boolean,
 ) : GrammarRoles {
     private val version = data.getInt(4)
     private var blockKeys = IntArray(0)
@@ -26,6 +27,7 @@ internal class RuntimeGrammarRoles private constructor(
     private var maxKeyBytes = 0
     private val maskCount = data.getInt(20)
     private val rowCount = data.getInt(24)
+    private val blockCount = (rowCount + BLOCK_SIZE - 1) / BLOCK_SIZE
     private val masks = data.getInt(28)
     private val rows = data.getInt(32)
     private val text = data.getInt(36)
@@ -59,7 +61,10 @@ internal class RuntimeGrammarRoles private constructor(
                 }
             }
         }
-        if (version == 2) validateBlocks(validation) else {
+        if (version == 2) {
+            validateBlockOffsets(validation)
+            if (validateAllRecords) validateBlocks(validation)
+        } else {
             require(validation.getInt(rows) == 0 && validation.getInt(rows + rowCount * ROW_SIZE) == validation.capacity() - text) {
                 "Invalid role index text length"
             }
@@ -117,21 +122,30 @@ internal class RuntimeGrammarRoles private constructor(
         }
     }
 
-    private fun validateBlocks(validation: ByteBuffer) {
-        val blocks = (rowCount + BLOCK_SIZE - 1) / BLOCK_SIZE
-        blockKeys = IntArray(blocks)
-        blockLengths = IntArray(blocks)
-        require(validation.getInt(rows) == 0 && validation.getInt(rows + blocks * Int.SIZE_BYTES) == validation.capacity() - text) {
+    private fun validateBlockOffsets(validation: ByteBuffer) {
+        require(validation.getInt(rows) == 0 && validation.getInt(rows + blockCount * Int.SIZE_BYTES) == validation.capacity() - text) {
             "Invalid block directory"
         }
+        var previous = 0
+        for (block in 1..blockCount) {
+            val offset = validation.getInt(rows + block * Int.SIZE_BYTES)
+            require(offset > previous && offset <= validation.capacity() - text) { "Invalid block range" }
+            previous = offset
+        }
+    }
+
+    private fun validateBlocks(validation: ByteBuffer) {
+        blockKeys = IntArray(blockCount)
+        blockLengths = IntArray(blockCount)
         var previous = ByteArray(64)
         var current = ByteArray(64)
         var previousLength = 0
-        for (block in 0 until blocks) {
+        val reader = validation.duplicate()
+        for (block in 0 until blockCount) {
             val start = text + validation.getInt(rows + block * Int.SIZE_BYTES)
             val end = text + validation.getInt(rows + (block + 1) * Int.SIZE_BYTES)
-            require(start in text until validation.capacity() && end in (start + 1)..validation.capacity()) { "Invalid block range" }
-            val reader = validation.duplicate().apply { position(start); limit(end) }
+            reader.limit(end)
+            reader.position(start)
             repeat(minOf(BLOCK_SIZE, rowCount - block * BLOCK_SIZE)) { index ->
                 val prefix = reader.readUnsigned()
                 val suffix = reader.readUnsigned()
@@ -165,20 +179,44 @@ internal class RuntimeGrammarRoles private constructor(
 
     private fun collectBlock(key: ByteArray, bits: LongArray) {
         var low = 0
-        var high = blockKeys.lastIndex
+        var high = blockCount - 1
+        val reader = data.duplicate()
+        fun seekBlock(block: Int) {
+            reader.limit(text + data.getInt(rows + (block + 1) * Int.SIZE_BYTES))
+            reader.position(text + data.getInt(rows + block * Int.SIZE_BYTES))
+        }
         while (low <= high) {
             val mid = (low + high) ushr 1
-            if (compareKey(data, key, blockKeys[mid], blockLengths[mid]) < 0) high = mid - 1 else low = mid + 1
+            val order = if (blockKeys.isNotEmpty()) {
+                compareKey(data, key, blockKeys[mid], blockLengths[mid])
+            } else {
+                seekBlock(mid)
+                require(reader.readUnsigned() == 0) { "Invalid first key prefix" }
+                val length = reader.readUnsigned()
+                require(length in 1..MAX_KEY_BYTES && length <= reader.remaining() - Short.SIZE_BYTES) {
+                    "Invalid first key length"
+                }
+                compareKey(data, key, reader.position() + Short.SIZE_BYTES, length)
+            }
+            if (order < 0) high = mid - 1 else low = mid + 1
         }
         if (high < 0) return
-        val reader = data.duplicate().apply { position(text + data.getInt(rows + high * Int.SIZE_BYTES)) }
-        val decoded = ByteArray(maxKeyBytes)
+        seekBlock(high)
+        var decoded = ByteArray(maxOf(64, maxKeyBytes))
+        var decodedLength = 0
         repeat(minOf(BLOCK_SIZE, rowCount - high * BLOCK_SIZE)) {
             val prefix = reader.readUnsigned()
             val suffix = reader.readUnsigned()
+            require(prefix <= decodedLength && suffix in 1..MAX_KEY_BYTES && prefix <= MAX_KEY_BYTES - suffix &&
+                reader.remaining() >= Short.SIZE_BYTES && suffix <= reader.remaining() - Short.SIZE_BYTES) {
+                "Invalid front-coded key"
+            }
             val mask = reader.short.toInt() and 0xffff
+            require(mask < maskCount) { "Invalid block mask" }
+            decodedLength = prefix + suffix
+            if (decoded.size < decodedLength) decoded = decoded.copyOf(decodedLength)
             reader.get(decoded, prefix, suffix)
-            val order = compareBytes(key, key.size, decoded, prefix + suffix)
+            val order = compareBytes(key, key.size, decoded, decodedLength)
             if (order == 0) {
                 val start = maskStart(mask)
                 for (word in bits.indices) bits[word] = bits[word] or data.getLong(start + word * Long.SIZE_BYTES)
@@ -199,24 +237,26 @@ internal class RuntimeGrammarRoles private constructor(
             val length = descriptor.length
             require(length in HEADER_SIZE.toLong()..MAX_INDEX_SIZE.toLong()) { "Invalid role index size" }
             return FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
-                read(channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, length))
+                // This asset is packaged from the checksum-verified distribution. Check
+                // its directory at open and the bounded block records as they are read.
+                read(channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, length), validateAllRecords = false)
             }
         }
 
-        internal fun read(source: ByteBuffer): RuntimeGrammarRoles {
+        internal fun read(source: ByteBuffer): RuntimeGrammarRoles = read(source, validateAllRecords = true)
+
+        private fun read(source: ByteBuffer, validateAllRecords: Boolean): RuntimeGrammarRoles {
             val data = source.slice().asReadOnlyBuffer().order(ByteOrder.BIG_ENDIAN)
             require(data.capacity() in HEADER_SIZE..MAX_INDEX_SIZE && data.getInt(0) == MAGIC &&
                 data.getInt(4) in 1..2 && data.getInt(8) == data.capacity()) {
                 "Invalid role index header"
             }
-            // Validate through one bulk read. Per-byte direct-buffer calls during the
-            // ordered-key scan are expensive on ART. Retain the mapping and block
-            // directory rather than the temporary validation copy.
+            // Keep the mapping and validated block directory after this bulk check.
             val bytes = ByteArray(data.capacity())
             data.duplicate().get(bytes)
             val crc = CRC32().apply { update(bytes, HEADER_SIZE, bytes.size - HEADER_SIZE) }
             require(crc.value.toInt() == data.getInt(12)) { "Invalid role index checksum" }
-            return RuntimeGrammarRoles(data, ByteBuffer.wrap(bytes))
+            return RuntimeGrammarRoles(data, ByteBuffer.wrap(bytes), validateAllRecords)
         }
     }
 }

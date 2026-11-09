@@ -122,6 +122,7 @@ class LOUDSWithTermId {
         prefix: String,
         lbs: SuccinctBitVector,
         leaves: SuccinctBitVector,
+        includeChild: ((labelIndex: Int) -> Boolean)? = null,
     ): Iterator<Pair<String, Int>> {
         var node = 0
         for (char in prefix) {
@@ -131,7 +132,7 @@ class LOUDSWithTermId {
         return com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
             LBS, lbs, labels.size, { index -> labels[index] },
             { position -> if (isLeaf[position]) getTermId(position, leaves) else -1 },
-            startNode = node, prefix = prefix,
+            startNode = node, prefix = prefix, includeChild = includeChild,
         )
     }
 
