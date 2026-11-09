@@ -25,8 +25,16 @@ class GemmaRuntimeClient @Inject constructor(
     private data class InitializationConfig(
         val modelPath: String,
         val backend: String,
-        val modalityFlags: Int,
+        val projectorPath: String,
     )
+
+    @Volatile
+    var modalityFlags: Int = 0
+        private set
+
+    @Volatile
+    var modelName: String = ""
+        private set
 
     private val connectionMutex = Mutex()
     private val operationMutex = Mutex()
@@ -64,10 +72,10 @@ class GemmaRuntimeClient @Inject constructor(
         override fun onServiceDisconnected(name: ComponentName?) {
             runtime = null
             initializedBinder = null
-            binding?.completeExceptionally(GemmaProcessException("Gemma process disconnected."))
+            binding?.completeExceptionally(GemmaProcessException("AI process disconnected."))
             binding = null
             activeCompletion?.completeExceptionally(
-                GemmaProcessException("Gemma process disconnected."),
+                GemmaProcessException("AI process disconnected."),
             )
         }
 
@@ -77,7 +85,7 @@ class GemmaRuntimeClient @Inject constructor(
 
         override fun onNullBinding(name: ComponentName?) {
             runtime = null
-            binding?.completeExceptionally(GemmaProcessException("Gemma runtime is unavailable."))
+            binding?.completeExceptionally(GemmaProcessException("AI runtime is unavailable."))
             binding = null
         }
     }
@@ -85,9 +93,10 @@ class GemmaRuntimeClient @Inject constructor(
     suspend fun initialize(
         modelPath: String,
         backend: String,
-        modalityFlags: Int,
+        modalityFlags: Int = 0,
+        projectorPath: String = "",
     ): String = operationMutex.withLock {
-        val config = InitializationConfig(modelPath, backend, modalityFlags)
+        val config = InitializationConfig(modelPath, backend, projectorPath)
         initializationConfig = config
         val service = connect()
         initializeLocked(service, config)
@@ -101,6 +110,8 @@ class GemmaRuntimeClient @Inject constructor(
         activeCompletion = completion
         val callback = object : IGemmaRuntimeCallback.Stub() {
             override fun onStateChanged(state: String, detail: String) {
+                if (state == "MODEL_NAME") modelName = detail
+                if (state == "CAPABILITIES") modalityFlags = detail.toIntOrNull() ?: 0
                 if (state == STATE_READY && !completion.isCompleted) completion.complete(detail)
             }
 
@@ -113,15 +124,39 @@ class GemmaRuntimeClient @Inject constructor(
             }
         }
         return try {
-            service.initialize(
+            modalityFlags = 0
+            modelName = ""
+            service.initializeModel(
                 config.modelPath,
                 config.backend,
-                config.modalityFlags,
+                config.projectorPath,
                 callback,
             )
             withTimeout(INITIALIZE_TIMEOUT_MS) { completion.await() }.also {
                 initializedBinder = service.asBinder()
             }
+        } finally {
+            if (activeCompletion === completion) activeCompletion = null
+        }
+    }
+
+    suspend fun inspect(modelPath: String, format: String): String = operationMutex.withLock {
+        val service = connect()
+        val requestId = nextRequestId.getAndIncrement()
+        val completion = CompletableDeferred<String>()
+        activeCompletion = completion
+        val callback = object : IGemmaRuntimeCallback.Stub() {
+            override fun onStateChanged(state: String, detail: String) = Unit
+            override fun onResult(id: Long, result: String) {
+                if (id == requestId) completion.complete(result)
+            }
+            override fun onError(id: Long, message: String) {
+                if (id == requestId) completion.completeExceptionally(GemmaProcessException(message))
+            }
+        }
+        try {
+            service.inspect(requestId, modelPath, format, callback)
+            withTimeout(INITIALIZE_TIMEOUT_MS) { completion.await() }
         } finally {
             if (activeCompletion === completion) activeCompletion = null
         }
@@ -134,6 +169,13 @@ class GemmaRuntimeClient @Inject constructor(
     ): String {
         cancelPreview()
         return operationMutex.withLock { generateLocked(prompt, mediaPath, mediaType, false) }
+    }
+
+    suspend fun generateText(text: String, instruction: String): String {
+        cancelPreview()
+        return operationMutex.withLock {
+            generateLocked(text, "", GemmaMediaType.TEXT, false, instruction)
+        }
     }
 
     suspend fun generatePreview(prompt: String, instruction: String = ""): String? {
@@ -161,7 +203,7 @@ class GemmaRuntimeClient @Inject constructor(
         val binder = service.asBinder()
         if (initializedBinder !== binder || !binder.isBinderAlive) {
             val config = initializationConfig
-                ?: throw GemmaProcessException("Gemma runtime has not been initialized.")
+                ?: throw GemmaProcessException("AI runtime has not been initialized.")
             initializeLocked(service, config)
         }
         val requestId = nextRequestId.getAndIncrement()
@@ -186,6 +228,7 @@ class GemmaRuntimeClient @Inject constructor(
         }
         return try {
             if (preview) service.generatePreview(requestId, prompt, instruction, callback)
+            else if (mediaType == GemmaMediaType.TEXT && instruction.isNotBlank()) service.generateText(requestId, prompt, instruction, callback)
             else service.generate(requestId, prompt, mediaPath, mediaType.runtimeValue, callback)
             withTimeout(GENERATE_TIMEOUT_MS) { completion.await() }
         } finally {
@@ -203,8 +246,10 @@ class GemmaRuntimeClient @Inject constructor(
     }
 
     suspend fun close() {
+        cancelActive()
+        cancelPreview()
         operationMutex.withLock {
-            cancelActive()
+            modalityFlags = 0
             initializationConfig = null
             initializedBinder = null
             runCatching { runtime?.closeEngine() }
@@ -217,7 +262,7 @@ class GemmaRuntimeClient @Inject constructor(
         runtime = null
         initializedBinder = null
         if (!AppVariantConfig.hasGemma) {
-            throw GemmaProcessException("Gemma is not included in this app edition.")
+            throw GemmaProcessException("AI is not included in this app edition.")
         }
         return connectionMutex.withLock {
             runtime?.takeIf { it.asBinder().isBinderAlive }?.let { return@withLock it }
@@ -241,7 +286,7 @@ class GemmaRuntimeClient @Inject constructor(
                 if (!didBind) {
                     binding = null
                     pending.completeExceptionally(
-                        GemmaProcessException("Could not bind to the Gemma runtime."),
+                        GemmaProcessException("Could not bind to the AI runtime."),
                     )
                 }
             }
