@@ -2,6 +2,9 @@ import groovy.json.JsonSlurper
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 
+import com.android.build.api.artifact.SingleArtifact
+import com.android.build.gradle.internal.tasks.ExtractNativeDebugMetadataTask
+
 plugins {
     id 'com.android.application'
     id 'com.google.dagger.hilt.android'
@@ -209,6 +212,27 @@ abstract class GenerateDictionaryLicenseAssets extends DefaultTask {
     }
 }
 
+abstract class PackageCompactSystemDictionary extends DefaultTask {
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    abstract DirectoryProperty getMergedAssets()
+
+    @OutputDirectory
+    abstract DirectoryProperty getPackagedAssets()
+
+    @Inject
+    protected abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void filterAssets() {
+        fileSystemOperations.sync {
+            from(mergedAssets)
+            into(packagedAssets)
+            exclude('system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip')
+        }
+    }
+}
+
 def dictionaryRepository = rootProject.layout.projectDirectory
 def dictionaryManifest = dictionaryRepository.file('tools/classified-dictionaries/distribution-manifest.json')
 def bundledDictionaryAssets = providers.fileContents(dictionaryManifest).asText.map { text ->
@@ -249,6 +273,41 @@ androidComponents {
                 outputDirectory.set(layout.buildDirectory.dir("generated/dictionaryLicenses/${variant.name}/assets"))
             }
             variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
+        }
+    }
+    onVariants(selector().withFlavor("channel", "standard")) { variant ->
+        if (variant.buildType in ['release', 'releaseUnsigned']) {
+            def compactAssets = tasks.register("package${variant.name.capitalize()}CompactSystemDictionary",
+                PackageCompactSystemDictionary)
+            variant.artifacts.use(compactAssets)
+                .wiredWithDirectories({ it.mergedAssets }, { it.packagedAssets })
+                .toTransform(SingleArtifact.ASSETS.INSTANCE)
+        }
+    }
+}
+
+def ndkObjcopy = androidComponents.sdkComponents.ndkDirectory.map { ndk ->
+    def hosts = ndk.dir('toolchains/llvm/prebuilt').asFile.listFiles() ?: []
+    def tool = hosts.collectMany { host ->
+        [new File(host, 'bin/llvm-objcopy'), new File(host, 'bin/llvm-objcopy.exe')]
+    }.find { it.isFile() }
+    if (tool == null) throw new GradleException("llvm-objcopy was not found in the configured Android NDK")
+    tool
+}
+
+// AGP's SYMBOL_TABLE mode retains loadable sections. Its extraction task already
+// supplies the symbol table and build ID, so trim the executable bytes before bundling.
+tasks.withType(ExtractNativeDebugMetadataTask).configureEach {
+    inputs.file(ndkObjcopy).withPathSensitivity(PathSensitivity.NONE)
+    doLast { extraction ->
+        extraction.workerExecutor.await()
+        def objcopy = ndkObjcopy.get()
+        extraction.outputDir.asFile.get().eachFileRecurse(groovy.io.FileType.FILES) { symbol ->
+            if (symbol.name.endsWith('.sym')) {
+                extraction.execOperations.exec {
+                    commandLine(objcopy, '--only-keep-debug', symbol)
+                }
+            }
         }
     }
 }
