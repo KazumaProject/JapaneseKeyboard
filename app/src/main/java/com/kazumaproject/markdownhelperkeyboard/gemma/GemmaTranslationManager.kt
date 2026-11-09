@@ -161,7 +161,8 @@ class GemmaTranslationManager @Inject constructor(
         } ?: context.getString(R.string.gemma_translation_model_summary_missing)
     }
 
-    suspend fun importModelFromUri(uri: Uri): String = importFile(uri, projector = false)
+    suspend fun importModelFromUri(uri: Uri, selectForTranslation: Boolean = true): String =
+        importFile(uri, projector = false, selectForTranslation = selectForTranslation)
 
     suspend fun importProjectorFromUri(uri: Uri): String = importFile(uri, projector = true)
 
@@ -169,6 +170,19 @@ class GemmaTranslationManager @Inject constructor(
 
     fun installedProjectors(): List<File> = projectorDirectory().listFiles().orEmpty()
         .filter { it.isFile && it.extension.equals("gguf", true) }.sortedBy { it.name.lowercase() }
+
+    suspend fun selectProjectorForModel(modelPath: String, path: String) {
+        if (appPreference.gemma_translation_model_path_preference == modelPath) {
+            selectProjector(path)
+        } else {
+            require(AiModelFormat.fromFilename(modelPath) == AiModelFormat.GGUF) { "Select a GGUF model first." }
+            if (path.isNotBlank()) {
+                require(File(path).isFile) { "Projector file is missing." }
+                require(JSONObject(runtimeClient.inspect(path, "gguf")).optBoolean("projector")) { "Select a multimodal projector." }
+            }
+            profiles.setProjectorPath(modelPath, path)
+        }
+    }
 
     suspend fun selectProjector(path: String) = initializeMutex.withLock {
         val model = requireNotNull(resolveModelFile()) { "Select a GGUF model first." }
@@ -212,7 +226,7 @@ class GemmaTranslationManager @Inject constructor(
 
     private fun projectorDirectory(): File = File(modelDirectory(), "projectors").apply { mkdirs() }
 
-    private suspend fun importFile(uri: Uri, projector: Boolean): String = withContext(Dispatchers.IO) {
+    private suspend fun importFile(uri: Uri, projector: Boolean, selectForTranslation: Boolean = true): String = withContext(Dispatchers.IO) {
       initializeMutex.withLock {
         val displayName = resolveDisplayName(uri)
         validateImportedModelDisplayName(displayName)
@@ -244,7 +258,7 @@ class GemmaTranslationManager @Inject constructor(
             backupFile.delete()
             if (!projector) {
                 profiles.setModelName(destination.absolutePath, info.optString("name"))
-                appPreference.gemma_translation_model_path_preference = destination.absolutePath
+                if (selectForTranslation) appPreference.gemma_translation_model_path_preference = destination.absolutePath
             }
             lastErrorMessage = null
             destination.absolutePath
@@ -333,7 +347,7 @@ class GemmaTranslationManager @Inject constructor(
         val target = TranslationTargetLanguage.fromPreference(
             appPreference.gemma_translation_target_language_preference,
         )
-        return generateForCurrentModel { runtimeClient.generateText(text, buildTranslationInstruction(target)) }
+        return generateForCurrentModel { runtimeClient.generateTranslation(text, buildTranslationInstruction(target), target.languageCode) }
     }
 
     suspend fun runCustomPrompt(
