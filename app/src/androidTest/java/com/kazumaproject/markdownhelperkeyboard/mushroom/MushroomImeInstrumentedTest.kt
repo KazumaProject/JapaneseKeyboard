@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityEvent
 import android.view.inspector.WindowInspector
+import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -476,6 +477,14 @@ class MushroomImeInstrumentedTest {
     }
 
     @Test(timeout = 180_000) fun returnsToPlainExternalEditorWithoutAnotherTap() {
+        assertPlainExternalEditorRoundTrip(android.R.id.input)
+    }
+
+    @Test(timeout = 180_000) fun returnsToExternalEditorWithoutFieldId() {
+        assertPlainExternalEditorRoundTrip(View.NO_ID)
+    }
+
+    private fun assertPlainExternalEditorRoundTrip(fieldId: Int) {
         assumeTrue("Use an isolated applicationId containing mushroomtest", context.packageName.contains("mushroomtest"))
         val targetIme = "${context.packageName}/${IMEService::class.java.name}"
         val oldIme = shell("settings get secure default_input_method").trim()
@@ -487,7 +496,10 @@ class MushroomImeInstrumentedTest {
             withHost {
                 val ime = requireNotNull(service())
                 runBlocking { ime.shortCurRepository.updateShortcuts(listOf(ShortcutType.MUSHROOM, ShortcutType.CLIP_BOARD)) }
-                shell("am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name} --ez editor true --ez plain_editor true")
+                shell(
+                    "am start -n ${ins.context.packageName}/${MushroomPluginActivity::class.java.name}" +
+                        " --ez editor true --ez plain_editor true --ez no_editor_field_id ${fieldId == View.NO_ID}",
+                )
                 var editor: AccessibilityNodeInfo? = null
                 await("Plain external editor visible") {
                     editor = roots().flatMap { it.findAccessibilityNodeInfosByViewId("android:id/input") }
@@ -514,13 +526,16 @@ class MushroomImeInstrumentedTest {
                     }
                     selectionMatches
                 }
+                var originalConnection: InputConnection? = null
                 await("Original editor and toolbar connected") {
                     var ready = false
                     ins.runOnMainSync {
                         val active = service()
                         val text = active?.currentInputConnection?.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
                         ready = active?.isInputViewShown == true && active.currentInputEditorInfo?.packageName == ins.context.packageName &&
+                            active.currentInputEditorInfo?.fieldId == fieldId &&
                             text?.text?.toString() == "abc" && text.selectionStart == 1 && text.selectionEnd == 2
+                        if (ready) originalConnection = active?.currentInputConnection
                     }
                     ready && roots().any { it.findAccessibilityNodeInfosByText(ShortcutType.MUSHROOM.description).isNotEmpty() }
                 }
@@ -537,6 +552,12 @@ class MushroomImeInstrumentedTest {
                     var keyboardShown = false
                     ins.runOnMainSync { keyboardShown = service()?.isInputViewShown == true }
                     editorText && keyboardShown
+                }
+                ins.runOnMainSync {
+                    assertNotNull(originalConnection)
+                    val reconnected = service()?.currentInputConnection
+                    assertNotNull(reconnected)
+                    assertNotSame(originalConnection, reconnected)
                 }
             }
         } finally {

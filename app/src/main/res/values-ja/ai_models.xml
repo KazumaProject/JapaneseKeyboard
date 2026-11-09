@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_npu_if_available">NPU を優先（Google Tensor G5/G6）</string>
+    <string name="ai_npu_cpu_fallback">NPU から CPU に切り替え</string>
+    <string name="ai_npu_cpu_fallback_summary">このモデルは CPU で実行しています。NPU には、この端末の Google Tensor 向けにコンパイルされた LiteRT-LM モデルが必要です。</string>
+    <string name="ai_npu_requires_tensor_model">NPU には、Google Tensor G5 または G6 向けにコンパイルされた LiteRT-LM モデルが必要です。</string>
+    <string name="ai_npu_incompatible_tensor_model">この端末の Google Tensor 向けにコンパイルされた LiteRT-LM モデルを選択してください。NPU には Tensor G5 または G6 が必要です。</string>
+    <string name="ai_npu_missing_dispatch">このアプリのインストールでは Google Tensor の NPU ランタイムを利用できません。</string>
+    <string name="ai_projector_title">画像・音声用の投影モデル（GGUF）</string>
+    <string name="ai_projector_none">投影モデルを使用しない</string>
+    <string name="ai_projector_import">投影モデルを追加…</string>
+    <string name="ai_model_loading_title">AI モデルを読み込み中…</string>
+    <string name="ai_model_importing_title">AI モデルを取り込み中…</string>
+    <string name="ai_supported_models_details">LiteRT-LM または llama.cpp が対応する端末内のモデルを追加できます。画像・音声の機能はモデルの対応能力に応じて利用できます。GGUF で画像・音声を使う場合は、本体に対応する mmproj ファイルを追加して選択してください。GPU を初期化できない場合は CPU に切り替えます。GGUF の GPU 実行には Vulkan 1.2 以上が必要です。LiteRT-LM で GPU を選択した場合、音声のエンコードには CPU を使います。\n\nNPU には、この端末の Google Tensor G5 または G6 向けにコンパイルされた LiteRT-LM モデルが必要です。ファイル名で対象チップを判定するモデルもあるため、取り込み時は元の名前を使ってください。互換性や必要なメモリはモデルと端末によって異なります。</string>
+    <string name="ai_audio_model_required">音声入力に対応する AI モデルを読み込んでください。</string>
+</resources>

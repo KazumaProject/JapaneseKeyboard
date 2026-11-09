@@ -54,7 +54,7 @@ object GemmaImageCapabilityResolver {
                 GemmaImageUnavailableReason.MODEL_FILE_MISSING
             )
         }
-        val descriptor = GemmaModelCatalog.descriptorFor(File(ready.modelPath))
+        val descriptor = GemmaModelCatalog.descriptorFor(File(ready.modelPath)).withCapabilities(ready.modalityFlags)
         if (!descriptor.supports(GemmaMediaType.IMAGE)) {
             return GemmaImageCapability.Unavailable(
                 GemmaImageUnavailableReason.MODEL_NOT_IMAGE_CAPABLE

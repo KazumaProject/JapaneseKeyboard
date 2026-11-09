@@ -11,15 +11,16 @@ class GemmaImageCapabilityResolverTest {
             hasGemma = true,
             loadState = GemmaLoadState.Ready(
                 backend = "GPU",
-                modelPath = "/models/gemma-4-E2B-it.litertlm",
+                modelPath = "/models/renamed-vision-model.gguf",
+                modalityFlags = 1,
             ),
             fileExists = { true },
         )
 
         assertTrue(result is GemmaImageCapability.Available)
         assertEquals(
-            "gemma4_e2b_it",
-            (result as GemmaImageCapability.Available).model.id,
+            "renamed-vision-model",
+            (result as GemmaImageCapability.Available).model.displayName,
         )
     }
 
