@@ -10,9 +10,12 @@
 #include <algorithm>
 #include <atomic>
 #include <codecvt>
+#include <cmath>
+#include <limits>
 #include <locale>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -66,6 +69,120 @@ std::shared_ptr<Engine> get_engine(jlong handle) {
 }
 void check_cancelled(const Engine & engine) {
     if (engine.cancelled.load()) throw std::runtime_error("AI request was cancelled.");
+}
+
+std::vector<llama_token> score_tokens(const llama_vocab * vocab, const std::string & text, bool add_special) {
+    const auto required = llama_tokenize(vocab, text.data(), text.size(), nullptr, 0, add_special, false);
+    if (required == 0) return {};
+    if (required == std::numeric_limits<int32_t>::min()) throw std::runtime_error("AI text is too long.");
+    std::vector<llama_token> tokens(-required);
+    const auto count = llama_tokenize(vocab, text.data(), text.size(), tokens.data(), tokens.size(), add_special, false);
+    if (count < 0) throw std::runtime_error("AI tokenization failed.");
+    tokens.resize(count);
+    return tokens;
+}
+
+void decode_score_batch(
+    Engine & engine, const std::vector<llama_token> & tokens, size_t start, bool output_all
+) {
+    check_cancelled(engine);
+    llama_batch_ext_ptr batch(llama_batch_ext_init(engine.context));
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const auto index = llama_batch_ext_add_token(batch.get(), 0, tokens[i]);
+        if (index < 0) throw std::runtime_error("Could not allocate the candidate token batch.");
+        const auto position = static_cast<llama_pos>(start + i);
+        llama_batch_ext_set_pos(batch.get(), index, &position);
+        llama_batch_ext_set_output_logits(batch.get(), index, output_all || i + 1 == tokens.size());
+    }
+    if (llama_process(engine.context, LLAMA_PROCESS_TYPE_DECODE, batch.get()) != 0) {
+        throw std::runtime_error("Candidate scoring failed or was cancelled.");
+    }
+}
+
+double log_normalizer(const float * logits, int size) {
+    if (!logits) throw std::runtime_error("The GGUF model did not return candidate logits.");
+    const double peak = *std::max_element(logits, logits + size);
+    double sum = 0;
+    for (int i = 0; i < size; ++i) sum += std::exp(logits[i] - peak);
+    return peak + std::log(sum);
+}
+
+std::vector<float> score_candidates(Engine & engine, const std::string & prefix, const std::vector<std::string> & candidates) {
+    check_cancelled(engine);
+    const auto * vocab = llama_model_get_vocab(engine.model);
+    const int vocab_size = llama_vocab_n_tokens(vocab);
+    auto prompt = score_tokens(vocab, prefix, true);
+    if (prompt.empty()) {
+        auto boundary = llama_vocab_bos(vocab);
+        if (boundary < 0) boundary = llama_vocab_eos(vocab);
+        if (boundary < 0) throw std::runtime_error("Provide a non-empty context for this model.");
+        prompt.push_back(boundary);
+    }
+    const auto max_batch = std::min<uint32_t>(llama_n_batch(engine.context), 256);
+    if (prompt.size() > max_batch) throw std::runtime_error("Candidate context is too long.");
+    auto * memory = llama_get_memory(engine.context);
+    if (!memory) throw std::runtime_error("This GGUF model does not support causal scoring.");
+    llama_memory_clear(memory, true);
+    decode_score_batch(engine, prompt, 0, false);
+
+    std::vector<float> scores(candidates.size(), std::numeric_limits<float>::quiet_NaN());
+    std::vector<std::vector<llama_token>> continuations;
+    continuations.reserve(candidates.size());
+    for (const auto & candidate : candidates) continuations.push_back(score_tokens(vocab, candidate, false));
+
+    const auto * prompt_logits = llama_get_logits_ith(engine.context, -1);
+    const double prompt_z = log_normalizer(prompt_logits, vocab_size);
+    std::vector<double> first_logprob;
+    first_logprob.reserve(candidates.size());
+    for (const auto & tokens : continuations) {
+        first_logprob.push_back(tokens.empty() ? 0.0 : prompt_logits[tokens[0]] - prompt_z);
+    }
+
+    std::vector<size_t> order(candidates.size());
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+        return continuations[a] < continuations[b];
+    });
+    const std::vector<llama_token> * previous = nullptr;
+    std::vector<double> cumulative;
+    for (size_t i : order) {
+        check_cancelled(engine);
+        const auto & tokens = continuations[i];
+        if (tokens.empty() || tokens.size() > max_batch ||
+            prompt.size() + tokens.size() > llama_n_ctx_seq(engine.context)) continue;
+        if (previous && *previous == tokens) {
+            scores[i] = static_cast<float>(cumulative.back());
+            continue;
+        }
+
+        size_t common = 0;
+        if (previous) {
+            while (common + 1 < std::min(previous->size(), tokens.size()) &&
+                   (*previous)[common] == tokens[common]) ++common;
+        }
+        // Replay the last shared token to obtain the logits at the branch point.
+        size_t suffix = common == 0 ? 0 : common - 1;
+        if (previous && previous->size() > 1 &&
+            !llama_memory_seq_rm(memory, 0, prompt.size() + suffix, -1)) {
+            llama_memory_clear(memory, true);
+            decode_score_batch(engine, prompt, 0, false);
+            suffix = common = 0;
+        }
+        cumulative.resize(tokens.size());
+        if (common == 0) cumulative[0] = first_logprob[i];
+        if (tokens.size() > 1) {
+            std::vector<llama_token> batch(tokens.begin() + suffix, tokens.end() - 1);
+            decode_score_batch(engine, batch, prompt.size() + suffix, true);
+            for (size_t j = std::max<size_t>(1, common); j < tokens.size(); ++j) {
+                const auto * logits = llama_get_logits_ith(engine.context, static_cast<int32_t>(j - 1 - suffix));
+                const auto normalizer = log_normalizer(logits, vocab_size);
+                cumulative[j] = cumulative[j - 1] + logits[tokens[j]] - normalizer;
+            }
+        }
+        scores[i] = static_cast<float>(cumulative.back());
+        previous = &tokens;
+    }
+    return scores;
 }
 
 std::string generate(Engine & engine, const std::string & input, const std::string & media_path, int media_type, const std::string & instruction, const std::string & target_language) {
@@ -255,6 +372,25 @@ extern "C" JNIEXPORT void JNICALL Java_com_kazumaproject_ai_GgufEngine_resetCanc
 extern "C" JNIEXPORT jstring JNICALL Java_com_kazumaproject_ai_GgufEngine_generate(JNIEnv * env, jobject, jlong handle, jstring prompt, jstring media, jint type, jstring instruction, jstring target_language) {
     try { return java_string(env, generate(*get_engine(handle), utf8(env, prompt), utf8(env, media), type, utf8(env, instruction), utf8(env, target_language))); }
     catch (const std::exception & error) { report(env, error); return nullptr; }
+}
+extern "C" JNIEXPORT jfloatArray JNICALL Java_com_kazumaproject_ai_GgufEngine_score(
+    JNIEnv * env, jobject, jlong handle, jstring prefix, jobjectArray candidates
+) {
+    try {
+        const auto count = env->GetArrayLength(candidates);
+        if (count > 16) throw std::runtime_error("Too many candidates to score.");
+        std::vector<std::string> texts;
+        texts.reserve(count);
+        for (jsize i = 0; i < count; ++i) {
+            auto candidate = static_cast<jstring>(env->GetObjectArrayElement(candidates, i));
+            texts.push_back(utf8(env, candidate));
+            env->DeleteLocalRef(candidate);
+        }
+        auto scores = score_candidates(*get_engine(handle), utf8(env, prefix), texts);
+        auto result = env->NewFloatArray(count);
+        if (result && count) env->SetFloatArrayRegion(result, 0, count, scores.data());
+        return result;
+    } catch (const std::exception & error) { report(env, error); return nullptr; }
 }
 extern "C" JNIEXPORT void JNICALL Java_com_kazumaproject_ai_GgufEngine_cancel(JNIEnv *, jobject, jlong handle) {
     std::lock_guard<std::mutex> lock(registry_mutex);
