@@ -58,6 +58,19 @@ object AppPreference {
     const val VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY = "voice_input_space_replacement_enabled"
     const val VOICE_INPUT_SPACE_REPLACEMENT_KEY = "voice_input_space_replacement"
     const val VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY = "voice_input_space_custom_text"
+    const val VOICE_INPUT_ENGINE_KEY = "voice_input_engine"
+    const val VOICE_INPUT_MODEL_KEY = "voice_input_model"
+    const val VOICE_INPUT_BACKEND_KEY = "voice_input_backend"
+
+    var voice_input_engine: String
+        get() = preferences.getString(VOICE_INPUT_ENGINE_KEY, "system") ?: "system"
+        set(value) = preferences.edit { it.putString(VOICE_INPUT_ENGINE_KEY, value) }
+    var voice_input_model: String
+        get() = preferences.getString(VOICE_INPUT_MODEL_KEY, "") ?: ""
+        set(value) = preferences.edit { it.putString(VOICE_INPUT_MODEL_KEY, value) }
+    var voice_input_backend: String
+        get() = preferences.getString(VOICE_INPUT_BACKEND_KEY, "cpu") ?: "cpu"
+        set(value) = preferences.edit { it.putString(VOICE_INPUT_BACKEND_KEY, value) }
 
     var voice_input_space_replacement_enabled: Boolean
         get() = preferences.getBoolean(VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY, false)
@@ -82,6 +95,9 @@ object AppPreference {
             enabled = voice_input_space_replacement_enabled,
             replacement = VoiceInputSpaceReplacement.fromPreference(voice_input_space_replacement),
             customText = voice_input_space_custom_text,
+            engine = voice_input_engine,
+            modelPath = voice_input_model,
+            backend = voice_input_backend,
         )
 
     const val PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY =
@@ -4020,6 +4036,9 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first, value)
         }
+
+    val enable_zenzai_preference: Boolean
+        get() = preferences.getBoolean("enable_ai_conversion_zenzai_preference", false)
 
     var enable_zenz_rerank_preference: Boolean
         get() = preferences.getBoolean(
