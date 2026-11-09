@@ -1,0 +1,6 @@
+# Header-only package; sources are fetched at a fixed revision by the parent build.
+if (NOT TARGET SPIRV-Headers::SPIRV-Headers)
+    add_library(SPIRV-Headers::SPIRV-Headers INTERFACE IMPORTED GLOBAL)
+    set_target_properties(SPIRV-Headers::SPIRV-Headers PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "@ai_spirv_headers_SOURCE_DIR@/include")
+endif()
