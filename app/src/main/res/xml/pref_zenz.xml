@@ -3,6 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/zenz_preference_category_title">
+        <Preference
+            android:key="candidate_scoring_model"
+            android:title="@string/candidate_scoring_model" />
+
+        <Preference
+            android:key="candidate_scoring_tokenizer"
+            android:title="@string/candidate_scoring_tokenizer" />
+
+        <Preference
+            android:key="candidate_scoring_clear"
+            android:title="@string/candidate_scoring_clear" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="enable_ai_conversion_zenz_preference"
@@ -15,6 +27,12 @@
             android:title="@string/enable_zenz_rerank_preference_title"
             app:defaultValue="false"
             app:summary="@string/enable_zenz_rerank_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="enable_ai_conversion_zenzai_preference"
+            android:title="@string/enable_zenzai_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/enable_zenzai_preference_summary" />
 
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/zenz_floating_category">

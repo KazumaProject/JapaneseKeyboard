@@ -127,7 +127,7 @@ internal class LiteRtRuntimeBackend(private val context: Context) : AiRuntimeBac
 
     override fun resetCancellation() { cancelled.set(false) }
 
-    override fun generate(prompt: String, mediaPath: String, mediaType: Int, instruction: String): String {
+    override fun generate(prompt: String, mediaPath: String, mediaType: Int, instruction: String, targetLanguage: String): String {
         val activeEngine = requireNotNull(engine) { "AI model is not ready." }
         val configClass = Class.forName(PREFIX + "ConversationConfig")
         val samplerClass = Class.forName(PREFIX + "SamplerConfig")
@@ -142,7 +142,10 @@ internal class LiteRtRuntimeBackend(private val context: Context) : AiRuntimeBac
             check(!cancelled.get()) { "AI request was cancelled." }
             val contentsClass = Class.forName(PREFIX + "Contents")
             val response = requireNotNull(activeConversation.javaClass.getMethod("sendMessage", contentsClass, Map::class.java)
-                .invoke(activeConversation, contents(prompt, mediaPath, mediaType), mapOf("enable_thinking" to false)))
+                .invoke(activeConversation, contents(prompt, mediaPath, mediaType), buildMap<String, Any> {
+                    put("enable_thinking", false)
+                    if (targetLanguage.isNotBlank()) put("target_lang", targetLanguage)
+                }))
             check(!cancelled.get()) { "AI request was cancelled." }
             extractText(response)
         } finally {
