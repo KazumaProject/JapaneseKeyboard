@@ -202,6 +202,32 @@ class EnglishPhraseDictionaryInstrumentedTest {
     }
 
     @Test
+    fun wordBoundariesNeedTypedOrLexicalEvidence() = withDictionary { _, _, reader ->
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        fun query(input: String, prefix: Boolean) =
+            engine.getConversionCandidates(input, input, false, true, prefix, emptyList()).map { it.commitText }
+
+        for (prefix in listOf(true, false)) {
+            for (input in listOf("a", "an", "he", "in", "the", "androi")) {
+                val candidates = query(input, prefix)
+                assertTrue("$input: $candidates", input in candidates)
+                assertFalse("$input: $candidates", candidates.any { it.any(Char::isWhitespace) })
+            }
+            for ((input, compound) in listOf("curryrice" to "curry rice", "chickenrice" to "chicken rice")) {
+                val candidates = query(input, prefix)
+                assertEquals("$input: $candidates", input, candidates.first())
+                assertEquals("$input: $candidates", compound, candidates.firstOrNull { it.any(Char::isWhitespace) })
+            }
+            assertTrue(query("anqi", prefix).contains("An Qi"))
+            assertTrue(query("androidstudio", prefix).contains("Android Studio"))
+        }
+        assertTrue(query("an", true).contains("and"))
+        assertTrue(query("android", true).contains("Android Studio"))
+        assertTrue(query("an q", true).contains("An Qi"))
+        assertTrue(query("hecantake", true).contains("he can take"))
+    }
+
+    @Test
     fun registeredWordsAndDirectPrefixesDoNotInventWordBoundaries() = withDictionary { _, _, reader ->
         val dictionary = EnglishPhraseDictionary(
             checkNotNull(reader.loadBundledEnglishForEngine()),
