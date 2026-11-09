@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
+import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.COMMON_REPLACEMENT_KEYS
@@ -642,6 +643,27 @@ class DictionaryOverrideCoreTest {
 
         assertFalse(result.isCompatible)
         assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.SYSTEM_TOKEN })
+    }
+
+    @Test
+    fun compatibility_checksBundledSystemTokensWithoutTheSerializedAsset() {
+        val tokens = TokenArray()
+        DictionaryBinaryReader.openZipAwareObject(
+            ByteArrayInputStream(tokenBytes(shortArrayOf(0, 2))),
+            DictionaryFileKey.SYSTEM_TOKEN.name,
+        ).use { tokens.readExternal(it) }
+        val files = mapOf(
+            DictionaryFileKey.POS_TABLE to posTableBytes(shortArrayOf(0, 1), shortArrayOf(0, 1)),
+            DictionaryFileKey.CONNECTION_ID to validConnectionIds(),
+        )
+
+        val result = DictionaryCompatibilityValidator.validateSources(
+            tokenCategories = listOf(DictionaryCategory.SYSTEM),
+            sourceOpener = { key -> ByteArrayInputStream(files.getValue(key)) },
+            bundledSystemTokens = { tokens },
+        )
+
+        assertEquals(listOf(DictionaryFileKey.SYSTEM_TOKEN), result.problems().map { it.affectedFileKey })
     }
 
     @Test
