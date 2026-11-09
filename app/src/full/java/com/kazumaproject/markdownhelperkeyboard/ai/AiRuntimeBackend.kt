@@ -49,7 +49,7 @@ internal class GgufRuntimeBackend : AiRuntimeBackend {
             }
         } else {
             handle = GgufEngine.initialize(path, projectorPath, Runtime.getRuntime().availableProcessors(), false)
-            "CPU"
+            if (backend == "npu_if_available") "NPU_CPU_FALLBACK" else "CPU"
         }
         modalityFlags = GgufEngine.capabilities(handle)
         return resolved
