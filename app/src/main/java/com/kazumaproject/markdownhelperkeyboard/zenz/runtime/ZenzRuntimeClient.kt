@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -130,6 +131,7 @@ class ZenzRuntimeClient @Inject constructor(
         rightContext: String?,
         input: String,
         candidate: String,
+        draftReviewId: String = "",
     ): String = operationMutex.withLock {
         val service = connect()
         ensureInitializedLocked(service, config)
@@ -144,11 +146,21 @@ class ZenzRuntimeClient @Inject constructor(
                 rightContext.orEmpty(),
                 input,
                 candidate,
+                draftReviewId,
                 callback,
             )
         }
         (result as? RuntimeResult.Text)?.value
             ?: throw ZenzProcessException("Zenz returned an unexpected evaluate response.")
+    }
+
+    internal suspend fun <T> withDraftReview(review: suspend (String) -> T): T {
+        val id = UUID.randomUUID().toString()
+        try {
+            return review(id)
+        } finally {
+            runCatching { runtime?.finishDraftReview(id) }
+        }
     }
 
     suspend fun score(

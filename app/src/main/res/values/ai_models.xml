@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_backend_npu">NPU</string>
+    <string name="ai_npu_if_available">Prefer NPU (Google Tensor G5/G6)</string>
+    <string name="ai_npu_cpu_fallback">CPU fallback from NPU</string>
+    <string name="ai_npu_cpu_fallback_summary">This model uses CPU. NPU requires a LiteRT-LM model compiled for the device’s Google Tensor chip.</string>
+    <string name="ai_npu_requires_tensor_model">NPU requires a LiteRT-LM model compiled for Google Tensor G5 or G6.</string>
+    <string name="ai_npu_incompatible_tensor_model">Choose a LiteRT-LM model compiled for this device’s Google Tensor chip. NPU requires Tensor G5 or G6.</string>
+    <string name="ai_npu_missing_dispatch">The Google Tensor NPU runtime is unavailable on this installation.</string>
+    <string name="ai_projector_title">Multimodal projector (GGUF)</string>
+    <string name="ai_projector_none">No projector selected</string>
+    <string name="ai_projector_import">Add projector…</string>
+    <string name="ai_model_loading_title">Loading AI model…</string>
+    <string name="ai_model_importing_title">Importing AI model…</string>
+    <string name="ai_supported_models_details">Import local models supported by LiteRT-LM or llama.cpp. Available image and audio actions depend on the model. For multimodal GGUF, add the matching mmproj file and select it for the language model. GPU initialization falls back to CPU if unavailable. GGUF GPU execution requires Vulkan 1.2 or later. With GPU selected, LiteRT-LM audio encoding uses CPU.\n\nNPU requires a LiteRT-LM model compiled for the device’s Google Tensor G5 or G6. Keep the original model filename when importing, as some files identify the target chip in their name. Model compatibility and memory requirements depend on the model and device.</string>
+    <string name="ai_audio_model_required">Load an audio-capable AI model first.</string>
+</resources>
