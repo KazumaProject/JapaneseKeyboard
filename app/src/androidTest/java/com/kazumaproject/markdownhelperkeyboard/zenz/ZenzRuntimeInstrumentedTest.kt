@@ -8,15 +8,19 @@ import android.os.IBinder
 import android.os.Process
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.IZenzRuntime
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.IZenzRuntimeCallback
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeClient
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeConfig
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -92,6 +96,26 @@ class ZenzRuntimeInstrumentedTest {
         assertTrue("Final request was blocked by cancelled work", finalResult.isNotBlank())
     }
 
+    @Test(timeout = 120_000)
+    fun batchScoringMatchesSingleCandidateScoresInInputOrder() {
+        val service = bindRuntime()
+        initialize(service, copyBundledModel())
+        val reading = "ワタシハ"
+        val candidates = arrayOf(
+            "私は猫です", "私", "は", "私は犬です", "私は", "私",
+            "", "\uEE00", "長".repeat(700),
+        )
+        val scores = score(service, requestId = 10L, input = reading, candidates = candidates)
+
+        assertEquals(candidates.size, scores.size)
+        candidates.take(6).forEachIndexed { index, candidate ->
+            val singleScore = score(service, 11L + index, reading, arrayOf(candidate)).single()
+            assertTrue("Expected a finite score for $candidate", singleScore.isFinite())
+            assertEquals("Different score for $candidate", singleScore, scores[index], 1e-4f)
+        }
+        scores.drop(6).forEach { assertEquals(Float.NEGATIVE_INFINITY, it, 0.0f) }
+    }
+
     @Test(timeout = 180_000)
     fun generatedCandidatesStopAtProtocolBoundaryAcrossReadings() {
         val service = bindRuntime()
@@ -153,6 +177,38 @@ class ZenzRuntimeInstrumentedTest {
             candidateWithMarkerInContext.isNotBlank(),
         )
         assertSafeCandidate("まつ with marked context", candidateWithMarkerInContext)
+    }
+
+    @Test(timeout = 120_000)
+    fun draftReviewKeepsTheRepairAndWholeResultAcrossRuntimeRequests() = runBlocking {
+        val client = ZenzRuntimeClient(context)
+        try {
+            val config = ZenzRuntimeConfig(copyBundledModel().absolutePath, 512, 4)
+            val input = "カゼガフク"
+            val text = client.generate(config, "", "", "", "", "", "", input, 32)
+            assertTrue(text.length > 1)
+            val wrong = text.dropLast(1) + if (text.endsWith("無")) "有" else "無"
+            suspend fun evaluate(candidate: String, id: String = "") = CandidateEvaluationResult.parse(
+                client.evaluate(config, null, null, null, null, null, null, input, candidate, id)
+            )
+
+            val repair = evaluate(wrong)
+            val whole = evaluate(text + "あ")
+            assertTrue(repair is CandidateEvaluationResult.FixRequired)
+            assertEquals(CandidateEvaluationResult.WholeResult(text), whole)
+
+            client.withDraftReview { id ->
+                assertEquals(repair, evaluate(wrong, id))
+                assertEquals(whole, evaluate(text + "あ", id))
+            }
+            client.withDraftReview { id ->
+                assertEquals(repair, evaluate(wrong, id))
+                assertEquals(CandidateEvaluationResult.Error, evaluate("\uEE08", id))
+                assertEquals(whole, evaluate(text + "あ", id))
+            }
+        } finally {
+            client.close()
+        }
     }
 
     @Test(timeout = 900_000)

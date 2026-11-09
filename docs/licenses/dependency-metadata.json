@@ -3076,6 +3076,48 @@
           "sha256": "cdab929a3b95211f43d2090c5e2d0dfe8465960e378bc32b35841dab324433a6"
         }
       ]
+    },
+    {
+      "group": "com.google.ai.edge.litertlm",
+      "name": "litertlm-android",
+      "version": "0.19.0",
+      "configurations": [
+        "fullStandardDebugRuntimeClasspath"
+      ],
+      "pomUrl": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litertlm/litertlm-android/0.19.0/litertlm-android-0.19.0.pom",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "evidence": [
+        {
+          "url": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litertlm/litertlm-android/0.19.0/litertlm-android-0.19.0.pom",
+          "sha256": "9f4e78a67f31a7f94c9527b623f21a7810fac286270e09b2fb78acfab35a5b06"
+        }
+      ]
+    },
+    {
+      "group": "com.google.ai.edge.litert",
+      "name": "litert-npu-runtime-google-tensor",
+      "version": "2.3.2",
+      "configurations": [
+        "fullStandardReleaseRuntimeClasspath"
+      ],
+      "pomUrl": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litert/litert-npu-runtime-google-tensor/2.3.2/litert-npu-runtime-google-tensor-2.3.2.pom",
+      "licenses": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+        }
+      ],
+      "evidence": [
+        {
+          "url": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litert/litert-npu-runtime-google-tensor/2.3.2/litert-npu-runtime-google-tensor-2.3.2.pom",
+          "sha256": "63c37501388202aea61fe5f471542c61634ba90a2c101c40290b65339e6cc8e8"
+        }
+      ]
     }
   ]
 }

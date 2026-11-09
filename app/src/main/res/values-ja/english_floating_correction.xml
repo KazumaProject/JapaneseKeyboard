@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="english_floating_correction_title">英語の文法訂正をフローティング表示</string>
+    <string name="english_floating_correction_summary">動詞の時制や主語との一致の訂正を候補欄の上に表示します。</string>
+</resources>

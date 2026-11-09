@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="english_floating_correction_text" type="id" />
+    <string name="english_floating_correction_label">%1$s → %2$s</string>
+    <string name="english_floating_correction_title">Show floating English grammar corrections</string>
+    <string name="english_floating_correction_summary">Offer verb tense and subject–verb agreement corrections above the candidates.</string>
+</resources>

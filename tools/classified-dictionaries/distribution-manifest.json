@@ -1548,7 +1548,8 @@
       "app/src/main/assets/english/token.dat.zip": "d6a3d0ec90a4f126262cd4175aa555b500240cbaaa745f7bf44b38039f82df23",
       "app/src/main/assets/english/qwerty_glide_index.dat": "76882e4be7b0ea3ce4cdbdc74315fc40954fff2998d97521bf2dc3fbb0f9afe3",
       "app/src/main/assets/english/grammar/categories.erol": "de5d9a15c9b4a67a4c35cdf4a11e80736042a3945ac80b78b50de9619af7794d",
-      "app/src/main/assets/licenses/english.html": "cd7a704baed66cc4aa08e7a01b5e41c3d1e0adb01dad09ce3972f24aab5bf740"
+      "app/src/main/assets/licenses/english.html": "31b0bbe54f49df42ef1ea91b225ea295fb73afcb7f95384616039cf5879b4540",
+      "app/src/main/assets/english/grammar/verb-forms.tsv": "fc767d5e091304fb4fabcd86e5eb4b60be125a2c88191b5251d51bb8f2a1d77b"
     }
   },
   "filterRevision": "f14c56f1b0fb0b44adf9c9b2c007547986f4da13",
