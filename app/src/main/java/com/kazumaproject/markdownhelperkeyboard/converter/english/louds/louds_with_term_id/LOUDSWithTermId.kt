@@ -122,6 +122,7 @@ class LOUDSWithTermId {
         prefix: String,
         lbs: SuccinctBitVector,
         leaves: SuccinctBitVector,
+        includeChild: ((labelIndex: Int) -> Boolean)? = null,
     ): Iterator<Pair<String, Int>> {
         var node = 0
         for (char in prefix) {
@@ -131,7 +132,7 @@ class LOUDSWithTermId {
         return com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
             LBS, lbs, labels.size, { index -> labels[index] },
             { position -> if (isLeaf[position]) getTermId(position, leaves) else -1 },
-            startNode = node, prefix = prefix,
+            startNode = node, prefix = prefix, includeChild = includeChild,
         )
     }
 
@@ -400,7 +401,8 @@ class LOUDSWithTermId {
     fun predictiveSearch(
         prefix: String,
         succinctBitVector: SuccinctBitVector,
-        limit: Int
+        limit: Int,
+        singleWordOnly: Boolean = false,
     ): List<String> {
         val result = mutableListOf<String>()
         val resultTemp = StringBuilder()
@@ -416,7 +418,7 @@ class LOUDSWithTermId {
         }
 
         // collect words under node n, but stop at [limit]
-        collectWords(n, resultTemp, succinctBitVector, result, limit)
+        collectWords(n, resultTemp, succinctBitVector, result, limit, singleWordOnly)
         return result
     }
 
@@ -429,7 +431,8 @@ class LOUDSWithTermId {
         prefix: StringBuilder,
         succinctBitVector: SuccinctBitVector,
         result: MutableList<String>,
-        limit: Int
+        limit: Int,
+        singleWordOnly: Boolean,
     ) {
         // stop immediately if we've hit the limit
         if (result.size >= limit) return
@@ -446,10 +449,12 @@ class LOUDSWithTermId {
             val idx = succinctBitVector.rank1(childPos)
             if (idx >= labels.size) break
 
-            // add edge label
-            prefix.append(labels[idx])
-            collectWords(childPos, prefix, succinctBitVector, result, limit)
-            prefix.deleteCharAt(prefix.lastIndex)
+            val letter = labels[idx]
+            if (!singleWordOnly || !letter.isWhitespace()) {
+                prefix.append(letter)
+                collectWords(childPos, prefix, succinctBitVector, result, limit, singleWordOnly)
+                prefix.deleteCharAt(prefix.lastIndex)
+            }
 
             childPos++
         }
