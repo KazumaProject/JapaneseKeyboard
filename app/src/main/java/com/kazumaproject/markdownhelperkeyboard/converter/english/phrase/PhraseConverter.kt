@@ -85,7 +85,9 @@ internal class PhraseConverter(
         require(limit in 1..MAX_RESULTS) { "Limit must be in 1..$MAX_RESULTS" }
 
         val grammar = PhraseGrammar(dictionary.grammarRoles)
-        val edges = lattice(text, prefixMode)
+        val registeredPhrases = dictionary.phrases(text, prefixMode, limit)
+        val compactInput = lookupKey(text).filterNot(Char::isWhitespace)
+        val edges = lattice(text, prefixMode, registeredPhrases)
         val order = if (prefixMode) prefixOrder else exactOrder
         val paths = Array(text.length + 1) { mutableListOf<Path>() }
         val surfaces = arrayOfNulls<String>(text.length)
@@ -108,7 +110,7 @@ internal class PhraseConverter(
                 for (path in current) {
                     path.copySurfacesInto(surfaces)
                     surfaces[path.segmentCount] = segment.surface
-                    next += Path(
+                    val nextPath = Path(
                         previous = path,
                         segment = segment,
                         cost = path.cost + segment.cost,
@@ -118,6 +120,7 @@ internal class PhraseConverter(
                         unknownChars = path.unknownChars + if (segment.unknown) segment.end - segment.start else 0,
                         addedChars = path.addedChars + addedChars,
                     )
+                    next += nextPath
                 }
                 if (next.size > beamWidth) {
                     next.sortWith(order)
@@ -128,14 +131,56 @@ internal class PhraseConverter(
         }
         val finalPaths = paths.last()
         finalPaths.sortWith(order)
-        return finalPaths.asSequence()
+        // An unregistered split needs a clause or a fully typed noun compound.
+        // Alternatives may not add boundaries inside the best analysis's words.
+        val supported = finalPaths.filter { path ->
+            path.splits == 0 || path.evidence.clauses > 0 ||
+                path.segmentCount == 2 && path.splits == 1 &&
+                isExactNounCompound(path.previous?.segment, path.segment, grammar)
+        }
+        val boundaries = supported.firstOrNull()?.collectSegments().orEmpty()
+            .filter { it.inferredSpace }.mapTo(hashSetOf()) { it.start }
+        val candidates = supported.asSequence()
+            .filter { path -> path.collectSegments().none { it.inferredSpace && it.start !in boundaries } }
             .distinctBy(Path::render)
             .take(limit)
             .map { PhraseCandidate(it.render(), it.collectSegments(), it.cost, it.evidence) }
-            .toList()
+            .toList().ifEmpty {
+                listOf(PhraseCandidate(text, listOf(literal(text, 0, text.length, unknown = true)), 0, PhraseEvidence()))
+            }
+        val phrases = registeredPhrases.map { candidate ->
+            val exact = candidate.reading.replace(" ", "") == compactInput
+            PhraseCandidate(
+                candidate.surface,
+                listOf(
+                    Segment(0, text.length, candidate.surface,
+                        if (exact) SegmentKind.EXACT else SegmentKind.COMPLETION,
+                        candidate.reading, candidate.cost),
+                ),
+                candidate.cost,
+                grammar.score(arrayOf<String?>(candidate.surface), 1),
+            )
+        }
+        // Once the phrase's first word is fully typed, offer its registered spelling
+        // before ordinary completions. Short prefixes still favor word completion.
+        val exactWords = candidates.filter { it.segments.singleOrNull()?.kind == SegmentKind.EXACT }
+        val typedLength = text.count { !it.isWhitespace() }
+        val completedFirstWord = phrases.filter {
+            checkNotNull(it.segments.single().reading).substringBefore(' ').length <= typedLength
+        }
+        return (exactWords + completedFirstWord + candidates + phrases).distinctBy { it.text }.take(limit)
     }
 
-    private fun lattice(text: String, prefixMode: Boolean): Array<MutableList<Segment>> {
+    private fun isExactNounCompound(first: Segment?, second: Segment?, grammar: PhraseGrammar): Boolean =
+        first?.kind == SegmentKind.EXACT && second?.kind == SegmentKind.EXACT &&
+            first.surface == first.reading && second.surface == second.reading &&
+            grammar.supportsNounCompound(first.surface, second.surface)
+
+    private fun lattice(
+        text: String,
+        prefixMode: Boolean,
+        registeredPhrases: List<DictionaryCandidate>,
+    ): Array<MutableList<Segment>> {
         val edges = Array(text.length) { mutableListOf<Segment>() }
         val spans = inputWords.findAll(text).map { it.range }.toMutableList()
         val last = spans.lastOrNull()
@@ -167,9 +212,26 @@ internal class PhraseConverter(
                 edges[start] += (candidates + restored).distinct().map { it.segment(start, end, start) }
             } else {
                 val whole = lookup(reading)
-                // Explicit word boundaries take precedence when the word is registered.
-                if (spans.size > 1 && whole.isNotEmpty()) {
+                val phrases = if (start == 0 && end == text.length) registeredPhrases
+                    else dictionary.phrases(reading, complete, completionLimit)
+                edges[start] += phrases.map { candidate ->
+                    val compactReading = candidate.reading.replace(" ", "")
+                    candidate.copy(reading = compactReading).segment(start, end, start,
+                        if (compactReading == reading) SegmentKind.EXACT else SegmentKind.COMPLETION)
+                }
+                // A registered word or unfinished word is one typed span, including
+                // after other words. Only dictionary-backed aliases may add spaces
+                // inside it. Do not build speculative split paths and prune them later.
+                val protected = whole.isNotEmpty() || directCompletions.isNotEmpty() ||
+                    dictionary.hasCompletion(reading) || phrases.isNotEmpty() ||
+                    dictionary.hasPhraseCompletion(reading)
+                if (protected) {
                     edges[start] += whole.map { it.segment(start, end, start) }
+                    // Preserve the established space spelling of hyphenated
+                    // compounds. These boundaries come from the stored surface.
+                    edges[start] += whole.filter { '-' in it.surface && ' ' in it.surface }.map {
+                        it.copy(surface = it.surface.replace('-', ' ')).segment(start, end, start)
+                    }
                 } else {
                     val reachable = BooleanArray(end - start).apply { this[0] = true }
                     for (offset in start until end) {
@@ -208,8 +270,14 @@ internal class PhraseConverter(
     ): List<Segment> {
         val key = reading.filterNot { it in prefixPunctuation }
         if (key.length < MIN_COMPLETION_PREFIX || !completionKey.matches(key)) return emptyList()
+        val inferredBoundary = start != wordStart
+        if (inferredBoundary && key.length < MIN_INFERRED_COMPLETION_PREFIX) return emptyList()
         val surfacePrefix = reading.takeIf { it != key }
-        return dictionary.complete(key, surfacePrefix, completionLimit).map {
+        return dictionary.complete(key, surfacePrefix, completionLimit).filter {
+            // Completing an explicitly typed word is different from guessing both a
+            // boundary and a long replacement for a short suffix of a joined input.
+            !inferredBoundary || it.reading.length - key.length <= MAX_INFERRED_COMPLETION_ADDITION
+        }.map {
             it.segment(start, end, wordStart, SegmentKind.COMPLETION, splitDirectPrefix)
         }
     }
@@ -230,6 +298,8 @@ internal class PhraseConverter(
         private const val MAX_INPUT = 256
         private const val MAX_RESULTS = 50
         private const val MIN_COMPLETION_PREFIX = 2
+        private const val MIN_INFERRED_COMPLETION_PREFIX = 3
+        private const val MAX_INFERRED_COMPLETION_ADDITION = 2
         private const val keyboardPunctuation = "'-./"
         private const val prefixPunctuation = "'’-"
         private val completionKey = Regex("[a-z0-9]+")
