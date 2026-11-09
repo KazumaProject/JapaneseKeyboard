@@ -60,6 +60,7 @@ internal object ModeKeySizing {
     }
 
     fun applyTenkey(view: TenKey) {
+        view.setSpecialKeyLabelScalePercent(AppPreference.tenkey_special_key_label_scale_percent)
         view.setKeyLetterSizeDelta((AppPreference.key_letter_size ?: 0f).toInt())
         view.setModeLetterSizes(
             KeyboardInputMode.entries.mapNotNull { mode ->
