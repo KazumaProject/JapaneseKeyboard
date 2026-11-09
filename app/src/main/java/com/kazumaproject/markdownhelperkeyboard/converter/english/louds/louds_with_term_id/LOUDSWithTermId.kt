@@ -290,11 +290,15 @@ class LOUDSWithTermId {
 
     private fun traverse(pos: Int, c: Char, succinctBitVector: SuccinctBitVector): Int {
         var childPos = firstChild(pos, succinctBitVector)
-        while (childPos >= 0 && LBS[childPos]) {
-            if (c == labels[succinctBitVector.rank1(childPos)]) {
+        if (childPos < 0) return -1
+        // Siblings occupy consecutive set bits and consecutive labels.
+        var labelIndex = succinctBitVector.rank1(childPos)
+        while (LBS[childPos]) {
+            if (c == labels[labelIndex]) {
                 return childPos
             }
             childPos++
+            labelIndex++
         }
         return -1
     }

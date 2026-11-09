@@ -1915,6 +1915,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="sizing_height">Key height</string>
     <string name="sizing_icon">Icons</string>
     <string name="sizing_special">Special key letters</string>
+    <string name="tenkey_sizing_switch_labels">Switch key text size</string>
+    <string name="tenkey_sizing_switch_labels_help">Changes the labels on the input mode, number, and symbol keys. On narrow keys, labels grow only as far as they fit.</string>
     <string name="sizing_reset_mode">Reset this mode’s letter sizes</string>
     <string name="sizing_reset_all">Reset all sizes</string>
     <string name="sizing_reset_message">Reset letter sizes for every mode and the shared key sizes?</string>

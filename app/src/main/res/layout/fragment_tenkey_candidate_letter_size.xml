@@ -47,6 +47,12 @@
                     <TextView android:id="@+id/sizingHeightValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
                 </LinearLayout>
                 <com.google.android.material.slider.Slider android:id="@+id/sizingHeight" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/sizing_height" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:text="@string/tenkey_sizing_switch_labels" android:textAppearance="?attr/textAppearanceBodyLarge" android:layout_weight="1" />
+                    <TextView android:id="@+id/sizingSpecialValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="?attr/textAppearanceBodyLarge" android:accessibilityLiveRegion="polite" android:layout_marginStart="12dp" android:textStyle="bold" android:textColor="?attr/colorPrimary" />
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/tenkey_sizing_switch_labels_help" android:textAppearance="?attr/textAppearanceBodyMedium" />
+                <com.google.android.material.slider.Slider android:id="@+id/sizingSpecial" android:layout_width="match_parent" android:layout_height="wrap_content" android:contentDescription="@string/tenkey_sizing_switch_labels" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.button.MaterialButton style="?attr/materialButtonOutlinedStyle" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:id="@+id/sizingResetAll" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/sizing_reset_all" />

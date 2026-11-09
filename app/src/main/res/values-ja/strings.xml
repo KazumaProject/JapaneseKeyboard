@@ -1913,6 +1913,8 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="sizing_height">キーの高さ</string>
     <string name="sizing_icon">アイコン</string>
     <string name="sizing_special">特殊キーの文字</string>
+    <string name="tenkey_sizing_switch_labels">切替キーの文字サイズ</string>
+    <string name="tenkey_sizing_switch_labels_help">入力モード・数字・記号の切替キーの文字を調整します。狭いキーでは文字が収まる大きさまで拡大します。</string>
     <string name="sizing_reset_mode">このモードの文字サイズを戻す</string>
     <string name="sizing_reset_all">すべてのサイズを初期化</string>
     <string name="sizing_reset_message">すべてのモードの文字サイズと、共通のキーサイズを初期化しますか？</string>

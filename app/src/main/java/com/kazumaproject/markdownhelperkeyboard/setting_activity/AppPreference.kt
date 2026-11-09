@@ -165,6 +165,7 @@ object AppPreference {
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
     const val TENKEY_USE_THREE_STATE_KEY = "tenkey_use_three_state_keyboard_preference"
     const val TENKEY_NUMBER_SYMBOL_KEY_GAP_KEY = "tenkey_number_symbol_key_gap_preference"
+    const val TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY = "tenkey_special_key_label_scale_percent"
     const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
@@ -3549,6 +3550,13 @@ object AppPreference {
                 TENKEY_KEY_HEIGHT_SCALE_PERCENT.first,
                 value ?: TENKEY_KEY_HEIGHT_SCALE_PERCENT.second
             )
+        }
+
+    var tenkey_special_key_label_scale_percent: Int
+        get() = preferences.getInt(TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY, 100).coerceIn(60, 150)
+        set(value) = preferences.edit {
+            if (value == 100) it.remove(TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY)
+            else it.putInt(TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY, value.coerceIn(60, 150))
         }
 
     var gojuon_key_width_scale_percent: Int
