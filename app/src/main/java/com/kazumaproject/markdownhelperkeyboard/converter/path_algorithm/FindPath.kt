@@ -27,7 +27,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.trace.ForwardDpTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.PenaltyTrace
 import timber.log.Timber
 import java.util.IdentityHashMap
-import java.util.PriorityQueue
 
 class FindPath(
     private val ngramRuleScorerProvider: () -> NgramRuleScorer = { defaultNgramRuleScorer },
@@ -155,6 +154,7 @@ class FindPath(
         var next: PathQueueElement? = null
         var outputPathId: Int = 0
         var sourceMask: Int = 0
+        var enqueueOrder: Int = 0
 
         fun set(
             node: Node,
@@ -271,6 +271,7 @@ class FindPath(
 
     internal class PathPriorityQueue(initialCapacity: Int = 256) {
         private var elements = arrayOfNulls<PathQueueElement>(initialCapacity.coerceAtLeast(1))
+        private var nextEnqueueOrder = 0
         var size: Int = 0
             private set
 
@@ -279,9 +280,11 @@ class FindPath(
         fun clear() {
             for (index in 0 until size) elements[index] = null
             size = 0
+            nextEnqueueOrder = 0
         }
 
         fun add(element: PathQueueElement) {
+            element.enqueueOrder = nextEnqueueOrder++
             if (size == elements.size) elements = elements.copyOf(elements.size * 2)
             var index = size++
             while (index > 0) {
@@ -327,10 +330,8 @@ class FindPath(
             var comparison = first.priorityCost.compareTo(second.priorityCost)
             if (comparison == 0) comparison = first.node.sPos.compareTo(second.node.sPos)
             if (comparison == 0) comparison = first.node.len.compareTo(second.node.len)
-            if (comparison == 0) {
-                comparison = System.identityHashCode(first.node)
-                    .compareTo(System.identityHashCode(second.node))
-            }
+            // Predecessors are expanded in lattice-list order. Keep that order for exact ties.
+            if (comparison == 0) comparison = first.enqueueOrder.compareTo(second.enqueueOrder)
             return comparison
         }
     }
@@ -2134,15 +2135,10 @@ class FindPath(
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
 
-        val pQueue: PriorityQueue<Pair<Node, Int>> =
-            PriorityQueue(
-                compareBy<Pair<Node, Int>> { it.second }
-                    .thenBy { it.first.sPos }
-                    .thenBy { it.first.len }
-                    .thenBy { System.identityHashCode(it.first) },
-            )
-
-        graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
+        val pQueue = PathPriorityQueue()
+        graph[length + 1]?.get(0)?.let { eos ->
+            pQueue.add(PathQueueElement().apply { node = eos })
+        }
             ?: return Pair(emptyList(), emptyList())
 
         var loopCount = 0
@@ -2152,12 +2148,13 @@ class FindPath(
             loopCount++
             maxQueueSize = maxOf(maxQueueSize, pQueue.size)
 
-            val node = pQueue.poll() ?: break
+            val element = pQueue.poll() ?: break
+            val node = element.node
 
-            if (node.first.tango == "BOS") {
-                val stringFromNode = getStringFromNode(node.first)
-                val yomiUsedFromNode = getYomiUsedFromNode(node.first)
-                val bunsetsuPositions = getBunsetsuPositions(node.first)
+            if (node.tango == "BOS") {
+                val stringFromNode = getStringFromNode(node)
+                val yomiUsedFromNode = getYomiUsedFromNode(node)
+                val bunsetsuPositions = getBunsetsuPositions(node)
 
                 if (foundStrings.add(stringFromNode)) {
                     if (resultFinal.isEmpty()) {
@@ -2168,20 +2165,20 @@ class FindPath(
                         string = stringFromNode,
                         type = resolveCandidateType(
                             string = stringFromNode,
-                            sources = candidateSourcesFromNode(node.first),
+                            sources = candidateSourcesFromNode(node),
                         ),
-                        dictionaryOrigins = resolveDictionaryOrigins(candidateSourcesFromNode(node.first)),
-                        dictionaryCategories = categoriesFromNode(node.first),
+                        dictionaryOrigins = resolveDictionaryOrigins(candidateSourcesFromNode(node)),
+                        dictionaryCategories = categoriesFromNode(node),
                         yomi = yomiUsedFromNode,
-                        correctionMask = correctionMaskFromNode(node.first),
+                        correctionMask = correctionMaskFromNode(node),
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {
-                            node.second + 2000
+                            element.priorityCost + 2000
                         } else {
-                            node.second
+                            element.priorityCost
                         },
-                        leftId = node.first.next?.l,
-                        rightId = node.first.next?.r,
+                        leftId = node.next?.l,
+                        rightId = node.next?.r,
                     )
                     resultFinal.add(candidate)
                 }
@@ -2198,30 +2195,31 @@ class FindPath(
             } else {
                 val prevNodes = getPrevNodes2(
                     graph = graph,
-                    node = node.first,
-                    startPosition = node.first.sPos,
+                    node = node,
+                    startPosition = node.sPos,
                 )
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
                         rid = prevNode.r.toInt(),
-                        lid = node.first.l.toInt(),
+                        lid = node.l.toInt(),
                         connectionMatrix = connectionMatrix,
                     )
 
                     val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
-                        currentNode = node.first,
-                        nextNode1 = node.first.next,
-                        nextNode2 = node.first.next?.next,
-                        nextNode3 = node.first.next?.next?.next,
+                        currentNode = node,
+                        nextNode1 = node.next,
+                        nextNode2 = node.next?.next,
+                        nextNode3 = node.next?.next?.next,
                     )
 
-                    prevNode.g = node.first.g + edgeScore + node.first.adjustedScore + ngramAdjustment
-                    prevNode.next = node.first
-
-                    val result2 = Pair(prevNode, prevNode.g + prevNode.f)
-                    pQueue.add(result2)
+                    prevNode.g = node.g + edgeScore + node.adjustedScore + ngramAdjustment
+                    prevNode.next = node
+                    pQueue.add(PathQueueElement().apply {
+                        this.node = prevNode
+                        priorityCost = prevNode.g + prevNode.f
+                    })
                 }
             }
         }
