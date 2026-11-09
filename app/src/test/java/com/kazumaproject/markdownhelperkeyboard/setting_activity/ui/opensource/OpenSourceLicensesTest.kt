@@ -58,14 +58,28 @@ class OpenSourceLicensesTest {
         }
         items.forEach {
             val html = it.document()
-            val revision = if (it.id == "dictionary/english") {
-                "v1.7.285 (f4c7151ac69d41586135037e658364bf48dae7a8)"
-            } else {
-                "v1.7.285 (f14e2793ef07c93f0d7136f14bbd5270eb3e0c07)"
-            }
-            assertTrue(it.id, html.contains(revision))
+            assertTrue(it.id, html.contains("v1.7.285 (f14e2793ef07c93f0d7136f14bbd5270eb3e0c07)"))
             assertTrue(it.id, html.contains("<pre>"))
         }
+    }
+
+    @Test fun dictionaryDetailsShowPinnedEnglishInputsAndReviewedCategorySources() {
+        val items = catalog.sections("lite", false).flatMap { it.items }.associateBy { it.id }
+        val english = items.getValue("dictionary/english").document()
+        assertTrue(english.contains("<code>f4c7151ac69d41586135037e658364bf48dae7a8</code>"))
+        assertTrue(english.contains("dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz"))
+
+        val product = items.getValue("dictionary/classified/product").document()
+        assertTrue(product.contains("https://www.amazon.co.jp/Echo-Time-2026\">えこーたいむ / Echo Time</a>"))
+
+        val film = items.getValue("dictionary/classified/work_film").document()
+        val anime = items.getValue("dictionary/classified/work_anime").document()
+        assertTrue(film.contains("ぐろてすく / GROTESQQQUE</a>"))
+        assertFalse(anime.contains("ぐろてすく / GROTESQQQUE</a>"))
+
+        val shonen = items.getValue("dictionary/classified/media_demographic/audience/shonen").document()
+        assertTrue(shonen.contains("https://sp.shonenjump.com/j/rensai/jujutsu-modulo/\">じゅじゅつかいせんもじゅろ / 呪術廻戦≡</a>"))
+        assertTrue(shonen.contains("2026-11-08-open-candidate-issues_demographics.jsonl"))
     }
 
     @Test fun correctedModelAndCoroutinesLicensesKeepOfflineOriginals() {
