@@ -10,8 +10,14 @@ Dictionary data keeps its upstream terms; it is not uniformly MIT licensed.
 
 ## Classified dictionaries / 143カテゴリ辞書
 
-Distribution: `v1.7.283`, converter revision
-`b9f3375a1cfb0ce5e56f4da622ecc4e983364581`.
+Distribution: `v1.7.285`, converter revision
+`f14e2793ef07c93f0d7136f14bbd5270eb3e0c07`.
+The release contains 863,362 category records across 143 categories, including
+two empty categories. The [reviewed additions and audience classifications](docs/licenses/DICTIONARIES.md#r)
+cover 66 new reading/spelling pairs and three audience assignments. Each affected
+in-app category notice lists the entries and their cited sources. Per-entry
+copyright terms for these additions are unconfirmed / 未確認.
+
 The classified dictionaries are reclassified, filtered, and converted from the five
 frozen inputs in that revision. Their exact input hashes and source-pair counts
 are in `tools/classified-dictionaries/category-provenance.json`.
@@ -54,9 +60,9 @@ The person dictionary also includes reviewed fighter names: the per-record
 source URLs and input hashes are preserved, without redistributing source page
 text. Per-entry copyright conditions for these names remain unconfirmed.
 
-The full v1.7.283 `DICTIONARY-LICENSES.txt` is retained in
+The full v1.7.285 `DICTIONARY-LICENSES.txt` is retained in
 `app/src/main/assets/licenses/sources/distribution-licenses.txt`, byte-identical
-and verified against the release asset SHA-256 `ec74cdd99e434b17081944759e07aef3b388dda6fad0d9c9616bc4dd3988ebf6`.
+and verified against the release asset SHA-256 `38d0c6acb59eec1f6daf4bbaf5721960bd86d3edc67e9cd85554887cb4ce810d`.
 
 Two Kampo additions are backed by frozen Tsumura product fields. Source URLs and
 evidence hashes are recorded; source page bodies are not redistributed. Their
@@ -70,8 +76,14 @@ attribution. The updated English-reading dictionary also retains NGSL 1.2
 selection attribution and the Carnegie Mellon University CMUdict copyright,
 redistribution conditions and disclaimer. Project editorial additions are
 CC BY-SA 4.0; CMUdict terms still apply to its portion. N-gram/unigram data retains the JapaneseCorpus notices, including
-Wikipedia and Aozora source information. The exact upstream attribution of the
-standalone alphabetic English-word asset is unconfirmed.
+Wikipedia and Aozora source information.
+
+The v1.7.285 English word dictionary uses the preview.3 payloads built at
+`f4c7151ac69d41586135037e658364bf48dae7a8`. The app repackages the reading, word,
+and token arrays and derives the verb correction table from pinned reviewed grammar
+data. The [English word dictionary notice](app/src/main/assets/licenses/english.html)
+preserves the source-specific terms and links to the vocabulary catalog and grammar
+input. The [historical WikiText notice](ENGLISH_DICTIOANRY_LICENSE) covers `english.dat`.
 
 The Open source licenses screen includes individual category entries and
 bundled offline source notices under `app/src/main/assets/licenses/`.
