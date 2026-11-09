@@ -1,6 +1,9 @@
 package com.kazumaproject.core.ui.input_mode_witch
 
 import android.content.Context
+import android.graphics.Rect
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.DrawableWrapper
 import android.util.AttributeSet
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.AppCompatImageButton
@@ -64,12 +67,28 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
             useThreeStateKeyboard = useThreeStateKeyboard,
             twoStateNumberReturnTarget = numberReturnTarget,
         )
-        setImageDrawable(if (fontSnapshot.typeface == null && skinSelectedLabelColor == null) {
-            AppCompatResources.getDrawable(context, resId)
+        val icon = if (fontSnapshot.typeface == null && skinSelectedLabelColor == null) {
+            requireNotNull(AppCompatResources.getDrawable(context, resId))
         } else {
             InputModeSwitchIconDrawable(context, resId, fontSnapshot.typeface,
                 skinSelectedLabelColor, skinIdleLabelColor, currentInputMode)
+        }
+        setImageDrawable(if (!isGojuonMode && resId == R.drawable.input_mode_japanese_select_custom) {
+            TenKeyKanaReturnIcon(icon)
+        } else {
+            icon
         })
+    }
+
+    private class TenKeyKanaReturnIcon(private val icon: Drawable) : DrawableWrapper(icon) {
+        // Fit the centered word in a 40dp by 20dp box by trimming the square artwork's vertical margins.
+        override fun getIntrinsicWidth() = icon.intrinsicWidth * 5 / 3
+        override fun getIntrinsicHeight() = intrinsicWidth / 2
+
+        override fun onBoundsChange(bounds: Rect) {
+            val top = bounds.top - (bounds.width() - bounds.height()) / 2
+            icon.setBounds(bounds.left, top, bounds.right, top + bounds.width())
+        }
     }
 }
 
