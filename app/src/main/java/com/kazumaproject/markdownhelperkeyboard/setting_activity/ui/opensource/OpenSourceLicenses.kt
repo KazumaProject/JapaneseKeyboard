@@ -112,6 +112,11 @@ internal class OpenSourceLicenses(private val context: Context) {
                         "88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c",
                         text(R.string.license_llama_changes), "MIT License", original("software-licenses/llama-mit.txt"))
                 },
+                LicenseItem("ai-runtime", "ggml-org/llama.cpp / libmtmd / Vulkan headers", "MIT, Apache-2.0 and bundled third-party notices") {
+                    "<h1>llama.cpp / libmtmd</h1>" +
+                        link("https://github.com/ggml-org/llama.cpp/tree/cd959bae99ff4bed22bef2604f45241c09bbb8c8") +
+                        original("software-licenses/ai-runtime-notices.txt")
+                },
                 LicenseItem("openmp", "LLVM OpenMP runtime", "Apache License 2.0 with LLVM Exceptions") {
                     document("LLVM OpenMP runtime", text(R.string.license_openmp_overview),
                         link("https://developer.android.com/ndk/downloads/older_releases#r29"), "Android NDK 29.0.14206865",

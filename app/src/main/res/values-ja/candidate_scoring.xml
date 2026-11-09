@@ -1,0 +1,8 @@
+<resources>
+    <string name="candidate_scoring_model">変換候補のリランク用モデル</string>
+    <string name="candidate_scoring_model_summary">端末内のGGUFまたは候補採点用ONNXを選択</string>
+    <string name="candidate_scoring_tokenizer">ONNXリランク用トークナイザー</string>
+    <string name="candidate_scoring_tokenizer_summary">ONNXに対応するSentencePieceの.modelファイルを選択</string>
+    <string name="candidate_scoring_clear">リランク用モデルを削除</string>
+    <string name="candidate_scoring_import_failed">候補採点用のファイルを読み込めませんでした</string>
+</resources>

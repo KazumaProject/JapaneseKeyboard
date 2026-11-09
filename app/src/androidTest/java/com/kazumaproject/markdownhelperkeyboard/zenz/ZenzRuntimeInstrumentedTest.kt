@@ -96,6 +96,26 @@ class ZenzRuntimeInstrumentedTest {
         assertTrue("Final request was blocked by cancelled work", finalResult.isNotBlank())
     }
 
+    @Test(timeout = 120_000)
+    fun batchScoringMatchesSingleCandidateScoresInInputOrder() {
+        val service = bindRuntime()
+        initialize(service, copyBundledModel())
+        val reading = "ワタシハ"
+        val candidates = arrayOf(
+            "私は猫です", "私", "は", "私は犬です", "私は", "私",
+            "", "\uEE00", "長".repeat(700),
+        )
+        val scores = score(service, requestId = 10L, input = reading, candidates = candidates)
+
+        assertEquals(candidates.size, scores.size)
+        candidates.take(6).forEachIndexed { index, candidate ->
+            val singleScore = score(service, 11L + index, reading, arrayOf(candidate)).single()
+            assertTrue("Expected a finite score for $candidate", singleScore.isFinite())
+            assertEquals("Different score for $candidate", singleScore, scores[index], 1e-4f)
+        }
+        scores.drop(6).forEach { assertEquals(Float.NEGATIVE_INFINITY, it, 0.0f) }
+    }
+
     @Test(timeout = 180_000)
     fun generatedCandidatesStopAtProtocolBoundaryAcrossReadings() {
         val service = bindRuntime()

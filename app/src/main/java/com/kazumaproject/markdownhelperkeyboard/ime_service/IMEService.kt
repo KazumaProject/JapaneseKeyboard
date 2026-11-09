@@ -424,6 +424,9 @@ import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecial
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyRepository
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.ai.rerank.CandidateScoreRanking
+import com.kazumaproject.markdownhelperkeyboard.ai.rerank.CandidateScorerClient
+import com.kazumaproject.markdownhelperkeyboard.ai.rerank.CandidateScoringModels
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.AndroidZeroQueryAssetReader
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.LazyZeroQueryProvider
@@ -814,6 +817,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var conversionKeySwipePreference: Boolean? = false
 
     private var speechRecognizer: SpeechRecognizer? = null
+    @Inject lateinit var aiVoiceInputManager: com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.AiVoiceInputManager
+    private var aiVoiceInputController: com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.AiVoiceInputController? = null
     private var voiceInputSettings = VoiceInputSettings()
     private var activeVoiceInputSettings = VoiceInputSettings()
     private var activeVoiceInputLanguage = ""
@@ -4091,6 +4096,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickPreviewEditorSessionId += 1L
         flickInputPreviewCoordinator.resetForEditorSession()
         clearGemmaFloating()
+        aiVoiceInputController?.cancel()
         gemmaInputSessionId += 1L
         gemmaMediaPanelController?.onInputSessionChanged()
         gemmaHandwritingController?.onInputSessionChanged()
@@ -6409,6 +6415,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         stopSplitKeyboard()
         super.onStartInputView(editorInfo, restarting)
+        warmCandidateScorer()
         flickInputPreviewCoordinator.cancel(restore = true)
         clearZeroQueryAllState(refresh = false)
         // The input view can restart without onStartInput() after returning from settings.
@@ -6821,6 +6828,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        aiVoiceInputController?.cancel()
+        beginZenzRerankRequest()
         backspaceHistoryCoordinator.cancel()
         deletedBuffer.clear()
         resetSoftwareModifiers()
@@ -6847,6 +6856,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        beginZenzRerankRequest()
         backspaceHistoryCoordinator.cancel()
         resetSoftwareModifiers()
         cancelMorseInputs(clearPattern = true)
@@ -6870,6 +6880,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         clearPhysicalCandidateCompositionSession("finish input view")
         flickInputPreviewCoordinator.cancel(restore = false)
+        aiVoiceInputController?.cancel()
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
         candidateRequestTracker.invalidate()
@@ -6920,6 +6931,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inlineAutofillController?.clear()
         }
         flickInputPreviewCoordinator.cancel(restore = true)
+        aiVoiceInputController?.cancel()
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
         clearAndPauseSuminagashiInkEffects()
@@ -6927,6 +6939,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        modelRerankWarmJob?.cancel()
+        beginZenzRerankRequest()
+        if (modelRerankClient.isInitialized()) modelRerankClient.value.close()
         cancelMorseInputs(clearPattern = true)
         gemmaFloatingCoordinator?.destroy()
         gemmaFloatingWindow?.clear()
@@ -6964,6 +6979,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainHandler.removeCallbacks(refreshLegacySizePreference)
         updateGemmaBackInvokedCallback(registered = false)
         updateKeyboardSelectionPopupBackInvokedCallback(registered = false)
+        aiVoiceInputController?.destroy()
+        aiVoiceInputController = null
         gemmaMediaPanelController?.destroy()
         gemmaMediaPanelController = null
         gemmaHandwritingController?.destroy()
@@ -8000,7 +8017,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             visible = false
         )
         if (isListening) return
-        if (speechRecognizer == null) return
 
         val languageValue: String = when {
             physicalKeyboardEnable.replayCache.firstOrNull() == true -> {
@@ -8027,6 +8043,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+        val settings = AppPreference.voice_input_settings
+        if (settings.engine == "ai" && AppVariantConfig.hasGemma) {
+            val controller = aiVoiceInputController ?: com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.AiVoiceInputController(
+                this, scope, aiVoiceInputManager,
+                sessionId = { gemmaInputSessionId },
+                onResult = { text -> _inputString.update { text } },
+                onBusy = { busy -> setSuggestionProgressVisible(SuggestionProgressReason.VoiceInput, busy) },
+                onMessage = { message -> showToastMessage(message) },
+            ).also { created ->
+                aiVoiceInputController = created
+                keyboardContainer?.let(created::attachTo)
+            }
+            gemmaTranslationManager.cancelFloatingText()
+            controller.start(settings, languageValue)
+            return
+        }
+        if (speechRecognizer == null) return
+
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
@@ -8049,6 +8083,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun stopVoiceInput() {
+        aiVoiceInputController?.cancel()
         if (!isListening) return
         try {
             speechRecognizer?.stopListening()
@@ -8527,6 +8562,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainLayoutBinding?.root?.let { newRootView ->
                 container.addView(newRootView)
                 gemmaMediaPanelController?.attachTo(container)
+                aiVoiceInputController?.attachTo(container)
                 mainLayoutBinding?.let { mainView ->
                     when (keyboardThemeMode) {
                         "default" -> {
@@ -8845,6 +8881,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 editor.dispatchKeyEvent(event)
                 return true
             }
+        }
+        if (keyCode == KeyEvent.KEYCODE_BACK && aiVoiceInputController?.isActive == true) {
+            aiVoiceInputController?.cancel()
+            consumeGemmaBackKeyUp = true
+            return true
         }
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             gemmaMediaPanelController?.handleBack() == true
@@ -20088,6 +20129,91 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return result.text.takeUnless { NgWordMatcher.matchesAny(displayInput, it, ngWords) }
     }
 
+    private val modelRerankModels by lazy { CandidateScoringModels(applicationContext) }
+    private val modelRerankClient = lazy { CandidateScorerClient(applicationContext) }
+    private var modelRerankWarmJob: Job? = null
+    private var warmedRerankModel: CandidateScoringModels.Selection? = null
+
+    private fun selectedRerankModel(): CandidateScoringModels.Selection? =
+        if (AppVariantConfig.hasZenz) modelRerankModels.selection() else null
+
+    private fun warmCandidateScorer() {
+        val selection = selectedRerankModel()
+        if (selection == warmedRerankModel) return
+        modelRerankWarmJob?.cancel()
+        warmedRerankModel = null
+        if (selection == null) {
+            if (modelRerankClient.isInitialized()) modelRerankClient.value.close()
+            return
+        }
+        modelRerankWarmJob = scope.launch {
+            try {
+                withTimeoutOrNull(5_000) {
+                    modelRerankClient.value.score(selection.model, selection.tokenizer, "", emptyArray())
+                    warmedRerankModel = selection
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // Leave dictionary candidates available if the model cannot initialize.
+            }
+        }
+    }
+
+    private fun launchCandidateModelRerank(
+        input: String,
+        baseCandidates: List<Candidate>,
+        token: CandidateRequestToken,
+        requestToken: Long,
+    ) {
+        val model = selectedRerankModel() ?: return
+        if (hasHardwareKeyboardConnected == true || isPrivateMode || currentInputType in passwordTypes ||
+            input.length <= 1 || !input.isAllHiraganaWithSymbols() ||
+            appPreference.candidate_order_override_enable_preference == true
+        ) return
+        val targets = baseCandidates.withIndex().asSequence()
+            .filter { (_, candidate) ->
+                candidate.type == 1.toByte() && candidate.length.toInt() == input.length &&
+                    candidate.string.isNotBlank()
+            }
+            .distinctBy { it.value.string }
+            .take(8)
+            .toList()
+        if (targets.size < 2) return
+        val started = SystemClock.elapsedRealtime()
+        zenzRerankJob = scope.launch {
+            val scores = try {
+                withTimeoutOrNull(150) {
+                    val prefix = getZenzContext(input).leftContext.takeLast(32)
+                    modelRerankClient.value.score(
+                        model.model, model.tokenizer, prefix, targets.map { it.value.string }.toTypedArray(),
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                null
+            }
+            if (scores == null) {
+                if (BuildConfig.DEBUG) Timber.d("candidateModelRerank missed deadline or failed")
+                return@launch
+            }
+            val reranked = CandidateScoreRanking.apply(baseCandidates, targets, scores)
+            if (requestToken != zenzRerankRequestToken || model != selectedRerankModel() ||
+                !shouldApplyCandidateResult(input, token) || SystemClock.elapsedRealtime() - started > 150
+            ) return@launch
+            if (reranked != baseCandidates) {
+                updateDisplayedCandidates(input, reranked, token)
+            }
+            if (BuildConfig.DEBUG) {
+                Timber.d(
+                    "candidateModelRerank completed ms=%d changed=%b targets=%d",
+                    SystemClock.elapsedRealtime() - started, reranked != baseCandidates, targets.size,
+                )
+            }
+        }
+    }
+
     private fun beginZenzRerankRequest(): Long {
         zenzRerankJob?.cancel()
         zenzRerankJob = null
@@ -20111,7 +20237,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         candidates: List<Candidate>
     ): ZenzRerankPlan? {
-        if (zenzRerankPreference != true) return null
+        if (zenzRerankPreference != true || selectedRerankModel() != null) return null
         if (hasHardwareKeyboardConnected == true) return null
         if (insertString.length <= 1 || !insertString.isAllHiraganaWithSymbols()) return null
         if (candidates.size < 2) return null
@@ -24849,11 +24975,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun launchGemmaImageAction() {
+        if (!gemmaTranslationManager.supportsMedia(com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType.IMAGE)) {
+            showToastMessage(getString(R.string.gemma_handwriting_unavailable))
+            return
+        }
         prepareForGemmaMediaPanel()
         ensureGemmaMediaPanelController().openImage()
     }
 
     private fun launchGemmaAudioAction() {
+        if (!gemmaTranslationManager.supportsMedia(com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType.AUDIO)) {
+            showToastMessage(getString(R.string.ai_audio_model_required))
+            return
+        }
         prepareForGemmaMediaPanel()
         ensureGemmaMediaPanelController().openAudio()
     }
@@ -28058,6 +28192,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidates = displayedCandidates,
             token = token,
         )
+        launchCandidateModelRerank(insertString, filtered, token, requestToken)
 
         if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
@@ -28154,6 +28289,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidates = displayedCandidates,
             token = token,
         )
+        launchCandidateModelRerank(insertString, filtered, token, requestToken)
 
         if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
@@ -28207,7 +28343,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         token: CandidateRequestToken,
     ) {
-        beginZenzRerankRequest()
+        val requestToken = beginZenzRerankRequest()
         clearZenzLiveSlot("candidate tab without Zenz live")
         val candidates = getSuggestionListWithoutPrediction(insertString, token)
         val filtered = if (stringInTail.get().isNotEmpty()) {
@@ -28239,6 +28375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         }
+        launchCandidateModelRerank(insertString, filtered, token, requestToken)
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             delayBeforeApplyingLiveConversion()
             if (!shouldApplyCandidateResult(insertString, token)) {

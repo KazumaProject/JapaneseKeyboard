@@ -2917,8 +2917,8 @@
     {
       "group": "com.google.ai.edge.litertlm",
       "name": "litertlm-android",
-      "version": "0.14.0",
-      "pomUrl": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litertlm/litertlm-android/0.14.0/litertlm-android-0.14.0.pom",
+      "version": "0.19.0",
+      "pomUrl": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litertlm/litertlm-android/0.19.0/litertlm-android-0.19.0.pom",
       "licenses": [
         {
           "name": "The Apache Software License, Version 2.0",
@@ -2927,8 +2927,8 @@
       ],
       "evidence": [
         {
-          "url": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litertlm/litertlm-android/0.14.0/litertlm-android-0.14.0.pom",
-          "sha256": "c5238eca9a13abaa575c7c988408da575ce8ee1375fa7d2144562ccd7b3a57e6"
+          "url": "https://dl.google.com/dl/android/maven2/com/google/ai/edge/litertlm/litertlm-android/0.19.0/litertlm-android-0.19.0.pom",
+          "sha256": "9f4e78a67f31a7f94c9527b623f21a7810fac286270e09b2fb78acfab35a5b06"
         }
       ],
       "variants": [
@@ -2936,14 +2936,14 @@
       ],
       "notices": [
         {
-          "title": "litertlm-android-0.14.0.aar/LICENSE",
-          "asset": "software-licenses/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4.txt",
-          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+          "title": "litertlm-android-0.19.0.aar/LICENSE",
+          "asset": "software-licenses/ec40a2da15ab0e8b44a9f787ab210203d3cad32572f5f99744a88eb90ff9ba4e.txt",
+          "sha256": "ec40a2da15ab0e8b44a9f787ab210203d3cad32572f5f99744a88eb90ff9ba4e"
         },
         {
-          "title": "litertlm-android-0.14.0.aar/THIRD_PARTY_NOTICE.txt",
-          "asset": "software-licenses/35c17f464353492dc36f6a5452f2f7567497cbac8f934e4f51264aeb1881851f.txt",
-          "sha256": "35c17f464353492dc36f6a5452f2f7567497cbac8f934e4f51264aeb1881851f"
+          "title": "litertlm-android-0.19.0.aar/THIRD_PARTY_NOTICE.txt",
+          "asset": "software-licenses/06d9b46be2ba89a39650012cd3be07e3654c98fafb108868219c198b3a72b7c7.txt",
+          "sha256": "06d9b46be2ba89a39650012cd3be07e3654c98fafb108868219c198b3a72b7c7"
         }
       ]
     },
