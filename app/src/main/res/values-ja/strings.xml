@@ -968,6 +968,8 @@
     <string name="enable_ai_preference_summary">ニューラルかな漢字モデル「zenz-v3.2-xsmall」を使った逐次的な予測変換を有効にします。 キーボードの修飾キー省略・12キーフリックのタイピングミス補正設定に自動で連動します。</string>
     <string name="zenz_profile_preference_title">zenz で使用するプロフィールの設定</string>
     <string name="zenz_profile_preference_summary">zenz が予測変換に利用するプロフィールを設定できます。\n例：この欄に「職業：医者」と入力すると、「ちゅうしゃ」と入力したときに「注射」が候補に出やすくなります。</string>
+    <string name="enable_zenzai_preference_title">Zenzai で辞書変換を補正する</string>
+    <string name="enable_zenzai_preference_summary">辞書の変換候補を Zenz で評価し、必要に応じて作り直します。Zenz の自動候補と変換キーの長押しに適用されます。自動での並び替えが有効な場合は並び替えが優先されます。</string>
     <string name="enable_zenz_rerank_preference_title">zenz で変換候補を並び替える</string>
     <string name="enable_zenz_rerank_preference_summary">変換候補の上位を zenz のスコアで軽く並び替えます。既存の辞書スコアもあわせて利用します。タイピング修正とは併用できません。</string>
     <string name="conversion_key_long_press_ai_conversion_preference_title">変換キー長押しで AI 変換候補を追加する</string>

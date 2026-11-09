@@ -38,7 +38,7 @@ class GemmaTextOutputTest {
     @Test fun translationPreservesTheCompleteGeneratedText() = runBlocking {
         val runtime = mock<GemmaRuntimeClient>()
         val result = "  \"Hello 日本語\"\n\tsecond line\n\n"
-        whenever(runtime.generateText(any(), any())).thenReturn(result)
+        whenever(runtime.generateTranslation(any(), any(), any())).thenReturn(result)
         assertEquals(result, manager(runtime).translate("source"))
     }
 }
