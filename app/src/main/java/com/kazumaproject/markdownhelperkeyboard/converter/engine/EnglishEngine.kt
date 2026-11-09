@@ -572,12 +572,14 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         val defaultType = CANDIDATE_TYPE_ENGLISH
         val lowerInput = input.lowercase()
         val limit = if (input.length <= 2) 6 else 12
+        val singleWordOnly = input.none(Char::isWhitespace)
 
         val predictiveSearchReading = if (enablePrediction) {
             dictionary.readingTrie.predictiveSearch(
                 prefix = lowerInput,
                 succinctBitVector = dictionary.readingLbsIndex,
-                limit = limit
+                limit = limit,
+                singleWordOnly = singleWordOnly,
             )
         } else {
             emptyList()
@@ -670,6 +672,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                     )
                 }
 
+                if (singleWordOnly && !matchesSingleWordPrediction(lowerInput, base)) {
+                    return@flatMap emptyList<Candidate>()
+                }
                 candidateCaseVariants(input, base).map { (surface, casePenalty) ->
                     Candidate(
                         string = surface,
@@ -724,7 +729,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
 
                     // ★ここで「input と似ているものだけ」に絞る（typo由来のみ）
                     val baseLower = base.lowercase()
-                    if (!withinEditDistance(baseLower, lowerInput, maxEdits)) {
+                    if ((singleWordOnly && !matchesSingleWordPrediction(lowerInput, base)) ||
+                        !withinEditDistance(baseLower, lowerInput, maxEdits)
+                    ) {
                         return@flatMap emptyList<Candidate>()
                     }
 
@@ -749,6 +756,11 @@ class EnglishEngine : QwertyGlideCandidateProvider {
 
         return deduped.sortedBy { it.score }
     }
+
+    // The phrase converter handles multiword predictions. A legacy dictionary
+    // can still offer a spaced spelling for a fully typed compact alias.
+    private fun matchesSingleWordPrediction(input: String, surface: String): Boolean =
+        surface.none(Char::isWhitespace) || surface.filterNot(Char::isWhitespace).equals(input, ignoreCase = true)
 
     private fun withinEditDistance(a: String, b: String, maxEdits: Int): Boolean {
         val la = a.length

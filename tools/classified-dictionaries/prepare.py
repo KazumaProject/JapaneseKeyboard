@@ -17,8 +17,8 @@ import unicodedata
 from english_verb_forms import build_english_verb_forms
 
 ROOT = Path(__file__).resolve().parents[2]
-REVISION = 'b9f3375a1cfb0ce5e56f4da622ecc4e983364581'
-VERSION = 'v1.7.283'
+REVISION = 'f14e2793ef07c93f0d7136f14bbd5270eb3e0c07'
+VERSION = 'v1.7.285'
 RAW = f'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/{REVISION}/'
 RELEASE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/download/{VERSION}/'
 SOURCES = {
@@ -29,11 +29,13 @@ SOURCES = {
     'web': ('src/main/bin/wiki_neologd_common.txt.zip', 'wiki_neologd_common.txt'),
 }
 CACHE = ROOT / '.cache/classified-distribution'
-ENGLISH_PREVIEW_TAG = 'english-dictionary-preview.1'
-ENGLISH_PREVIEW_REVISION = 'dbbb97fc9b7cdd32441d3719b76eb0493fa787a2'
+ENGLISH_PREVIEW_TAG = 'v1.7.285'
+ENGLISH_PREVIEW_REVISION = 'f4c7151ac69d41586135037e658364bf48dae7a8'
 ENGLISH_PREVIEW_PAGE = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/{ENGLISH_PREVIEW_TAG}'
 ENGLISH_PREVIEW_DOWNLOAD = ENGLISH_PREVIEW_PAGE.replace('/tag/', '/download/') + '/'
-ENGLISH_PREVIEW_SHA256 = '17844989533be48541ac187ce030142f8d3e95f146415fe206e16d2a9cf44796'
+ENGLISH_PREVIEW_SHA256 = '8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69'
+ENGLISH_SUPPORT_FILE = 'english_dictionary_runtime_support.zip'
+ENGLISH_SUPPORT_SHA256 = '4d8109de90d2afff02fbf96380110edcaa15f93a1cef004a36473600357fd435'
 ENGLISH_ASSET_ROOT = 'app/src/main/assets/english/'
 ENGLISH_PREVIEW_ASSETS = {
     'reading.dat.zip': 'reading.dat.zip',
@@ -46,7 +48,7 @@ ENGLISH_NOTICE = 'app/src/main/assets/licenses/english.html'
 ENGLISH_VERB_FORMS = ENGLISH_ASSET_ROOT + 'grammar/verb-forms.tsv'
 ENGLISH_REVIEWED_SOURCE = (
     'https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/'
-    + ENGLISH_PREVIEW_REVISION + '/english-ime/data/reviewed/reviewed-source.tar.gz'
+    + 'dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz'
 )
 
 def fetch(url):
@@ -67,9 +69,10 @@ def write(path, data):
 def archive():
     manifest_data = fetch(RELEASE + 'dictionary-distribution-manifest.json')
     manifest = json.loads(manifest_data)
-    archive_sha = '2c13311ce86c3dbec45c8b6a8f8fad7200dcfdaac24aab9f93a9e0fb1656f724'
-    assert fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().split() == [archive_sha, 'japanese_keyboard_dictionary_assets.zip']
-    licenses_sha = 'ec74cdd99e434b17081944759e07aef3b388dda6fad0d9c9616bc4dd3988ebf6'
+    archive_sha = '8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69'
+    checksums = dict(line.split()[::-1] for line in fetch(RELEASE + 'DICTIONARY-SHA256SUMS').decode().splitlines())
+    assert checksums['japanese_keyboard_dictionary_assets.zip'] == archive_sha
+    licenses_sha = '38d0c6acb59eec1f6daf4bbaf5721960bd86d3edc67e9cd85554887cb4ce810d'
     assert sha(fetch(RELEASE + 'DICTIONARY-LICENSES.txt')) == licenses_sha
     data = fetch(RELEASE + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == archive_sha
@@ -81,6 +84,9 @@ def archive():
         path = Path(name)
         assert name.startswith('app/src/main/assets/') and not path.is_absolute() and '..' not in path.parts, name
         assert sha(zipped.read(name)) == checksum, name
+    # English payloads and notices are imported separately into the app layout.
+    manifest['files'] = {name: digest for name, digest in manifest['files'].items()
+                         if not name.startswith(ENGLISH_ASSET_ROOT)}
     old = json.loads((ROOT / 'tools/classified-dictionaries/distribution-manifest.json').read_text())
     for name in set(old['assets']) - set(manifest['files']):
         path = Path(name)
@@ -211,6 +217,12 @@ def provenance():
         frozen = fetch(RAW + addition['path'])
         assert sha(frozen) == addition['sha256']
         person_additions.extend(json.loads(line) for line in frozen.decode().splitlines())
+    updates = distribution.get('dictionaryUpdates')
+    if updates:
+        assert sha(fetch(RAW + 'src/main/classification/distribution-manifest.json')) == updates['classificationManifestSha256']
+        review = fetch(RAW + updates['reviewPath'])
+        assert sha(review) == updates['reviewSha256']
+        result['releaseReview'] = dict(updates, records=[json.loads(line) for line in review.decode().splitlines()])
     result['personAdditions'] = person_additions
     result['specialist'] = specialist
     result['collectedTerms'] = collected_terms
@@ -348,6 +360,9 @@ def notices(counts):
     common += heading('出典', 'Source') + '<p><a href="https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/' + VERSION + '">' + translated('辞書データの配布元', 'Dictionary distribution') + '</a></p>'
     common += heading('対象版', 'Version') + '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
     common += heading('加工内容', 'Modifications') + '<p>' + translated('分類・正規化・重複処理・品詞とコストの割当を行い、IME 用の辞書バイナリに変換しています。', 'Categorized, normalized, deduplicated, assigned parts of speech and costs, and converted to IME dictionary binaries.') + '</p>'
+    if provenance.get('releaseReview'):
+        review = provenance['releaseReview']
+        common += '<p>Reviewed release additions / 配布版の追加語・出典確認: <a href="' + html.escape(RAW + review['reviewPath']) + '">' + html.escape(review['reviewPath']) + '</a> (SHA-256: ' + review['reviewSha256'] + ')</p>'
     common += heading('利用条件', 'License terms') + '<p>' + translated('各出典には、それぞれの利用条件が適用されます。元データの取得版および各語の著作権者との対応は、配布元の資料からは確認できていません。', 'Each source retains its respective terms. The original acquisition revision and per-entry copyright attribution could not be confirmed from the distributor’s materials.') + '</p>'
     person_pairs = collections.defaultdict(set)
     for line in gzip.decompress(fetch(RAW + 'src/main/classification/person-dictionary-candidates.tsv.gz')).decode().splitlines():
@@ -412,17 +427,36 @@ def notices(counts):
 def english_preview():
     data = fetch(ENGLISH_PREVIEW_DOWNLOAD + 'japanese_keyboard_dictionary_assets.zip')
     assert sha(data) == ENGLISH_PREVIEW_SHA256
+    support_data = fetch(ENGLISH_PREVIEW_DOWNLOAD + ENGLISH_SUPPORT_FILE)
+    assert sha(support_data) == ENGLISH_SUPPORT_SHA256
     manifest_file = ROOT / 'tools/classified-dictionaries/distribution-manifest.json'
     distribution = json.loads(manifest_file.read_text())
     assets = {}
-    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+    with zipfile.ZipFile(io.BytesIO(data)) as archive, zipfile.ZipFile(io.BytesIO(support_data)) as support:
         manifest = json.loads(archive.read('dictionary-distribution-manifest.json'))
-        assert manifest['englishDictionary']['builderRevision'] == ENGLISH_PREVIEW_REVISION
+        english = manifest['englishDictionary']
+        support_manifest = json.loads(support.read('english-runtime-support-manifest.json'))
+        assert english['builderRevision'] == support_manifest['builderRevision'] == ENGLISH_PREVIEW_REVISION
+        assert english['optionalSupport']['file'] == ENGLISH_SUPPORT_FILE
+        assert english['optionalSupport']['sha256'] == ENGLISH_SUPPORT_SHA256
+        for payload, checksum in support_manifest['requiredCorePayloadSha256'].items():
+            assert english['runtimePayloadSha256'][payload] == checksum, payload
+        for zipped in (archive, support):
+            assert len(zipped.namelist()) == len(set(zipped.namelist()))
 
         def verified(path):
             name = ENGLISH_ASSET_ROOT + path
-            content = archive.read(name)
-            assert sha(content) == manifest['files'][name], name
+            checksums, zipped = (manifest['files'], archive) if name in manifest['files'] else (support_manifest['files'], support)
+            content = zipped.read(name)
+            assert sha(content) == checksums[name], name
+            runtime_path = path.removeprefix('runtime-support/')
+            payload = content
+            if path in ('reading.dat.zip', 'token.dat.zip'):
+                runtime_path = path.removesuffix('.zip')
+                with zipfile.ZipFile(io.BytesIO(content)) as wrapper:
+                    assert wrapper.namelist() == [runtime_path], path
+                    payload = wrapper.read(runtime_path)
+            assert sha(payload) == english['runtimePayloadSha256'][runtime_path], path
             return content
 
         for source, destination in ENGLISH_PREVIEW_ASSETS.items():
@@ -438,13 +472,13 @@ def english_preview():
                 notices[verified(name.removeprefix(ENGLISH_ASSET_ROOT)).decode('utf-8')].append(name.removeprefix(prefix))
 
         title = 'English word dictionary / 英単語辞書'
-        source = 'https://github.com/KazumaProject/kotlin-louds-english/releases/tag/v24-preview.1'
+        source = f'https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/{ENGLISH_PREVIEW_REVISION}/english-ime/data/catalog/NAMED-VOCABULARY.md'
         page = (
             f'<!doctype html><meta charset="utf-8"><title>{title}</title><h1>{title}</h1>'
             '<h2>出典と配布版 / Source and version</h2>'
             f'<p>配布: {ENGLISH_PREVIEW_TAG} ({ENGLISH_PREVIEW_REVISION})</p>'
             f'<p><a href="{ENGLISH_PREVIEW_PAGE}">Android dictionary distribution / Android 向け配布</a></p>'
-            f'<p><a href="{source}">English Dictionary v24 Preview 1 / 英語辞書の出典</a></p>'
+            f'<p><a href="{source}">English dictionary catalog / 英語辞書の出典・語彙台帳</a></p>'
             '<p>Android bundles the reading, word, token, Glide and grammar files. '
             'The build repackages the reading, word and token arrays for Android. '
             'The verb correction table is derived from the reviewed finite verb forms. '
@@ -467,6 +501,7 @@ def english_preview():
         'version': ENGLISH_PREVIEW_TAG,
         'revision': ENGLISH_PREVIEW_REVISION,
         'archiveSha256': ENGLISH_PREVIEW_SHA256,
+        'supportArchiveSha256': ENGLISH_SUPPORT_SHA256,
         'assets': assets,
     }
     write(manifest_file, json.dumps(distribution, ensure_ascii=False, indent=2) + '\n')
@@ -489,6 +524,7 @@ def check():
     assert (english['version'], english['revision'], english['archiveSha256']) == (
         ENGLISH_PREVIEW_TAG, ENGLISH_PREVIEW_REVISION, ENGLISH_PREVIEW_SHA256,
     )
+    assert english['supportArchiveSha256'] == ENGLISH_SUPPORT_SHA256
     assert set(english['assets']) == {ENGLISH_ASSET_ROOT + name for name in ENGLISH_PREVIEW_ASSETS.values()} | {ENGLISH_NOTICE, ENGLISH_VERB_FORMS}
     for path, checksum in english['assets'].items():
         assert sha((ROOT / path).read_bytes()) == checksum, path

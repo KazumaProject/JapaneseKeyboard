@@ -19,12 +19,18 @@ data class CompactEnglishDictionary(
     val readingLeafIndex: SuccinctBitVector,
     val wordLbsIndex: SuccinctBitVector,
     val tokenIndex: SuccinctBitVector,
+    val wordCompletionBounds: EnglishCompletionBounds? = null,
+    val phraseCompletionBounds: EnglishCompletionBounds? = null,
 )
+
+fun interface EnglishCompletionBounds {
+    operator fun get(labelIndex: Int): Int
+}
 
 /** Loads the English dictionary's final arrays only when English conversion is first requested. */
 object CompactEnglishDictionaryReader {
     private const val MAGIC = 0x4B444531 // KDE1
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     fun read(descriptor: AssetFileDescriptor): CompactEnglishDictionary {
         require(descriptor.length > 0L) {
@@ -44,7 +50,8 @@ object CompactEnglishDictionaryReader {
     internal fun read(source: ByteBuffer): CompactEnglishDictionary {
         val input = Cursor(source.duplicate().order(ByteOrder.BIG_ENDIAN))
         require(input.readInt() == MAGIC) { "Invalid compact English dictionary magic" }
-        require(input.readInt() == VERSION) { "Unsupported compact English dictionary version" }
+        val version = input.readInt()
+        require(version in 1..VERSION) { "Unsupported compact English dictionary version" }
         val readingLbs = input.readBitSet()
         val readingLeaf = input.readBitSet()
         val reading = LOUDSWithTermId(
@@ -69,6 +76,8 @@ object CompactEnglishDictionaryReader {
             readingLeafIndex = input.readSuccinctBitVector(reading.isLeaf),
             wordLbsIndex = input.readSuccinctBitVector(word.LBS),
             tokenIndex = input.readSuccinctBitVector(token.bitvector),
+            wordCompletionBounds = if (version >= 2) input.readBounds(reading.labels.size) else null,
+            phraseCompletionBounds = if (version >= 2) input.readBounds(reading.labels.size) else null,
         )
         require(input.remaining == 0) {
             "Compact English dictionary has ${input.remaining} trailing bytes"
@@ -105,6 +114,22 @@ object CompactEnglishDictionaryReader {
         fun readIntArray(): IntArray {
             val size = readSizedCount(Int.SIZE_BYTES)
             return IntArray(size).also { take(size * Int.SIZE_BYTES).asIntBuffer().get(it) }
+        }
+
+        fun readBounds(labelCount: Int): EnglishCompletionBounds {
+            val ranks = readIntArray()
+            require(ranks.size <= 65_536) { "Invalid English completion rank table" }
+            val elementBytes = if (ranks.isEmpty()) Int.SIZE_BYTES else Short.SIZE_BYTES
+            val size = readSizedCount(elementBytes)
+            require(size == labelCount) { "English completion bounds do not match reading labels" }
+            val data = take(size * elementBytes)
+            return if (ranks.isEmpty()) {
+                val bounds = data.asIntBuffer()
+                EnglishCompletionBounds { bounds.get(it) }
+            } else {
+                val bounds = data.asShortBuffer()
+                EnglishCompletionBounds { ranks[bounds.get(it).toInt() and 0xffff] }
+            }
         }
 
         fun readShortArray(): ShortArray {
