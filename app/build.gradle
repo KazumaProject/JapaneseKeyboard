@@ -248,6 +248,9 @@ androidComponents {
         variant.packaging.jniLibs.useLegacyPackaging.set(true)
         variant.packaging.jniLibs.useLegacyPackagingFromBundle.set(true)
         if (variant.buildType in ['release', 'releaseUnsigned']) {
+            // Zenz and the other AI runtimes target 64-bit ABIs. ONNX alone
+            // must not add 32-bit ABIs to the Full release.
+            variant.packaging.jniLibs.excludes.addAll(['**/armeabi-v7a/**', '**/x86/**'])
             // These vendor libraries ship without a symbol table. Running strip on them
             // changes their size by a few bytes and makes AGP include duplicate .sym files.
             variant.packaging.jniLibs.keepDebugSymbols.addAll([
