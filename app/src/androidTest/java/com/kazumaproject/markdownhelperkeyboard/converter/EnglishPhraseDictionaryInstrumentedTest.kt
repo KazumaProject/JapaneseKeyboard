@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.EnglishPhraseDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.PhraseConverter
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.RuntimeGrammarRoles
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.phraseContinuations
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
@@ -35,6 +36,46 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
+    @Test
+    fun registeredPhrasesOfferOnlyTheContinuationAfterACommittedWord() = withDictionary { _, _, reader ->
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        val registered = listOf(
+            "Ariana" to "Grande",
+            "Elon" to "Musk",
+            "Taylor" to "Swift",
+            "Android" to "Studio",
+            "Google" to "Maps",
+            "Toyota" to "Corolla",
+            "New" to "York",
+            "New York" to "Post",
+            "good" to "morning",
+            "ice" to "cream",
+            "machine" to "learning",
+            "coffee" to "shop",
+            "two-factor" to "authentication",
+        )
+        for ((prefix, suffix) in registered) {
+            val continuations = engine.getPhraseContinuations(prefix)
+            assertTrue("$prefix: $continuations", suffix in continuations)
+            assertEquals(prefix, continuations, engine.getPhraseContinuations(prefix.lowercase()))
+        }
+        assertFalse(engine.getPhraseContinuations("Arian").contains("Grande"))
+        assertTrue(engine.getPhraseContinuations("Ariana ").isEmpty())
+        assertFalse(engine.getPhraseContinuations("Ariana Grande").contains("Grande"))
+        assertTrue(engine.getPhraseContinuations("qzxjvk").isEmpty())
+        assertTrue(engine.getConversionCandidates("arianagrande", "arianagrande", false, true, false, emptyList())
+            .any { it.commitText == "Ariana Grande" })
+
+        val indexed = checkNotNull(reader.loadBundledEnglishForEngine())
+        val unindexed = indexed.copy(phraseCompletionBounds = null)
+        for (prefix in listOf("ariana", "android", "john", "the", "new", "san")) {
+            val continuations = indexed.phraseContinuations(prefix, limit = 48)
+            assertEquals(prefix, unindexed.phraseContinuations(prefix, limit = 48), continuations)
+            assertEquals(prefix, continuations.distinctBy { it.lowercase() }, continuations)
+            assertTrue(prefix, continuations.size <= 48)
+        }
+    }
+
     @Test
     fun indexedCompletionPreservesOrderedCandidates() = withDictionary { _, _, reader ->
         val data = checkNotNull(reader.loadBundledEnglishForEngine())
