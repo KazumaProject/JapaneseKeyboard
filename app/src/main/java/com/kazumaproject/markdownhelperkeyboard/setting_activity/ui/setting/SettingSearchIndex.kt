@@ -635,7 +635,10 @@ object SettingSearchIndex {
             ) {
                 add("keyboard_touch_effect_type_preference")
             }
-            if (key.startsWith("voice_input_space_")) {
+            if (key.startsWith("voice_input_")) {
+                add(AppPreference.VOICE_INPUT_ENGINE_KEY)
+                add(AppPreference.VOICE_INPUT_MODEL_KEY)
+                add(AppPreference.VOICE_INPUT_BACKEND_KEY)
                 add(AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY)
                 add(AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_KEY)
                 add(AppPreference.VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY)
