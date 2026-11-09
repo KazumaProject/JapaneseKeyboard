@@ -8,15 +8,12 @@ The application's source code remains under the MIT license in `LICENSE`.
 Dictionary data keeps its upstream terms; it is not uniformly MIT licensed.
 アプリのコードはMITですが、辞書データには出典ごとの条件が適用されます。
 
-## Classified dictionaries / 143カテゴリ辞書
+## Classified dictionaries / 分類辞書
 
-Distribution: `v1.7.285`, converter revision
-`f14e2793ef07c93f0d7136f14bbd5270eb3e0c07`.
-The release contains 863,362 category records across 143 categories, including
-two empty categories. The [reviewed additions and audience classifications](docs/licenses/DICTIONARIES.md#r)
-cover 66 new reading/spelling pairs and three audience assignments. Each affected
-in-app category notice lists the entries and their cited sources. Per-entry
-copyright terms for these additions are unconfirmed / 未確認.
+The [dictionary license reference](docs/licenses/DICTIONARIES.md) records the bundled
+release, category counts, and sources for reviewed additions. Each affected in-app
+category notice lists the entries and their cited sources. Per-entry copyright terms
+for these additions are unconfirmed / 未確認.
 
 The classified dictionaries are reclassified, filtered, and converted from the five
 frozen inputs in that revision. Their exact input hashes and source-pair counts
@@ -43,13 +40,13 @@ must not be mistaken for proof of the original input acquisition revisions.
 
 ## Specialist dictionaries / 漢方・医療辞書
 
-- **Kampo / 漢方・生薬** (434 records): 432 KNApSAcK KAMPO core and herb records,
+- **Kampo / 漢方・生薬**: KNApSAcK KAMPO core and herb records,
   CC BY-SA 2.1 Japan. KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学).
   The source release names the version LATEST; exact input ZIP hashes are pinned.
-  The two additional Tsumura records are described separately below.
-- **Medical / 医療** (92,683 records): NAIST Social Computing Lab's
+  The additional Tsumura records are described separately below.
+- **Medical / 医療**: NAIST Social Computing Lab's
   MANBYO_202106 and HYAKUYAKU_202107, CC BY 4.0. The official creator notices
-  and legal text are bundled offline. 2,003 missing readings were supplied using
+  and legal text are bundled offline. Missing readings were supplied using
   Gemini; the accuracy of automatic and inferred readings is unconfirmed / 未確認.
 
 Changes include field extraction, normalization, duplicate filtering, optional
@@ -60,11 +57,11 @@ The person dictionary also includes reviewed fighter names: the per-record
 source URLs and input hashes are preserved, without redistributing source page
 text. Per-entry copyright conditions for these names remain unconfirmed.
 
-The full v1.7.285 `DICTIONARY-LICENSES.txt` is retained in
-`app/src/main/assets/licenses/sources/distribution-licenses.txt`, byte-identical
-and verified against the release asset SHA-256 `38d0c6acb59eec1f6daf4bbaf5721960bd86d3edc67e9cd85554887cb4ce810d`.
+The full `DICTIONARY-LICENSES.txt` is retained byte for byte. The
+[dictionary license reference](docs/licenses/DICTIONARIES.md#保持した全通知ライセンス全文)
+records its published SHA-256 and the source URLs of the original notices.
 
-Two Kampo additions are backed by frozen Tsumura product fields. Source URLs and
+Kampo additions are backed by frozen Tsumura product fields. Source URLs and
 evidence hashes are recorded; source page bodies are not redistributed. Their
 per-entry copyright terms remain unconfirmed.
 
@@ -78,12 +75,11 @@ redistribution conditions and disclaimer. Project editorial additions are
 CC BY-SA 4.0; CMUdict terms still apply to its portion. N-gram/unigram data retains the JapaneseCorpus notices, including
 Wikipedia and Aozora source information.
 
-The v1.7.285 English word dictionary uses the preview.3 payloads built at
-`f4c7151ac69d41586135037e658364bf48dae7a8`. The app repackages the reading, word,
-and token arrays and derives the verb correction table from pinned reviewed grammar
-data. The [English word dictionary notice](app/src/main/assets/licenses/english.html)
-preserves the source-specific terms and links to the vocabulary catalog and grammar
-input. The [historical WikiText notice](ENGLISH_DICTIOANRY_LICENSE) covers `english.dat`.
+The app repackages the English word dictionary's reading, word, and token arrays
+and derives the verb correction table from pinned reviewed grammar data. The
+[English word dictionary notice](app/src/main/assets/licenses/english.html) records
+the builder revision, the vocabulary catalog, the grammar input, and source-specific
+terms. The [historical WikiText notice](ENGLISH_DICTIOANRY_LICENSE) covers `english.dat`.
 
 The Open source licenses screen includes individual category entries and
 bundled offline source notices under `app/src/main/assets/licenses/`.
@@ -92,9 +88,9 @@ applicable copyright, attribution, license and source-data notices.
 
 ## Reproduction / 再生成
 
-`python3 tools/classified-dictionaries/prepare.py` imports the pinned release,
+`python3 tools/classified-dictionaries/prepare.py --release <tag>` imports the specified release,
 verifies archive and asset hashes, derives source-input memberships from the
-hash-verified frozen records, and snapshots upstream notices.
+hash-verified frozen records, and regenerates the in-app notices and repository license reference.
 `python3 tools/classified-dictionaries/prepare.py --check` verifies the bundled
 release assets and notice hashes without network access.
 
