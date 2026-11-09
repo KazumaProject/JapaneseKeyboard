@@ -159,7 +159,6 @@ import com.kazumaproject.core.domain.extensions.getThemeColorOrFallback
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.isAsciiDigitForRomajiQwerty
 import com.kazumaproject.core.domain.extensions.isAsciiSymbolForRomajiQwerty
-import com.kazumaproject.core.domain.extensions.kanjiCount
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
@@ -244,6 +243,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ZENZ
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withGeneratedText
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
@@ -370,7 +370,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditTarget
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditValues
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.NormalKeyboardLayoutEditSurface
-import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SymbolKeyboardState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.CustomRomajiScreenConverter
@@ -435,6 +434,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryLookupUseCase
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryProvider
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeClient
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeConfig
+import com.kazumaproject.markdownhelperkeyboard.zenz.reviewZenzaiDraft
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
 import com.kazumaproject.tenkey.TenKey
@@ -1111,6 +1111,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 runOnMainThread {
                     zenzDebounceTimePreference = preferences.getInt(
                         "zenz_debounce_time_preference", DEFAULT_ZENZ_DEBOUNCE_MILLIS.toInt())
+                }
+            }
+            if (key == "enable_ai_conversion_zenzai_preference") {
+                runOnMainThread {
+                    applyZenzaiDraftPreference(AppVariantConfig.hasZenz && appPreference.enable_zenzai_preference)
                 }
             }
             if (key != null && key in runtimeInputPreferenceKeys) {
@@ -2169,6 +2174,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzProfilePreference: String? = ""
     private var zenzEnableLongPressConversionPreference: Boolean? = false
     private var zenzRerankPreference: Boolean? = false
+    private var zenzaiDraftPreference = false
 
     private var qwertyKeyVerticalMargin: Float? = 5.0f
     private var qwertyKeyHorizontalGap: Float? = 2.0f
@@ -2439,6 +2445,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (39).toByte(),
             (40).toByte()
         )
+        private const val ZENZAI_EVALUATION_LIMIT = 3
         private const val ZENZ_RERANK_TOP_K = 4
         private const val ZENZ_RERANK_ALPHA = 0.7f
         private const val ZENZ_RERANK_BETA = 0.3f
@@ -2552,6 +2559,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val keyboardMode: TenKeyQWERTYMode,
         val romajiMode: Boolean,
         val preferenceRevision: Long,
+        val useZenzaiDraft: Boolean,
     )
 
     private data class ZenzReadingSnapshot(
@@ -2570,6 +2578,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzPreferenceRevision = 0L
     private val zenzReadingSnapshot = MutableStateFlow<ZenzReadingSnapshot?>(null)
 
+    private fun applyZenzaiDraftPreference(enabled: Boolean) {
+        if (zenzaiDraftPreference == enabled) return
+        zenzaiDraftPreference = enabled
+        if (_zenzLiveSlotState.value != null) {
+            clearZenzLiveSlot("Zenzai mode changed", updateDisplayedCandidates = true)
+        }
+    }
+
     private fun currentZenzCorrectionContext(mode: CandidateQueryMode) = ZenzCorrectionContext(
         mode = mode,
         options = CandidateCorrectionPolicy.resolve(
@@ -2583,6 +2599,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardMode = qwertyMode.value,
         romajiMode = currentQwertyRomajiModeForSession,
         preferenceRevision = zenzPreferenceRevision,
+        useZenzaiDraft = zenzaiDraftPreference,
     )
 
     private fun currentZenzQueryMode(): CandidateQueryMode = CandidateQueryModeResolver.resolve(
@@ -4690,6 +4707,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzEnableLongPressConversionPreference =
             preferences.zenzEnableLongPressConversionPreference
         zenzRerankPreference = preferences.zenzRerankPreference
+        applyZenzaiDraftPreference(preferences.zenzaiDraftPreference)
         qwertyKeyVerticalMargin = preferences.qwertyKeyVerticalMargin
         qwertyKeyHorizontalGap = preferences.qwertyKeyHorizontalGap
         qwertyKeyIndentLarge = preferences.qwertyKeyIndentLarge
@@ -7119,6 +7137,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzProfilePreference = null
         zenzEnableLongPressConversionPreference = null
         zenzRerankPreference = null
+        zenzaiDraftPreference = false
 
         qwertyKeyVerticalMargin = null
         qwertyKeyHorizontalGap = null
@@ -19136,7 +19155,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val requestInput = resolveZenzLiveRequestInput(request) ?: return
         val candidates = performZenzRequest(
             insertString = requestInput,
-            leftContextOverride = request.bunsetsuTarget?.leftContext
+            request = request
         )
         publishZenzLiveResult(
             request = request,
@@ -19184,7 +19203,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val requestInput = resolveZenzLiveRequestInput(request) ?: return true
             val candidates = performZenzRequest(
                 insertString = requestInput,
-                leftContextOverride = request.bunsetsuTarget?.leftContext
+                request = request
             )
             publishZenzLiveResult(
                 request = request,
@@ -19962,7 +19981,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ?: return@collectLatest
                     val zenzCandidates = performZenzRequest(
                         insertString = requestInput,
-                        leftContextOverride = request.bunsetsuTarget?.leftContext
+                        request = request
                     )
                     publishZenzLiveResult(
                         request = request,
@@ -20029,194 +20048,89 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun performZenzRequest(
         insertString: String,
-        leftContextOverride: String? = null
+        request: ZenzLiveRequest,
     ): List<ZenzCandidate> = measureDebugStage("IMEService.Zenz.liveRequest") {
         withContext(Dispatchers.Default) {
+            if (insertString.length <= 1 || !insertString.isAllHiraganaWithSymbols()) {
+                return@withContext emptyList()
+            }
 
-        // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
-        // ※元のロジック: insertString.length == 1 の場合は emptyList
-        if (insertString.length <= 1) {
-            return@withContext emptyList()
-        }
-
-        if (!insertString.isAllHiraganaWithSymbols()) {
-            return@withContext emptyList()
-        }
-
-        val zenzContext = getZenzContext(
-            insertString = insertString,
-            leftContextOverride = leftContextOverride
-        )
-
-        Timber.d(
-            "performZenzRequest: $insertString leftContext: [${zenzContext.leftContext}] rightContext: [${zenzContext.rightContext}]"
-        )
-
-        // 4. エンジンによる生成処理
-        try {
-            // 処理直前にキャンセルされていないかチェック
-            ensureActive()
-            val runtimeConfig = resolveZenzRuntimeConfig() ?: return@withContext emptyList()
-
-            val stringFromZenz = zenzRuntimeClient.generate(
-                config = runtimeConfig,
-                profile = zenzProfilePreference ?: "",
-                topic = "",
-                style = "",
-                preference = "",
-                leftContext = zenzContext.leftContext,
-                rightContext = zenzContext.rightContext,
-                input = insertString.hiraganaToKatakana(),
-                maxTokens = zenzMaximumLetterSizePreference ?: 32
-            )
-
-            // 生成後もチェック
-            ensureActive()
-
-            // Native returns an empty string for any generation that did not
-            // reach a clean EOG/protocol boundary. Never publish such a
-            // result as a live candidate.
-            listOfNotNull(
-                buildAcceptedZenzCandidate(
-                    generatedText = stringFromZenz,
-                    type = (33).toByte(),
-                    insertString = insertString,
-                )
-            )
-        } catch (e: CancellationException) {
-            // collectLatestによりキャンセルされた場合はここで再スローして処理を中断させる
-            throw e
-        } catch (e: Exception) {
-            Timber.e(e, "Error in zenzEngine generation")
-            emptyList()
-        }
+            try {
+                val context = getZenzContext(insertString, request.bunsetsuTarget?.leftContext)
+                ensureActive()
+                val config = resolveZenzRuntimeConfig() ?: return@withContext emptyList()
+                val text = if (request.correctionContext.useZenzaiDraft) {
+                    performZenzaiRequest(insertString, request.displayInput, config, context)
+                } else {
+                    zenzRuntimeClient.generate(
+                        config = config,
+                        profile = zenzProfilePreference.orEmpty(),
+                        topic = "",
+                        style = "",
+                        preference = "",
+                        leftContext = context.leftContext,
+                        rightContext = context.rightContext,
+                        input = insertString.hiraganaToKatakana(),
+                        maxTokens = zenzMaximumLetterSizePreference ?: 32,
+                    )
+                }
+                ensureActive()
+                listOfNotNull(buildAcceptedZenzCandidate(text, CANDIDATE_TYPE_ZENZ, insertString))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Error in Zenz conversion")
+                emptyList()
+            }
         }
     }
 
     private suspend fun performZenzaiRequest(
-        insertString: String,
-        suggesions: List<Candidate>,
-    ): List<ZenzCandidate> = withContext(Dispatchers.Default) {
-
-        // suggesions が空だと first() で落ちるので防御
-        val firstCandidate = suggesions.firstOrNull()?.string ?: return@withContext emptyList()
-
-        // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
-        if (insertString.length <= 1) {
-            return@withContext emptyList()
-        }
-
-        if (!insertString.isAllHiraganaWithSymbols()) {
-            return@withContext emptyList()
-        }
-
-        val zenzContext = getZenzContext(insertString)
-
-        // 4. エンジンによる生成処理
-        try {
-            ensureActive()
-            val runtimeConfig = resolveZenzRuntimeConfig() ?: return@withContext emptyList()
-
-            val stringFromZenz = zenzRuntimeClient.evaluate(
-                config = runtimeConfig,
-                profile = zenzProfilePreference ?: "",
-                topic = "",
-                style = "",
-                preference = "",
-                leftContext = zenzContext.leftContext,
-                rightContext = zenzContext.rightContext,
-                input = insertString.hiraganaToKatakana(),
-                candidate = firstCandidate
+        reading: String,
+        displayInput: String,
+        config: ZenzRuntimeConfig,
+        context: ZenzContext,
+    ): String? {
+        val drafts = withContext(kanaKanjiConversionDispatcher) {
+            val engine = awaitKanaKanjiEngineOrNull() ?: return@withContext null
+            awaitSystemUserDictionaryLoad()
+            engine.prepareZenzaiDrafts(
+                input = reading,
+                n = nBest ?: 4,
+                userDictionaryRepository = userDictionaryRepository,
+                beamWidth = conversionBeamWidth,
+                enabledDictionaryCategories = enabledDictionaryCategories,
+                learnRepository = learnedRepositoryForSuggestion(),
             )
-
-            ensureActive()
-
-            Timber.d("performZenzaiRequest: [$firstCandidate] result: [$stringFromZenz]")
-
-            val zenzaiResultType = CandidateEvaluationResult.parse(stringFromZenz)
-
-            return@withContext when (zenzaiResultType) {
-                CandidateEvaluationResult.Error -> {
-                    listOfNotNull(
-                        buildAcceptedZenzCandidate(
-                            generatedText = firstCandidate,
-                            type = (39).toByte(),
-                            insertString = insertString,
-                        )
+        } ?: return null
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        val draft = drafts.candidates.firstOrNull {
+            ZenzOutputPolicy.acceptedTextOrNull(it.string) != null &&
+                !NgWordMatcher.matchesAny(displayInput, it.string, ngWords)
+        } ?: return null
+        val input = reading.hiraganaToKatakana()
+        val result = zenzRuntimeClient.withDraftReview { reviewId ->
+            reviewZenzaiDraft(
+                initialDraft = draft.string,
+                evaluationLimit = ZENZAI_EVALUATION_LIMIT,
+                evaluate = { candidate ->
+                    zenzRuntimeClient.evaluate(
+                        config = config,
+                        profile = zenzProfilePreference.orEmpty(),
+                        topic = "",
+                        style = "",
+                        preference = "",
+                        leftContext = context.leftContext,
+                        rightContext = context.rightContext,
+                        input = input,
+                        candidate = candidate,
+                        draftReviewId = reviewId,
                     )
-                }
-
-                is CandidateEvaluationResult.FixRequired -> {
-                    val prefix = zenzaiResultType.prefix
-                    // prefix と前方一致する candidate.string を suggesions から探す
-                    // 見つからなければ firstCandidate を採用
-
-                    val firstCandidateFromPrefix = suggesions
-                        .subList(0, (nBest ?: 4))
-                        .firstOrNull { it.string.startsWith(prefix) }
-                        ?.string
-
-                    Timber.d("CandidateEvaluationResult.FixRequired :[$firstCandidateFromPrefix] [$prefix] [$insertString] [${suggesions.map { it.string }}]")
-
-
-                    val firstCandidateFromKanakanjiEngine = buildAcceptedZenzCandidate(
-                        generatedText = firstCandidateFromPrefix ?: firstCandidate,
-                        type = (37).toByte(),
-                        insertString = insertString,
-                    )
-
-                    val secondCandidateFromZenz = buildAcceptedZenzCandidate(
-                        generatedText = zenzRuntimeClient.generate(
-                            config = runtimeConfig,
-                            profile = zenzProfilePreference ?: "",
-                            topic = "",
-                            style = "",
-                            preference = "",
-                            leftContext = prefix,
-                            rightContext = zenzContext.rightContext,
-                            input = insertString.hiraganaToKatakana(),
-                            maxTokens = zenzMaximumLetterSizePreference ?: 32
-                        ),
-                        type = (40).toByte(),
-                        insertString = insertString,
-                    )
-
-                    val candidates = listOfNotNull(
-                        secondCandidateFromZenz,
-                        firstCandidateFromKanakanjiEngine,
-                    )
-
-                    val topCandidate = candidates.maxByOrNull { it.rank(prefix) }
-
-                    listOfNotNull(topCandidate)
-                }
-
-                is CandidateEvaluationResult.Pass -> {
-                    listOfNotNull(
-                        buildAcceptedZenzCandidate(
-                            generatedText = firstCandidate,
-                            type = (36).toByte(),
-                            insertString = insertString,
-                        )
-                    )
-                }
-
-                is CandidateEvaluationResult.WholeResult -> {
-                    listOfNotNull(
-                        buildAcceptedZenzCandidate(
-                            generatedText = zenzaiResultType.result,
-                            type = (38).toByte(),
-                            insertString = insertString,
-                        )
-                    )
-                }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Timber.e(e, "Error in zenzEngine generation")
-            emptyList()
+                },
+                search = drafts.constrainedSearch::find,
+            )
         }
+        return result.text.takeUnless { NgWordMatcher.matchesAny(displayInput, it, ngWords) }
     }
 
     private val modelRerankModels by lazy { CandidateScoringModels(applicationContext) }
@@ -20755,30 +20669,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
-    }
-
-    private fun commonPrefixLength(a: String, b: String): Int {
-        val n = minOf(a.length, b.length)
-        var i = 0
-        while (i < n && a[i] == b[i]) i++
-        return i
-    }
-
-    private fun String.duplicateCharCount(): Int {
-        val counts = this.groupingBy { it }.eachCount()
-        return counts.values.sumOf { (it - 1).coerceAtLeast(0) } // 2回目以降の総数
-    }
-
-    private fun ZenzCandidate.rank(prefix: String): Int {
-        val prefixScore = commonPrefixLength(this.string, prefix) * 10
-        val kanjiScore = this.string.kanjiCount() * 3
-
-        // ★ここを強めに：重複が多い候補は大きく減点
-        val duplicatePenalty = this.string.duplicateCharCount() * 50
-
-        val typeBonus = if (this.type == (40).toByte()) 2 else 0
-
-        return prefixScore + kanjiScore + typeBonus - duplicatePenalty
     }
 
     private val keyboardGeometryPreferences by lazy {
