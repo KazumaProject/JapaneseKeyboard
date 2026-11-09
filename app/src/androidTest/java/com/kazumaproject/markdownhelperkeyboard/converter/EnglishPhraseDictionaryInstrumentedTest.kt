@@ -17,6 +17,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiConve
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryRequest
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
@@ -24,9 +25,11 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEn
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.io.ObjectInputStream
 import java.io.DataInputStream
 import java.nio.ByteBuffer
 import java.util.UUID
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
@@ -73,6 +76,36 @@ class EnglishPhraseDictionaryInstrumentedTest {
             assertEquals(prefix, unindexed.phraseContinuations(prefix, limit = 48), continuations)
             assertEquals(prefix, continuations.distinctBy { it.lowercase() }, continuations)
             assertTrue(prefix, continuations.size <= 48)
+        }
+    }
+
+    @Test
+    fun bundledEnglishArraysMatchLegacyDictionary() = withDictionary { _, resolver, reader ->
+        val dictionary = checkNotNull(reader.loadBundledEnglishForEngine())
+        fun withLegacyFile(key: DictionaryFileKey, check: (ObjectInputStream) -> Unit) {
+            resolver.openBundledForKey(key).use { asset ->
+                reader.openZipAwareObjectInputStream(asset, key.name).use(check)
+            }
+        }
+
+        withLegacyFile(DictionaryFileKey.ENGLISH_READING) { legacy ->
+            val reading = dictionary.readingTrie
+            assertEquals(legacy.readObject(), reading.LBS)
+            assertEquals(legacy.readObject(), reading.isLeaf)
+            assertArrayEquals(legacy.readObject() as CharArray, reading.labels)
+            assertArrayEquals(legacy.readObject() as IntArray, reading.termIdsSaved)
+        }
+        withLegacyFile(DictionaryFileKey.ENGLISH_WORD) { legacy ->
+            val word = dictionary.wordTrie
+            assertEquals(legacy.readObject(), word.LBS)
+            assertEquals(legacy.readObject(), word.isLeaf)
+            assertArrayEquals(legacy.readObject() as CharArray, word.labels)
+        }
+        withLegacyFile(DictionaryFileKey.ENGLISH_TOKEN) { legacy ->
+            val tokens = dictionary.tokenArray
+            assertArrayEquals(legacy.readObject() as ShortArray, tokens.getWordCosts())
+            assertArrayEquals(legacy.readObject() as IntArray, tokens.getNodeIds())
+            assertEquals(legacy.readObject(), tokens.bitvector)
         }
     }
 
