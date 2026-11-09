@@ -124,6 +124,29 @@ class InputModeSwitchSkinHighlightTest {
         }
     }
 
+    @Test
+    fun tenKeyKanaReturnLabelHasSimilarHeightToJapaneseModeLabel() {
+        val view = newView().apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+        }
+        val (japaneseHeight, kanaReturnHeight) = listOf(InputMode.ModeJapanese, InputMode.ModeNumber).map { mode ->
+            view.setInputMode(mode, isGojuon = false, useThreeStateKeyboard = false)
+            val bitmap = render(view)
+            try {
+                (0 until bitmap.height).count { y ->
+                    (0 until bitmap.width).any { x -> Color.alpha(bitmap.getPixel(x, y)) >= 128 }
+                }
+            } finally {
+                bitmap.recycle()
+            }
+        }
+
+        assertTrue(
+            "Kana return label is ${kanaReturnHeight}px tall, Japanese mode label is ${japaneseHeight}px",
+            japaneseHeight > 0 && kanaReturnHeight.toFloat() / japaneseHeight in 0.8f..1.2f,
+        )
+    }
+
     private fun render(
         inputMode: InputMode,
         isGojuon: Boolean,
