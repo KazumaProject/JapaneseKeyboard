@@ -38,36 +38,35 @@ class DictionaryCompatibilityException(
 @Singleton
 class DictionaryCompatibilityValidator @Inject constructor(
     private val resolver: DictionarySourceResolver,
+    private val reader: DictionaryBinaryReader,
 ) {
     fun validateActiveState(
         forceOverrideKeys: Set<DictionaryFileKey> = emptySet(),
-    ): DictionaryCompatibilityResult {
-        val categories = activeJapaneseTokenCategories()
-        return validateSources(
-            tokenCategories = categories,
-            sourceOpener = { key ->
-                resolver.openForKeyInPlan(
-                    key = key,
-                    forceOverrideKeys = forceOverrideKeys,
-                )
-            },
-        )
-    }
+    ): DictionaryCompatibilityResult =
+        validatePlan(activeJapaneseTokenCategories(), forceOverrideKeys = forceOverrideKeys)
 
     fun validateCategoryReplacement(
         category: DictionaryCategory,
     ): DictionaryCompatibilityResult {
         if (!category.hasJapaneseTokenArray()) return DictionaryCompatibilityResult.Compatible
-        return validateSources(
-            tokenCategories = listOf(category),
-            sourceOpener = { key ->
-                resolver.openForKeyInPlan(
-                    key = key,
-                    forceOverrideCategories = setOf(category),
-                )
-            },
-        )
+        return validatePlan(listOf(category), forceOverrideCategories = setOf(category))
     }
+
+    private fun validatePlan(
+        tokenCategories: List<DictionaryCategory>,
+        forceOverrideKeys: Set<DictionaryFileKey> = emptySet(),
+        forceOverrideCategories: Set<DictionaryCategory> = emptySet(),
+    ): DictionaryCompatibilityResult = validateSources(
+        tokenCategories = tokenCategories,
+        sourceOpener = { key -> resolver.openForKeyInPlan(key, forceOverrideKeys, forceOverrideCategories) },
+        bundledSystemTokens = {
+            if (resolver.shouldUseOverrideInPlan(DictionaryFileKey.SYSTEM_TOKEN, forceOverrideKeys, forceOverrideCategories)) {
+                null
+            } else {
+                reader.loadBundledSystemTokenArray()
+            }
+        },
+    )
 
     fun requireActiveStateCompatible() {
         when (val result = validateActiveState()) {
@@ -96,6 +95,7 @@ class DictionaryCompatibilityValidator @Inject constructor(
         fun validateSources(
             tokenCategories: List<DictionaryCategory>,
             sourceOpener: (DictionaryFileKey) -> InputStream,
+            bundledSystemTokens: () -> TokenArray? = { null },
         ): DictionaryCompatibilityResult {
             val problems = mutableListOf<DictionaryCompatibilityProblem>()
             val posTableStats = readPosTableStats(sourceOpener, problems)
@@ -152,7 +152,7 @@ class DictionaryCompatibilityValidator @Inject constructor(
                         .firstOrNull { it.role == DictionaryFileRole.TOKEN }
                         ?.key
                         ?: return@forEach
-                    val tokenStats = readTokenStats(sourceOpener, tokenKey) ?: return@forEach
+                    val tokenStats = readTokenStats(sourceOpener, tokenKey, bundledSystemTokens) ?: return@forEach
                     if (tokenStats.minPosTableIndex < 0) {
                         problems += DictionaryCompatibilityProblem(
                             affectedCategory = category,
@@ -185,18 +185,19 @@ class DictionaryCompatibilityValidator @Inject constructor(
         private fun readTokenStats(
             sourceOpener: (DictionaryFileKey) -> InputStream,
             key: DictionaryFileKey,
+            bundledSystemTokens: () -> TokenArray?,
         ): TokenStats? =
             runCatching {
-                sourceOpener(key).use { input ->
-                    DictionaryBinaryReader.openZipAwareObject(input, key.name).use { objectInput ->
-                        val tokenArray = TokenArray()
-                        tokenArray.readExternal(objectInput)
-                        TokenStats(
-                            minPosTableIndex = tokenArray.minPosTableIndex(),
-                            maxPosTableIndex = tokenArray.maxPosTableIndex(),
-                        )
+                val bundled = if (key == DictionaryFileKey.SYSTEM_TOKEN) bundledSystemTokens() else null
+                val tokenArray = bundled ?: sourceOpener(key).use { input ->
+                    DictionaryBinaryReader.openZipAwareObject(input, key.name).use {
+                        TokenArray().apply { readExternal(it) }
                     }
                 }
+                TokenStats(
+                    minPosTableIndex = tokenArray.minPosTableIndex(),
+                    maxPosTableIndex = tokenArray.maxPosTableIndex(),
+                )
             }.onFailure {
                 Timber.w(it, "Skipping compatibility check for unreadable token file: %s", key)
             }.getOrNull()
