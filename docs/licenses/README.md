@@ -51,6 +51,8 @@ python3 tools/classified-dictionaries/prepare.py --check
 
 上記は、配布辞書・通知・生成データのハッシュと、アプリ内表示・辞書ライセンス対応表の整合性をオフラインで確認します。依存ライブラリの根拠と再取得手順は [DEPENDENCIES.md](DEPENDENCIES.md) に記録しています。
 
+Release版のAABをローカルで作成する際も、Gradleが同梱辞書を照合し、ライセンスHTMLをビルドディレクトリにオフラインで生成して同梱します。生成処理は `python3` を使用します。
+
 Release依存の再照合とアプリ内資料の更新:
 
 ```sh

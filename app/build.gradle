@@ -1,3 +1,7 @@
+import groovy.json.JsonSlurper
+import javax.inject.Inject
+import org.gradle.process.ExecOperations
+
 plugins {
     id 'com.android.application'
     id 'com.google.dagger.hilt.android'
@@ -179,11 +183,61 @@ android {
 
 }
 
+abstract class GenerateDictionaryLicenseAssets extends DefaultTask {
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    abstract ConfigurableFileCollection getLicenseInputs()
+
+    @Internal
+    abstract DirectoryProperty getRepositoryDirectory()
+
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+
+    @Inject
+    protected abstract ExecOperations getExecOperations()
+
+    @TaskAction
+    void generate() {
+        execOperations.exec {
+            workingDir(repositoryDirectory.get().asFile)
+            commandLine('python3', 'tools/classified-dictionaries/prepare.py',
+                '--generate-license-assets', outputDirectory.get().asFile.absolutePath)
+        }
+    }
+}
+
+def dictionaryRepository = rootProject.layout.projectDirectory
+def dictionaryManifest = dictionaryRepository.file('tools/classified-dictionaries/distribution-manifest.json')
+def bundledDictionaryAssets = providers.fileContents(dictionaryManifest).asText.map { text ->
+    def manifest = new JsonSlurper().parseText(text)
+    (manifest.assets.keySet() + manifest.englishDictionary.assets.keySet()).collect {
+        dictionaryRepository.file(it).asFile
+    }
+}
+
 androidComponents {
     onVariants(selector().withFlavor("edition", "full")) { variant ->
         // LiteRT-LM scans a filesystem directory for the Tensor dispatch library.
         variant.packaging.jniLibs.useLegacyPackaging.set(true)
         variant.packaging.jniLibs.useLegacyPackagingFromBundle.set(true)
+    }
+    onVariants(selector().all()) { variant ->
+        if (variant.buildType in ['release', 'releaseUnsigned']) {
+            def licenses = tasks.register("generate${variant.name.capitalize()}DictionaryLicenses", GenerateDictionaryLicenseAssets) {
+                repositoryDirectory.set(dictionaryRepository)
+                licenseInputs.from(rootProject.fileTree('tools/classified-dictionaries') {
+                    include 'prepare.py', 'license_docs.py', 'english_verb_forms.py',
+                        'distribution-manifest.json', 'category-provenance.json'
+                })
+                licenseInputs.from(bundledDictionaryAssets, fileTree('src/main/assets/licenses'))
+                licenseInputs.from(files('src/main/assets/categories/surface-overrides.json',
+                    'src/androidTest/assets/classified-expected-records.json',
+                    'src/androidTest/assets/english-reading-expected.json'))
+                outputDirectory.set(layout.buildDirectory.dir("generated/dictionaryLicenses/${variant.name}/assets"))
+            }
+            variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
+        }
     }
 }
 
