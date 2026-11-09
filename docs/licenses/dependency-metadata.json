@@ -3118,6 +3118,49 @@
           "sha256": "63c37501388202aea61fe5f471542c61634ba90a2c101c40290b65339e6cc8e8"
         }
       ]
+    },
+    {
+      "group": "com.microsoft.onnxruntime",
+      "name": "onnxruntime-android",
+      "version": "1.23.2",
+      "configurations": [
+        "fullStandardReleaseRuntimeClasspath"
+      ],
+      "pomUrl": "https://repo.maven.apache.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/1.23.2/onnxruntime-android-1.23.2.pom",
+      "licenses": [
+        {
+          "name": "MIT License",
+          "url": "https://opensource.org/licenses/MIT"
+        }
+      ],
+      "evidence": [
+        {
+          "url": "https://repo.maven.apache.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/1.23.2/onnxruntime-android-1.23.2.pom",
+          "sha256": "c0a71d517210cf71bb1fca22b5367b55073b8bdcc29f1054d716db8949b09021"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/a83fc4d58cb48eb68890dd689f94f28288cf2278/LICENSE",
+          "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/a83fc4d58cb48eb68890dd689f94f28288cf2278/ThirdPartyNotices.txt",
+          "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc"
+        }
+      ],
+      "sourceNotices": [
+        {
+          "title": "LICENSE",
+          "asset": "software-licenses/onnxruntime-license.txt",
+          "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+          "sourceSet": "full"
+        },
+        {
+          "title": "ThirdPartyNotices.txt",
+          "asset": "software-licenses/onnxruntime-third-party-notices.txt",
+          "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc",
+          "sourceSet": "full"
+        }
+      ]
     }
   ]
 }

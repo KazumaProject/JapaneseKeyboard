@@ -71,10 +71,12 @@ internal class OpenSourceLicenses(private val context: Context) {
                 val version = module.getString("version")
                 val licenses = module.getJSONArray("licenses")
                 val terms = (0 until licenses.length()).joinToString(" / ") { licenses.getJSONObject(it).getString("name") }
-                LicenseItem("library/$name/$version", name, "$version · Apache License 2.0") {
+                val usesApacheLicense = terms.contains("apache", ignoreCase = true)
+                val summary = if (usesApacheLicense) "Apache License 2.0" else terms
+                LicenseItem("library/$name/$version", name, "$version · $summary") {
                     val notices = module.getJSONArray("notices")
                     val originals = buildString {
-                        append(original("licenses/sources/apache-2.txt"))
+                        if (usesApacheLicense) append(original("licenses/sources/apache-2.txt"))
                         for (i in 0 until notices.length()) {
                             val notice = notices.getJSONObject(i)
                             append("<h3>${escape(notice.getString("title"))}</h3>")
