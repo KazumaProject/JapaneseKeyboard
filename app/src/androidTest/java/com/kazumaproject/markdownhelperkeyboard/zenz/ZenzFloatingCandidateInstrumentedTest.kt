@@ -426,6 +426,61 @@ class ZenzFloatingCandidateInstrumentedTest {
         }
     }
 
+    @Test(timeout = 120_000)
+    fun zenzaiRepairsAndCommitsAWholeDictionaryCandidate() {
+        assumeTrue(AppVariantConfig.hasZenz && android.os.Build.VERSION.SDK_INT >= 29)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(ctx)
+        val original = prefs.all.toMap()
+        val oldIme = shell("settings get secure default_input_method")
+        val oldFlags = ui.serviceInfo.flags
+        ui.serviceInfo = ui.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        }
+        val ime = "${ctx.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        try {
+            shell("input keyevent WAKEUP")
+            shell("wm dismiss-keyguard")
+            check(prefs.edit().clear()
+                .putString("keyboard_order_preference", "[\"TENKEY\"]")
+                .putBoolean("save_last_used_keyboard", false)
+                .putBoolean("candidate_tab_visibility_preference", false)
+                .putBoolean("learn_dictionary_preference", false)
+                .putBoolean("live_conversion_preference", false)
+                .putBoolean("enable_ai_conversion_zenz_preference", true)
+                .putBoolean("enable_ai_conversion_zenzai_preference", true)
+                .putBoolean(ComposingGuideSettings.ZENZ_ENABLED, true)
+                .putInt("zenz_debounce_time_preference", 0).commit())
+            val enableResult = shell("ime enable $ime")
+            assertTrue(enableResult, enableResult.contains("enabled"))
+            val selectResult = shell("ime set $ime")
+            assertTrue(selectResult, selectResult.contains("selected"))
+            ctx.startActivity(Intent(ctx, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            withEditor { it.restartEditorInput(true) }
+            id("key_1")
+            val service = currentImeService()
+            val reading = "ほぼすべてのさぎょうをじぶんでおこなう"
+            ins.runOnMainSync {
+                @Suppress("UNCHECKED_CAST")
+                val input = field(service, "_inputString") as kotlinx.coroutines.flow.MutableStateFlow<String>
+                input.value = reading
+            }
+            val repaired = awaitCompletedResult(service, reading)
+            assertEquals("ほぼ全ての作業を自分で行う", repaired.text)
+            assertNotEquals(repaired.firstLocalText, repaired.text)
+            touch(bounds(candidateToCommit(repaired)))
+            withEditor { assertEquals(repaired.text, it.editText.text.toString()) }
+        } finally {
+            ins.runOnMainSync {
+                androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                    .filterIsInstance<FastInputHostActivity>().forEach { it.finish() }
+            }
+            restore(prefs, original)
+            ui.serviceInfo = ui.serviceInfo.apply { flags = oldFlags }
+            if (oldIme.isNotEmpty() && oldIme != "null") shell("ime set $oldIme")
+        }
+    }
+
     // Keep these probe helpers with measureFloatingResultLatency when copying to the baseline.
     private fun field(owner: Any, name: String): Any? =
         owner.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(owner)

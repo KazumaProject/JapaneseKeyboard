@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
+import androidx.preference.PreferenceManager
+import org.json.JSONObject
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaRuntimeClient
@@ -28,7 +30,7 @@ sealed interface GemmaLoadState {
     data object MissingModel : GemmaLoadState
     data object UnsupportedAbi : GemmaLoadState
     data class Loading(val backendPreference: String) : GemmaLoadState
-    data class Ready(val backend: String, val modelPath: String) : GemmaLoadState
+    data class Ready(val backend: String, val modelPath: String, val modalityFlags: Int = 0) : GemmaLoadState
     data class Failed(val message: String) : GemmaLoadState
 }
 
@@ -74,6 +76,8 @@ class GemmaTranslationManager @Inject constructor(
         }
     }
 
+    private val profiles = AiModelProfiles(PreferenceManager.getDefaultSharedPreferences(context))
+    private val modelRevision = java.util.concurrent.atomic.AtomicLong()
     private val initializeMutex = Mutex()
     private val _loadState = MutableStateFlow<GemmaLoadState>(GemmaLoadState.Disabled)
     val loadState: StateFlow<GemmaLoadState> = _loadState.asStateFlow()
@@ -91,14 +95,14 @@ class GemmaTranslationManager @Inject constructor(
     }
 
     fun selectedModel(): InstalledGemmaModel? {
-        return resolveModelFile()?.let { InstalledGemmaModel(it, GemmaModelCatalog.descriptorFor(it)) }
+        return resolveModelFile()?.let { InstalledGemmaModel(it, descriptorFor(it)) }
     }
 
     fun installedModels(): List<InstalledGemmaModel> {
         val files = buildList<File> {
             modelDirectories().forEach { directory ->
                 directory.listFiles()
-                    ?.filterTo(this) { it.isFile && it.extension.equals(MODEL_EXTENSION, true) }
+                    ?.filterTo(this) { it.isFile && AiModelFormat.fromFilename(it.name) != null }
             }
             val preferred = appPreference.gemma_translation_model_path_preference
                 .takeIf { it.isNotBlank() }
@@ -108,13 +112,15 @@ class GemmaTranslationManager @Inject constructor(
             }
         }
         return files.distinctBy { it.absolutePath }
-            .map { InstalledGemmaModel(it, GemmaModelCatalog.descriptorFor(it)) }
+            .map { InstalledGemmaModel(it, descriptorFor(it)) }
             .sortedWith(compareBy({ it.descriptor.displayName }, { it.file.name }))
     }
 
     fun selectModel(modelPath: String): Boolean {
         val selected = File(modelPath)
-        if (!selected.isFile || !selected.extension.equals(MODEL_EXTENSION, true)) return false
+        if (!selected.isFile || AiModelFormat.fromFilename(selected.name) == null) return false
+        modelRevision.incrementAndGet()
+        runtimeClient.cancelActive()
         appPreference.gemma_translation_model_path_preference = selected.absolutePath
         lastErrorMessage = null
         _loadState.value = GemmaLoadState.Disabled
@@ -132,7 +138,7 @@ class GemmaTranslationManager @Inject constructor(
                 return context.getString(R.string.gemma_translation_model_summary_loading)
             is GemmaLoadState.Ready -> {
                 val file = File(state.modelPath)
-                val descriptor = GemmaModelCatalog.descriptorFor(file)
+                val descriptor = descriptorFor(file)
                 return context.getString(
                     R.string.gemma_translation_model_summary_ready,
                     "${descriptor.displayName} · ${descriptor.modalityLabel()}",
@@ -147,7 +153,7 @@ class GemmaTranslationManager @Inject constructor(
         if (model != null) {
             return context.getString(
                 R.string.gemma_translation_model_summary_imported,
-                "${model.descriptor.displayName} · ${model.descriptor.modalityLabel()} · ${model.file.readableSize()}",
+                model.selectionLabel,
             )
         }
         return lastErrorMessage?.let {
@@ -155,32 +161,112 @@ class GemmaTranslationManager @Inject constructor(
         } ?: context.getString(R.string.gemma_translation_model_summary_missing)
     }
 
-    suspend fun importModelFromUri(uri: Uri): String = withContext(Dispatchers.IO) {
+    suspend fun importModelFromUri(uri: Uri, selectForTranslation: Boolean = true): String =
+        importFile(uri, projector = false, selectForTranslation = selectForTranslation)
+
+    suspend fun importProjectorFromUri(uri: Uri): String = importFile(uri, projector = true)
+
+    fun projectorPath(): String = resolveModelFile()?.let { profiles.projectorPath(it.absolutePath) }.orEmpty()
+
+    fun installedProjectors(): List<File> = projectorDirectory().listFiles().orEmpty()
+        .filter { it.isFile && it.extension.equals("gguf", true) }.sortedBy { it.name.lowercase() }
+
+    suspend fun selectProjectorForModel(modelPath: String, path: String) {
+        if (appPreference.gemma_translation_model_path_preference == modelPath) {
+            selectProjector(path)
+        } else {
+            require(AiModelFormat.fromFilename(modelPath) == AiModelFormat.GGUF) { "Select a GGUF model first." }
+            if (path.isNotBlank()) {
+                require(File(path).isFile) { "Projector file is missing." }
+                require(JSONObject(runtimeClient.inspect(path, "gguf")).optBoolean("projector")) { "Select a multimodal projector." }
+            }
+            profiles.setProjectorPath(modelPath, path)
+        }
+    }
+
+    suspend fun selectProjector(path: String) = initializeMutex.withLock {
+        val model = requireNotNull(resolveModelFile()) { "Select a GGUF model first." }
+        require(AiModelFormat.fromFilename(model.name) == AiModelFormat.GGUF) { "Projectors are only used with GGUF models." }
+        if (path.isNotBlank()) {
+            require(File(path).isFile) { "Projector file is missing." }
+            require(JSONObject(runtimeClient.inspect(path, "gguf")).optBoolean("projector")) { "Select a multimodal projector." }
+        }
+        runtimeClient.cancelActive()
+        runtimeClient.close()
+        modelRevision.incrementAndGet()
+        profiles.setProjectorPath(model.absolutePath, path)
+        _loadState.value = GemmaLoadState.Disabled
+    }
+
+    suspend fun inspectModel(file: File): GemmaModelDescriptor {
+        val format = requireNotNull(AiModelFormat.fromFilename(file.name))
+        val info = JSONObject(runtimeClient.inspect(file.absolutePath, format.extension))
+        val flags = if (format == AiModelFormat.GGUF) {
+            val projector = profiles.projectorPath(file.absolutePath)
+            if (projector.isBlank()) 0 else JSONObject(runtimeClient.inspect(projector, "gguf")).optInt("flags")
+        } else info.optInt("flags")
+        return GemmaModelCatalog.descriptorFor(file).withCapabilities(flags)
+    }
+
+    fun supportsMedia(type: GemmaMediaType): Boolean {
+        val ready = _loadState.value as? GemmaLoadState.Ready ?: return false
+        return when (type) {
+            GemmaMediaType.TEXT -> true
+            GemmaMediaType.IMAGE -> ready.modalityFlags and 1 != 0
+            GemmaMediaType.AUDIO -> ready.modalityFlags and 2 != 0
+        }
+    }
+
+    private fun descriptorFor(file: File): GemmaModelDescriptor {
+        val ready = _loadState.value as? GemmaLoadState.Ready
+        val descriptor = GemmaModelCatalog.descriptorFor(file)
+        return descriptor.copy(displayName = profiles.modelName(file.absolutePath).ifBlank { descriptor.displayName })
+            .withCapabilities(if (ready?.modelPath == file.absolutePath) ready.modalityFlags else 0)
+    }
+
+    private fun projectorDirectory(): File = File(modelDirectory(), "projectors").apply { mkdirs() }
+
+    private suspend fun importFile(uri: Uri, projector: Boolean, selectForTranslation: Boolean = true): String = withContext(Dispatchers.IO) {
+      initializeMutex.withLock {
         val displayName = resolveDisplayName(uri)
         validateImportedModelDisplayName(displayName)
-        val destination = File(modelDirectory(), sanitizeModelFilename(displayName))
+        val format = requireNotNull(AiModelFormat.fromFilename(displayName))
+        if (projector) require(format == AiModelFormat.GGUF) { "Select a .gguf projector." }
+        val destination = File(if (projector) projectorDirectory() else modelDirectory(), sanitizeModelFilename(displayName))
         val tempFile = File(destination.parentFile, "${destination.name}.${System.currentTimeMillis()}.tmp")
         val backupFile = File(destination.parentFile, "${destination.name}.bak")
 
         runCatching {
             context.contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input) { "Could not open Gemma model." }
+                requireNotNull(input) { "Could not open AI model." }
                 tempFile.outputStream().buffered().use { output -> input.copyTo(output) }
             }
-            validateModelFile(tempFile)
+            validateModelFile(tempFile, format)
+            runtimeClient.cancelActive()
+            val info = JSONObject(runtimeClient.inspect(tempFile.absolutePath, format.extension))
+            require(info.optBoolean("projector") == projector) {
+                if (projector) "Select a multimodal projector." else "Add the language model first, then attach its projector."
+            }
+            modelRevision.incrementAndGet()
+            runtimeClient.close()
+            _loadState.value = GemmaLoadState.Disabled
             if (destination.exists()) {
                 backupFile.delete()
                 check(destination.renameTo(backupFile)) { "Could not back up the existing model." }
             }
-            check(tempFile.renameTo(destination)) { "Could not install the Gemma model." }
+            check(tempFile.renameTo(destination)) { "Could not install the AI model." }
             backupFile.delete()
-            appPreference.gemma_translation_model_path_preference = destination.absolutePath
+            if (!projector) {
+                profiles.setModelName(destination.absolutePath, info.optString("name"))
+                if (selectForTranslation) appPreference.gemma_translation_model_path_preference = destination.absolutePath
+            }
             lastErrorMessage = null
             destination.absolutePath
         }.onFailure {
             tempFile.delete()
             if (!destination.exists() && backupFile.exists()) backupFile.renameTo(destination)
         }.getOrThrow()
+      }
     }
 
     suspend fun initializeIfEnabled(forceReload: Boolean = false): Boolean {
@@ -209,25 +295,35 @@ class GemmaTranslationManager @Inject constructor(
             }
 
             val backend = appPreference.gemma_translation_backend_preference
-            val descriptor = GemmaModelCatalog.descriptorFor(modelFile)
+            val revision = modelRevision.incrementAndGet()
+            runtimeClient.cancelActive()
             _loadState.value = GemmaLoadState.Loading(backend)
             runCatching {
                 validateModelFile(modelFile)
                 runtimeClient.initialize(
                     modelPath = modelFile.absolutePath,
                     backend = backend,
-                    modalityFlags = descriptor.runtimeModalityFlags,
+                    projectorPath = profiles.projectorPath(modelFile.absolutePath),
                 )
             }.onSuccess { resolvedBackend ->
+                if (revision != modelRevision.get()) {
+                    runtimeClient.close()
+                    return@withLock false
+                }
                 val backendLabel = when (resolvedBackend) {
                     "CPU_FALLBACK" -> context.getString(
                         R.string.gemma_translation_backend_runtime_cpu_fallback,
                     )
+                    "NPU_CPU_FALLBACK" -> context.getString(
+                        R.string.ai_npu_cpu_fallback,
+                    )
+                    "NPU" -> context.getString(R.string.ai_backend_npu)
                     "GPU" -> context.getString(R.string.gemma_translation_backend_runtime_gpu)
                     else -> context.getString(R.string.gemma_translation_backend_runtime_cpu)
                 }
                 lastErrorMessage = null
-                _loadState.value = GemmaLoadState.Ready(backendLabel, modelFile.absolutePath)
+                profiles.setModelName(modelFile.absolutePath, runtimeClient.modelName)
+                _loadState.value = GemmaLoadState.Ready(backendLabel, modelFile.absolutePath, runtimeClient.modalityFlags)
                 return@withLock true
             }.onFailure { error ->
                 val message = error.rootMessage()
@@ -240,6 +336,8 @@ class GemmaTranslationManager @Inject constructor(
     }
 
     suspend fun disable() {
+        modelRevision.incrementAndGet()
+        runtimeClient.cancelActive()
         initializeMutex.withLock {
             runtimeClient.close()
             lastErrorMessage = null
@@ -253,7 +351,7 @@ class GemmaTranslationManager @Inject constructor(
         val target = TranslationTargetLanguage.fromPreference(
             appPreference.gemma_translation_target_language_preference,
         )
-        return sanitizeSingleLine(runtimeClient.generate(buildTranslationPrompt(text, target)))
+        return generateForCurrentModel { runtimeClient.generateTranslation(text, buildTranslationInstruction(target), target.languageCode) }
     }
 
     suspend fun runCustomPrompt(
@@ -262,11 +360,9 @@ class GemmaTranslationManager @Inject constructor(
         promptBody: String,
     ): String {
         require(text.isNotBlank()) { "The selected candidate is empty." }
-        require(promptBody.isNotBlank()) { "The Gemma prompt is empty." }
+        require(promptBody.isNotBlank()) { "The AI prompt is empty." }
         ensureEngineReady()
-        return sanitizeSingleLine(
-            runtimeClient.generate(buildCustomPrompt(text, promptTitle, promptBody)),
-        )
+        return generateForCurrentModel { runtimeClient.generateText(text, GemmaPromptBuilder.buildInstruction(promptBody)) }
     }
 
     suspend fun runMediaPrompt(
@@ -275,17 +371,17 @@ class GemmaTranslationManager @Inject constructor(
         mediaType: GemmaMediaType,
     ): String {
         require(mediaType != GemmaMediaType.TEXT) { "A media type is required." }
-        require(prompt.isNotBlank()) { "The Gemma action instruction is empty." }
+        require(prompt.isNotBlank()) { "The AI action instruction is empty." }
         val file = File(mediaPath)
         require(file.isFile) { "Selected media is no longer available." }
         ensureEngineReady()
-        val selected = selectedModel() ?: error("No Gemma model is selected.")
+        val selected = selectedModel() ?: error("No AI model is selected.")
         if (!selected.descriptor.supports(mediaType)) {
             throw IllegalStateException(
                 "${selected.descriptor.displayName} does not support ${mediaType.name.lowercase()} input.",
             )
         }
-        return runtimeClient.generate(prompt, file.absolutePath, mediaType).trim()
+        return generateForCurrentModel { runtimeClient.generate(prompt, file.absolutePath, mediaType) }.trim()
     }
 
     fun cancelActiveTranslation() {
@@ -293,16 +389,23 @@ class GemmaTranslationManager @Inject constructor(
     }
 
     internal suspend fun generateFloatingText(text: String, instruction: String): String? {
-        val ready = _loadState.value as? GemmaLoadState.Ready ?: error("Gemma is not ready.")
-        val model = GemmaModelCatalog.descriptorFor(File(ready.modelPath))
-        val separate = com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.supportsSystemInstruction(model.id)
-        return runtimeClient.generatePreview(
-            if (separate) text else com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.build(text, instruction),
-            if (separate) com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingPrompt.systemInstruction(instruction) else "",
+        check(_loadState.value is GemmaLoadState.Ready) { "AI is not ready." }
+        val revision = modelRevision.get()
+        val result = runtimeClient.generatePreview(
+            text, GemmaPromptBuilder.buildInstruction(instruction),
         )
+        return result.takeIf { revision == modelRevision.get() && _loadState.value is GemmaLoadState.Ready }
     }
 
     internal fun cancelFloatingText() = runtimeClient.cancelPreview()
+
+    private suspend fun generateForCurrentModel(generate: suspend () -> String): String {
+        check(_loadState.value is GemmaLoadState.Ready) { "AI model is not ready." }
+        val revision = modelRevision.get()
+        val result = generate()
+        check(revision == modelRevision.get() && _loadState.value is GemmaLoadState.Ready) { "The selected AI model changed." }
+        return result
+    }
 
     private suspend fun ensureEngineReady() {
         if (_loadState.value is GemmaLoadState.Ready) return
@@ -321,7 +424,7 @@ class GemmaTranslationManager @Inject constructor(
         val first = modelDirectories()
             .asSequence()
             .flatMap { directory -> directory.listFiles().orEmpty().asSequence() }
-            .filter { it.isFile && it.extension.equals(MODEL_EXTENSION, true) }
+            .filter { it.isFile && AiModelFormat.fromFilename(it.name) != null }
             .sortedBy { it.name.lowercase() }
             .firstOrNull()
         if (first != null) appPreference.gemma_translation_model_path_preference = first.absolutePath
@@ -353,24 +456,25 @@ class GemmaTranslationManager @Inject constructor(
     }
 
     private fun validateImportedModelDisplayName(displayName: String) {
-        require(displayName.substringBefore('?').endsWith(".$MODEL_EXTENSION", ignoreCase = true)) {
+        require(AiModelFormat.fromFilename(displayName) != null) {
             context.getString(R.string.gemma_translation_model_import_invalid_extension)
         }
     }
 
     private fun sanitizeModelFilename(displayName: String): String {
-        val base = displayName.substringBefore('?')
-            .replace(Regex("[^A-Za-z0-9._-]"), "_")
-            .take(MAX_FILENAME_LENGTH)
-        return if (base.endsWith(".$MODEL_EXTENSION", true)) base else "$base.$MODEL_EXTENSION"
+        val format = requireNotNull(AiModelFormat.fromFilename(displayName))
+        val stem = displayName.substringBefore('?').substringBeforeLast('.')
+            .replace(Regex("[^A-Za-z0-9._-]"), "_").take(MAX_FILENAME_LENGTH)
+        return "${stem.ifBlank { "model" }}.${format.extension}"
     }
 
-    private fun validateModelFile(file: File) {
+    private fun validateModelFile(file: File, format: AiModelFormat = requireNotNull(AiModelFormat.fromFilename(file.name))) {
         require(file.isFile && file.length() >= MIN_MODEL_BYTES) {
             context.getString(R.string.gemma_translation_model_import_invalid_size)
         }
         val header = file.inputStream().buffered().use { it.readAtMost(HEADER_BYTES) }
-        require(!looksLikeUnsupportedFile(header)) {
+        val isGguf = header.take(4).toByteArray().toString(Charsets.US_ASCII) == "GGUF"
+        require(if (format == AiModelFormat.GGUF) isGguf else !isGguf && !looksLikeUnsupportedFile(header)) {
             context.getString(R.string.gemma_translation_model_import_invalid_content)
         }
     }
@@ -396,39 +500,11 @@ class GemmaTranslationManager @Inject constructor(
         return buffer.copyOf(offset)
     }
 
-    private fun buildTranslationPrompt(
-        text: String,
-        targetLanguage: TranslationTargetLanguage,
-    ): String = """
-        You are a translation engine for IME candidates.
-        Detect the source language and translate the input into ${targetLanguage.promptLanguageName} (${targetLanguage.languageCode}).
-        If it is already primarily ${targetLanguage.promptLanguageName}, return it unchanged.
-        Preserve names, emoji, markdown punctuation, spacing, and formatting where possible.
-        Return only the final translated text with no explanation, labels, or quotes.
-
-        Input text:
-        $text
-    """.trimIndent()
-
-    private fun buildCustomPrompt(text: String, title: String, body: String): String = """
-        You are an on-device IME text transformation engine.
-        Apply only the user instruction below to the input text.
-        Return only the transformed text with no explanation or surrounding labels.
-        Preserve markdown punctuation, emoji, whitespace, and formatting unless instructed otherwise.
-
-        Action: ${title.trim().ifEmpty { "Custom action" }}
-        User instruction:
-        ${body.trim()}
-
-        Input text:
-        $text
-    """.trimIndent()
-
-    private fun sanitizeSingleLine(output: String): String {
-        val noFence = output.replace("```", "").trim()
-        return noFence.lineSequence().firstOrNull { it.isNotBlank() }
-            .orEmpty().trim().trim('"', '\'', '「', '」')
-    }
+    private fun buildTranslationInstruction(targetLanguage: TranslationTargetLanguage): String =
+        GemmaPromptBuilder.buildInstruction("""
+            Detect the source language and translate the input into ${targetLanguage.promptLanguageName} (${targetLanguage.languageCode}).
+            If it is already primarily ${targetLanguage.promptLanguageName}, return it unchanged.
+        """.trimIndent())
 
     private fun Throwable.rootMessage(): String {
         val root = generateSequence(this) { it.cause }.last()
@@ -444,7 +520,6 @@ class GemmaTranslationManager @Inject constructor(
         const val SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE = 43
         const val SELECTION_PROMPT_ACTION_CANDIDATE_TYPE = 44
 
-        private const val MODEL_EXTENSION = "litertlm"
         private const val MODEL_DIR_NAME = "gemma"
         private const val LEGACY_MODEL_DIR_NAME = "models"
         private const val MIN_MODEL_BYTES = 1_048_576L
