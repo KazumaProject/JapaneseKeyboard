@@ -4037,6 +4037,9 @@ object AppPreference {
             it.putBoolean(ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first, value)
         }
 
+    val enable_zenzai_preference: Boolean
+        get() = preferences.getBoolean("enable_ai_conversion_zenzai_preference", false)
+
     var enable_zenz_rerank_preference: Boolean
         get() = preferences.getBoolean(
             ENABLE_ZENZ_RERANK_PREFERENCE.first,
