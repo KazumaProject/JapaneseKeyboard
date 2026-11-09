@@ -98,10 +98,11 @@ class ZenzRuntimeService : Service() {
             rightContext: String,
             input: String,
             candidate: String,
+            draftReviewId: String,
             callback: IZenzRuntimeCallback,
         ) {
             submitInitialized(requestId, callback) {
-                val result = ZenzEngine.candidateEvaluateV32(
+                val result = ZenzEngine.candidateEvaluateDraftV32(
                     profile,
                     topic,
                     style,
@@ -110,6 +111,7 @@ class ZenzRuntimeService : Service() {
                     rightContext,
                     input,
                     candidate,
+                    draftReviewId,
                 )
                 if (isLatest(requestId)) callback.safeStringResult(requestId, result)
             }
@@ -146,6 +148,12 @@ class ZenzRuntimeService : Service() {
             val cancelledQueuedRequest = latestRequestId.compareAndSet(requestId, NO_REQUEST)
             if (cancelledQueuedRequest || activeRequestId.get() == requestId) {
                 ZenzEngine.cancelCurrent()
+            }
+        }
+
+        override fun finishDraftReview(draftReviewId: String) {
+            actorScope.launch {
+                ZenzEngine.finishDraftReview(draftReviewId)
             }
         }
 
@@ -190,7 +198,8 @@ class ZenzRuntimeService : Service() {
         operation: () -> Unit,
     ) {
         latestRequestId.set(requestId)
-        ZenzEngine.cancelCurrent()
+        // The next review attempt has its own Binder ID but belongs to the same draft review.
+        ZenzEngine.interruptCurrent()
         actorScope.launch {
             if (!isLatest(requestId)) return@launch
             activeRequestId.set(requestId)

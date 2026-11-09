@@ -66,7 +66,7 @@ class GemmaHandwritingTwentyLanguageInstrumentedTest {
 
         try {
             val model = manager.installedModels()
-                .firstOrNull { installed -> installed.descriptor.supports(GemmaMediaType.IMAGE) }
+                .firstOrNull { installed -> manager.inspectModel(installed.file).supports(GemmaMediaType.IMAGE) }
             assumeTrue("Install an image-capable .litertlm model before this test", model != null)
             AppPreference.gemma_translation_model_path_preference =
                 requireNotNull(model).file.absolutePath

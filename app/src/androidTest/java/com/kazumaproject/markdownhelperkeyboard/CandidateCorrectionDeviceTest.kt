@@ -8,6 +8,7 @@ import android.graphics.Rect
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
+import android.view.inputmethod.BaseInputConnection
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -23,6 +24,7 @@ import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -139,6 +141,91 @@ class CandidateCorrectionDeviceTest {
 
     private data class Mode(val name: String, val bunsetsu: Boolean, val cursor: Boolean,
         val conversionTab: Boolean = false, val floating: Boolean = false, val physical: Boolean = false)
+
+    @Test fun deleteAfterConversionKeepsAnEditableComposition() {
+        assumeTrue(InstrumentationRegistry.getArguments().getString("conversion_delete_device_test") == "true")
+        AppPreference.init(context)
+        val backup = AppPreference.exportAllToJson()
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val oldIme = shell("settings get secure default_input_method")
+        val target = ComponentName(context, IMEService::class.java).flattenToShortString()
+        val enabled = shell("ime list -s").lines().contains(target)
+        val info = ui.serviceInfo
+        val oldFlags = info.flags
+        info.flags = oldFlags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        ui.serviceInfo = info
+        var host: CandidateHeightTestHostActivity? = null
+        try {
+            shell("ime enable $target")
+            shell("ime set $target")
+            val modes = listOf(Mode("normal", false, false), Mode("bunsetsu", true, false),
+                Mode("cursor", true, true), Mode("conversion-tab", true, true, conversionTab = true),
+                Mode("floating", true, true, floating = true))
+            for (live in listOf(false, true)) for (previousCandidate in listOf(false, true)) for (mode in modes) {
+                floatingKeyboard = mode.floating
+                check(prefs.edit().clear()
+                    .putString("keyboard_order_preference", "[\"TENKEY\"]")
+                    .putBoolean("save_last_used_keyboard", false)
+                    .putBoolean("allow_fullscreen_mode_preference", false)
+                    .putBoolean("keyboard_floating_preference", mode.floating)
+                    .putBoolean("candidate_tab_visibility_preference", mode.conversionTab)
+                    .putBoolean("conversion_bunsetsu_separation_preference", mode.bunsetsu)
+                    .putBoolean("conversion_bunsetsu_cursor_move_preference", mode.cursor)
+                    .putBoolean("henkan_delete_key_action_preference", previousCandidate)
+                    .putBoolean("live_conversion_preference", live)
+                    .putBoolean("inline_suggestion_enabled_preference", false)
+                    .putBoolean("clipboard_preview_enable_preference", false).commit())
+                if (host == null) {
+                    context.startActivity(Intent(context, CandidateHeightTestHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    await("Host did not start") { CandidateHeightTestHostActivity.current.get()?.also { host = it }?.hasWindowFocus() == true }
+                } else onMain { host!!.restartEditor() }
+                await("Keyboard not ready: $mode") { key("key_2") != null && host!!.editor.text.isEmpty() }
+                SystemClock.sleep(500)
+                flick("key_1")
+                flick("key_3", dx = -1)
+                flick("key_4")
+                fun reading() = service()?.let { (field(it, "_inputString") as StateFlow<*>).value }
+                await("Reading not entered: $mode") { reading() == "あした" && suggestions().isNotEmpty() }
+                if (mode.conversionTab) onMain {
+                    val tab = WindowInspector.getGlobalWindowViews().firstNotNullOfOrNull {
+                        it.findViewById<com.google.android.material.tabs.TabLayout>(R.id.candidate_tab_layout)
+                    }!!
+                    (0 until tab.tabCount).mapNotNull(tab::getTabAt).first { it.text == "変換" }.select()
+                }
+                flick("key_space")
+                await("Conversion did not activate: $mode") { converting() }
+                flick("key_delete")
+                SystemClock.sleep(1000)
+                onMain {
+                    val text = host!!.editor.text
+                    assertTrue("Composition committed: live=$live previous=$previousCandidate mode=$mode text=$text",
+                        BaseInputConnection.getComposingSpanStart(text) >= 0)
+                    assertEquals(text.length, BaseInputConnection.getComposingSpanEnd(text))
+                    assertFalse(text.isEmpty())
+                    println("ConversionDelete live=$live previous=$previousCandidate mode=${mode.name} text=$text converting=${converting()}")
+                }
+                if (!previousCandidate || mode.cursor) {
+                    await("Cancellation did not restore reading and candidates: $mode") {
+                        !converting() && host!!.editor.text.toString() == "あした" && suggestions().isNotEmpty()
+                    }
+                    flick("key_space")
+                    await("Cannot reconvert after cancellation: $mode") { converting() }
+                    flick("key_delete")
+                    await("Reconversion did not cancel: $mode") { !converting() && host!!.editor.text.toString() == "あした" }
+                    flick("key_delete")
+                    await("Next delete did not edit reading: $mode") { reading() == "あし" }
+                    onMain { assertEquals(0, BaseInputConnection.getComposingSpanStart(host!!.editor.text)) }
+                }
+            }
+        } finally {
+            onMain { host?.finish() }
+            AppPreference.importAllFromJson(backup)
+            if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
+            if (!enabled) shell("ime disable $target")
+            info.flags = oldFlags
+            ui.serviceInfo = info
+        }
+    }
 
     @Test fun correctionsSurviveConversionSelectionCancellationAndReentry() {
         assumeTrue(InstrumentationRegistry.getArguments().getString("candidate_correction_device_test") == "true")

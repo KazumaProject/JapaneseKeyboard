@@ -118,19 +118,19 @@ enum class ShortcutType(
     GEMMA_IMAGE(
         "gemma_image",
         com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_image_24,
-        description = "Gemma画像"
+        description = "AI画像"
     ),
     GEMMA_AUDIO(
         "gemma_audio",
         com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_audio_24,
-        description = "Gemma音声"
+        description = "AI音声"
     ),
     GEMMA_HANDWRITING(
         "gemma_handwriting",
         com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_handwriting_24,
         activeIconResId =
             com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_handwriting_active_24,
-        description = "Gemma手書き"
+        description = "AI手書き"
     ),
     FLOATING_CURSOR(
         "floating_cursor",

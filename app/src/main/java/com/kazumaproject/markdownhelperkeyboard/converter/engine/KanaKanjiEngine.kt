@@ -38,6 +38,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMo
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTable
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
+import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.ConstrainedDraftSearch
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.BoundaryTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.CandidateTrace
@@ -2843,6 +2844,81 @@ class KanaKanjiEngine {
 
     }
 
+    internal data class ZenzaiDrafts(
+        val candidates: List<Candidate>,
+        val constrainedSearch: ConstrainedDraftSearch,
+    )
+
+    internal suspend fun prepareZenzaiDrafts(
+        input: String,
+        n: Int,
+        userDictionaryRepository: UserDictionaryRepository,
+        beamWidth: Int,
+        enabledDictionaryCategories: Set<DictionaryCategory> = emptySet(),
+        learnRepository: LearnRepository? = null,
+    ): ZenzaiDrafts {
+        val context = currentCoroutineContext()
+        val graph = buildWholeInputGraph(
+            input = input,
+            enabledDictionaryCategories = enabledDictionaryCategories,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            isOmissionSearchEnable = false,
+            enableTypoCorrectionJapaneseFlick = false,
+            typoCorrectionOffsetScore = 0,
+            omissionSearchOffsetScore = 0,
+            beamWidth = beamWidth,
+            graphState = graphBuilder.createSessionState(),
+        )
+        val costs = connectionMatrixSnapshot().costTable
+        // A* prunes the lists in place. Its forward scores and backpointers are not used by the
+        // constrained search, so both views can share the dictionary nodes.
+        val candidates = findPath.backwardAStar(
+            originalInput = input,
+            graph = graph.mapValuesTo(LinkedHashMap()) { (_, nodes) -> nodes.toMutableList() },
+            length = input.length,
+            connectionMatrix = costs,
+            n = n,
+            beamWidth = beamWidth,
+            cancellationCheck = context::ensureActive,
+            sessionState = findPath.createSessionState(),
+        )
+        return ZenzaiDrafts(candidates, ConstrainedDraftSearch(graph, input.length, costs))
+    }
+
+    private suspend fun buildWholeInputGraph(
+        input: String,
+        enabledDictionaryCategories: Set<DictionaryCategory>,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int,
+        graphState: GraphBuilder.SessionState?,
+    ) = graphBuilder.constructGraph(
+        input,
+        systemYomiTrie,
+        systemTangoTrie,
+        systemTokenArray,
+        succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+        succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+        succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+        succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+        userDictionaryRepository = userDictionaryRepository,
+        learnRepository = learnRepository,
+        classifiedDictionaries = activeClassifiedDictionaries(enabledDictionaryCategories),
+        isOmissionSearchEnable = isOmissionSearchEnable,
+        enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+        typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+        omissionSearchOffSetScore = omissionSearchOffsetScore,
+        graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+        mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+        beamWidth = beamWidth,
+        sessionState = graphState,
+    )
+
     suspend fun getCandidatesWithoutPrediction(
         input: String,
         n: Int,
@@ -2861,26 +2937,17 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
-        val graph = graphBuilder.constructGraph(
-            input,
-            systemYomiTrie,
-            systemTangoTrie,
-            systemTokenArray,
-            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
-            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
-            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
-            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+        val graph = buildWholeInputGraph(
+            input = input,
+            enabledDictionaryCategories = enabledDictionaryCategories,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
-            classifiedDictionaries = activeClassifiedDictionaries(enabledDictionaryCategories),
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore,
-            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
-            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
             beamWidth = beamWidth,
-            sessionState = incrementalSessionState?.graphState,
+            graphState = incrementalSessionState?.graphState,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
