@@ -9,13 +9,13 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.view.setPadding
 import androidx.core.widget.ImageViewCompat
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.ui.ScalableKeyLabelButton
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
@@ -27,8 +27,8 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr), KeyboardFontAware {
 
-    private val numberButton = createButton("number_mode")
-    private val symbolButton = createButton("symbol")
+    private val numberButton = createButton("number_mode").apply { setLabelInkFractions(.74f, .48f) }
+    private val symbolButton = createButton("symbol").apply { setLabelInkFractions(.44f, .78f) }
     private var useThreeStateKeyboard: Boolean = true
     private var iconPadding: Int = 0
     private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
@@ -67,8 +67,8 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
         )
     }
 
-    private fun createButton(description: String): AppCompatImageButton {
-        return AppCompatImageButton(context).apply {
+    private fun createButton(description: String): ScalableKeyLabelButton {
+        return ScalableKeyLabelButton(context).apply {
             id = View.generateViewId()
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
             background = AppCompatResources
@@ -174,6 +174,11 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
         iconPadding = paddingSize
         numberButton.setPadding(iconPadding)
         symbolButton.setPadding(iconPadding)
+    }
+
+    internal fun setLabelScale(scale: Float) {
+        numberButton.labelScale = scale
+        symbolButton.labelScale = scale
     }
 
     fun setPressedKey(key: Key?) {

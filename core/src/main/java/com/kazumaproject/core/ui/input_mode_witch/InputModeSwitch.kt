@@ -1,18 +1,21 @@
 package com.kazumaproject.core.ui.input_mode_witch
 
 import android.content.Context
+import android.graphics.Rect
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.DrawableWrapper
 import android.util.AttributeSet
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.appcompat.widget.AppCompatImageButton
 import com.kazumaproject.core.R
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
+import com.kazumaproject.core.ui.ScalableKeyLabelButton
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class InputModeSwitch(context: Context, attrs: AttributeSet) :
-    AppCompatImageButton(context, attrs), KeyboardFontAware {
+    ScalableKeyLabelButton(context, attrs), KeyboardFontAware {
 
     private var currentInputMode: InputMode = InputMode.ModeJapanese
     private var isGojuonMode = false
@@ -64,12 +67,38 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
             useThreeStateKeyboard = useThreeStateKeyboard,
             twoStateNumberReturnTarget = numberReturnTarget,
         )
-        setImageDrawable(if (fontSnapshot.typeface == null && skinSelectedLabelColor == null) {
-            AppCompatResources.getDrawable(context, resId)
+        val icon = if (fontSnapshot.typeface == null && skinSelectedLabelColor == null) {
+            requireNotNull(AppCompatResources.getDrawable(context, resId))
         } else {
             InputModeSwitchIconDrawable(context, resId, fontSnapshot.typeface,
                 skinSelectedLabelColor, skinIdleLabelColor, currentInputMode)
+        }
+        val tenKeyKanaReturn = !isGojuonMode && resId == R.drawable.input_mode_japanese_select_custom
+        if (!isGojuonMode) {
+            // Centered ink bounds for the mode vectors and their font-rendered equivalents.
+            when {
+                tenKeyKanaReturn -> setLabelInkFractions(.74f, .76f)
+                useThreeStateKeyboard -> setLabelInkFractions(.85f, .4f)
+                resId == R.drawable.input_mode_english_custom -> setLabelInkFractions(.74f, .48f)
+                else -> setLabelInkFractions(.96f, .6f)
+            }
+        }
+        setImageDrawable(if (tenKeyKanaReturn) {
+            TenKeyKanaReturnIcon(icon)
+        } else {
+            icon
         })
+    }
+
+    private class TenKeyKanaReturnIcon(private val icon: Drawable) : DrawableWrapper(icon) {
+        // Scale the 24dp artwork to 34dp and trim its vertical margins to a 17dp box.
+        override fun getIntrinsicWidth() = icon.intrinsicWidth * 34 / 24
+        override fun getIntrinsicHeight() = intrinsicWidth / 2
+
+        override fun onBoundsChange(bounds: Rect) {
+            val top = bounds.top - (bounds.width() - bounds.height()) / 2
+            icon.setBounds(bounds.left, top, bounds.right, top + bounds.width())
+        }
     }
 }
 
