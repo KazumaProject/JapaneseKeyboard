@@ -27,24 +27,17 @@ fun interface EnglishCompletionBounds {
     operator fun get(labelIndex: Int): Int
 }
 
-/** Maps the precomputed lookup index for the serialized English dictionary. */
-object EnglishLookupIndexReader {
+/** Maps the bundled English dictionary arrays and precomputed lookup index. */
+internal object BundledEnglishDictionaryReader {
     private const val MAGIC = 0x4B454931 // KEI1
 
-    fun read(
+    fun readIndex(
         descriptor: AssetFileDescriptor,
         reading: LOUDSWithTermId,
         word: LOUDS,
         token: TokenArray,
     ): CompactEnglishDictionary {
-        require(descriptor.length > 0L) {
-            "English lookup index must be an uncompressed asset with a known length"
-        }
-        val source = FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
-            channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.length)
-        }
-
-        val input = Cursor(source.order(ByteOrder.BIG_ENDIAN))
+        val input = Cursor(descriptor)
         require(input.readInt() == MAGIC) { "Invalid English lookup index magic" }
         // The build indexes the used words of each BitSet. A serialized BitSet may
         // also retain spare words that would make its runtime rank table larger.
@@ -74,7 +67,40 @@ object EnglishLookupIndexReader {
         if (size() == (length() + Long.SIZE_BITS - 1) / Long.SIZE_BITS * Long.SIZE_BITS) this
         else BitSet.valueOf(toLongArray())
 
-    private class Cursor(private val buffer: ByteBuffer) {
+    fun readReading(descriptor: AssetFileDescriptor): LOUDSWithTermId = read(descriptor, 0x4B455231) {
+        val lbs = readBitSet()
+        val leaves = readBitSet()
+        LOUDSWithTermId(lbs, readCharArray(), leaves, readIntArray())
+    }
+
+    fun readWord(descriptor: AssetFileDescriptor): LOUDS = read(descriptor, 0x4B455731) {
+        val lbs = readBitSet()
+        val leaves = readBitSet()
+        LOUDS(lbs, readCharArray(), leaves)
+    }
+
+    fun readToken(descriptor: AssetFileDescriptor): TokenArray = read(descriptor, 0x4B455431) {
+        TokenArray.fromArrays(readShortArray(), readIntArray(), readBitSet())
+    }
+
+    private inline fun <T> read(
+        descriptor: AssetFileDescriptor,
+        magic: Int,
+        decode: Cursor.() -> T,
+    ): T {
+        val input = Cursor(descriptor)
+        require(input.readInt() == magic) { "Invalid bundled English dictionary header" }
+        return input.decode().also {
+            require(input.remaining == 0) { "Unexpected trailing English dictionary data" }
+        }
+    }
+
+    private class Cursor(descriptor: AssetFileDescriptor) {
+        private val buffer: ByteBuffer = FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
+            require(descriptor.length > 0L) { "English dictionary asset must have a known length" }
+            channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.length)
+        }.order(ByteOrder.BIG_ENDIAN)
+
         val remaining: Int
             get() = buffer.remaining()
 
@@ -91,6 +117,22 @@ object EnglishLookupIndexReader {
                 smallBlockRanks = readByteArray(),
                 totalOnes = totalOnes,
             )
+        }
+
+        fun readBitSet(): BitSet {
+            val size = readSizedCount(Long.SIZE_BYTES)
+            val words = LongArray(size).also { take(size * Long.SIZE_BYTES).asLongBuffer().get(it) }
+            return BitSet.valueOf(words)
+        }
+
+        fun readCharArray(): CharArray {
+            val size = readSizedCount(Char.SIZE_BYTES)
+            return CharArray(size).also { take(size * Char.SIZE_BYTES).asCharBuffer().get(it) }
+        }
+
+        fun readShortArray(): ShortArray {
+            val size = readSizedCount(Short.SIZE_BYTES)
+            return ShortArray(size).also { take(size * Short.SIZE_BYTES).asShortBuffer().get(it) }
         }
 
         fun readIntArray(): IntArray {
@@ -130,7 +172,7 @@ object EnglishLookupIndexReader {
         private fun readSizedCount(elementBytes: Int): Int {
             val size = readInt()
             require(size >= 0 && size <= remaining / elementBytes) {
-                "Invalid English lookup array size: $size elements of $elementBytes bytes"
+                "Invalid English dictionary array size: $size elements of $elementBytes bytes"
             }
             return size
         }
@@ -145,7 +187,7 @@ object EnglishLookupIndexReader {
 
         private fun requireRemaining(byteCount: Int) {
             require(byteCount >= 0 && buffer.remaining() >= byteCount) {
-                "Truncated English lookup index: need=$byteCount remaining=${buffer.remaining()}"
+                "Truncated English dictionary data: need=$byteCount remaining=${buffer.remaining()}"
             }
         }
     }
