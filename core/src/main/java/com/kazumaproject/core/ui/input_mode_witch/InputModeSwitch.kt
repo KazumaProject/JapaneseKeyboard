@@ -6,16 +6,16 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.DrawableWrapper
 import android.util.AttributeSet
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.appcompat.widget.AppCompatImageButton
 import com.kazumaproject.core.R
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
+import com.kazumaproject.core.ui.ScalableKeyLabelButton
 import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 
 class InputModeSwitch(context: Context, attrs: AttributeSet) :
-    AppCompatImageButton(context, attrs), KeyboardFontAware {
+    ScalableKeyLabelButton(context, attrs), KeyboardFontAware {
 
     private var currentInputMode: InputMode = InputMode.ModeJapanese
     private var isGojuonMode = false
@@ -73,7 +73,17 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
             InputModeSwitchIconDrawable(context, resId, fontSnapshot.typeface,
                 skinSelectedLabelColor, skinIdleLabelColor, currentInputMode)
         }
-        setImageDrawable(if (!isGojuonMode && resId == R.drawable.input_mode_japanese_select_custom) {
+        val tenKeyKanaReturn = !isGojuonMode && resId == R.drawable.input_mode_japanese_select_custom
+        if (!isGojuonMode) {
+            // Centered ink bounds for the mode vectors and their font-rendered equivalents.
+            when {
+                tenKeyKanaReturn -> setLabelInkFractions(.74f, .76f)
+                useThreeStateKeyboard -> setLabelInkFractions(.85f, .4f)
+                resId == R.drawable.input_mode_english_custom -> setLabelInkFractions(.74f, .48f)
+                else -> setLabelInkFractions(.96f, .6f)
+            }
+        }
+        setImageDrawable(if (tenKeyKanaReturn) {
             TenKeyKanaReturnIcon(icon)
         } else {
             icon
@@ -81,8 +91,8 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
     }
 
     private class TenKeyKanaReturnIcon(private val icon: Drawable) : DrawableWrapper(icon) {
-        // Fit the centered word in a 40dp by 20dp box by trimming the square artwork's vertical margins.
-        override fun getIntrinsicWidth() = icon.intrinsicWidth * 5 / 3
+        // Scale the 24dp artwork to 34dp and trim its vertical margins to a 17dp box.
+        override fun getIntrinsicWidth() = icon.intrinsicWidth * 34 / 24
         override fun getIntrinsicHeight() = intrinsicWidth / 2
 
         override fun onBoundsChange(bounds: Rect) {
