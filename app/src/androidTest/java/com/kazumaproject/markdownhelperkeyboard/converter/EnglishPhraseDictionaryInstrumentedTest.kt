@@ -36,6 +36,29 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
     @Test
+    fun indexedCompletionPreservesOrderedCandidates() = withDictionary { _, _, reader ->
+        val data = checkNotNull(reader.loadBundledEnglishForEngine())
+        checkNotNull(data.wordCompletionBounds)
+        checkNotNull(data.phraseCompletionBounds)
+        val grammar = checkNotNull(reader.loadBundledEnglishGrammar())
+        val unindexed = data.copy(wordCompletionBounds = null, phraseCompletionBounds = null)
+        val indexedConverter = PhraseConverter(EnglishPhraseDictionary(data, grammar), beamWidth = 24, completionLimit = 32)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val verifiedGrammar = context.assets.open("english/grammar/categories.erol").use {
+            RuntimeGrammarRoles.read(ByteBuffer.wrap(it.readBytes()))
+        }
+        val referenceConverter = PhraseConverter(EnglishPhraseDictionary(unindexed, verifiedGrammar), beamWidth = 24, completionLimit = 32)
+        val inputs = listOf(
+            "he", "th", "an", "in", "re", "op", "te", "ke", "zz", "re-", "don'", "a1",
+            "the", "there", "keyboa", "hecantake", "he can tak", "New Yo", "elonmusk",
+            "taylor swift", "twofactorauthentication", "thequickbrownfoxjumpsoverthelazydog",
+        )
+        for (text in inputs) for (prefix in listOf(false, true)) {
+            assertEquals("$text prefix=$prefix", referenceConverter.convert(text, prefix, 12), indexedConverter.convert(text, prefix, 12))
+        }
+    }
+
+    @Test
     fun sampledVocabularyPrefixesPreserveTypedWordBoundaries() = withDictionary { _, _, reader ->
         val data = checkNotNull(reader.loadBundledEnglishForEngine())
         val words = EnglishPhraseDictionary(data, checkNotNull(reader.loadBundledEnglishGrammar()))
