@@ -49,83 +49,30 @@ data class InstalledGemmaModel(
     val descriptor: GemmaModelDescriptor,
 ) {
     val selectionLabel: String
-        get() = "${descriptor.displayName} · ${descriptor.modalityLabel()} · ${file.readableSize()}"
+        get() = "${descriptor.displayName} · ${file.extension.uppercase()} · ${file.readableSize()}"
 }
 
 object GemmaModelCatalog {
-    val supportedModels: List<GemmaModelDescriptor> = listOf(
-        GemmaModelDescriptor(
-            id = "gemma3_270m_it",
-            displayName = "Gemma 3 270M IT",
-            filenameTokens = listOf("gemma-3-270m", "gemma3-270m"),
-            modalities = setOf(GemmaModality.TEXT),
-            approximateBytes = 304_005_120L,
-        ),
-        GemmaModelDescriptor(
-            id = "gemma3_1b_it",
-            displayName = "Gemma 3 1B IT",
-            filenameTokens = listOf("gemma-3-1b", "gemma3-1b"),
-            modalities = setOf(GemmaModality.TEXT),
-            approximateBytes = 584_417_280L,
-        ),
-        GemmaModelDescriptor(
-            id = "gemma3n_e2b_it",
-            displayName = "Gemma 3n E2B IT",
-            filenameTokens = listOf("gemma-3n-e2b", "gemma3n-e2b"),
-            modalities = setOf(GemmaModality.TEXT, GemmaModality.IMAGE, GemmaModality.AUDIO),
-            approximateBytes = 3_655_827_456L,
-        ),
-        GemmaModelDescriptor(
-            id = "gemma3n_e4b_it",
-            displayName = "Gemma 3n E4B IT",
-            filenameTokens = listOf("gemma-3n-e4b", "gemma3n-e4b"),
-            modalities = setOf(GemmaModality.TEXT, GemmaModality.IMAGE, GemmaModality.AUDIO),
-            approximateBytes = 4_919_541_760L,
-        ),
-        GemmaModelDescriptor(
-            id = "gemma4_e2b_it",
-            displayName = "Gemma 4 E2B IT",
-            filenameTokens = listOf("gemma-4-e2b", "gemma4-e2b"),
-            modalities = setOf(GemmaModality.TEXT, GemmaModality.IMAGE, GemmaModality.AUDIO),
-            approximateBytes = 2_588_147_712L,
-        ),
-        GemmaModelDescriptor(
-            id = "gemma4_e4b_it",
-            displayName = "Gemma 4 E4B IT",
-            filenameTokens = listOf("gemma-4-e4b", "gemma4-e4b"),
-            modalities = setOf(GemmaModality.TEXT, GemmaModality.IMAGE, GemmaModality.AUDIO),
-            approximateBytes = 3_659_530_240L,
-        ),
-        GemmaModelDescriptor(
-            id = "functiongemma_270m",
-            displayName = "FunctionGemma 270M",
-            filenameTokens = listOf("functiongemma-270m", "function-gemma-270m"),
-            modalities = setOf(GemmaModality.TEXT, GemmaModality.TOOLS),
-            approximateBytes = 288_964_608L,
-            stability = GemmaModelStability.SPECIALIZED,
-        ),
-    )
-
     fun descriptorFor(file: File): GemmaModelDescriptor = descriptorFor(file.name)
 
-    fun descriptorFor(filename: String): GemmaModelDescriptor {
-        val normalized = filename.lowercase()
-        return supportedModels.firstOrNull { descriptor ->
-            descriptor.filenameTokens.any(normalized::contains)
-        } ?: GemmaModelDescriptor(
-            id = "custom_${normalized.hashCode().toUInt().toString(16)}",
-            displayName = "Custom LiteRT-LM model",
-            filenameTokens = emptyList(),
-            modalities = setOf(GemmaModality.TEXT),
-            approximateBytes = 0L,
-            stability = GemmaModelStability.UNKNOWN,
-        )
-    }
-
-    fun supportedModelsSummary(): String = supportedModels.joinToString(separator = "\n") { model ->
-        "${model.displayName} · ${model.modalityLabel()} · ${model.approximateBytes.readableSize()}"
-    }
+    // A filename is a label, never proof of a model's capabilities.
+    fun descriptorFor(filename: String): GemmaModelDescriptor = GemmaModelDescriptor(
+        id = "custom_${filename.lowercase().hashCode().toUInt().toString(16)}",
+        displayName = File(filename).nameWithoutExtension,
+        filenameTokens = emptyList(),
+        modalities = setOf(GemmaModality.TEXT),
+        approximateBytes = 0L,
+        stability = GemmaModelStability.UNKNOWN,
+    )
 }
+
+fun GemmaModelDescriptor.withCapabilities(flags: Int): GemmaModelDescriptor = copy(
+    modalities = buildSet {
+        add(GemmaModality.TEXT)
+        if (flags and 1 != 0) add(GemmaModality.IMAGE)
+        if (flags and 2 != 0) add(GemmaModality.AUDIO)
+    },
+)
 
 fun GemmaModelDescriptor.modalityLabel(): String = buildList {
     if (GemmaModality.TEXT in modalities) add("Text")
