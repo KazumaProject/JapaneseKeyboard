@@ -159,7 +159,9 @@ class StandardFlickInputController(
                 initialTouchY = event.rawY
                 listener?.onPress(characterMap[FlickDirection.TAP] ?: "")
                 segmentedDrawable?.highlightDirection = FlickDirection.TAP
-                showPopup(FlickDirection.TAP, refreshSkinGuide = true)
+                if (activeGestureConfig?.showFlickPopup == true) {
+                    showPopup(FlickDirection.TAP, refreshSkinGuide = true)
+                }
                 return true
             }
 
@@ -169,7 +171,7 @@ class StandardFlickInputController(
                 )
                 val direction = calculateDirection(dx, dy)
                 segmentedDrawable?.highlightDirection = direction
-                showPopup(direction)
+                if (activeGestureConfig?.showFlickPopup == true) showPopup(direction)
                 listener?.onSelectionChanged(
                     characterMap[direction]?.takeIf(String::isNotEmpty),
                     direction != FlickDirection.TAP

@@ -236,14 +236,19 @@ class CustomAngleFlickController(
                 }
                 popupView.updateFlickDirection(CircularFlickDirection.TAP)
 
-                showPopup()
+                if (gestureConfig.showFlickPopup) showPopup()
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
                     delay(gestureConfig.longPressTimeoutMillis)
                     isLongPressModeActive = true
-                    popupView.setFullUIMode(true)
-                    popupView.invalidate()
+                    if (gestureConfig.showLongPressPopup) {
+                        popupView.setFullUIMode(true)
+                        if (!gestureConfig.showFlickPopup) showPopup()
+                        popupView.invalidate()
+                    } else {
+                        popupWindow.dismiss()
+                    }
                 }
                 return true
             }

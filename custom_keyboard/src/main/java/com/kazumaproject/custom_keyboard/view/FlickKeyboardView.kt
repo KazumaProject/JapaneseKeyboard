@@ -173,6 +173,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         dispatch = { action -> listener?.onAction(action, false) }
     )
 
+    private var showFlickPopup = true
+    private var showLongPressPopup = true
     private var popupWindowAnchorProvider: (() -> View?)? = null
     private var tfbiPopupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
     private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
@@ -196,7 +198,9 @@ class FlickKeyboardView @JvmOverloads constructor(
             flickThresholdPx = resolvedFlickThresholdPx(settings.flickSensitivity),
             longPressTimeoutMillis = settings.longPressTimeoutMillis,
             flickThresholdShape = settings.flickThresholdShape,
-            tfbiDiagonalRecognitionMode = settings.tfbiDiagonalRecognitionMode
+            tfbiDiagonalRecognitionMode = settings.tfbiDiagonalRecognitionMode,
+            showFlickPopup = showFlickPopup,
+            showLongPressPopup = showLongPressPopup
         )
     }
     private var defaultTextSize = 14f
@@ -368,6 +372,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         sumireSpecialKeyActionResolver = null
         sumireSpecialKeyLayoutType = null
         sumireSpecialKeyInputMode = null
+    }
+
+    fun setKeyPopupVisibility(showFlickPopup: Boolean, showLongPressPopup: Boolean) {
+        this.showFlickPopup = showFlickPopup
+        this.showLongPressPopup = showLongPressPopup
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
