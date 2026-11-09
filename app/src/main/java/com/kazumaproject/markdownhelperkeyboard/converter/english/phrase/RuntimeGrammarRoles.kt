@@ -1,0 +1,162 @@
+// Adapted from kotlin-kana-kanji-converter at dbbb97f (MIT). See the bundled English dictionary notices.
+package com.kazumaproject.markdownhelperkeyboard.converter.english.phrase
+
+import android.content.res.AssetFileDescriptor
+import java.io.FileInputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.channels.FileChannel
+import java.util.zip.CRC32
+
+private const val MAGIC = 0x45524F4C // EROL
+private const val HEADER_SIZE = 40
+private const val MAX_INDEX_SIZE = 16 * 1024 * 1024
+private const val ROW_SIZE = Int.SIZE_BYTES + Short.SIZE_BYTES
+
+/** EROL v1 stores sorted UTF-8 keys and shared masks. Non-normalized keys store only additional roles. */
+internal class RuntimeGrammarRoles private constructor(
+    private val data: ByteBuffer,
+    validation: ByteBuffer,
+) : GrammarRoles {
+    private val maskCount = data.getInt(20)
+    private val rowCount = data.getInt(24)
+    private val masks = data.getInt(28)
+    private val rows = data.getInt(32)
+    private val text = data.getInt(36)
+    private val names: List<String>
+    private val words: Int
+
+    init {
+        val count = validation.getInt(16)
+        require(count in 1..1024 && maskCount in 1..65_536 && rowCount > 0) { "Invalid role index counts" }
+        words = (count + 63) / 64
+        require(masks in HEADER_SIZE..validation.capacity() && rows in masks..validation.capacity() &&
+            text in rows..validation.capacity() && rows.toLong() == masks + maskCount.toLong() * words * Long.SIZE_BYTES &&
+            text.toLong() == rows + rowCount.toLong() * ROW_SIZE + Int.SIZE_BYTES) { "Invalid role index sections" }
+        val reader = validation.duplicate().apply {
+            position(HEADER_SIZE)
+            limit(masks)
+        }
+        names = List(count) {
+            require(reader.remaining() >= Short.SIZE_BYTES) { "Truncated category names" }
+            val size = reader.short.toInt() and 0xffff
+            require(size in 1..reader.remaining()) { "Invalid category name length" }
+            ByteArray(size).also { reader.get(it) }.toString(Charsets.UTF_8)
+        }
+        require(!reader.hasRemaining() && names.toSet().size == count &&
+            names.all { it.matches(CATEGORY_NAME) }) { "Invalid category names" }
+        if (count % 64 != 0) {
+            for (id in 0 until maskCount) {
+                require(validation.getLong(maskStart(id) + (words - 1) * Long.SIZE_BYTES) ushr (count % 64) == 0L) {
+                    "Invalid category bit"
+                }
+            }
+        }
+        require(validation.getInt(rows) == 0 && validation.getInt(rows + rowCount * ROW_SIZE) == validation.capacity() - text) {
+            "Invalid role index text length"
+        }
+        var last = text
+        for (i in 0 until rowCount) {
+            val row = rows + i * ROW_SIZE
+            val start = text + validation.getInt(row)
+            val end = text + validation.getInt(row + ROW_SIZE)
+            require(start in text until validation.capacity() &&
+                end in (start + 1)..validation.capacity() && (validation.getShort(row + Int.SIZE_BYTES).toInt() and 0xffff) < maskCount) { "Invalid role index row" }
+            if (i > 0) {
+                var prefix = 0
+                while (prefix < minOf(start - last, end - start) && validation.get(last + prefix) == validation.get(start + prefix)) {
+                    prefix++
+                }
+                require(prefix < end - start &&
+                    (prefix == start - last ||
+                        (validation.get(last + prefix).toInt() and 255) < (validation.get(start + prefix).toInt() and 255))) {
+                    "Invalid or unordered role index key"
+                }
+            }
+            last = start
+        }
+    }
+
+    override fun lookup(surface: String, normalized: String): Set<String> {
+        val bits = LongArray(words)
+        collect(normalized, bits)
+        if (surface != normalized) collect(surface, bits)
+        return decodeRoles(bits, names)
+    }
+
+    private fun collect(surface: String, bits: LongArray) {
+        val key = surface.toByteArray(Charsets.UTF_8)
+        var low = 0
+        var high = rowCount - 1
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            val start = keyStart(mid)
+            val order = compareKey(data, key, start, keyStart(mid + 1) - start)
+            when {
+                order < 0 -> high = mid - 1
+                order > 0 -> low = mid + 1
+                else -> {
+                    val mask = maskStart(maskId(rows + mid * ROW_SIZE))
+                    for (word in bits.indices) bits[word] = bits[word] or data.getLong(mask + word * Long.SIZE_BYTES)
+                    return
+                }
+            }
+        }
+    }
+
+    private fun keyStart(index: Int) = text + data.getInt(rows + index * ROW_SIZE)
+    private fun maskId(row: Int) = data.getShort(row + Int.SIZE_BYTES).toInt() and 0xffff
+    private fun maskStart(id: Int) = masks + id * words * Long.SIZE_BYTES
+
+    companion object {
+        private val CATEGORY_NAME = Regex("[a-z][a-z0-9_]*")
+
+        fun read(descriptor: AssetFileDescriptor): RuntimeGrammarRoles {
+            val length = descriptor.length
+            require(length in HEADER_SIZE.toLong()..MAX_INDEX_SIZE.toLong()) { "Invalid role index size" }
+            return FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
+                read(channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, length))
+            }
+        }
+
+        internal fun read(source: ByteBuffer): RuntimeGrammarRoles {
+            val data = source.slice().asReadOnlyBuffer().order(ByteOrder.BIG_ENDIAN)
+            require(data.capacity() in HEADER_SIZE..MAX_INDEX_SIZE && data.getInt(0) == MAGIC &&
+                data.getInt(4) == 1 && data.getInt(8) == data.capacity()) {
+                "Invalid role index header"
+            }
+            // Validate through one bulk read. Per-byte direct-buffer calls during the
+            // ordered-key scan are expensive on ART. Only the read-only mapping survives.
+            val bytes = ByteArray(data.capacity())
+            data.duplicate().get(bytes)
+            val crc = CRC32().apply { update(bytes, HEADER_SIZE, bytes.size - HEADER_SIZE) }
+            require(crc.value.toInt() == data.getInt(12)) { "Invalid role index checksum" }
+            return RuntimeGrammarRoles(data, ByteBuffer.wrap(bytes))
+        }
+    }
+}
+
+internal fun interface GrammarRoles {
+    fun lookup(surface: String, normalized: String): Set<String>
+}
+
+internal fun decodeRoles(bits: LongArray, categoryNames: List<String>): Set<String> {
+    if (bits.all { it == 0L }) return emptySet()
+    return buildSet {
+        for (word in bits.indices) {
+            var remaining = bits[word]
+            while (remaining != 0L) {
+                add(categoryNames[word * 64 + remaining.countTrailingZeroBits()])
+                remaining = remaining and (remaining - 1)
+            }
+        }
+    }
+}
+
+internal fun compareKey(data: ByteBuffer, key: ByteArray, start: Int, length: Int): Int {
+    for (i in 0 until minOf(key.size, length)) {
+        val order = (key[i].toInt() and 255) - (data.get(start + i).toInt() and 255)
+        if (order != 0) return order
+    }
+    return key.size - length
+}

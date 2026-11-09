@@ -1149,21 +1149,12 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            getEnglishCandidates(
-                input = input,
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else if (input.isAllFullWidthAscii()) {
-            getEnglishCandidates(
-                input = input.toHankakuAlphabet(),
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else {
-            createAsciiCaseCandidates(input)
-        }
+        val englishDeferred = getEnglishConversionCandidates(
+            input = input,
+            enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
+            enablePrediction = predictionConfig.englishPredictionEnabled,
+            prefixMode = true,
+        )
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
             val fullWidthInput = input.toFullWidth()
@@ -1657,21 +1648,12 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            getEnglishCandidates(
-                input = input,
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else if (input.isAllFullWidthAscii()) {
-            getEnglishCandidates(
-                input = input.toHankakuAlphabet(),
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else {
-            createAsciiCaseCandidates(input)
-        }
+        val englishDeferred = getEnglishConversionCandidates(
+            input = input,
+            enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
+            enablePrediction = predictionConfig.englishPredictionEnabled,
+            prefixMode = true,
+        )
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
             val fullWidthInput = input.toFullWidth()
@@ -2096,21 +2078,12 @@ class KanaKanjiEngine {
             type = 7
         )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            getEnglishCandidates(
-                input = input,
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else if (input.isAllFullWidthAscii()) {
-            getEnglishCandidates(
-                input = input.toHankakuAlphabet(),
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else {
-            createAsciiCaseCandidates(input)
-        }
+        val englishDeferred = getEnglishConversionCandidates(
+            input = input,
+            enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
+            enablePrediction = predictionConfig.englishPredictionEnabled,
+            prefixMode = true,
+        )
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
             val fullWidthInput = input.toFullWidth()
@@ -2592,21 +2565,12 @@ class KanaKanjiEngine {
             type = 7
         )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            getEnglishCandidates(
-                input = input,
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else if (input.isAllFullWidthAscii()) {
-            getEnglishCandidates(
-                input = input.toHankakuAlphabet(),
-                enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else {
-            createAsciiCaseCandidates(input)
-        }
+        val englishDeferred = getEnglishConversionCandidates(
+            input = input,
+            enableTypoCorrection = enableTypoCorrectionQwertyEnglish,
+            enablePrediction = predictionConfig.englishPredictionEnabled,
+            prefixMode = true,
+        )
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
             val fullWidthInput = input.toFullWidth()
@@ -3229,19 +3193,11 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            getEnglishCandidates(
-                input = input,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else if (input.isAllFullWidthAscii()) {
-            getEnglishCandidates(
-                input = input.toHankakuAlphabet(),
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else {
-            createAsciiCaseCandidates(input)
-        }
+        val englishDeferred = getEnglishConversionCandidates(
+            input = input,
+            enablePrediction = predictionConfig.englishPredictionEnabled,
+            prefixMode = false,
+        )
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
             val fullWidthInput = input.toFullWidth()
@@ -3728,19 +3684,11 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            getEnglishCandidates(
-                input = input,
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else if (input.isAllFullWidthAscii()) {
-            getEnglishCandidates(
-                input = input.toHankakuAlphabet(),
-                enablePrediction = predictionConfig.englishPredictionEnabled,
-            )
-        } else {
-            createAsciiCaseCandidates(input)
-        }
+        val englishDeferred = getEnglishConversionCandidates(
+            input = input,
+            enablePrediction = predictionConfig.englishPredictionEnabled,
+            prefixMode = false,
+        )
 
         val englishZenkaku = if (input.isAllHalfWidthAscii()) {
             val fullWidthInput = input.toFullWidth()
@@ -3987,6 +3935,27 @@ class KanaKanjiEngine {
                     score = 10000 + index,
                 )
             }.distinctBy { it.string }
+    }
+
+    private fun getEnglishConversionCandidates(
+        input: String,
+        enableTypoCorrection: Boolean = false,
+        enablePrediction: Boolean,
+        prefixMode: Boolean,
+    ): List<Candidate> {
+        val legacyInput = when {
+            input.isAllEnglishLetters() -> input
+            input.isAllFullWidthAscii() -> input.toHankakuAlphabet()
+            else -> null
+        }
+        return englishEngine.getConversionCandidates(
+            input = legacyInput ?: input.toHankakuAlphabet(),
+            legacyInput = legacyInput,
+            enableTypoCorrection = enableTypoCorrection,
+            enablePrediction = enablePrediction,
+            prefixMode = prefixMode,
+            fallback = if (legacyInput == null) createAsciiCaseCandidates(input) else emptyList(),
+        )
     }
 
     private fun getEnglishCandidates(
