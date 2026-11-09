@@ -10,10 +10,11 @@ oneway interface IZenzRuntime {
         int maxTokens, IZenzRuntimeCallback callback);
     void evaluate(long requestId, String profile, String topic, String style,
         String preference, String leftContext, String rightContext, String input,
-        String candidate, IZenzRuntimeCallback callback);
+        String candidate, String draftReviewId, IZenzRuntimeCallback callback);
     void score(long requestId, String profile, String topic, String style,
         String preference, String leftContext, String rightContext, String input,
         in String[] candidates, IZenzRuntimeCallback callback);
     void cancel(long requestId);
+    void finishDraftReview(String draftReviewId);
     void closeEngine();
 }
