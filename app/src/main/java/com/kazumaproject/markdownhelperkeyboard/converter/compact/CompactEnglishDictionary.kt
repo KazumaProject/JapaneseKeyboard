@@ -5,7 +5,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
+import java.io.DataInputStream
 import java.io.FileInputStream
+import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
@@ -146,6 +148,78 @@ object EnglishLookupIndexReader {
         private fun requireRemaining(byteCount: Int) {
             require(byteCount >= 0 && buffer.remaining() >= byteCount) {
                 "Truncated English lookup index: need=$byteCount remaining=${buffer.remaining()}"
+            }
+        }
+    }
+}
+
+/** Reads the bundled dictionary arrays without Java object deserialization. */
+internal object EnglishDictionaryAssetReader {
+    fun readReading(source: InputStream): LOUDSWithTermId = EntryInput(source, 0x4B455231).run {
+        val lbs = readBitSet()
+        val leaves = readBitSet()
+        LOUDSWithTermId(lbs, readChars(), leaves, readInts()).also { requireEnd() }
+    }
+
+    fun readWord(source: InputStream): LOUDS = EntryInput(source, 0x4B455731).run {
+        val lbs = readBitSet()
+        val leaves = readBitSet()
+        LOUDS(lbs, readChars(), leaves).also { requireEnd() }
+    }
+
+    fun readToken(source: InputStream): TokenArray = EntryInput(source, 0x4B455431).run {
+        TokenArray.fromArrays(readShorts(), readInts(), readBitSet()).also { requireEnd() }
+    }
+
+    private class EntryInput(source: InputStream, magic: Int) {
+        private val input = DataInputStream(source)
+        private val block = ByteBuffer.allocate(64 * 1024).order(ByteOrder.BIG_ENDIAN)
+
+        init {
+            require(input.readInt() == magic) { "Invalid bundled English dictionary header" }
+        }
+
+        fun readBitSet(): BitSet {
+            val words = LongArray(readCount(Long.SIZE_BYTES))
+            readBlocks(words.size, Long.SIZE_BYTES) { offset, count ->
+                block.asLongBuffer().get(words, offset, count)
+            }
+            return BitSet.valueOf(words)
+        }
+
+        fun readChars(): CharArray = CharArray(readCount(Char.SIZE_BYTES)).also { values ->
+            readBlocks(values.size, Char.SIZE_BYTES) { offset, count ->
+                block.asCharBuffer().get(values, offset, count)
+            }
+        }
+
+        fun readInts(): IntArray = IntArray(readCount(Int.SIZE_BYTES)).also { values ->
+            readBlocks(values.size, Int.SIZE_BYTES) { offset, count ->
+                block.asIntBuffer().get(values, offset, count)
+            }
+        }
+
+        fun readShorts(): ShortArray = ShortArray(readCount(Short.SIZE_BYTES)).also { values ->
+            readBlocks(values.size, Short.SIZE_BYTES) { offset, count ->
+                block.asShortBuffer().get(values, offset, count)
+            }
+        }
+
+        fun requireEnd() {
+            require(input.read() == -1) { "Unexpected trailing English dictionary data" }
+        }
+
+        private fun readCount(width: Int): Int = input.readInt().also {
+            require(it in 0..(64 * 1024 * 1024 / width)) { "Invalid English dictionary array size: $it" }
+        }
+
+        private inline fun readBlocks(size: Int, width: Int, copy: (Int, Int) -> Unit) {
+            var offset = 0
+            while (offset < size) {
+                val count = minOf(size - offset, block.capacity() / width)
+                input.readFully(block.array(), 0, count * width)
+                copy(offset, count)
+                offset += count
             }
         }
     }
