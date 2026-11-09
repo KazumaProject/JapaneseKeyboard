@@ -9,11 +9,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDiction
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDictionaryTriple
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.GrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.RuntimeGrammarRoles
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.BundledEnglishDictionaryReader
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionaryReader
-import com.kazumaproject.markdownhelperkeyboard.converter.compact.EnglishDictionaryAssetReader
-import com.kazumaproject.markdownhelperkeyboard.converter.compact.EnglishLookupIndexReader
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS as EnglishWordTrie
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId as EnglishReadingTrie
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray as EnglishTokenArray
@@ -231,13 +230,13 @@ class DictionaryBinaryReader @Inject constructor(
         )
 
     private fun readBundledEnglishReading(): EnglishReadingTrie =
-        resolver.openBundledAsset("english/reading.bin").use(EnglishDictionaryAssetReader::readReading)
+        resolver.openBundledAssetFileDescriptor("english/reading.compact").use(BundledEnglishDictionaryReader::readReading)
 
     private fun readBundledEnglishWord(): EnglishWordTrie =
-        resolver.openBundledAsset("english/word.bin").use(EnglishDictionaryAssetReader::readWord)
+        resolver.openBundledAssetFileDescriptor("english/word.compact").use(BundledEnglishDictionaryReader::readWord)
 
     private fun readBundledEnglishToken(): EnglishTokenArray =
-        resolver.openBundledAsset("english/token.bin").use(EnglishDictionaryAssetReader::readToken)
+        resolver.openBundledAssetFileDescriptor("english/token.compact").use(BundledEnglishDictionaryReader::readToken)
 
     private fun readEnglishReading(input: InputStream): EnglishReadingTrie =
         openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_READING.name).use {
@@ -382,7 +381,7 @@ class DictionaryBinaryReader @Inject constructor(
                     val reading = readBundledEnglishReading()
                     val word = readBundledEnglishWord()
                     val token = readBundledEnglishToken()
-                    EnglishLookupIndexReader.read(index, reading, word, token)
+                    BundledEnglishDictionaryReader.readIndex(index, reading, word, token)
                 }
             }.onFailure { error ->
                 Timber.w(

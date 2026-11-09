@@ -739,8 +739,7 @@ tasks.register("generateCompactSystemDictionary") {
         def englishReading = readObjects(bundledEnglishReading, true, 4)
         def englishWord = readObjects(bundledEnglishWord, false, 3)
         def englishToken = readObjects(bundledEnglishToken, true, 3)
-        // Ship primitive arrays directly. The APK compresses these assets once and
-        // Android's asset stream handles decompression before bulk array reads.
+        // Store the runtime arrays in mappable APK assets for bulk reads.
         def englishDirectory = generatedDictionaryAssets.get().dir("english").asFile
         englishDirectory.mkdirs()
         def writeArray = { DataOutputStream output, int count, int width, Closure fill ->
@@ -759,7 +758,7 @@ tasks.register("generateCompactSystemDictionary") {
                 write(output)
             }
         }
-        writeEntries("reading.bin", 0x4B455231) { output -> // KER1
+        writeEntries("reading.compact", 0x4B455231) { output -> // KER1
             writeBitSet(output, englishReading[0] as BitSet)
             writeBitSet(output, englishReading[1] as BitSet)
             char[] labels = englishReading[2] as char[]
@@ -767,13 +766,13 @@ tasks.register("generateCompactSystemDictionary") {
             writeArray(output, labels.length, Character.BYTES) { it.asCharBuffer().put(labels) }
             writeArray(output, termIds.length, Integer.BYTES) { it.asIntBuffer().put(termIds) }
         }
-        writeEntries("word.bin", 0x4B455731) { output -> // KEW1
+        writeEntries("word.compact", 0x4B455731) { output -> // KEW1
             writeBitSet(output, englishWord[0] as BitSet)
             writeBitSet(output, englishWord[1] as BitSet)
             char[] labels = englishWord[2] as char[]
             writeArray(output, labels.length, Character.BYTES) { it.asCharBuffer().put(labels) }
         }
-        writeEntries("token.bin", 0x4B455431) { output -> // KET1
+        writeEntries("token.compact", 0x4B455431) { output -> // KET1
             short[] costs = englishToken[0] as short[]
             int[] nodeIds = englishToken[1] as int[]
             writeArray(output, costs.length, Short.BYTES) { it.asShortBuffer().put(costs) }

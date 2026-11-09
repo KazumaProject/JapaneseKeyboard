@@ -243,6 +243,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TEXT_MACRO
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ENGLISH
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ZENZ
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.withGeneratedText
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
@@ -252,6 +253,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidat
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTemplateCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.candidateCaseVariants
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
@@ -28320,6 +28322,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         pendingZenzReading?.completion?.cancel()
         pendingZenzReading = pending
         try {
+            showInitialEnglishCaseCandidates(input, mode, token)
             when (mode) {
                 CandidateQueryMode.NO_TAB_DEFAULT -> setCandidatesOriginal(input, mainView, token)
                 CandidateQueryMode.PREDICTION -> setCandidates(input, mainView, token)
@@ -28329,6 +28332,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } finally {
             // A cancelled/failed local query must not leave a manual conversion awaiting forever.
             if (pending?.completion?.isCompleted == false) pending.completion.cancel()
+        }
+    }
+
+    private suspend fun showInitialEnglishCaseCandidates(
+        input: String,
+        mode: CandidateQueryMode,
+        token: CandidateRequestToken,
+    ) {
+        if (currentInputModeForSession != InputMode.ModeEnglish ||
+            input.length != 1 || !input.isAllEnglishLetters() ||
+            (mode != CandidateQueryMode.PREDICTION && mode != CandidateQueryMode.NO_TAB_DEFAULT) ||
+            currentCandidateStripCandidates.isNotEmpty() ||
+            physicalKeyboardEnable.replayCache.firstOrNull() == true ||
+            stringInTail.get().isNotEmpty() ||
+            !shouldApplyCandidateResult(input, token)
+        ) return
+
+        // Case variants are available before the dictionary and other sources are queried.
+        val ngWords = if (isNgWordEnable == true) ngWordsList.value else emptyList()
+        val preview = candidateCaseVariants(input, input)
+            .filterNot { (text, _) -> NgWordMatcher.matchesAny(input, text, ngWords) }
+            .map { (text, penalty) -> Candidate(text, CANDIDATE_TYPE_ENGLISH, 1u, 500 + penalty) }
+        if (preview.isNotEmpty()) {
+            updateSuggestionAdaptersOnMain(preview, input, token = token)
         }
     }
 
