@@ -6,6 +6,11 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
+import androidx.lifecycle.lifecycleScope
+import android.widget.Toast
+import com.kazumaproject.markdownhelperkeyboard.ai.rerank.CandidateScoringModels
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
@@ -14,6 +19,14 @@ import timber.log.Timber
 @AndroidEntryPoint
 class ZenzPreferenceFragment : AsyncPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_zenz
+
+    private val scorerModels by lazy { CandidateScoringModels(requireContext().applicationContext) }
+    private val openScorerModel = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importScorerFile(uri, false)
+    }
+    private val openScorerTokenizer = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importScorerFile(uri, true)
+    }
 
     private val openModelLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -29,8 +42,47 @@ class ZenzPreferenceFragment : AsyncPreferenceFragment() {
             true
         }
 
+        findPreference<Preference>("candidate_scoring_model")?.setOnPreferenceClickListener {
+            openScorerModel.launch(arrayOf("*/*"))
+            true
+        }
+        findPreference<Preference>("candidate_scoring_tokenizer")?.setOnPreferenceClickListener {
+            openScorerTokenizer.launch(arrayOf("*/*"))
+            true
+        }
+        findPreference<Preference>("candidate_scoring_clear")?.setOnPreferenceClickListener {
+            scorerModels.clear()
+            updateScorerSummaries()
+            true
+        }
         updateModelPrefSummary()
+        updateScorerSummaries()
         applyLegacySearchResultFilterIfNeeded()
+    }
+
+    private fun importScorerFile(uri: Uri, tokenizer: Boolean) {
+        lifecycleScope.launch {
+            val actions = listOf("candidate_scoring_model", "candidate_scoring_tokenizer", "candidate_scoring_clear")
+                .mapNotNull { findPreference<Preference>(it) }
+            actions.forEach { it.isEnabled = false }
+            try {
+                scorerModels.import(uri, tokenizer)
+                if (isAdded) updateScorerSummaries()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                context?.let { Toast.makeText(it, R.string.candidate_scoring_import_failed, Toast.LENGTH_LONG).show() }
+            } finally {
+                actions.forEach { it.isEnabled = true }
+            }
+        }
+    }
+
+    private fun updateScorerSummaries() {
+        findPreference<Preference>("candidate_scoring_model")?.summary =
+            scorerModels.label(false) ?: getString(R.string.candidate_scoring_model_summary)
+        findPreference<Preference>("candidate_scoring_tokenizer")?.summary =
+            scorerModels.label(true) ?: getString(R.string.candidate_scoring_tokenizer_summary)
     }
 
     private fun showModelSelectDialog() {
