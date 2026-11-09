@@ -2,12 +2,17 @@ import groovy.json.JsonSlurper
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
 
+import com.android.build.api.artifact.SingleArtifact
+import com.android.build.gradle.internal.tasks.ExtractNativeDebugMetadataTask
+
 plugins {
     id 'com.android.application'
     id 'com.google.dagger.hilt.android'
     id 'com.google.devtools.ksp'
     id "androidx.navigation.safeargs.kotlin"
 }
+
+def generatedDictionaryAssets = layout.buildDirectory.dir("generated/bundledDictionary/assets")
 
 android {
     namespace 'com.kazumaproject.markdownhelperkeyboard'
@@ -153,7 +158,7 @@ android {
 
     sourceSets {
         main.assets.srcDir(layout.buildDirectory.dir("generated/compactConnectionMatrix/assets").get().asFile)
-        main.assets.srcDir(layout.buildDirectory.dir("generated/compactSystemDictionary/assets").get().asFile)
+        main.assets.srcDir(generatedDictionaryAssets.get().asFile)
     }
 
     applicationVariants.configureEach { variant ->
@@ -207,6 +212,27 @@ abstract class GenerateDictionaryLicenseAssets extends DefaultTask {
     }
 }
 
+abstract class PackageCompactSystemDictionary extends DefaultTask {
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    abstract DirectoryProperty getMergedAssets()
+
+    @OutputDirectory
+    abstract DirectoryProperty getPackagedAssets()
+
+    @Inject
+    protected abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void filterAssets() {
+        fileSystemOperations.sync {
+            from(mergedAssets)
+            into(packagedAssets)
+            exclude('system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip')
+        }
+    }
+}
+
 def dictionaryRepository = rootProject.layout.projectDirectory
 def dictionaryManifest = dictionaryRepository.file('tools/classified-dictionaries/distribution-manifest.json')
 def bundledDictionaryAssets = providers.fileContents(dictionaryManifest).asText.map { text ->
@@ -221,6 +247,16 @@ androidComponents {
         // LiteRT-LM scans a filesystem directory for the Tensor dispatch library.
         variant.packaging.jniLibs.useLegacyPackaging.set(true)
         variant.packaging.jniLibs.useLegacyPackagingFromBundle.set(true)
+        if (variant.buildType in ['release', 'releaseUnsigned']) {
+            // These vendor libraries ship without a symbol table. Running strip on them
+            // changes their size by a few bytes and makes AGP include duplicate .sym files.
+            variant.packaging.jniLibs.keepDebugSymbols.addAll([
+                '**/liblitertlm_jni.so',
+                '**/libLiteRtCompilerPlugin_google_tensor.so',
+                '**/libLiteRtDispatch_GoogleTensor.so',
+                '**/libonnxruntime.so',
+            ])
+        }
     }
     onVariants(selector().all()) { variant ->
         if (variant.buildType in ['release', 'releaseUnsigned']) {
@@ -237,6 +273,41 @@ androidComponents {
                 outputDirectory.set(layout.buildDirectory.dir("generated/dictionaryLicenses/${variant.name}/assets"))
             }
             variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
+        }
+    }
+    onVariants(selector().withFlavor("channel", "standard")) { variant ->
+        if (variant.buildType in ['release', 'releaseUnsigned']) {
+            def compactAssets = tasks.register("package${variant.name.capitalize()}CompactSystemDictionary",
+                PackageCompactSystemDictionary)
+            variant.artifacts.use(compactAssets)
+                .wiredWithDirectories({ it.mergedAssets }, { it.packagedAssets })
+                .toTransform(SingleArtifact.ASSETS.INSTANCE)
+        }
+    }
+}
+
+def ndkObjcopy = androidComponents.sdkComponents.ndkDirectory.map { ndk ->
+    def hosts = ndk.dir('toolchains/llvm/prebuilt').asFile.listFiles() ?: []
+    def tool = hosts.collectMany { host ->
+        [new File(host, 'bin/llvm-objcopy'), new File(host, 'bin/llvm-objcopy.exe')]
+    }.find { it.isFile() }
+    if (tool == null) throw new GradleException("llvm-objcopy was not found in the configured Android NDK")
+    tool
+}
+
+// AGP's SYMBOL_TABLE mode retains loadable sections. Its extraction task already
+// supplies the symbol table and build ID, so trim the executable bytes before bundling.
+tasks.withType(ExtractNativeDebugMetadataTask).configureEach {
+    inputs.file(ndkObjcopy).withPathSensitivity(PathSensitivity.NONE)
+    doLast { extraction ->
+        extraction.workerExecutor.await()
+        def objcopy = ndkObjcopy.get()
+        extraction.outputDir.asFile.get().eachFileRecurse(groovy.io.FileType.FILES) { symbol ->
+            if (symbol.name.endsWith('.sym')) {
+                extraction.execOperations.exec {
+                    commandLine(objcopy, '--only-keep-debug', symbol)
+                }
+            }
         }
     }
 }
@@ -433,22 +504,18 @@ def bundledCoreDictionaryTriples = [
     [id: 5, zipped: false, tango: file("src/main/assets/reading_correction/tango_reading_correction.dat"), yomi: file("src/main/assets/reading_correction/yomi_reading_correction.dat"), token: file("src/main/assets/reading_correction/token_reading_correction.dat")],
     [id: 6, zipped: false, tango: file("src/main/assets/kotowaza/tango_kotowaza.dat"), yomi: file("src/main/assets/kotowaza/yomi_kotowaza.dat"), token: file("src/main/assets/kotowaza/token_kotowaza.dat")],
 ]
-def compactSystemDictionaryAsset = layout.buildDirectory.file(
-    "generated/compactSystemDictionary/assets/system/system.compact.kdict"
-)
+def compactSystemDictionaryAsset = generatedDictionaryAssets.map { it.file("system/system.compact.kdict") }
 def bundledEnglishReading = file("src/main/assets/english/reading.dat.zip")
 def bundledEnglishWord = file("src/main/assets/english/word.dat")
 def bundledEnglishToken = file("src/main/assets/english/token.dat.zip")
-def compactEnglishDictionaryAsset = layout.buildDirectory.file(
-    "generated/compactSystemDictionary/assets/english/english.compact.kdict"
-)
+def englishLookupIndexAsset = generatedDictionaryAssets.map { it.file("english/english.lookup.index") }
 
 tasks.register("generateCompactSystemDictionary") {
     inputs.files(
         bundledCoreDictionaryTriples.collectMany { [it.tango, it.yomi, it.token] } +
             [bundledPosTable, bundledEnglishReading, bundledEnglishWord, bundledEnglishToken]
     )
-    outputs.files(compactSystemDictionaryAsset, compactEnglishDictionaryAsset)
+    outputs.dir(generatedDictionaryAssets)
 
     doLast {
         def readObjects = { File source, boolean zipped, int objectCount ->
@@ -735,13 +802,11 @@ tasks.register("generateCompactSystemDictionary") {
             phraseMinimum[ancestor] = Math.min(phraseMinimum[ancestor], phraseMinimum[child])
         }
 
-        def englishDestination = compactEnglishDictionaryAsset.get().asFile
+        // The serialized English reading, word and token assets already contain the
+        // dictionary. Ship only the precomputed lookup data alongside them.
+        def englishDestination = englishLookupIndexAsset.get().asFile
         englishDestination.parentFile.mkdirs()
         new DataOutputStream(new BufferedOutputStream(new FileOutputStream(englishDestination))).withCloseable { output ->
-            def writeLongArray = { long[] values ->
-                output.writeInt(values.length)
-                for (long value : values) output.writeLong(value)
-            }
             def writeIntArray = { int[] values ->
                 output.writeInt(values.length)
                 for (int value : values) output.writeInt(value)
@@ -750,15 +815,10 @@ tasks.register("generateCompactSystemDictionary") {
                 output.writeInt(values.length)
                 for (short value : values) output.writeShort(value)
             }
-            def writeCharArray = { char[] values ->
-                output.writeInt(values.length)
-                for (char value : values) output.writeChar((int) value)
-            }
             def writeByteArray = { byte[] values ->
                 output.writeInt(values.length)
                 output.write(values)
             }
-            def writeBitSet = { BitSet value -> writeLongArray(value.toLongArray()) }
             def writeSuccinctIndex = { BitSet bitSet ->
                 def index = buildSuccinctIndex(bitSet)
                 output.writeInt(index.totalOnes as int)
@@ -766,18 +826,7 @@ tasks.register("generateCompactSystemDictionary") {
                 writeByteArray((byte[]) index.smallBlockRanks)
             }
 
-            output.writeInt(0x4B444531) // KDE1
-            output.writeInt(2)
-            writeBitSet((BitSet) englishReading[0])
-            writeBitSet((BitSet) englishReading[1])
-            writeCharArray((char[]) englishReading[2])
-            writeIntArray((int[]) englishReading[3])
-            writeBitSet((BitSet) englishWord[0])
-            writeBitSet((BitSet) englishWord[1])
-            writeCharArray((char[]) englishWord[2])
-            writeShortArray((short[]) englishToken[0])
-            writeIntArray((int[]) englishToken[1])
-            writeBitSet((BitSet) englishToken[2])
+            output.writeInt(0x4B454931) // KEI1
             writeSuccinctIndex((BitSet) englishReading[0])
             writeSuccinctIndex((BitSet) englishReading[1])
             writeSuccinctIndex((BitSet) englishWord[0])
@@ -787,6 +836,13 @@ tasks.register("generateCompactSystemDictionary") {
                 if (ranks.length > 65536) {
                     output.writeInt(0)
                     writeIntArray(bounds)
+                } else if (ranks.length <= 256) {
+                    writeIntArray(ranks)
+                    byte[] indices = new byte[bounds.length]
+                    for (int index = 0; index < bounds.length; index++) {
+                        indices[index] = (byte) Arrays.binarySearch(ranks, bounds[index])
+                    }
+                    writeByteArray(indices)
                 } else {
                     writeIntArray(ranks)
                     short[] indices = new short[bounds.length]
@@ -800,7 +856,7 @@ tasks.register("generateCompactSystemDictionary") {
             writeCompletionBounds(phraseMinimum)
         }
         if (englishDestination.length() <= 0L) {
-            throw new GradleException("Compact English dictionary was not generated")
+            throw new GradleException("English dictionary lookup index was not generated")
         }
     }
 }
