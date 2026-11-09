@@ -46,7 +46,15 @@ internal class EnglishPhraseDictionary(
 
     fun complete(prefix: String, surfacePrefix: String?, limit: Int): List<DictionaryCandidate> {
         val best = PriorityQueue(completionOrder.reversed())
-        val terms = dictionary.readingTrie.termsStartingWith(prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex)
+        val terms = dictionary.readingTrie.termsStartingWith(
+            prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
+            dictionary.wordCompletionBounds?.let { bounds ->
+                { label ->
+                    val bound = bounds[label]
+                    bound != Int.MAX_VALUE && (best.size < limit || bound <= completionRank(best.element()))
+                }
+            },
+        )
         for ((key, term) in terms) {
             if (key == prefix || key.any { it !in 'a'..'z' && it !in '0'..'9' }) continue
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
@@ -76,6 +84,19 @@ internal class EnglishPhraseDictionary(
         fun collect(readingPrefix: String) {
             val terms = if (prefixMode) dictionary.readingTrie.termsStartingWith(
                 readingPrefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
+                dictionary.phraseCompletionBounds?.let { bounds ->
+                    { label ->
+                        val bound = bounds[label]
+                        if (bound == Int.MAX_VALUE) false
+                        else if (best.size < limit) true
+                        else {
+                            // The prefix node itself is still visited. Descendants have
+                            // extra typed characters and cannot be an exact alias.
+                            val worst = best.element()
+                            bound <= completionRank(worst) && worst.reading.count { it != ' ' } != compact.length
+                        }
+                    }
+                },
             ) else {
                 val node = dictionary.readingTrie.getNodeIndex(readingPrefix, dictionary.readingLbsIndex)
                 if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return
@@ -90,7 +111,14 @@ internal class EnglishPhraseDictionary(
                     if (prefixMode) joined.startsWith(compact) else joined == compact
                 }
                 if (!matches) continue
-                forEachCandidate(reading, term) { candidate ->
+                val worst = best.peek()
+                val exact = reading.count { it != ' ' } == compact.length
+                val maxCost = if (!exact && best.size == limit) {
+                    val cutoff = checkNotNull(worst)
+                    if (cutoff.reading.count { it != ' ' } == compact.length) continue
+                    cutoff.cost
+                } else Int.MAX_VALUE
+                forEachCandidate(reading, term, maxCost) { candidate ->
                     if (' ' in candidate.surface) {
                         if (best.size < limit) best.add(candidate)
                         else if (order.compare(candidate, best.element()) < 0) {
@@ -109,6 +137,9 @@ internal class EnglishPhraseDictionary(
         }
         return best.sortedWith(order)
     }
+
+    private fun completionRank(candidate: DictionaryCandidate): Int =
+        (candidate.cost shl 16) or candidate.reading.length.coerceAtMost(65_534)
 
     private fun forEachCandidate(
         reading: String,

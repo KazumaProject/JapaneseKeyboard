@@ -609,6 +609,73 @@ tasks.register("generateCompactSystemDictionary") {
         def englishReading = readObjects(bundledEnglishReading, true, 4)
         def englishWord = readObjects(bundledEnglishWord, false, 3)
         def englishToken = readObjects(bundledEnglishToken, true, 3)
+        // Lower bounds for completion ranking in each reading subtree. Build them
+        // alongside the dictionary so the first prediction need not index it on the phone.
+        BitSet readingBits = (BitSet) englishReading[0]
+        BitSet readingLeaves = (BitSet) englishReading[1]
+        char[] readingLabels = (char[]) englishReading[2]
+        int[] readingTermIds = (int[]) englishReading[3]
+        short[] tokenCosts = (short[]) englishToken[0]
+        BitSet tokenBits = (BitSet) englishToken[2]
+        int noCompletion = Integer.MAX_VALUE
+        int[] termMinimum = new int[readingTermIds.length + 1]
+        Arrays.fill(termMinimum, noCompletion)
+        int tokenOffset = 0
+        int delimiter = tokenBits.nextClearBit(0)
+        for (int term = 1; term < termMinimum.length; term++) {
+            int nextDelimiter = tokenBits.nextClearBit(delimiter + 1)
+            for (int position = delimiter + 1; position < nextDelimiter; position++) {
+                int cost = tokenCosts[tokenOffset++]
+                termMinimum[term] = Math.min(termMinimum[term], cost)
+            }
+            delimiter = nextDelimiter
+        }
+        if (tokenOffset != tokenCosts.length || readingLeaves.cardinality() != readingTermIds.length) {
+            throw new GradleException("English dictionary term bounds do not match its tokens")
+        }
+        int[] parentLabels = new int[readingLabels.length]
+        boolean[] hasSpace = new boolean[readingLabels.length]
+        boolean[] isWord = new boolean[readingLabels.length]
+        int[] readingLengths = new int[readingLabels.length]
+        int[] wordMinimum = new int[readingLabels.length]
+        int[] phraseMinimum = new int[readingLabels.length]
+        Arrays.fill(wordMinimum, noCompletion)
+        Arrays.fill(phraseMinimum, noCompletion)
+        isWord[1] = true
+        int parent = 1
+        int label = 1
+        int leaf = 0
+        for (int position = 2; position < readingBits.length(); position++) {
+            if (!readingBits.get(position)) {
+                parent++
+                continue
+            }
+            label++
+            char letter = readingLabels[label]
+            parentLabels[label] = parent
+            hasSpace[label] = hasSpace[parent] || letter == (' ' as char)
+            isWord[label] = isWord[parent] && ((letter >= ('a' as char) && letter <= ('z' as char)) ||
+                (letter >= ('0' as char) && letter <= ('9' as char)))
+            readingLengths[label] = readingLengths[parent] + 1
+            if (readingLeaves.get(position)) {
+                int cost = termMinimum[readingTermIds[leaf++]]
+                if (cost != noCompletion) {
+                    // Compare cost first, then reading length. Reserve MAX_VALUE for no match.
+                    int rank = (cost << 16) | Math.min(readingLengths[label], 65534)
+                    if (hasSpace[label]) phraseMinimum[label] = rank
+                    if (isWord[label]) wordMinimum[label] = rank
+                }
+            }
+        }
+        if (label + 1 != readingLabels.length || leaf != readingTermIds.length) {
+            throw new GradleException("English dictionary reading tree does not match its labels and terms")
+        }
+        for (int child = label; child > 1; child--) {
+            int ancestor = parentLabels[child]
+            wordMinimum[ancestor] = Math.min(wordMinimum[ancestor], wordMinimum[child])
+            phraseMinimum[ancestor] = Math.min(phraseMinimum[ancestor], phraseMinimum[child])
+        }
+
         def englishDestination = compactEnglishDictionaryAsset.get().asFile
         englishDestination.parentFile.mkdirs()
         new DataOutputStream(new BufferedOutputStream(new FileOutputStream(englishDestination))).withCloseable { output ->
@@ -641,7 +708,7 @@ tasks.register("generateCompactSystemDictionary") {
             }
 
             output.writeInt(0x4B444531) // KDE1
-            output.writeInt(1)
+            output.writeInt(2)
             writeBitSet((BitSet) englishReading[0])
             writeBitSet((BitSet) englishReading[1])
             writeCharArray((char[]) englishReading[2])
@@ -656,6 +723,22 @@ tasks.register("generateCompactSystemDictionary") {
             writeSuccinctIndex((BitSet) englishReading[1])
             writeSuccinctIndex((BitSet) englishWord[0])
             writeSuccinctIndex((BitSet) englishToken[2])
+            def writeCompletionBounds = { int[] bounds ->
+                int[] ranks = Arrays.stream(bounds).distinct().sorted().toArray()
+                if (ranks.length > 65536) {
+                    output.writeInt(0)
+                    writeIntArray(bounds)
+                } else {
+                    writeIntArray(ranks)
+                    short[] indices = new short[bounds.length]
+                    for (int index = 0; index < bounds.length; index++) {
+                        indices[index] = (short) Arrays.binarySearch(ranks, bounds[index])
+                    }
+                    writeShortArray(indices)
+                }
+            }
+            writeCompletionBounds(wordMinimum)
+            writeCompletionBounds(phraseMinimum)
         }
         if (englishDestination.length() <= 0L) {
             throw new GradleException("Compact English dictionary was not generated")
