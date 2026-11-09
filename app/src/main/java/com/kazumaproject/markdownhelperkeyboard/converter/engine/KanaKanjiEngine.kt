@@ -415,8 +415,9 @@ class KanaKanjiEngine {
         DictionaryCompatibilityValidator(
             DictionarySourceResolver(
                 appContext,
-                store
-            )
+                store,
+            ),
+            reader,
         ).requireActiveStateCompatible()
         val newConnectionMatrix = reader.loadConnectionMatrix(DictionaryFileKey.CONNECTION_ID)
         val newSystem = loadTripleDictionary(reader, DictionaryCategory.SYSTEM)
