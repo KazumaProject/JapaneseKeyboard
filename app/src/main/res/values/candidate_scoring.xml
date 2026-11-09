@@ -1,0 +1,8 @@
+<resources>
+    <string name="candidate_scoring_model">Candidate reranking model</string>
+    <string name="candidate_scoring_model_summary">Select a local GGUF or candidate-scoring ONNX model</string>
+    <string name="candidate_scoring_tokenizer">ONNX reranking tokenizer</string>
+    <string name="candidate_scoring_tokenizer_summary">Select the matching SentencePiece .model file for ONNX</string>
+    <string name="candidate_scoring_clear">Remove the candidate reranking model</string>
+    <string name="candidate_scoring_import_failed">Could not import the candidate scoring file</string>
+</resources>
