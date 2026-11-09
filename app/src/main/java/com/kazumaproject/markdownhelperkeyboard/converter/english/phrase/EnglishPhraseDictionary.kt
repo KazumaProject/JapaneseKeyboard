@@ -175,7 +175,8 @@ internal fun CompactEnglishDictionary.phraseContinuations(prefix: String, limit:
         },
     )
     for ((reading, term) in terms) {
-        val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
+        val suffixCost = standaloneContinuationCost(reading.substring(prefix.length + 1))
+        val maxCost = if (best.size == limit) best.element().cost - suffixCost else Int.MAX_VALUE
         forEachCandidate(reading, term, maxCost) { candidate ->
             val surface = candidate.surface
             if (surface.getOrNull(prefix.length) != ' ' ||
@@ -184,10 +185,7 @@ internal fun CompactEnglishDictionary.phraseContinuations(prefix: String, limit:
             val suffix = surface.substring(prefix.length + 1).trim()
             if (suffix.isEmpty()) return@forEachCandidate
             val suffixKey = lookupKey(suffix)
-            val continuation = candidate.copy(
-                surface = suffix,
-                cost = candidate.cost + standaloneContinuationCost(suffixKey),
-            )
+            val continuation = candidate.copy(surface = suffix, cost = candidate.cost + suffixCost)
             val duplicate = bySuffix[suffixKey]
             if (duplicate != null) {
                 if (completionOrder.compare(continuation, duplicate) >= 0) return@forEachCandidate
