@@ -9,6 +9,7 @@ import io
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import unicodedata
@@ -29,6 +30,9 @@ SURFACE_OVERRIDES = Path('app/src/main/assets/categories/surface-overrides.json'
 ARCHIVE_FILE = 'japanese_keyboard_dictionary_assets.zip'
 UPSTREAM_MANIFEST = 'dictionary-distribution-manifest.json'
 LICENSE_FILE = 'DICTIONARY-LICENSES.txt'
+SPECIALIST_IDS = {'kampo', 'medical'}
+PERSON_LICENSE_HEADER = '<h2>Reviewed additions / 公式資料を照合した追加</h2>'
+ENGLISH_LICENSE_HEADER = '<h2>著作権表示・ライセンス原文 / Copyright notices and original license texts</h2>'
 SOURCES = {
     'person': ('src/main/bin/names.txt', None),
     'place': ('src/main/bin/place.txt.zip', 'place.txt'),
@@ -381,7 +385,6 @@ def reviewed_categories(review):
 
 def notices(root, distribution, provenance, raw, release_page, download_base):
     assets = root / LICENSES
-    counts = provenance['categorySourcePairs']
     upstream = {
         'mozc': raw + 'src/main/resources/third-party/MOZC-LICENSE',
         'cmudict': raw + 'src/main/resources/third-party/CMUDICT-LICENSE',
@@ -420,7 +423,25 @@ def notices(root, distribution, provenance, raw, release_page, download_base):
         write(assets / 'sources' / (key + '.txt'), data)
         snapshots[key] = {'url': url, 'sha256': sha(data)}
     write_json(snapshot_file, snapshots)
-    categories = [c for c in distribution['categories'] if c['id'] not in ('kampo', 'medical')]
+    person_pairs = collections.defaultdict(set)
+    data = fetch(raw + 'src/main/classification/person-dictionary-candidates.tsv.gz', distribution['personSourceSha256'])
+    for line in gzip.decompress(data).decode().splitlines():
+        category, reading, left, right, cost, surface, *tags = line.split('\t')
+        person_pairs['person/' + category].add((reading, surface))
+    person_attributions = {}
+    for category in distribution['categories']:
+        ident = category['id']
+        if ident.startswith('person/'):
+            additions = [row for row in provenance['personAdditions'] if (row['reading'], row['surface']) in person_pairs[ident]]
+            details = PERSON_LICENSE_HEADER + '<p>Names/readings selected, normalized, assigned POS/cost and encoded. 氏名・読みの選定、正規化、品詞・コスト割当とバイナリ化。Source page text is not redistributed; per-entry copyright terms remain unconfirmed / 原資料本文は転載していません。各語の著作権条件は未確認。</p>'
+            details += '<ul>' + ''.join('<li>' + html.escape(row['reading'] + ' / ' + row['surface']) + ': <a href="' + html.escape(row['source_url']) + '">Source / 出典</a></li>' for row in additions) + '</ul>'
+            person_attributions[ident] = details
+    render_dictionary_notices(assets, assets, distribution, provenance, snapshots, person_attributions, raw, release_page)
+
+
+def render_dictionary_notices(output, source_directory, distribution, provenance, snapshots, person_attributions, raw, release_page):
+    counts = provenance['categorySourcePairs']
+    categories = [c for c in distribution['categories'] if c['id'] not in SPECIALIST_IDS]
     mhlw_review = provenance.get('mhlwReview', {})
     style = '<style>body{font:16px sans-serif;line-height:1.6;padding:16px;overflow-wrap:anywhere}pre{white-space:pre-wrap;font:13px monospace;line-height:1.5}h1{font-size:20px}h2{font-size:17px;margin-top:24px}</style>'
     def translated(japanese, english):
@@ -431,7 +452,8 @@ def notices(root, distribution, provenance, raw, release_page, download_base):
         body = '<!doctype html><meta charset="utf-8">' + style + '<title>' + html.escape(title) + '</title><h1>' + html.escape(title) + '</h1>' + details
         body += heading('著作権表示・ライセンス原文', 'Copyright notices and original license texts')
         for key in keys:
-            body += '<h2>' + html.escape(key) + '</h2><p><a href="' + html.escape(upstream[key]) + '">Source / 出典</a></p><pre>' + html.escape((assets/'sources'/(key+'.txt')).read_text()) + '</pre>'
+            original = (source_directory / 'sources' / (key + '.txt')).read_text(encoding='utf-8')
+            body += '<h2>' + html.escape(key) + '</h2><p><a href="' + html.escape(snapshots[key]['url']) + '">Source / 出典</a></p><pre>' + html.escape(original) + '</pre>'
         return body
     common = heading('概要', 'Overview') + '<p>' + translated('本アプリに同梱する辞書データです。出典ごとの利用条件と通知原文を以下に掲載しています。', 'Dictionary data bundled with this app. Source-specific terms and original notices are provided below.') + '</p>'
     common += heading('出典', 'Source') + f'<p><a href="{release_page}">' + translated('辞書データの配布元', 'Dictionary distribution') + '</a></p>'
@@ -442,10 +464,6 @@ def notices(root, distribution, provenance, raw, release_page, download_base):
     if review:
         common += '<p>Reviewed release additions / 配布版の追加語・出典確認: <a href="' + html.escape(raw + review['reviewPath']) + '">' + html.escape(review['reviewPath']) + '</a> (SHA-256: ' + review['reviewSha256'] + ')</p>'
     common += heading('利用条件', 'License terms') + '<p>' + translated('各出典には、それぞれの利用条件が適用されます。元データの取得版および各語の著作権者との対応は、配布元の資料からは確認できていません。', 'Each source retains its respective terms. The original acquisition revision and per-entry copyright attribution could not be confirmed from the distributor’s materials.') + '</p>'
-    person_pairs = collections.defaultdict(set)
-    for line in gzip.decompress(fetch(raw + 'src/main/classification/person-dictionary-candidates.tsv.gz')).decode().splitlines():
-        category, reading, left, right, cost, surface, *tags = line.split('\t')
-        person_pairs['person/' + category].add((reading, surface))
     for category in categories:
         ids = set(counts.get(category['id'], {}))
         keys = ['mozc', 'merge-ut']
@@ -478,18 +496,17 @@ def notices(root, distribution, provenance, raw, release_page, download_base):
             details += '<p>Source / 出典: <a href="' + html.escape(mhlw_review['sourceUrl']) + '">MHLW Multilingual Glossary for Employment Management / 雇用管理に役立つ多言語用語集</a>. License / 条件: <a href="' + html.escape(mhlw_review['licenseUrl']) + '">Public Data License (Version 1.0) / 公共データ利用規約（第1.0版） (PDL1.0)</a>.</p>'
             details += '<p>' + str(additions) + ' terms were selected from the source, including explicitly provided Japanese readings, then categorized and converted to IME dictionary data. Definitions, translations and examples were not copied. / 出典の用語と明記された日本語読みを選定し、分類してIME辞書データに変換しています。定義・翻訳・例文は転載していません。</p>'
             details += '<p>Source terms and processing notice / 出典と加工内容: <a href="' + html.escape(mhlw_review['termsUrl']) + '">MHLW usage terms / 厚生労働省の利用規約</a>. Upstream reviewed additions and reclassifications / 上流の確認記録: <a href="' + html.escape(raw + mhlw_review['path']) + '">' + html.escape(mhlw_review['path']) + '</a> (SHA-256: ' + mhlw_review['sha256'] + ').</p>'
-        if category['id'].startswith('person/'):
-            additions = [row for row in provenance['personAdditions'] if (row['reading'], row['surface']) in person_pairs[category['id']]]
-            details += '<h2>Reviewed additions / 公式資料を照合した追加</h2><p>Names/readings selected, normalized, assigned POS/cost and encoded. 氏名・読みの選定、正規化、品詞・コスト割当とバイナリ化。Source page text is not redistributed; per-entry copyright terms remain unconfirmed / 原資料本文は転載していません。各語の著作権条件は未確認。</p>'
-            details += '<ul>' + ''.join('<li>' + html.escape(row['reading'] + ' / ' + row['surface']) + ': <a href="' + html.escape(row['source_url']) + '">Source / 出典</a></li>' for row in additions) + '</ul>'
-        write(assets/'classified'/(category['id']+'.html'), page(category['label']+' / '+category['id'], details, keys))
+        details += person_attributions.get(category['id'], '')
+        write(output / 'classified' / (category['id'] + '.html'), page(category['label'] + ' / ' + category['id'], details, keys))
     source_metadata = provenance['specialistSources']
-    for category in json.loads(fetch(raw + 'src/main/specialist/categories.json'))['categories']:
+    for category in distribution['categories']:
+        if category['id'] not in SPECIALIST_IDS:
+            continue
         ident = category['id']
         sources = [source for source in source_metadata if counts[ident].get(source['id'], 0)]
         details = common
         if ident == 'medical':
-            inferred = specialist['readingOrigins']['gemini_inferred_unverified']
+            inferred = provenance['specialist']['readingOrigins']['gemini_inferred_unverified']
             details += f'<p>{inferred:,} adopted readings were supplemented with Gemini. Automatic and inferred readings are unverified / 採用語の読み{inferred:,}件をGeminiで補完。自動読み・推定読みの正確性は未確認。</p>'
         else:
             details += '<p>Automatic readings are unverified / 自動読みの正確性は未確認。</p>'
@@ -500,7 +517,7 @@ def notices(root, distribution, provenance, raw, release_page, download_base):
         if collected:
             details += '<h2>Source-backed additions / 出典を照合した追加</h2><p>Selected names and readings; original source page text is not redistributed. Per-entry copyright terms remain unconfirmed / 名称と読みを選定。原資料本文は転載していません。各語の著作権条件は未確認。</p><ul>'
             details += ''.join('<li>' + html.escape(row['reading'] + ' / ' + row['surface']) + ': <a href="' + html.escape(row['source_url']) + '">Source / 出典</a></li>' for row in collected) + '</ul>'
-        write(assets/'classified'/(ident+'.html'), page(category['name']+' / '+ident, details, keys))
+        write(output / 'classified' / (ident + '.html'), page(category['label'] + ' / ' + ident, details, keys))
     for ident, title, keys in [
         ('wiki', 'Japanese Wikipedia-derived data / 日本語Wikipedia由来の辞書データ', ['wiki','cc-by-sa-4']),
         ('core', 'Mozc dictionaries / Mozc基本・単漢字・絵文字・顔文字・記号辞書', ['mozc','ipadic','ipadic-copying']),
@@ -508,7 +525,7 @@ def notices(root, distribution, provenance, raw, release_page, download_base):
         ('ngram', 'N-gram / Unigram dictionaries', ['data','corpus','mozc','ipadic','cc-by-sa-4']),
         ('auxiliary', 'Reading correction / Proverbs / 読み修正・ことわざ辞書', ['converter','mozc']),
     ]:
-        write(assets/(ident+'.html'), page(title, common, keys))
+        write(output / (ident + '.html'), page(title, common, keys))
 
 def english_dictionary(root, archive, distribution, release, release_page, download_base):
     support_sha = release['englishDictionary']['supportArchiveSha256']
@@ -554,34 +571,12 @@ def english_dictionary(root, archive, distribution, release, release_page, downl
             if name.startswith(prefix):
                 notices[verified(name.removeprefix(ENGLISH_ASSET_ROOT)).decode('utf-8')].append(name.removeprefix(prefix))
 
-        title = 'English word dictionary / 英単語辞書'
         source = f'https://github.com/{REPOSITORY}/blob/{builder}/english-ime/data/catalog/NAMED-VOCABULARY.md'
-        page = (
-            f'<!doctype html><meta charset="utf-8"><title>{title}</title><h1>{title}</h1>'
-            '<h2>出典と配布版 / Source and version</h2>'
-            f'<p>配布: {distribution["version"]} ({distribution["revision"]})</p>'
-            f'<p><a href="{release_page}">Android dictionary distribution / Android 向け配布</a></p>'
-            f'<p>English dictionary builder revision / 英語辞書の生成コミット: <code>{builder}</code></p>'
-            f'<p><a href="{source}">English dictionary catalog / 英語辞書の出典・語彙台帳</a></p>'
-            f'<p><a href="{ENGLISH_REVIEWED_SOURCE}">Reviewed grammar input / レビュー済み文法データの入力原本</a></p>'
-            '<p>Android bundles the reading, word, token, Glide and grammar files. '
-            'The build repackages the reading, word and token arrays for Android. '
-            'The verb correction table is derived from the reviewed finite verb forms. '
-            'Each source retains the terms reproduced below.</p>'
-            '<p>読み・表記・トークン・Glide・文法のデータを収録しています。'
-            '読み・表記・トークンはビルド時に Android 向けの形式に再格納します。'
-            '動詞の訂正用データはレビュー済みの活用形から生成しています。'
-            '出典ごとの利用条件を以下に掲載します。</p>'
-            '<h2>著作権表示・ライセンス原文 / Copyright notices and original license texts</h2>'
-        )
+        original_notices = ''
         for original, names in notices.items():
             escaped = html.escape(original).replace('\r', '&#13;').replace('\n', '&#10;')
-            page += '<h3>' + html.escape(', '.join(names)) + '</h3><pre>' + escaped + '</pre>\n'
-        write(root / ENGLISH_NOTICE, page)
-        assets[ENGLISH_NOTICE] = sha((root / ENGLISH_NOTICE).read_bytes())
+            original_notices += '<h3>' + html.escape(', '.join(names)) + '</h3><pre>' + escaped + '</pre>\n'
 
-    write(root / ENGLISH_VERB_FORMS, build_english_verb_forms(fetch(ENGLISH_REVIEWED_SOURCE)))
-    assets[ENGLISH_VERB_FORMS] = sha((root / ENGLISH_VERB_FORMS).read_bytes())
     distribution['englishDictionary'] = {
         'version': distribution['version'],
         'revision': builder,
@@ -591,10 +586,45 @@ def english_dictionary(root, archive, distribution, release, release_page, downl
         'reviewedGrammarSourceUrl': ENGLISH_REVIEWED_SOURCE,
         'assets': assets,
     }
+    page = english_license_header(distribution, release_page) + original_notices
+    write(root / ENGLISH_NOTICE, page)
+    assets[ENGLISH_NOTICE] = sha((root / ENGLISH_NOTICE).read_bytes())
+    write(root / ENGLISH_VERB_FORMS, build_english_verb_forms(fetch(ENGLISH_REVIEWED_SOURCE)))
+    assets[ENGLISH_VERB_FORMS] = sha((root / ENGLISH_VERB_FORMS).read_bytes())
 
 
-def check(root, update_docs=False):
+def english_license_header(distribution, release_page):
+    title = 'English word dictionary / 英単語辞書'
+    english = distribution['englishDictionary']
+    return (
+        f'<!doctype html><meta charset="utf-8"><title>{title}</title><h1>{title}</h1>'
+        '<h2>出典と配布版 / Source and version</h2>'
+        f'<p>配布: {distribution["version"]} ({distribution["revision"]})</p>'
+        f'<p><a href="{release_page}">Android dictionary distribution / Android 向け配布</a></p>'
+        f'<p>English dictionary builder revision / 英語辞書の生成コミット: <code>{english["revision"]}</code></p>'
+        f'<p><a href="{english["catalogUrl"]}">English dictionary catalog / 英語辞書の出典・語彙台帳</a></p>'
+        f'<p><a href="{english["reviewedGrammarSourceUrl"]}">Reviewed grammar input / レビュー済み文法データの入力原本</a></p>'
+        '<p>Android bundles the reading, word, token, Glide and grammar files. '
+        'The build repackages the reading, word and token arrays for Android. '
+        'The verb correction table is derived from the reviewed finite verb forms. '
+        'Each source retains the terms reproduced below.</p>'
+        '<p>読み・表記・トークン・Glide・文法のデータを収録しています。'
+        '読み・表記・トークンはビルド時に Android 向けの形式に再格納します。'
+        '動詞の訂正用データはレビュー済みの活用形から生成しています。'
+        '出典ごとの利用条件を以下に掲載します。</p>'
+        + ENGLISH_LICENSE_HEADER
+    )
+
+
+def notice_pages_sha256(directory):
+    pages = (f'{path.relative_to(directory).as_posix()}\t{sha(path.read_bytes())}\n'
+             for path in sorted(directory.rglob('*.html')))
+    return sha(''.join(pages).encode())
+
+
+def check(root, update_docs=False, generated_licenses=None):
     manifest = read_json(root / MANIFEST)
+    license_pages = generated_licenses or root / LICENSES
     version, revision = manifest['version'], manifest['revision']
     assert re.fullmatch(r'[0-9a-f]{40}', revision), revision
     for path, checksum in manifest['assets'].items():
@@ -617,13 +647,14 @@ def check(root, update_docs=False):
     assert re.fullmatch(r'[0-9a-f]{64}', english['supportArchiveSha256'])
     assert set(english['assets']) == {ENGLISH_ASSET_ROOT + name for name in ENGLISH_ASSETS.values()} | {ENGLISH_NOTICE, ENGLISH_VERB_FORMS}
     for path, checksum in english['assets'].items():
-        assert sha((root / path).read_bytes()) == checksum, path
-    classified = root / LICENSES / 'classified'
+        asset = license_pages / 'english.html' if path == ENGLISH_NOTICE else root / path
+        assert sha(asset.read_bytes()) == checksum, path
+    classified = license_pages / 'classified'
     assert set(classified.rglob('*.html')) == {classified / (c['id'] + '.html') for c in manifest['categories']}
-    for path in (root / LICENSES).rglob('*.html'):
+    for path in license_pages.rglob('*.html'):
         text = path.read_text()
         assert f'配布: {version} ({revision})' in text and release_url in text, f'Stale dictionary notice: {path}'
-        if path == root / ENGLISH_NOTICE:
+        if path == license_pages / 'english.html':
             assert f'<code>{english["revision"]}</code>' in text, path
             assert english['catalogUrl'] in text, path
             assert english['reviewedGrammarSourceUrl'] in text, path
@@ -640,8 +671,47 @@ def check(root, update_docs=False):
     assert sha((root / CLASSIFIED_FIXTURE).read_bytes()) == evidence['classifiedFixtureSha256']
     assert snapshots['distribution-licenses']['sha256'] == manifest['licensesSha256']
     assert sha((root / SURFACE_OVERRIDES).read_bytes()) == evidence['surfaceOverridesSha256']
-    update_license_doc(root, manifest, evidence, snapshots, reviewed, update_docs)
-    print(f"Verified {len(manifest['assets'])} distributed assets and all bundled notices and license documentation")
+    assert notice_pages_sha256(license_pages) == manifest['licensePagesSha256'], 'Dictionary license HTML differs from the pinned release'
+    if generated_licenses is None:
+        update_license_doc(root, manifest, evidence, snapshots, reviewed, update_docs)
+    print(f"Verified {len(manifest['assets'])} distributed assets and the dictionary notices for {version}")
+
+
+def generate_license_assets(output):
+    sources = ROOT / LICENSES
+    destination = output / 'licenses'
+    if destination.resolve() == sources.resolve():
+        raise ValueError('Generate the license assets in a build directory')
+    manifest = read_json(ROOT / MANIFEST)
+    evidence = read_json(ROOT / PROVENANCE)
+    snapshots = read_json(sources / 'notice-snapshots.json')
+    raw = f'https://raw.githubusercontent.com/{REPOSITORY}/{manifest["revision"]}/'
+    release_page = f'https://github.com/{REPOSITORY}/releases/tag/{manifest["version"]}'
+
+    # Reuse the source-specific sections preserved by the importer. The final
+    # page digest verifies that these sections belong to the bundled release.
+    person_attributions = {}
+    for category in manifest['categories']:
+        ident = category['id']
+        if ident.startswith('person/'):
+            page = (sources / 'classified' / (ident + '.html')).read_text(encoding='utf-8')
+            _, heading, tail = page.partition(PERSON_LICENSE_HEADER)
+            body, end, _ = tail.partition('</ul>')
+            assert heading and end, f'Missing person attribution: {ident}'
+            person_attributions[ident] = heading + body + end
+    english = (ROOT / ENGLISH_NOTICE).read_bytes()
+    _, heading, original_notices = english.partition(ENGLISH_LICENSE_HEADER.encode())
+    assert heading and original_notices, 'Missing English word dictionary notices'
+
+    output.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='dictionary-licenses-', dir=output.parent) as directory:
+        staged = Path(directory) / 'licenses'
+        render_dictionary_notices(staged, sources, manifest, evidence, snapshots, person_attributions, raw, release_page)
+        write(staged / 'english.html', english_license_header(manifest, release_page).encode() + original_notices)
+        check(ROOT, generated_licenses=staged)
+        if destination.exists():
+            shutil.rmtree(destination)
+        staged.replace(destination)
 
 
 def prepare(tag):
@@ -662,6 +732,7 @@ def prepare(tag):
             english_dictionary(stage, zipped, distribution, release, release_page, download_base)
         evidence = provenance(stage, distribution, previous, raw)
         notices(stage, distribution, evidence, raw, release_page, download_base)
+        distribution['licensePagesSha256'] = notice_pages_sha256(stage / LICENSES)
         write_json(stage / MANIFEST, distribution)
         check(stage, update_docs=True)
 
@@ -698,8 +769,11 @@ if __name__ == '__main__':
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='Verify the bundled release and notices offline')
     mode.add_argument('--release', metavar='TAG', help='Import a published dictionary release')
+    mode.add_argument('--generate-license-assets', type=Path, metavar='DIR', help='Generate verified Android license assets offline')
     args = parser.parse_args()
     if args.check:
         check(ROOT)
+    elif args.generate_license_assets:
+        generate_license_assets(args.generate_license_assets)
     else:
         prepare(args.release)

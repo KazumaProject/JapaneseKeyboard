@@ -32,7 +32,13 @@ The importer resolves the release commit and published SHA-256 values on GitHub,
 verifies the archives and their manifests, and generates the offline HTML and the
 release-specific sections in `docs/licenses/DICTIONARIES.md`. Running `prepare.py`
 without a tag regenerates the pinned release. `--check` verifies the files locally
-and is used by release CI. The app reads the generated HTML from its assets.
+and is used by release CI.
+
+Release and unsigned release builds run the dictionary license generator automatically
+before merging Android assets, including local AAB builds from Gradle or Android Studio.
+The generator uses `python3` and the checked-in manifest and notices, verifies the bundled
+dictionary hashes, and writes the HTML to Gradle's build directory. Import a different
+release with `--release <tag>` before building with that dictionary.
 
 Filtered releases with changed category triples rebuild the expected-record fixture
 from the staged binaries with the app’s JVM readers. This step uses the local
