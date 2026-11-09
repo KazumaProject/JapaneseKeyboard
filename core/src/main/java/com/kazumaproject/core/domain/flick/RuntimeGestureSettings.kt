@@ -122,7 +122,9 @@ data class GestureSessionConfig(
     val flickThresholdPx: Float,
     val longPressTimeoutMillis: Long,
     val flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial,
-    val tfbiDiagonalRecognitionMode: TfbiDiagonalRecognitionMode = TfbiDiagonalRecognitionMode.LEGACY
+    val tfbiDiagonalRecognitionMode: TfbiDiagonalRecognitionMode = TfbiDiagonalRecognitionMode.LEGACY,
+    val showFlickPopup: Boolean = true,
+    val showLongPressPopup: Boolean = true
 ) {
     init {
         require(flickThresholdPx > 0f) { "flickThresholdPx must be positive" }
