@@ -915,6 +915,7 @@ class SuggestionAdapter internal constructor(
     internal fun submitContent(
         content: CandidateStripContent,
         inlineSuggestionState: InlineSuggestionStripState,
+        commitInitialCandidates: Boolean = false,
     ) {
         val layoutModeChanged =
             CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(currentContent) !=
@@ -925,6 +926,7 @@ class SuggestionAdapter internal constructor(
         submitContent(
             content = content,
             inlineSuggestionState = inlineSuggestionState,
+            commitInitialCandidates = commitInitialCandidates,
             onCommitted = if (layoutModeChanged || candidateSuggestions != nextCandidates) {
                 { onListUpdated?.invoke() }
             } else {
@@ -936,6 +938,7 @@ class SuggestionAdapter internal constructor(
     private fun submitContent(
         content: CandidateStripContent,
         inlineSuggestionState: InlineSuggestionStripState = this.inlineSuggestionStripState,
+        commitInitialCandidates: Boolean = false,
         onCommitted: (() -> Unit)?,
     ) {
         traceDebugSection("SuggestionAdapter.submitContent") {
@@ -947,11 +950,14 @@ class SuggestionAdapter internal constructor(
             inlineSuggestionStripState = inlineSuggestionState
             candidateSuggestions = content.candidatesForClicks()
             updateInlineSuggestionRecyclerViews()
-            rebuildDisplayItems(onCommitted)
+            rebuildDisplayItems(onCommitted, commitInitialCandidates)
         }
     }
 
-    private fun rebuildDisplayItems(onCommitted: (() -> Unit)? = null) {
+    private fun rebuildDisplayItems(
+        onCommitted: (() -> Unit)? = null,
+        commitInitialCandidates: Boolean = false,
+    ) {
         if (released) return
 
         measureDebugSection("SuggestionAdapter.rebuildDisplayItems") {
@@ -964,6 +970,13 @@ class SuggestionAdapter internal constructor(
 
             val newStartAnchorSignature = startAnchorSignatureFor(newItems)
             val generation = ++displayGeneration
+            if (commitInitialCandidates && displayItems.isEmpty() &&
+                newItems.isNotEmpty() && newItems.all { it is SuggestionDisplayItem.CandidateItem }
+            ) {
+                // AsyncListDiffer can insert directly from null. Clearing the committed empty
+                // list also invalidates any previous update still waiting on the diff executor.
+                differ.submitList(null)
+            }
             differ.submitList(newItems) {
                 if (released || generation != displayGeneration) return@submitList
                 val previousStartAnchorSignature = committedStartAnchorSignature
