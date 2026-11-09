@@ -37,8 +37,9 @@ class ClassifiedPredictionParityTest {
             val leaf = SuccinctBitVector(trie.isLeaf)
             for (prefix in listOf("", "あ", "あい", "あいあ", "あいあえ", "あいあ😀", "ない")) {
                 for (limit in 0..20) {
-                    val expected = trie.predictiveSearch(prefix, lbs).filter { it.length <= limit }
-                        .map { it to trie.getTermId(trie.getNodeIndex(it, lbs), leaf) }
+                    val expectedReadings = trie.predictiveSearch(prefix, lbs).filter { it.length <= limit }
+                    assertEquals(expectedReadings, trie.predictiveSearch(prefix, lbs, limit))
+                    val expected = expectedReadings.map { it to trie.getTermId(trie.getNodeIndex(it, lbs), leaf) }
                     val actual = mutableListOf<Pair<String, Int>>()
                     trie.forEachPredictiveMatch(prefix, limit, lbs, leaf) { reading, term -> actual.add(reading to term) }
                     assertEquals("packed=$packed prefix=$prefix limit=$limit", expected, actual)
