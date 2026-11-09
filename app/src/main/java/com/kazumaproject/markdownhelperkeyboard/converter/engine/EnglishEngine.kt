@@ -7,6 +7,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglish
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.EnglishPhraseDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.GrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.PhraseConverter
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.lookupKey
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.phraseContinuations
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
@@ -507,6 +509,19 @@ class EnglishEngine : QwertyGlideCandidateProvider {
     ): List<Candidate> {
         if (input.isEmpty()) return emptyList()
         return getCandidates(input, enableTypoCorrection, enablePrediction, ensureDictionariesLoaded().dictionary)
+    }
+
+    internal fun getPhraseContinuations(committedText: String): List<String> {
+        if (committedText.length !in 1..254) return emptyList()
+        val prefix = lookupKey(committedText.trimStart(' '))
+        if (prefix.endsWith(' ') || prefix.none(Char::isLetter)) return emptyList()
+        if (prefix.any { char ->
+                char !in '0'..'9' && char !in " '-" &&
+                    Character.UnicodeScript.of(char.code) != Character.UnicodeScript.LATIN &&
+                    Character.getType(char) != Character.NON_SPACING_MARK.toInt()
+            }
+        ) return emptyList()
+        return ensureDictionariesLoaded().dictionary.phraseContinuations(prefix, limit = 48)
     }
 
     internal fun getConversionCandidates(
