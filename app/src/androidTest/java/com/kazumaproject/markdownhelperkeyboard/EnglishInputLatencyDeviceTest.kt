@@ -18,6 +18,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -45,6 +46,7 @@ class EnglishInputLatencyDeviceTest {
         val interval = args.getString("english_latency_interval_ms")?.toLong() ?: 85L
         require(rounds in 1..100 && interval in 30..1_000)
         val waitForEachCandidate = args.getString("english_latency_serial") == "true"
+        val liveConversion = args.getString("english_latency_live") == "true"
         val target = "${context.packageName}/${IMEService::class.java.name}"
         val previousIme = shell("settings get secure default_input_method")
         val wasEnabled = shell("ime list -s").lines().any { it.startsWith(context.packageName + "/") }
@@ -53,13 +55,16 @@ class EnglishInputLatencyDeviceTest {
             .putBoolean("save_last_used_keyboard", false)
             .putBoolean("keyboard_floating_preference", false)
             .putBoolean("qwerty_english_direct_input_preference", false)
-            .putBoolean("qwerty_glide_input_preference", false)
-            .putBoolean("qwerty_show_popup_window_preference", false)
+            .putBoolean("qwerty_glide_input_preference", liveConversion)
+            .putBoolean("qwerty_show_popup_window_preference", liveConversion)
             .putBoolean("enable_typo_correction_qwerty_english_keyboard_preference", false)
-            .putBoolean("live_conversion_preference", false)
+            .putBoolean("live_conversion_preference", liveConversion)
+            .putInt("live_conversion_start_length_preference", 1)
+            .putBoolean("flick_input_only_preference", liveConversion)
+            .putBoolean("incremental_conversion_session_preference", liveConversion)
             .putBoolean("learn_dictionary_preference", false)
             .putBoolean("zero_query_suggestion_preference", false)
-            .putBoolean("candidate_tab_visibility_preference", false)
+            .putBoolean("candidate_tab_visibility_preference", liveConversion)
             .putBoolean("english_prediction_enable_preference", args.getString("english_latency_prediction") != "false")
             .commit())
         try {
@@ -88,6 +93,8 @@ class EnglishInputLatencyDeviceTest {
     ) {
         val textTimes = ConcurrentHashMap<String, Long>()
         val candidateTimes = ConcurrentHashMap<String, Long>()
+        val captureOrder = args.getString("english_latency_capture_order") == "true"
+        val candidateOrders = ConcurrentHashMap<String, List<String>>()
         scenario.onActivity { it.restartEditorInput(clearText = true) }
         val keys = mutableMapOf<Char, PointF>()
         lateinit var recycler: RecyclerView
@@ -117,6 +124,7 @@ class EnglishInputLatencyDeviceTest {
             if (suggestions !== previousSuggestions) {
                 previousSuggestions = suggestions
                 if (suggestions.any { it.string.equals(typed, ignoreCase = true) }) {
+                    if (captureOrder) candidateOrders.putIfAbsent(typed, suggestions.map { it.string })
                     candidateTimes.putIfAbsent(typed, SystemClock.uptimeMillis())
                 }
             }
@@ -149,10 +157,16 @@ class EnglishInputLatencyDeviceTest {
             assertEquals(word, scenario.withEditor { it.text.toString() })
             for (index in releases.indices) {
                 val prefix = word.take(index + 1)
-                val textMs = textTimes[prefix]?.minus(releases[index]) ?: error("Editor never received $prefix")
+                val textMs = textTimes[prefix]?.minus(releases[index])
                 val candidateMs = candidateTimes[prefix]?.minus(releases[index])?.takeIf { it >= 0 }
                 instrumentation.sendStatus(2, Bundle().apply {
-                    putString("stream", "\nENGLISH_LATENCY round=$round word=$word key=${index + 1} text_ms=$textMs candidate_ms=$candidateMs\n")
+                    val order = candidateOrders[prefix]?.let { "\nENGLISH_ORDER round=$round prefix=$prefix candidates=${JSONArray(it)}" }.orEmpty()
+                    putString("stream", "\nENGLISH_LATENCY round=$round word=$word key=${index + 1} text_ms=$textMs candidate_ms=$candidateMs$order\n")
+                })
+            }
+            if (args.getString("english_latency_allow_skipped_text") != "true") {
+                assertEquals("Every prefix must reach the editor", word.length, releases.indices.count {
+                    textTimes[word.take(it + 1)]?.let { time -> time >= releases[it] } == true
                 })
             }
         } finally {

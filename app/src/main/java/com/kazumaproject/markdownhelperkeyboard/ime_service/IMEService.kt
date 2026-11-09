@@ -22121,7 +22121,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleTenKeyQwertyInput(string: String) {
         val spannable = createSpannableWithTail(string)
         requestCandidateRefresh(CandidateShowFlag.Updating, string)
-        if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
+        if (!shouldDeferComposingForLiveConversion(string)) {
             setComposingTextPreEdit(
                 inputString = string,
                 spannableString = spannable,
@@ -22164,7 +22164,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         val spannable = createSpannableWithTail(string)
-        if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
+        if (!shouldDeferComposingForLiveConversion(string)) {
             setComposingTextPreEdit(
                 inputString = string,
                 spannableString = spannable,
@@ -22244,6 +22244,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun shouldStartLiveConversion(input: String): Boolean {
         return isLiveConversionEnable == true && input.length >= liveConversionStartLength
     }
+
+    private fun shouldDeferComposingForLiveConversion(input: String): Boolean =
+        // English typing must reach the editor while the candidate search runs.
+        currentInputModeForSession != InputMode.ModeEnglish &&
+            isFlickOnlyMode == true && shouldStartLiveConversion(input)
 
     private fun requestCandidateRefresh(
         flag: CandidateShowFlag,
