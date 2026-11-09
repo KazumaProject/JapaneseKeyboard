@@ -96,15 +96,12 @@ private const val POS_ID_NUMBER_KANJI: Short = 2046
 private const val ENGLISH_READING_CAPITALIZED_SCORE_OFFSET = 1_500
 private const val ENGLISH_READING_UPPERCASE_SCORE_OFFSET = 3_000
 
-internal fun shouldIncludeSymbolEmojiReading(
-    inputLength: Int,
-    readingLength: Int,
-    predictionConfig: PredictionConfig,
-): Boolean = readingLength == inputLength || (
-    predictionConfig.japanesePredictionEnabled &&
-        predictionConfig.symbolEmojiEnabled &&
-        predictionConfig.acceptsJapaneseReading(inputLength, readingLength)
-    )
+internal fun maxSymbolEmojiReadingLength(inputLength: Int, config: PredictionConfig): Int =
+    if (config.symbolEmojiEnabled) {
+        config.maxJapanesePredictionReadingLength(inputLength) ?: inputLength
+    } else {
+        inputLength
+    }
 
 internal fun createJapaneseNumberValueBasedCandidates(
     input: String,
@@ -190,6 +187,7 @@ class KanaKanjiEngine {
         pathState = findPath.createSessionState(),
     )
 
+    @Volatile private lateinit var systemPredictionDictionary: TripleDictionaryData
     private lateinit var systemYomiTrie: LOUDSWithTermId
     private lateinit var systemTangoTrie: LOUDS
     private lateinit var systemTokenArray: TokenArray
@@ -286,13 +284,7 @@ class KanaKanjiEngine {
     private fun activeClassifiedDictionaries(categories: Set<DictionaryCategory>) =
         classifiedDictionaries.filterKeys { it in categories }
 
-    private var systemUserYomiTrie: LOUDSWithTermId? = null
-    private var systemUserTangoTrie: LOUDS? = null
-    private var systemUserTokenArray: TokenArray? = null
-    private var systemUserSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
-    private var systemUserSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
-    private var systemUserSuccinctBitVectorTokenArray: SuccinctBitVector? = null
-    private var systemUserSuccinctBitVectorLBSTango: SuccinctBitVector? = null
+    @Volatile private var systemUserPredictionDictionary: TripleDictionaryData? = null
 
     private lateinit var englishEngine: EnglishEngine
     private var mozcSegmenter: MozcSegmenter? = null
@@ -626,14 +618,17 @@ class KanaKanjiEngine {
 
         // System
         this@KanaKanjiEngine.connectionMatrix = connectionMatrix
-        this@KanaKanjiEngine.systemTangoTrie = systemTangoTrie
-        this@KanaKanjiEngine.systemTokenArray = systemTokenArray
-        this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
-        this@KanaKanjiEngine.systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi
-        this@KanaKanjiEngine.systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi
-        this@KanaKanjiEngine.systemSuccinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray
-        this@KanaKanjiEngine.systemSuccinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS
-
+        assignSystemDictionary(
+            TripleDictionaryData(
+                tangoTrie = systemTangoTrie,
+                yomiTrie = systemYomiTrie,
+                tokenArray = systemTokenArray,
+                succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+            )
+        )
 
         // Single Kanji
         this@KanaKanjiEngine.singleKanjiTangoTrie = singleKanjiTangoTrie
@@ -721,6 +716,7 @@ class KanaKanjiEngine {
         systemSuccinctBitVectorIsLeafYomi = data.succinctBitVectorIsLeafYomi
         systemSuccinctBitVectorTokenArray = data.succinctBitVectorTokenArray
         systemSuccinctBitVectorTangoLBS = data.succinctBitVectorTangoLBS
+        systemPredictionDictionary = data
     }
 
     private fun assignSingleKanjiDictionary(data: TripleDictionaryData) {
@@ -808,59 +804,51 @@ class KanaKanjiEngine {
             return
         }
 
-        ObjectInputStream(BufferedInputStream(FileInputStream(tangoFile))).use {
-            this.systemUserTangoTrie = LOUDS().readExternalNotCompress(it)
+        val tangoTrie = ObjectInputStream(BufferedInputStream(FileInputStream(tangoFile))).use {
+            LOUDS().readExternalNotCompress(it)
         }
-        ObjectInputStream(BufferedInputStream(FileInputStream(yomiFile))).use {
-            this.systemUserYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
+        val yomiTrie = ObjectInputStream(BufferedInputStream(FileInputStream(yomiFile))).use {
+            LOUDSWithTermId().readExternalNotCompress(it)
         }
-        this.systemUserTokenArray = TokenArray()
+        val tokenArray = TokenArray()
         ObjectInputStream(BufferedInputStream(FileInputStream(tokenFile))).use {
-            this.systemUserTokenArray?.readExternal(it)
+            tokenArray.readExternal(it)
         }
         ObjectInputStream(BufferedInputStream(FileInputStream(posTableFile))).use {
-            this.systemUserTokenArray?.readPOSTable(it)
+            tokenArray.readPOSTable(it)
         }
 
-        this.systemUserSuccinctBitVectorLBSYomi = SuccinctBitVector(systemUserYomiTrie!!.LBS)
-        this.systemUserSuccinctBitVectorIsLeaf = SuccinctBitVector(systemUserYomiTrie!!.isLeaf)
-        this.systemUserSuccinctBitVectorTokenArray =
-            SuccinctBitVector(systemUserTokenArray!!.bitvector)
-        this.systemUserSuccinctBitVectorLBSTango = SuccinctBitVector(systemUserTangoTrie!!.LBS)
-
-        graphBuilder.updateSystemUserDictionary(
-            yomiTrie = systemUserYomiTrie,
-            tangoTrie = systemUserTangoTrie,
-            tokenArray = systemUserTokenArray,
-            succinctBitVectorLBSYomi = systemUserSuccinctBitVectorLBSYomi,
-            succinctBitVectorIsLeafYomi = systemUserSuccinctBitVectorIsLeaf,
-            succinctBitVectorTokenArray = systemUserSuccinctBitVectorTokenArray,
-            succinctBitVectorTangoLBS = systemUserSuccinctBitVectorLBSTango,
+        val dictionary = TripleDictionaryData(
+            tangoTrie = tangoTrie,
+            yomiTrie = yomiTrie,
+            tokenArray = tokenArray,
+            succinctBitVectorLBSYomi = SuccinctBitVector(yomiTrie.LBS),
+            succinctBitVectorIsLeafYomi = SuccinctBitVector(yomiTrie.isLeaf),
+            succinctBitVectorTokenArray = SuccinctBitVector(tokenArray.bitvector),
+            succinctBitVectorTangoLBS = SuccinctBitVector(tangoTrie.LBS),
         )
+        publishSystemUserDictionary(dictionary)
     }
 
     fun releaseSystemUserDictionary() {
-        this.systemUserTangoTrie = null
-        this.systemUserYomiTrie = null
-        this.systemUserTokenArray = null
-        this.systemUserSuccinctBitVectorLBSYomi = null
-        this.systemUserSuccinctBitVectorIsLeaf = null
-        this.systemUserSuccinctBitVectorTokenArray = null
-        this.systemUserSuccinctBitVectorLBSTango = null
-        graphBuilder.updateSystemUserDictionary(
-            yomiTrie = null,
-            tangoTrie = null,
-            tokenArray = null,
-            succinctBitVectorLBSYomi = null,
-            succinctBitVectorIsLeafYomi = null,
-            succinctBitVectorTokenArray = null,
-            succinctBitVectorTangoLBS = null,
-        )
+        publishSystemUserDictionary(null)
     }
 
-    fun isSystemUserDictionaryInitialized(): Boolean {
-        return !(systemUserYomiTrie == null || systemUserTangoTrie == null || systemUserTokenArray == null)
+    @Synchronized
+    private fun publishSystemUserDictionary(dictionary: TripleDictionaryData?) {
+        graphBuilder.updateSystemUserDictionary(
+            yomiTrie = dictionary?.yomiTrie,
+            tangoTrie = dictionary?.tangoTrie,
+            tokenArray = dictionary?.tokenArray,
+            succinctBitVectorLBSYomi = dictionary?.succinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = dictionary?.succinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = dictionary?.succinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = dictionary?.succinctBitVectorTangoLBS,
+        )
+        systemUserPredictionDictionary = dictionary
     }
+
+    fun isSystemUserDictionaryInitialized(): Boolean = systemUserPredictionDictionary != null
 
 
     suspend fun getCandidatesOriginal(
@@ -4804,115 +4792,21 @@ class KanaKanjiEngine {
         succinctBitVector: SuccinctBitVector,
         predictionConfig: PredictionConfig,
     ): List<String> {
-        return yomiTrie.predictiveSearch(
-            prefix = input, succinctBitVector = succinctBitVector
-        ).filter { predictionConfig.acceptsJapaneseReading(input.length, it.length) }
+        val maxReadingLength = predictionConfig.maxJapanesePredictionReadingLength(input.length)
+            ?: return emptyList()
+        return yomiTrie.predictiveSearch(input, succinctBitVector, maxReadingLength)
+            .filter { it.length > input.length }
     }
 
     private fun buildPredictiveCandidatesIncludingSystemUser(
         input: String,
         predictionConfig: PredictionConfig,
-    ): List<Candidate> {
-        val systemCandidates = if (predictionConfig.systemDictionaryEnabled) {
-            val systemPredictiveYomi = deferredPrediction(
-                input = input,
-                yomiTrie = systemYomiTrie,
-                succinctBitVector = systemSuccinctBitVectorLBSYomi,
-                predictionConfig = predictionConfig,
-            )
-            buildPredictiveCandidatesFromDictionary(
-                input = input,
-                yomiList = systemPredictiveYomi,
-                yomiTrie = systemYomiTrie,
-                tangoTrie = systemTangoTrie,
-                tokenArray = systemTokenArray,
-                succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
-                succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
-                succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
-                succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
-                predictionConfig = predictionConfig,
-            )
-        } else {
-            emptyList()
-        }
-
-        val systemUserCandidates =
-            if (predictionConfig.systemUserDictionaryEnabled && systemUserYomiTrie != null && systemUserTangoTrie != null && systemUserTokenArray != null && systemUserSuccinctBitVectorLBSYomi != null && systemUserSuccinctBitVectorIsLeaf != null && systemUserSuccinctBitVectorTokenArray != null && systemUserSuccinctBitVectorLBSTango != null) {
-                val systemUserPredictiveYomi = deferredPrediction(
-                    input = input,
-                    yomiTrie = systemUserYomiTrie!!,
-                    succinctBitVector = systemUserSuccinctBitVectorLBSYomi!!,
-                    predictionConfig = predictionConfig,
-                )
-                buildPredictiveCandidatesFromDictionary(
-                    input = input,
-                    yomiList = systemUserPredictiveYomi,
-                    yomiTrie = systemUserYomiTrie!!,
-                    tangoTrie = systemUserTangoTrie!!,
-                    tokenArray = systemUserTokenArray!!,
-                    succinctBitVectorLBSYomi = systemUserSuccinctBitVectorLBSYomi!!,
-                    succinctBitVectorIsLeafYomi = systemUserSuccinctBitVectorIsLeaf!!,
-                    succinctBitVectorTokenArray = systemUserSuccinctBitVectorTokenArray!!,
-                    succinctBitVectorTangoLBS = systemUserSuccinctBitVectorLBSTango!!,
-                    predictionConfig = predictionConfig,
-                )
-            } else {
-                emptyList()
-            }
-
-        return (systemCandidates + systemUserCandidates)
-            .sortedBy { it.score }
-            .take(predictionConfig.normalizedSystemCandidateLimit)
-    }
-
-    private fun buildPredictiveCandidatesFromDictionary(
-        input: String,
-        yomiList: List<String>,
-        yomiTrie: LOUDSWithTermId,
-        tangoTrie: LOUDS,
-        tokenArray: TokenArray,
-        succinctBitVectorLBSYomi: SuccinctBitVector,
-        succinctBitVectorIsLeafYomi: SuccinctBitVector,
-        succinctBitVectorTokenArray: SuccinctBitVector,
-        succinctBitVectorTangoLBS: SuccinctBitVector,
-        predictionConfig: PredictionConfig,
-    ): List<Candidate> {
-        return buildList {
-            yomiList.forEach { yomi ->
-                if (yomi.length == input.length) return@forEach
-                val nodeIndex =
-                    yomiTrie.getNodeIndex(yomi, succinctBitVector = succinctBitVectorLBSYomi)
-                if (nodeIndex <= 0) {
-                    return@forEach
-                }
-                val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                tokenArray.forEachDictionaryByYomiTermId(
-                    termId,
-                    succinctBitVector = succinctBitVectorTokenArray,
-                ) { posTableIndex, wordCost, nodeId ->
-                    val baseCost = wordCost.toInt()
-                    val score = baseCost + predictionConfig.completionPenalty(
-                        inputLength = input.length,
-                        readingLength = yomi.length,
-                    )
-                    add(
-                        Candidate(
-                            string = when (nodeId) {
-                                -2 -> yomi
-                                -1 -> yomi.hiraToKata()
-                                else -> tangoTrie.getLetter(nodeId, succinctBitVectorTangoLBS)
-                            },
-                            type = 9,
-                            length = yomi.length.toUByte(),
-                            score = score,
-                            leftId = tokenArray.leftIds[posTableIndex.toInt()],
-                            rightId = tokenArray.rightIds[posTableIndex.toInt()],
-                        )
-                    )
-                }
-            }
-        }
-    }
+    ): List<Candidate> = predictSystemDictionaryCandidates(
+        input = input,
+        config = predictionConfig,
+        systemDictionary = systemPredictionDictionary,
+        systemUserDictionary = systemUserPredictionDictionary,
+    )
 
     private fun deferredPredictionEmojiSymbols(
         input: String,
@@ -4923,15 +4817,8 @@ class KanaKanjiEngine {
     ): List<String> {
         if (!enabled) return emptyList()
         if (input.length > PredictionConfig.MAX_PREDICTION_INPUT_LENGTH) return emptyList()
-        return yomiTrie.predictiveSearch(
-            prefix = input, succinctBitVector = succinctBitVector
-        ).filter {
-            shouldIncludeSymbolEmojiReading(
-                inputLength = input.length,
-                readingLength = it.length,
-                predictionConfig = predictionConfig,
-            )
-        }
+        val maxReadingLength = maxSymbolEmojiReadingLength(input.length, predictionConfig)
+        return yomiTrie.predictiveSearch(input, succinctBitVector, maxReadingLength)
     }
 
     private fun getClassifiedCandidates(
