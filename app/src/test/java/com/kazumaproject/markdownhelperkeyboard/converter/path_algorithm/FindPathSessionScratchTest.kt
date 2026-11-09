@@ -121,6 +121,25 @@ class FindPathSessionScratchTest {
         assertSame(cheapest, queue.poll())
     }
 
+    @Test
+    fun equalPriorityPathsArePolledInInsertionOrder() {
+        val queue = FindPath.PathPriorityQueue(initialCapacity = 1)
+        val first = element("first", 10)
+        val second = element("second", 10).apply { node = first.node }
+        val third = element("third", 10).apply { node = first.node }
+        val cheaper = element("cheaper", 5)
+
+        queue.add(first)
+        queue.add(second)
+        queue.add(third)
+        queue.add(cheaper)
+
+        assertSame(cheaper, queue.poll())
+        assertSame(first, queue.poll())
+        assertSame(second, queue.poll())
+        assertSame(third, queue.poll())
+    }
+
     private fun element(word: String, priority: Int): FindPath.PathQueueElement =
         FindPath.PathQueueElement().set(
             node = Node(
