@@ -9,10 +9,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDiction
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDictionaryTriple
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.GrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.RuntimeGrammarRoles
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.BundledEnglishDictionaryReader
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionaryReader
-import com.kazumaproject.markdownhelperkeyboard.converter.compact.EnglishLookupIndexReader
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS as EnglishWordTrie
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId as EnglishReadingTrie
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray as EnglishTokenArray
@@ -209,13 +209,34 @@ class DictionaryBinaryReader @Inject constructor(
     }
 
     fun loadEnglishReading(key: DictionaryFileKey): EnglishReadingTrie =
-        compactBundledEnglishDictionaryIfActive()?.readingTrie ?: loadWithBundledFallback(key, loader = ::readEnglishReading)
+        compactBundledEnglishDictionaryIfActive()?.readingTrie ?: loadWithBundledFallback(
+            key,
+            bundledValue = ::readBundledEnglishReading,
+            loader = ::readEnglishReading,
+        )
 
     fun loadEnglishWord(key: DictionaryFileKey): EnglishWordTrie =
-        compactBundledEnglishDictionaryIfActive()?.wordTrie ?: loadWithBundledFallback(key, loader = ::readEnglishWord)
+        compactBundledEnglishDictionaryIfActive()?.wordTrie ?: loadWithBundledFallback(
+            key,
+            bundledValue = ::readBundledEnglishWord,
+            loader = ::readEnglishWord,
+        )
 
     fun loadEnglishToken(key: DictionaryFileKey): EnglishTokenArray =
-        compactBundledEnglishDictionaryIfActive()?.tokenArray ?: loadWithBundledFallback(key, loader = ::readEnglishToken)
+        compactBundledEnglishDictionaryIfActive()?.tokenArray ?: loadWithBundledFallback(
+            key,
+            bundledValue = ::readBundledEnglishToken,
+            loader = ::readEnglishToken,
+        )
+
+    private fun readBundledEnglishReading(): EnglishReadingTrie =
+        resolver.openBundledAssetFileDescriptor("english/reading.compact").use(BundledEnglishDictionaryReader::readReading)
+
+    private fun readBundledEnglishWord(): EnglishWordTrie =
+        resolver.openBundledAssetFileDescriptor("english/word.compact").use(BundledEnglishDictionaryReader::readWord)
+
+    private fun readBundledEnglishToken(): EnglishTokenArray =
+        resolver.openBundledAssetFileDescriptor("english/token.compact").use(BundledEnglishDictionaryReader::readToken)
 
     private fun readEnglishReading(input: InputStream): EnglishReadingTrie =
         openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_READING.name).use {
@@ -357,10 +378,10 @@ class DictionaryBinaryReader @Inject constructor(
             if (compactEnglishDictionaryLoadAttempted) return@synchronized null
             val loaded = runCatching {
                 resolver.openBundledAssetFileDescriptor(ENGLISH_LOOKUP_INDEX_ASSET).use { index ->
-                    val reading = resolver.openBundledForKey(DictionaryFileKey.ENGLISH_READING).use(::readEnglishReading)
-                    val word = resolver.openBundledForKey(DictionaryFileKey.ENGLISH_WORD).use(::readEnglishWord)
-                    val token = resolver.openBundledForKey(DictionaryFileKey.ENGLISH_TOKEN).use(::readEnglishToken)
-                    EnglishLookupIndexReader.read(index, reading, word, token)
+                    val reading = readBundledEnglishReading()
+                    val word = readBundledEnglishWord()
+                    val token = readBundledEnglishToken()
+                    BundledEnglishDictionaryReader.readIndex(index, reading, word, token)
                 }
             }.onFailure { error ->
                 Timber.w(
