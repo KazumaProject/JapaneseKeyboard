@@ -8,8 +8,8 @@ This index separates application code, dictionaries/data, dependencies and optio
 | --- | --- |
 | アプリ本体のコード | [MIT LICENSE](../../LICENSE): Copyright (c) 2024 Kazuma Naka |
 | 全143カテゴリ辞書・その他の同梱辞書・共通資源 | [辞書ライセンス対応表](DICTIONARIES.md) |
-| 辞書の全23通知・ライセンス原文・出典URL | [原文索引](DICTIONARIES.md#保持した全通知ライセンス全文)、[ハッシュと固定URL](../../app/src/main/assets/licenses/notice-snapshots.json) |
-| v1.7.283の全ライセンス文書 | [公開添付と同じ原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) |
+| 辞書の23件の通知スナップショットと英単語辞書の原文 | [原文索引](DICTIONARIES.md#保持した全通知ライセンス全文)、[ハッシュと固定URL](../../app/src/main/assets/licenses/notice-snapshots.json)、[英単語辞書の通知](../../app/src/main/assets/licenses/english.html) |
+| v1.7.285の全ライセンス文書 | [公開添付と同じ原文](../../app/src/main/assets/licenses/sources/distribution-licenses.txt) |
 | Lite/Full Standard Debugの全139外部依存モジュール | [依存ライブラリ一覧](DEPENDENCIES.md)、[版・POM・照合情報](dependency-metadata.json) |
 | 全体の第三者通知 | [THIRD-PARTY-NOTICES.md](../../THIRD-PARTY-NOTICES.md) |
 | Full版のモデル・ネイティブコード、外部入力 | 以下の一覧 |
@@ -33,7 +33,7 @@ MITは第三者の辞書・ライブラリ・モデルのライセンスを変�
 
 ## アプリの表示と確認範囲
 
-アプリの「ライセンスと出典」は、概要、辞書・データ、ライブラリ、Full版のAIモデル・ネイティブコードに分けて表示します。辞書はv1.7.283の固定入力・同梱HTML・通知原文に対応します。ライセンス原文と取得した通知はオフラインで閲覧できます。
+アプリの「ライセンスと出典」は、概要、辞書・データ、ライブラリ、Full版のAIモデル・ネイティブコードに分けて表示します。辞書の詳細ではv1.7.285の該当する通知原文をオフラインで閲覧できます。追加語と対象層分類の出典は各カテゴリの詳細に、英単語辞書の生成元と文法データの入力原本は英単語辞書の詳細に掲載しています。
 
 ライブラリはFull Standard Releaseの138件、Lite Standard/F-Droid Releaseの136件の解決結果に対応します（BOM等のメタデータ依存を含む）。版別一覧とPOMの根拠は `app/src/main/assets/software-licenses/catalog.json` に保持しています。対象版のPOM照合に加え、取得できたAAR/JARとそのclasses.jarのLICENSE/NOTICE/COPYINGを原文のまま保存し、表示します。解決されたモジュールと縮小後APKの到達可能コードとの一対一対応を示すものではありません。
 

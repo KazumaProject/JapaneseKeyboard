@@ -360,9 +360,21 @@ def notices(counts):
     common += heading('出典', 'Source') + '<p><a href="https://github.com/KazumaProject/kotlin-kana-kanji-converter/releases/tag/' + VERSION + '">' + translated('辞書データの配布元', 'Dictionary distribution') + '</a></p>'
     common += heading('対象版', 'Version') + '<p>Distribution / 配布: ' + VERSION + ' (' + REVISION + ')</p>'
     common += heading('加工内容', 'Modifications') + '<p>' + translated('分類・正規化・重複処理・品詞とコストの割当を行い、IME 用の辞書バイナリに変換しています。', 'Categorized, normalized, deduplicated, assigned parts of speech and costs, and converted to IME dictionary binaries.') + '</p>'
-    if provenance.get('releaseReview'):
-        review = provenance['releaseReview']
+    reviewed_by_category = collections.defaultdict(list)
+    review = provenance.get('releaseReview')
+    if review:
         common += '<p>Reviewed release additions / 配布版の追加語・出典確認: <a href="' + html.escape(RAW + review['reviewPath']) + '">' + html.escape(review['reviewPath']) + '</a> (SHA-256: ' + review['reviewSha256'] + ')</p>'
+        reviewed = {row['candidate_key']: row for row in review['records'] if row['action'] == 'add'}
+        followup_path = review['reviewPath'].removesuffix('.jsonl') + '_demographics.jsonl'
+        followup = fetch(RAW + followup_path)
+        assert sha(followup) == provenance['inputSha256'][followup_path]
+        for line in followup.decode().splitlines():
+            row = json.loads(line)
+            assert row['action'] == 'reclassify' and row['candidate_key'] in reviewed
+            reviewed[row['candidate_key']] = row
+        for row in reviewed.values():
+            for category in row['categories']:
+                reviewed_by_category[category].append(row)
     common += heading('利用条件', 'License terms') + '<p>' + translated('各出典には、それぞれの利用条件が適用されます。元データの取得版および各語の著作権者との対応は、配布元の資料からは確認できていません。', 'Each source retains its respective terms. The original acquisition revision and per-entry copyright attribution could not be confirmed from the distributor’s materials.') + '</p>'
     person_pairs = collections.defaultdict(set)
     for line in gzip.decompress(fetch(RAW + 'src/main/classification/person-dictionary-candidates.tsv.gz')).decode().splitlines():
@@ -384,6 +396,18 @@ def notices(counts):
             source_labels.append('MHLW employment terms / 厚生労働省の人事・労務用語')
         details = common + '<p>採用出典 / Contributing sources: ' + ', '.join(source_labels) + '</p>'
         details += '<p>Wikipedia: attribution and ShareAlike / 表示・継承。Neologd: Apache 2.0 with its source-data notices / 出典データの通知を含むApache 2.0。Personal-names upstream notice: Apache 2.0. Japan Post place-data notice: no copyright claim for postcode data. 各入力と通知の取得版が同一であることは、配布元の資料からは確認できていません。</p>'
+        if rows := reviewed_by_category[category['id']]:
+            details += heading('追加語・分類の出典', 'Sources for new entries and classifications')
+            details += '<p>' + translated(
+                '参照資料で照合した表記・読みや分類を辞書に収録しています。各語の著作権条件は未確認です。',
+                'The bundled entries use spellings, readings, and classifications checked against the cited sources. Per-entry copyright terms are unconfirmed.',
+            ) + '</p><ul>'
+            for row in rows:
+                label = html.escape(row['reading'] + ' / ' + row['surface'])
+                details += f'<li><a href="{html.escape(row["evidence"]["reference"])}">{label}</a></li>'
+            details += '</ul>'
+            if category['id'].startswith('media_demographic/'):
+                details += f'<p><a href="{html.escape(RAW + followup_path)}">' + translated('対象層分類の確認記録', 'Audience classification review') + '</a></p>'
         if 'mhlw' in ids:
             additions = mhlw_review['categoryCounts'][category['id']]
             details += '<h2>MHLW employment terms / 厚生労働省の人事・労務用語</h2>'
@@ -476,9 +500,11 @@ def english_preview():
         page = (
             f'<!doctype html><meta charset="utf-8"><title>{title}</title><h1>{title}</h1>'
             '<h2>出典と配布版 / Source and version</h2>'
-            f'<p>配布: {ENGLISH_PREVIEW_TAG} ({ENGLISH_PREVIEW_REVISION})</p>'
+            f'<p>配布: {VERSION} ({REVISION})</p>'
             f'<p><a href="{ENGLISH_PREVIEW_PAGE}">Android dictionary distribution / Android 向け配布</a></p>'
+            f'<p>English dictionary builder revision / 英語辞書の生成コミット: <code>{ENGLISH_PREVIEW_REVISION}</code></p>'
             f'<p><a href="{source}">English dictionary catalog / 英語辞書の出典・語彙台帳</a></p>'
+            f'<p><a href="{ENGLISH_REVIEWED_SOURCE}">Reviewed grammar input / レビュー済み文法データの入力原本</a></p>'
             '<p>Android bundles the reading, word, token, Glide and grammar files. '
             'The build repackages the reading, word and token arrays for Android. '
             'The verb correction table is derived from the reviewed finite verb forms. '
@@ -530,8 +556,10 @@ def check():
         assert sha((ROOT / path).read_bytes()) == checksum, path
     for path in (ROOT / 'app/src/main/assets/licenses').rglob('*.html'):
         text = path.read_text()
-        version, revision = (ENGLISH_PREVIEW_TAG, ENGLISH_PREVIEW_REVISION) if path == ROOT / ENGLISH_NOTICE else (VERSION, REVISION)
-        assert f'配布: {version} ({revision})' in text, f'Stale dictionary notice: {path}'
+        assert f'配布: {VERSION} ({REVISION})' in text, f'Stale dictionary notice: {path}'
+        if path == ROOT / ENGLISH_NOTICE:
+            assert f'<code>{ENGLISH_PREVIEW_REVISION}</code>' in text, path
+            assert ENGLISH_REVIEWED_SOURCE in text, path
     for key, snapshot in json.loads((ROOT/'app/src/main/assets/licenses/notice-snapshots.json').read_text()).items():
         if 'KazumaProject/kotlin-kana-kanji-converter' in snapshot['url']:
             assert REVISION in snapshot['url'] or f'/{VERSION}/' in snapshot['url'], key

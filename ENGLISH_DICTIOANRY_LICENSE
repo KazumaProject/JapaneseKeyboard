@@ -1,5 +1,10 @@
 English Dictionary License Notice
 
+This historical notice covers the legacy `english.dat` asset. For the bundled
+English word dictionary, see `docs/licenses/DICTIONARIES.md`.
+この通知の対象は旧 `english.dat` です。現行の英単語辞書の出典と条件は
+`docs/licenses/DICTIONARIES.md` を参照してください。
+
 The file `src/main/assets/english/english.dat` is derived from the Salesforce WikiText dataset.
 This dataset is licensed under:
 
