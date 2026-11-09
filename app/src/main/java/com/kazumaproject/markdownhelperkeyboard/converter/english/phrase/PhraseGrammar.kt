@@ -51,6 +51,14 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
         return evidence
     }
 
+    fun supportsNounCompound(first: String, second: String): Boolean {
+        val left = word(first)
+        val right = word(second)
+        return left.any(commonNouns) && right.any(commonNouns) &&
+            left.roles.none(::isFunctionWordRole) && right.roles.none(::isFunctionWordRole) &&
+            left.roles.any { it.startsWith("topic_") && !it.endsWith("_general") && right.has(it) }
+    }
+
     private fun word(surface: String): Word = words.getOrPut(surface) {
         val normalized = lookupKey(surface)
         Word(normalized, grammarRoles.lookup(surface, normalized))
@@ -266,6 +274,7 @@ internal class PhraseGrammar(private val grammarRoles: GrammarRoles) {
         val participle = setOf("verb_past_participle", "aux_be_participle")
         val beComplement = participle + setOf("verb_ing", "aux_be_ing", "adjective_predicative")
         val verbForms = finiteRoles + bare + beComplement - "adjective_predicative"
+        val commonNouns = setOf("noun_count_singular", "noun_count_plural", "noun_uncountable", "noun_plural_only")
         val bareSingular = setOf("noun_uncountable", "noun_proper", "name_person")
         val pluralNoun = setOf("noun_count_plural", "noun_plural_only")
         val singularPronoun = setOf("pronoun_subject_3sg", "pronoun_indefinite_singular")
@@ -288,3 +297,8 @@ internal fun finiteCategories(subject: Agreement): Set<String> {
 }
 
 internal fun lookupKey(surface: String): String = surface.replace('’', '\'').lowercase()
+
+internal fun isFunctionWordRole(role: String): Boolean =
+    role == "preposition" || role == "determiner" || role == "pronoun" || role == "conjunction" ||
+        role.startsWith("det_") || role.startsWith("pronoun_") ||
+        role.startsWith("conjunction_") || role.startsWith("aux_")

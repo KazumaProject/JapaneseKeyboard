@@ -36,6 +36,29 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EnglishPhraseDictionaryInstrumentedTest {
     @Test
+    fun indexedCompletionPreservesOrderedCandidates() = withDictionary { _, _, reader ->
+        val data = checkNotNull(reader.loadBundledEnglishForEngine())
+        checkNotNull(data.wordCompletionBounds)
+        checkNotNull(data.phraseCompletionBounds)
+        val grammar = checkNotNull(reader.loadBundledEnglishGrammar())
+        val unindexed = data.copy(wordCompletionBounds = null, phraseCompletionBounds = null)
+        val indexedConverter = PhraseConverter(EnglishPhraseDictionary(data, grammar), beamWidth = 24, completionLimit = 32)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val verifiedGrammar = context.assets.open("english/grammar/categories.erol").use {
+            RuntimeGrammarRoles.read(ByteBuffer.wrap(it.readBytes()))
+        }
+        val referenceConverter = PhraseConverter(EnglishPhraseDictionary(unindexed, verifiedGrammar), beamWidth = 24, completionLimit = 32)
+        val inputs = listOf(
+            "he", "th", "an", "in", "re", "op", "te", "ke", "zz", "re-", "don'", "a1",
+            "the", "there", "keyboa", "hecantake", "he can tak", "New Yo", "elonmusk",
+            "taylor swift", "twofactorauthentication", "thequickbrownfoxjumpsoverthelazydog",
+        )
+        for (text in inputs) for (prefix in listOf(false, true)) {
+            assertEquals("$text prefix=$prefix", referenceConverter.convert(text, prefix, 12), indexedConverter.convert(text, prefix, 12))
+        }
+    }
+
+    @Test
     fun sampledVocabularyPrefixesPreserveTypedWordBoundaries() = withDictionary { _, _, reader ->
         val data = checkNotNull(reader.loadBundledEnglishForEngine())
         val words = EnglishPhraseDictionary(data, checkNotNull(reader.loadBundledEnglishGrammar()))
@@ -176,6 +199,32 @@ class EnglishPhraseDictionaryInstrumentedTest {
         assertFalse(query("android", prediction = false).any { it.string == "Android Studio" })
         assertFalse(query("android", prefixMode = false).any { it.string == "Android Studio" })
         assertTrue(query("androidstudio", prefixMode = false).any { it.string == "Android Studio" })
+    }
+
+    @Test
+    fun wordBoundariesNeedTypedOrLexicalEvidence() = withDictionary { _, _, reader ->
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        fun query(input: String, prefix: Boolean) =
+            engine.getConversionCandidates(input, input, false, true, prefix, emptyList()).map { it.commitText }
+
+        for (prefix in listOf(true, false)) {
+            for (input in listOf("a", "an", "he", "in", "the", "androi")) {
+                val candidates = query(input, prefix)
+                assertTrue("$input: $candidates", input in candidates)
+                assertFalse("$input: $candidates", candidates.any { it.any(Char::isWhitespace) })
+            }
+            for ((input, compound) in listOf("curryrice" to "curry rice", "chickenrice" to "chicken rice")) {
+                val candidates = query(input, prefix)
+                assertEquals("$input: $candidates", input, candidates.first())
+                assertEquals("$input: $candidates", compound, candidates.firstOrNull { it.any(Char::isWhitespace) })
+            }
+            assertTrue(query("anqi", prefix).contains("An Qi"))
+            assertTrue(query("androidstudio", prefix).contains("Android Studio"))
+        }
+        assertTrue(query("an", true).contains("and"))
+        assertTrue(query("android", true).contains("Android Studio"))
+        assertTrue(query("an q", true).contains("An Qi"))
+        assertTrue(query("hecantake", true).contains("he can take"))
     }
 
     @Test
