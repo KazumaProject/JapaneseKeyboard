@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProgressBar xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/ai_model_loading_progress"
+    style="?android:attr/progressBarStyleSmall"
+    android:layout_width="32dp"
+    android:layout_height="32dp"
+    android:layout_marginStart="16dp"
+    android:indeterminate="true"
+    android:contentDescription="@string/ai_model_loading_title" />
