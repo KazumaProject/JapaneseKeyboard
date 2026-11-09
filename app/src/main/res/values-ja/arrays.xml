@@ -191,11 +191,13 @@
     <string-array name="gemma_translation_backend_entries">
         <item>@string/gemma_translation_backend_cpu_only</item>
         <item>@string/gemma_translation_backend_gpu_if_available</item>
+        <item>@string/ai_npu_if_available</item>
     </string-array>
 
     <string-array name="gemma_translation_backend_values">
         <item>cpu</item>
         <item>gpu_if_available</item>
+        <item>npu_if_available</item>
     </string-array>
 
     <string-array name="gemma_translation_target_language_entries">

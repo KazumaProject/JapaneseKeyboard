@@ -1,3 +1,6 @@
 [submodule "zenz/src/main/cpp/llama.cpp"]
 	path = zenz/src/main/cpp/llama.cpp
 	url = https://github.com/azooKey/llama.cpp.git
+[submodule "ai-runtime/src/main/cpp/llama.cpp"]
+	path = ai-runtime/src/main/cpp/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git

@@ -25,6 +25,7 @@ static int g_param_n_threads_batch = 4;
 static int g_param_n_batch = 512;
 static std::mutex g_param_mutex;   // 設定値の読み書き用
 static std::atomic<uint64_t> g_request_seq{0};
+static std::atomic<uint64_t> g_draft_review_generation{0};
 static bool g_backend_initialized = false;
 
 struct RuntimeConfig {
@@ -34,9 +35,24 @@ struct RuntimeConfig {
     int n_batch;
 };
 
+struct DraftPrediction {
+    llama_token token;
+    float log_prob;
+    float prefix_score;
+};
+
+struct DraftReviewCache {
+    std::string id;
+    uint64_t generation = 0;
+    std::vector<llama_token> prompt;
+    // One prediction per matched token, followed by the prediction at the mismatch.
+    std::vector<DraftPrediction> predictions;
+};
+
 struct ZenzSession {
     llama_context *ctx = nullptr;
     RuntimeConfig config{0, 0, 0, 0};
+    DraftReviewCache draft_review;
     std::mutex mutex;
 };
 
@@ -603,7 +619,13 @@ static bool never_abort(void * /*data*/) {
     return false;
 }
 
+static void clear_session_kv_locked(llama_context *ctx) {
+    g_session.draft_review = {};
+    llama_kv_cache_clear(ctx);
+}
+
 static void destroy_session_context_locked() {
+    g_session.draft_review = {};
     if (!g_session.ctx) {
         return;
     }
@@ -706,7 +728,7 @@ static ZenzGenerationResult pure_greedy_decoding(
     if (!ctx) {
         return no_zenz_result(ZenzGenerationTermination::DECODE_ERROR);
     }
-    llama_kv_cache_clear(ctx);
+    clear_session_kv_locked(ctx);
 
     AbortRequestState abort_state{request_seq};
     llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
@@ -833,115 +855,155 @@ static ZenzGenerationResult pure_greedy_decoding(
     return no_zenz_result(ZenzGenerationTermination::TOKEN_LIMIT);
 }
 
+static CandidateEvaluationResult draft_mismatch(
+        const std::vector<llama_token> &tokens,
+        size_t start,
+        size_t mismatch,
+        llama_token predicted
+) {
+    const CandidateEvaluationResult error{CandidateEvaluationResultType::ERROR, 0.0f};
+    bool valid = false;
+    const auto prefix = decode_token_range(tokens, start, mismatch, &valid);
+    if (!valid) return error;
+
+    const auto piece = token_to_piece_str(predicted);
+    ZenzOutputDecoder piece_decoder;
+    const auto piece_result = piece_decoder.append_piece(piece);
+    if (llama_vocab_is_eog(g_vocab, predicted) ||
+        piece_result == ZenzOutputDecoder::AppendResult::PROTOCOL_MARKER) {
+        if (prefix.empty()) return error;
+        return {CandidateEvaluationResultType::WHOLE_RESULT, 0.0f, "", prefix};
+    }
+
+    ZenzOutputDecoder decoder;
+    if (decoder.append_piece(prefix) != ZenzOutputDecoder::AppendResult::CONTINUE) {
+        return error;
+    }
+    if (!llama_vocab_is_control(g_vocab, predicted) || !piece.empty()) {
+        if (piece_result != ZenzOutputDecoder::AppendResult::CONTINUE ||
+            decoder.append_piece(piece) != ZenzOutputDecoder::AppendResult::CONTINUE) {
+            return error;
+        }
+    }
+    if (!decoder.finish() || !decoder.has_text()) return error;
+    return {CandidateEvaluationResultType::FIX_REQUIRED, 0.0f, decoder.text()};
+}
+
 // Swift の evaluate_candidate 相当
 static CandidateEvaluationResult candidate_evaluate(
         const std::string &prompt,
         const std::string &candidate_text,
-        uint64_t request_seq
+        uint64_t request_seq,
+        const std::string &draft_review_id
 ) {
-    CandidateEvaluationResult result;
-    result.type = CandidateEvaluationResultType::ERROR;
-    result.score = 0.0f;
-
+    const CandidateEvaluationResult error{CandidateEvaluationResultType::ERROR, 0.0f};
     std::unique_lock<std::mutex> session_lock(g_session.mutex);
-    if (is_request_stale(request_seq)) {
-        return result;
+    if (is_request_stale(request_seq) || !g_model || !g_vocab) return error;
+
+    auto *ctx = ensure_session_context_locked();
+    if (!ctx) return error;
+
+    auto &cache = g_session.draft_review;
+    const auto fail = [&] {
+        cache = {};
+        return error;
+    };
+    const auto pre_candidate = preprocess_text(candidate_text);
+    const auto prompt_tokens = tokenize_text(preprocess_text(prompt), false, false);
+    const auto candidate_tokens = tokenize_text(pre_candidate, false, false);
+    const auto config = get_runtime_config();
+    if (prompt_tokens.empty() || candidate_tokens.empty() || pre_candidate.empty() ||
+        !is_safe_user_text(pre_candidate) || config.n_ctx <= 0 ||
+        prompt_tokens.size() + candidate_tokens.size() > static_cast<size_t>(config.n_ctx)) {
+        return fail();
     }
-    if (!g_model || !g_vocab) {
-        LOGE("candidate_evaluate: model not initialized");
-        return result;
-    }
 
-    llama_context *ctx = ensure_session_context_locked();
-    if (!ctx) {
-        LOGE("candidate_evaluate: failed to create context");
-        return result;
-    }
-    llama_kv_cache_clear(ctx);
-
-    AbortRequestState abort_state{request_seq};
-    llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
-
-    std::string pre_prompt = preprocess_text(prompt);
-    std::string pre_candidate = preprocess_text(candidate_text);
-
-    auto prompt_tokens = tokenize_text(pre_prompt, /*add_bos=*/false, /*add_eos=*/false);
-    auto candidate_tokens = tokenize_text(pre_candidate, /*add_bos=*/false, /*add_eos=*/false);
-
-    if (prompt_tokens.empty() || candidate_tokens.empty() ||
-        pre_candidate.empty() || !is_safe_user_text(pre_candidate)) {
-        LOGE("candidate_evaluate: prompt tokens empty");
-        llama_set_abort_callback(ctx, never_abort, nullptr);
-        return result;
-    }
+    // GPT-2 uses causal attention and supports trimming the KV sequence at a token boundary.
+    char architecture[16];
+    const bool scoped = !draft_review_id.empty() &&
+                        llama_model_meta_val_str(g_model, "general.architecture",
+                                                 architecture, sizeof(architecture)) >= 0 &&
+                        std::string_view(architecture) == "gpt2";
+    const auto generation = g_draft_review_generation.load(std::memory_order_relaxed);
+    const bool reuse = scoped && cache.id == draft_review_id &&
+                       cache.generation == generation && cache.prompt == prompt_tokens;
+    if (!reuse) clear_session_kv_locked(ctx);
 
     std::vector<llama_token> all_tokens = prompt_tokens;
     all_tokens.insert(all_tokens.end(), candidate_tokens.begin(), candidate_tokens.end());
-
-    const RuntimeConfig config = get_runtime_config();
-    if (config.n_ctx <= 0 || all_tokens.size() > static_cast<size_t>(config.n_ctx)) {
-        LOGE("candidate_evaluate: prompt and candidate exceed context window: tokens=%zu n_ctx=%d",
-             all_tokens.size(), config.n_ctx);
-        llama_set_abort_callback(ctx, never_abort, nullptr);
-        return result;
-    }
-
-    // ★ 512固定だと長文で overflow するので必要量で確保
-    const int32_t cap = (int32_t) all_tokens.size();
-    llama_batch batch = llama_batch_init(cap, 0, 1);
-
-    // プロンプト部分: logits不要（最後のトークンを除く）
-    for (size_t i = 0; i + 1 < prompt_tokens.size(); ++i) {
-        batch.token[batch.n_tokens] = prompt_tokens[i];
-        batch.pos[batch.n_tokens] = (llama_pos) i;
-        batch.n_seq_id[batch.n_tokens] = 1;
-        batch.seq_id[batch.n_tokens][0] = 0;
-        batch.logits[batch.n_tokens] = 0;
-        batch.n_tokens++;
-    }
-
-    // プロンプトの最後のトークンから候補の最後のトークンまで: logits必要
-    size_t logits_start_pos = prompt_tokens.size() - 1;
-    for (size_t i = logits_start_pos; i < all_tokens.size(); ++i) {
-        batch.token[batch.n_tokens] = all_tokens[i];
-        batch.pos[batch.n_tokens] = (llama_pos) i;
-        batch.n_seq_id[batch.n_tokens] = 1;
-        batch.seq_id[batch.n_tokens][0] = 0;
-        batch.logits[batch.n_tokens] = 1;
-        batch.n_tokens++;
-    }
-
-    int rc = llama_decode(ctx, batch);
-    if (rc != 0) {
-        if (is_request_stale(request_seq)) {
-            LOGI("candidate_evaluate aborted");
+    const size_t start = prompt_tokens.size();
+    const auto pass = [&](float score) -> CandidateEvaluationResult {
+        if (is_request_stale(request_seq)) return fail();
+        cache = {};
+        LOGI("candidate_evaluate: PASS, score=%f", score);
+        return {CandidateEvaluationResultType::PASS, score};
+    };
+    const auto mismatch = [&](size_t j, llama_token token) {
+        if (is_request_stale(request_seq)) return fail();
+        auto result = draft_mismatch(all_tokens, start, start + j, token);
+        if (scoped && result.type == CandidateEvaluationResultType::FIX_REQUIRED &&
+            llama_kv_cache_seq_rm(ctx, 0, static_cast<llama_pos>(start + j), -1)) {
+            // Keep the verified KV prefix and the prediction that produced the repair.
+            cache.predictions.resize(j + 1);
+            cache.prompt = prompt_tokens;
+            cache.generation = generation;
+            cache.id = draft_review_id;
         } else {
-            LOGE("candidate_evaluate: llama_decode failed: %d", rc);
+            cache = {};
         }
-        llama_batch_free(batch);
-        llama_set_abort_callback(ctx, never_abort, nullptr);
+        if (result.type == CandidateEvaluationResultType::FIX_REQUIRED) {
+            LOGI("candidate_evaluate: FIX_REQUIRED at pos %zu, prefix=%s", start + j, result.prefix.c_str());
+        } else if (result.type == CandidateEvaluationResultType::WHOLE_RESULT) {
+            LOGI("candidate_evaluate: WHOLE_RESULT at pos %zu, result=%s", start + j, result.whole_result.c_str());
+        }
         return result;
+    };
+
+    size_t checked = 0;
+    size_t decode_from = 0;
+    float total_score = 0.0f;
+    if (reuse) {
+        // The last saved prediction is at the boundary and may differ from the old draft.
+        const size_t verified = cache.predictions.size() - 1;
+        while (checked < verified && checked < candidate_tokens.size() &&
+               cache.predictions[checked].token == candidate_tokens[checked]) {
+            ++checked;
+        }
+        const auto prediction = cache.predictions[checked];
+        if (checked == candidate_tokens.size()) return pass(prediction.prefix_score);
+        if (prediction.token != candidate_tokens[checked]) return mismatch(checked, prediction.token);
+        total_score = prediction.prefix_score + prediction.log_prob;
+        decode_from = start + checked;
+        if (++checked == candidate_tokens.size()) return pass(total_score);
+    }
+
+    const size_t logits_start = start + checked - 1;
+    auto batch = llama_batch_init(static_cast<int32_t>(all_tokens.size() - decode_from), 0, 1);
+    for (size_t pos = decode_from; pos < all_tokens.size(); ++pos) {
+        const int i = batch.n_tokens++;
+        batch.token[i] = all_tokens[pos];
+        batch.pos[i] = static_cast<llama_pos>(pos);
+        batch.n_seq_id[i] = 1;
+        batch.seq_id[i][0] = 0;
+        batch.logits[i] = pos >= logits_start;
+    }
+    AbortRequestState abort_state{request_seq};
+    llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
+    const int rc = llama_decode(ctx, batch);
+    llama_set_abort_callback(ctx, never_abort, nullptr);
+    llama_batch_free(batch);
+    if (is_request_stale(request_seq)) return fail();
+    if (rc != 0) {
+        LOGE("candidate_evaluate: llama_decode failed: %d", rc);
+        return fail();
     }
 
     const int32_t n_vocab = llama_vocab_n_tokens(g_vocab);
-
-    float *all_logits = llama_get_logits(ctx);
-    if (!all_logits) {
-        LOGE("candidate_evaluate: all_logits is null");
-        llama_batch_free(batch);
-        llama_set_abort_callback(ctx, never_abort, nullptr);
-        return result;
-    }
-
-    float total_score = 0.0f;
-
-    for (size_t i = prompt_tokens.size(); i < all_tokens.size(); ++i) {
-        llama_token expected_token = all_tokens[i];
-
-        size_t logits_offset = (i - 1 - logits_start_pos) * (size_t) n_vocab;
-        float *logits = all_logits + logits_offset;
-
-        int32_t max_id = 0;
+    const float *all_logits = llama_get_logits(ctx);
+    if (!all_logits) return fail();
+    for (size_t j = checked; j < candidate_tokens.size(); ++j) {
+        const float *logits = all_logits + (j - checked) * static_cast<size_t>(n_vocab);
+        llama_token max_id = 0;
         float max_logit = logits[0];
         for (int32_t tid = 1; tid < n_vocab; ++tid) {
             if (logits[tid] > max_logit) {
@@ -949,109 +1011,23 @@ static CandidateEvaluationResult candidate_evaluate(
                 max_id = tid;
             }
         }
-
-        llama_token max_token = (llama_token) max_id;
-        const std::string max_piece = token_to_piece_str(max_token);
-        ZenzOutputDecoder max_piece_decoder;
-        const ZenzOutputDecoder::AppendResult max_piece_result =
-                max_piece_decoder.append_piece(max_piece);
-        const bool max_token_is_protocol_marker =
-                max_piece_result == ZenzOutputDecoder::AppendResult::PROTOCOL_MARKER;
-
         float sum_exp = 0.0f;
         for (int32_t tid = 0; tid < n_vocab; ++tid) {
             sum_exp += expf(logits[tid] - max_logit);
         }
-        float log_prob = logits[expected_token] - max_logit - logf(sum_exp);
-        total_score += log_prob;
-
-        if (max_token != expected_token) {
-            if (llama_vocab_is_eog(g_vocab, max_token) || max_token_is_protocol_marker) {
-                bool valid = false;
-                const std::string partial = decode_token_range(
-                        all_tokens,
-                        prompt_tokens.size(),
-                        i,
-                        &valid);
-                if (!valid || partial.empty()) {
-                    result.type = CandidateEvaluationResultType::ERROR;
-                    llama_batch_free(batch);
-                    llama_set_abort_callback(ctx, never_abort, nullptr);
-                    return result;
-                }
-                result.type = CandidateEvaluationResultType::WHOLE_RESULT;
-                result.whole_result = partial;
-                LOGI("candidate_evaluate: WHOLE_RESULT at pos %zu, result=%s", i, partial.c_str());
-                llama_batch_free(batch);
-                llama_set_abort_callback(ctx, never_abort, nullptr);
-                return result;
-            } else {
-                bool valid = false;
-                const std::string previous_prefix = decode_token_range(
-                        all_tokens,
-                        prompt_tokens.size(),
-                        i,
-                        &valid);
-                if (!valid) {
-                    result.type = CandidateEvaluationResultType::ERROR;
-                    llama_batch_free(batch);
-                    llama_set_abort_callback(ctx, never_abort, nullptr);
-                    return result;
-                }
-
-                ZenzOutputDecoder prefix_decoder;
-                if (prefix_decoder.append_piece(previous_prefix) !=
-                            ZenzOutputDecoder::AppendResult::CONTINUE) {
-                    result.type = CandidateEvaluationResultType::ERROR;
-                    llama_batch_free(batch);
-                    llama_set_abort_callback(ctx, never_abort, nullptr);
-                    return result;
-                }
-                if (!llama_vocab_is_control(g_vocab, max_token) || !max_piece.empty()) {
-                    if (max_piece_result != ZenzOutputDecoder::AppendResult::CONTINUE) {
-                        result.type = CandidateEvaluationResultType::ERROR;
-                        llama_batch_free(batch);
-                        llama_set_abort_callback(ctx, never_abort, nullptr);
-                        return result;
-                    }
-                    if (prefix_decoder.append_piece(max_piece) !=
-                                ZenzOutputDecoder::AppendResult::CONTINUE) {
-                        result.type = CandidateEvaluationResultType::ERROR;
-                        llama_batch_free(batch);
-                        llama_set_abort_callback(ctx, never_abort, nullptr);
-                        return result;
-                    }
-                }
-                if (!prefix_decoder.finish() || !prefix_decoder.has_text()) {
-                    result.type = CandidateEvaluationResultType::ERROR;
-                    llama_batch_free(batch);
-                    llama_set_abort_callback(ctx, never_abort, nullptr);
-                    return result;
-                }
-                result.type = CandidateEvaluationResultType::FIX_REQUIRED;
-                result.prefix = prefix_decoder.text();
-                LOGI("candidate_evaluate: FIX_REQUIRED at pos %zu, prefix=%s", i, result.prefix.c_str());
-                llama_batch_free(batch);
-                llama_set_abort_callback(ctx, never_abort, nullptr);
-                return result;
-            }
-        }
+        const float log_sum_exp = logf(sum_exp);
+        if (scoped) cache.predictions.push_back({max_id, -log_sum_exp, total_score});
+        if (max_id != candidate_tokens[j]) return mismatch(j, max_id);
+        total_score += logits[candidate_tokens[j]] - max_logit - log_sum_exp;
     }
-
-    result.type = CandidateEvaluationResultType::PASS;
-    result.score = total_score;
-    LOGI("candidate_evaluate: PASS, score=%f", total_score);
-
-    llama_batch_free(batch);
-    llama_set_abort_callback(ctx, never_abort, nullptr);
-    return result;
+    return pass(total_score);
 }
 
 static bool prefill_prompt_prefix_locked(
         llama_context *ctx,
         const std::vector<llama_token> &prompt_tokens
 ) {
-    llama_kv_cache_clear(ctx);
+    clear_session_kv_locked(ctx);
 
     if (prompt_tokens.size() <= 1) {
         return true;
@@ -1073,41 +1049,27 @@ static bool prefill_prompt_prefix_locked(
     return rc == 0;
 }
 
-static float score_candidate_avg_logprob_reuse_prompt_locked(
+static bool extend_candidate_logprobs_locked(
         llama_context *ctx,
         const std::vector<llama_token> &prompt_tokens,
         const std::vector<llama_token> &candidate_tokens,
-        uint64_t request_seq
+        size_t shared_tokens,
+        uint64_t request_seq,
+        std::vector<float> &prefix_logprobs
 ) {
-    if (is_request_stale(request_seq)) {
-        return -INFINITY;
-    }
-    if (prompt_tokens.empty() || candidate_tokens.empty()) {
-        return -INFINITY;
-    }
-
-    const RuntimeConfig config = get_runtime_config();
-    if (config.n_ctx <= 0 ||
-        prompt_tokens.size() + candidate_tokens.size() > static_cast<size_t>(config.n_ctx)) {
-        return -INFINITY;
+    // The first unscored token is predicted by the last shared token, or by the
+    // last prompt token when the candidates have no common prefix.
+    const auto suffix_start = static_cast<llama_pos>(prompt_tokens.size() + shared_tokens - 1);
+    if (!llama_kv_cache_seq_rm(ctx, 0, suffix_start, -1)) {
+        return false;
     }
 
-    const llama_pos suffix_start = (llama_pos) (prompt_tokens.size() - 1);
-    llama_kv_cache_seq_rm(ctx, 0, suffix_start, -1);
-
-    const int32_t cap = (int32_t) (1 + candidate_tokens.size());
-    llama_batch batch = llama_batch_init(cap, 0, 1);
-
-    batch.token[batch.n_tokens] = prompt_tokens.back();
-    batch.pos[batch.n_tokens] = suffix_start;
-    batch.n_seq_id[batch.n_tokens] = 1;
-    batch.seq_id[batch.n_tokens][0] = 0;
-    batch.logits[batch.n_tokens] = 1;
-    batch.n_tokens++;
-
-    for (size_t i = 0; i < candidate_tokens.size(); ++i) {
-        batch.token[batch.n_tokens] = candidate_tokens[i];
-        batch.pos[batch.n_tokens] = suffix_start + 1 + (llama_pos) i;
+    // Keep the final token in the decode batch even though its logits are
+    // unused. A single-row batch can select a different quantized CPU kernel.
+    llama_batch batch = llama_batch_init(static_cast<int32_t>(candidate_tokens.size() - shared_tokens + 1), 0, 1);
+    for (size_t i = shared_tokens; i <= candidate_tokens.size(); ++i) {
+        batch.token[batch.n_tokens] = i == 0 ? prompt_tokens.back() : candidate_tokens[i - 1];
+        batch.pos[batch.n_tokens] = suffix_start + batch.n_tokens;
         batch.n_seq_id[batch.n_tokens] = 1;
         batch.seq_id[batch.n_tokens][0] = 0;
         batch.logits[batch.n_tokens] = 1;
@@ -1117,24 +1079,24 @@ static float score_candidate_avg_logprob_reuse_prompt_locked(
     const int rc = llama_decode(ctx, batch);
     if (rc != 0) {
         if (!is_request_stale(request_seq)) {
-            LOGE("score_candidate_avg_logprob_reuse_prompt_locked: llama_decode failed: %d", rc);
+            LOGE("extend_candidate_logprobs_locked: llama_decode failed: %d", rc);
         }
         llama_batch_free(batch);
-        return -INFINITY;
+        return false;
     }
 
     const int32_t n_vocab = llama_vocab_n_tokens(g_vocab);
     float *all_logits = llama_get_logits(ctx);
     if (!all_logits) {
-        LOGE("score_candidate_avg_logprob_reuse_prompt_locked: all_logits is null");
+        LOGE("extend_candidate_logprobs_locked: all_logits is null");
         llama_batch_free(batch);
-        return -INFINITY;
+        return false;
     }
 
-    float total_score = 0.0f;
-    for (size_t i = 0; i < candidate_tokens.size(); ++i) {
+    prefix_logprobs.resize(candidate_tokens.size() + 1);
+    for (size_t i = shared_tokens; i < candidate_tokens.size(); ++i) {
         llama_token expected_token = candidate_tokens[i];
-        float *logits = all_logits + ((size_t) i * (size_t) n_vocab);
+        const float *logits = all_logits + (i - shared_tokens) * static_cast<size_t>(n_vocab);
 
         float max_logit = logits[0];
         for (int32_t tid = 1; tid < n_vocab; ++tid) {
@@ -1147,11 +1109,12 @@ static float score_candidate_avg_logprob_reuse_prompt_locked(
         for (int32_t tid = 0; tid < n_vocab; ++tid) {
             sum_exp += exp((double) logits[tid] - (double) max_logit);
         }
-        total_score += logits[expected_token] - max_logit - (float) log(sum_exp);
+        const float logprob = logits[expected_token] - max_logit - static_cast<float>(log(sum_exp));
+        prefix_logprobs[i + 1] = prefix_logprobs[i] + logprob;
     }
 
     llama_batch_free(batch);
-    return total_score / (float) candidate_tokens.size();
+    return true;
 }
 
 // ------- JNI: モデル初期化・キャンセル・解放 -------
@@ -1224,7 +1187,29 @@ Java_com_kazumaproject_zenz_ZenzEngine_cancelCurrent(
 ) {
     // Do not take g_session.mutex here. This method must remain callable from a Binder thread
     // while the actor thread is blocked inside llama_decode with that mutex held.
+    g_draft_review_generation.fetch_add(1, std::memory_order_relaxed);
     g_request_seq.fetch_add(1, std::memory_order_relaxed);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_kazumaproject_zenz_ZenzEngine_interruptCurrent(
+        JNIEnv * /*env*/,
+        jobject /*thiz*/
+) {
+    g_request_seq.fetch_add(1, std::memory_order_relaxed);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_kazumaproject_zenz_ZenzEngine_finishDraftReview(
+        JNIEnv *env,
+        jobject /*thiz*/,
+        jstring jDraftReviewId
+) {
+    const auto id = jstring_to_string(env, jDraftReviewId);
+    std::lock_guard<std::mutex> lock(g_session.mutex);
+    if (g_session.draft_review.id == id) g_session.draft_review = {};
 }
 
 extern "C"
@@ -1444,7 +1429,8 @@ static jstring candidate_evaluate_with_context(
         jstring jLeftContext,
         jstring jRightContext,
         jstring jInput,
-        jstring jCandidate
+        jstring jCandidate,
+        jstring jDraftReviewId = nullptr
 ) {
     std::string profile = jstring_to_string(env, jProfile);
     std::string topic = jstring_to_string(env, jTopic);
@@ -1454,10 +1440,8 @@ static jstring candidate_evaluate_with_context(
     std::string right = jstring_to_string(env, jRightContext);
     std::string input = jstring_to_string(env, jInput);
     std::string candidate = jstring_to_string(env, jCandidate);
-
-    if (candidate.empty()) {
-        return toJString(env, "ERROR");
-    }
+    const auto draft_review_id = jstring_to_string(env, jDraftReviewId);
+    if (candidate.empty() && draft_review_id.empty()) return toJString(env, "ERROR");
 
     std::string prompt = build_zenz_prompt(
             profile,
@@ -1470,7 +1454,8 @@ static jstring candidate_evaluate_with_context(
     );
 
     uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
-    CandidateEvaluationResult eval_result = candidate_evaluate(prompt, candidate, request_seq);
+    CandidateEvaluationResult eval_result = candidate_evaluate(
+            prompt, candidate, request_seq, draft_review_id);
 
     std::string result_str;
     switch (eval_result.type) {
@@ -1543,6 +1528,26 @@ Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluateV32(
             jInput,
             jCandidate
     );
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluateDraftV32(
+        JNIEnv *env,
+        jobject /*thiz*/,
+        jstring jProfile,
+        jstring jTopic,
+        jstring jStyle,
+        jstring jPreference,
+        jstring jLeftContext,
+        jstring jRightContext,
+        jstring jInput,
+        jstring jCandidate,
+        jstring jDraftReviewId
+) {
+    return candidate_evaluate_with_context(
+            env, jProfile, jTopic, jStyle, jPreference, jLeftContext,
+            jRightContext, jInput, jCandidate, jDraftReviewId);
 }
 
 static jfloatArray score_candidates_with_context(
@@ -1640,36 +1645,54 @@ static jfloatArray score_candidates_with_context(
         }
 
         std::vector<std::vector<llama_token>> candidate_tokens_list((size_t) candidate_count);
+        std::vector<jsize> score_order;
+        score_order.reserve(candidate_count);
         for (jsize i = 0; i < candidate_count; ++i) {
-            if (candidate_strings[(size_t) i].empty()) {
+            const auto &candidate = candidate_strings[i];
+            if (candidate.empty() || !is_safe_user_text(candidate)) {
                 continue;
             }
-            if (!is_safe_user_text(candidate_strings[(size_t) i])) {
-                scores[(size_t) i] = -INFINITY;
-                continue;
-            }
-            candidate_tokens_list[(size_t) i] = tokenize_text(
-                    preprocess_text(candidate_strings[(size_t) i]),
+            auto &tokens = candidate_tokens_list[i];
+            tokens = tokenize_text(
+                    preprocess_text(candidate),
                     /*add_bos=*/false,
                     /*add_eos=*/false
             );
+            if (!tokens.empty() && prompt_tokens.size() + tokens.size() <= static_cast<size_t>(config.n_ctx)) {
+                score_order.push_back(i);
+            }
         }
+        std::sort(score_order.begin(), score_order.end(), [&](jsize a, jsize b) {
+            return candidate_tokens_list[a] < candidate_tokens_list[b];
+        });
 
-        for (jsize i = 0; i < candidate_count; ++i) {
+        const std::vector<llama_token> *previous_tokens = nullptr;
+        std::vector<float> prefix_logprobs{0.0f};
+        for (jsize i : score_order) {
             if (is_request_stale(request_seq)) {
                 break;
             }
-            if (candidate_tokens_list[(size_t) i].empty()) {
-                scores[(size_t) i] = -INFINITY;
-                continue;
+            const auto &tokens = candidate_tokens_list[i];
+            size_t shared_tokens = 0;
+            if (previous_tokens) {
+                shared_tokens = std::mismatch(
+                        tokens.begin(), tokens.end(), previous_tokens->begin(), previous_tokens->end()
+                ).first - tokens.begin();
             }
 
-            scores[(size_t) i] = score_candidate_avg_logprob_reuse_prompt_locked(
-                    ctx,
-                    prompt_tokens,
-                    candidate_tokens_list[(size_t) i],
-                    request_seq
-            );
+            if (shared_tokens < tokens.size()) {
+                if (!extend_candidate_logprobs_locked(
+                        ctx, prompt_tokens, tokens, shared_tokens, request_seq, prefix_logprobs
+                )) {
+                    previous_tokens = nullptr;
+                    if (is_request_stale(request_seq) || !prefill_prompt_prefix_locked(ctx, prompt_tokens)) {
+                        break;
+                    }
+                    continue;
+                }
+                previous_tokens = &tokens;
+            }
+            scores[i] = prefix_logprobs[tokens.size()] / static_cast<float>(tokens.size());
         }
         llama_set_abort_callback(ctx, never_abort, nullptr);
     }

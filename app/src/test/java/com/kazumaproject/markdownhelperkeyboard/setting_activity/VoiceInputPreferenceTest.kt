@@ -9,9 +9,13 @@ import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreferenceCompat
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
+import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaRuntimeClient
 import com.kazumaproject.markdownhelperkeyboard.ime_service.ImePreferencesSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSpaceReplacement
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.*
+import java.io.File
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -29,6 +33,9 @@ class VoiceInputPreferenceTest {
         AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY,
         AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_KEY,
         AppPreference.VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY,
+        AppPreference.VOICE_INPUT_ENGINE_KEY,
+        AppPreference.VOICE_INPUT_MODEL_KEY,
+        AppPreference.VOICE_INPUT_BACKEND_KEY,
     )
 
     @Before
@@ -61,6 +68,40 @@ class VoiceInputPreferenceTest {
         assertEquals(expected.copy(enabled = false), AppPreference.voice_input_settings)
         AppPreference.voice_input_space_replacement = "unknown"
         assertEquals(VoiceInputSpaceReplacement.REMOVE, AppPreference.voice_input_settings.replacement)
+    }
+
+    @Test
+    fun voiceModelSelectionSurvivesBackupWithoutChangingTranslation() {
+        AppPreference.gemma_translation_model_path_preference = "/models/translation.gguf"
+        AppPreference.voice_input_engine = "ai"
+        AppPreference.voice_input_model = "/models/audio.litertlm"
+        AppPreference.voice_input_backend = "gpu_if_available"
+        val expected = AppPreference.voice_input_settings
+        assertEquals(expected, ImePreferencesSnapshot.from(AppPreference).voiceInputSettings)
+        val backup = AppPreference.exportAllToJson()
+        PreferenceManager.getDefaultSharedPreferences(context).edit().clear().commit()
+        AppPreference.importAllFromJson(backup)
+        AppPreference.init(context)
+        assertEquals(expected, AppPreference.voice_input_settings)
+        assertEquals("/models/translation.gguf", AppPreference.gemma_translation_model_path_preference)
+        AppPreference.voice_input_engine = "system"
+        assertEquals("/models/audio.litertlm", AppPreference.voice_input_settings.modelPath)
+    }
+
+    @Test
+    fun voiceProjectorSelectionDoesNotAutoSelectTranslationModel() = runBlocking {
+        val modelDirectory = File(requireNotNull(context.getExternalFilesDir(null)), "gemma").apply { mkdirs() }
+        val voiceModel = File.createTempFile("voice-model-", ".gguf", modelDirectory)
+        try {
+            AppPreference.gemma_translation_model_path_preference = ""
+            val manager = GemmaTranslationManager(context, AppPreference, GemmaRuntimeClient(context))
+
+            manager.selectProjectorForModel(voiceModel.absolutePath, "")
+
+            assertEquals("", AppPreference.gemma_translation_model_path_preference)
+        } finally {
+            voiceModel.delete()
+        }
     }
 
     @Test
