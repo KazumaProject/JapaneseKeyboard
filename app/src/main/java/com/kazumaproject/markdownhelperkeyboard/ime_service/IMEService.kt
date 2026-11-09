@@ -1076,6 +1076,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { preferences, key ->
+            if (key == null || key == AppPreference.TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY) {
+                runOnMainThread {
+                    val scale = appPreference.tenkey_special_key_label_scale_percent
+                    mainLayoutBinding?.keyboardView?.setSpecialKeyLabelScalePercent(scale)
+                    floatingKeyboardBinding?.keyboardViewFloating?.setSpecialKeyLabelScalePercent(scale)
+                    splitInputs.values.forEach { it.binding.keyboardViewFloating.setSpecialKeyLabelScalePercent(scale) }
+                }
+            }
             if (key == null || KeyboardSurfaceSizePreferences.isLegacySizeKey(key)) {
                 runOnMainThread {
                     mainHandler.removeCallbacks(refreshLegacySizePreference)
