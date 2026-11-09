@@ -59,7 +59,9 @@ internal class EnglishPhraseDictionary(
             if (key == prefix || key.any { it !in 'a'..'z' && it !in '0'..'9' }) continue
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
             forEachCandidate(key, term, maxCost) { candidate ->
-                if (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix)) {
+                if (candidate.surface.none(Char::isWhitespace) &&
+                    (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix))
+                ) {
                     if (best.size < limit) {
                         best.add(candidate)
                     } else if (completionOrder.compare(candidate, best.element()) < 0) {
@@ -74,8 +76,9 @@ internal class EnglishPhraseDictionary(
 
     /** Finds only dictionary-backed multiword surfaces, including joined-input aliases. */
     fun phrases(input: String, prefixMode: Boolean, limit: Int): List<DictionaryCandidate> {
-        val prefix = lookupKey(input).trim().replace(whitespace, " ")
-        if (prefix.length < 2 || !phraseKey.matches(prefix)) return emptyList()
+        val normalized = lookupKey(input).replace(whitespace, " ").trimStart()
+        val prefix = if (prefixMode) normalized else normalized.trimEnd()
+        if (prefix.length < 2 || !phraseKey.matches(prefix.trimEnd())) return emptyList()
         val compact = prefix.replace(" ", "")
         val order = compareBy<DictionaryCandidate> { if (it.reading.replace(" ", "") == compact) 0 else 1 }
             .then(completionOrder)
@@ -131,11 +134,24 @@ internal class EnglishPhraseDictionary(
         }
 
         if (' ' in prefix) collect(prefix) else {
-            // Follow all typed characters before enumerating completions. A word
-            // such as "thecat..." must not scan the entire "the " subtree.
-            for (matching in dictionary.readingTrie.prefixesMatchingJoinedInput(prefix, dictionary.readingLbsIndex)) collect(matching)
+            for (matching in joinedPhrasePrefixes(prefix, prefixMode)) collect(matching)
         }
         return best.sortedWith(order)
+    }
+
+    private fun joinedPhrasePrefixes(input: String, prefixMode: Boolean): List<String> {
+        val roles = grammarRoles.lookup(input, input)
+        // An article or another function word does not imply the start of a name.
+        if (roles.any(::isFunctionWordRole)) return emptyList()
+        val joined = dictionary.readingTrie.prefixesMatchingJoinedInput(input, dictionary.readingLbsIndex)
+            .filter { ' ' in it }
+        // Follow typed characters into the next word. A complete content word
+        // can also lead to its registered phrases, such as Android Studio.
+        return if (prefixMode && roles.any { it.startsWith("noun_") || it.startsWith("name_") } &&
+            exact(input).any { lookupKey(it.surface) == input }
+        ) {
+            joined + "$input "
+        } else joined
     }
 
     private fun completionRank(candidate: DictionaryCandidate): Int =

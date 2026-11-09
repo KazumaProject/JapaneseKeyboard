@@ -131,10 +131,13 @@ internal class PhraseConverter(
         }
         val finalPaths = paths.last()
         finalPaths.sortWith(order)
-        // An unregistered chain of dictionary fragments is not evidence of a
-        // sentence. Among grounded analyses, alternatives may change spelling or
-        // completion, but must not add boundaries inside the best analysis's words.
-        val supported = finalPaths.filter { it.splits == 0 || it.evidence.clauses > 0 }
+        // An unregistered split needs a clause or a fully typed noun compound.
+        // Alternatives may not add boundaries inside the best analysis's words.
+        val supported = finalPaths.filter { path ->
+            path.splits == 0 || path.evidence.clauses > 0 ||
+                path.segmentCount == 2 && path.splits == 1 &&
+                isExactNounCompound(path.previous?.segment, path.segment, grammar)
+        }
         val boundaries = supported.firstOrNull()?.collectSegments().orEmpty()
             .filter { it.inferredSpace }.mapTo(hashSetOf()) { it.start }
         val candidates = supported.asSequence()
@@ -167,6 +170,11 @@ internal class PhraseConverter(
         }
         return (exactWords + completedFirstWord + candidates + phrases).distinctBy { it.text }.take(limit)
     }
+
+    private fun isExactNounCompound(first: Segment?, second: Segment?, grammar: PhraseGrammar): Boolean =
+        first?.kind == SegmentKind.EXACT && second?.kind == SegmentKind.EXACT &&
+            first.surface == first.reading && second.surface == second.reading &&
+            grammar.supportsNounCompound(first.surface, second.surface)
 
     private fun lattice(
         text: String,
@@ -216,7 +224,7 @@ internal class PhraseConverter(
                 // inside it. Do not build speculative split paths and prune them later.
                 val protected = whole.isNotEmpty() || directCompletions.isNotEmpty() ||
                     dictionary.hasCompletion(reading) || phrases.isNotEmpty() ||
-                    (!complete && dictionary.hasPhraseCompletion(reading))
+                    dictionary.hasPhraseCompletion(reading)
                 if (protected) {
                     edges[start] += whole.map { it.segment(start, end, start) }
                     // Preserve the established space spelling of hyphenated
