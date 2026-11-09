@@ -78,7 +78,8 @@ internal class PhraseConverter(
         }
     }
 
-    fun convert(text: String, prefixMode: Boolean, limit: Int): List<PhraseCandidate> {
+    // The IME can give words extra slots so they don't displace registered phrases.
+    fun convert(text: String, prefixMode: Boolean, limit: Int, extraWordSlots: Int = 0): List<PhraseCandidate> {
         require(text.isNotBlank() && text.length <= MAX_INPUT) {
             "Text must contain between 1 and $MAX_INPUT UTF-16 code units and cannot be blank"
         }
@@ -86,8 +87,18 @@ internal class PhraseConverter(
 
         val grammar = PhraseGrammar(dictionary.grammarRoles)
         val registeredPhrases = dictionary.phrases(text, prefixMode, limit)
-        val compactInput = lookupKey(text).filterNot(Char::isWhitespace)
-        val edges = lattice(text, prefixMode, registeredPhrases)
+        val inputKey = lookupKey(text)
+        val compactInput = inputKey.filterNot(Char::isWhitespace)
+        fun isExactPhrase(candidate: DictionaryCandidate) = candidate.reading.replace(" ", "") == compactInput
+
+        // Without a typed boundary, unfinished phrases follow standalone
+        // completions. Keep exact registered aliases in the lattice.
+        val (primaryPhrases, deferredPhrases) = if (prefixMode && completionKey.matches(inputKey)) {
+            registeredPhrases.partition(::isExactPhrase)
+        } else {
+            registeredPhrases to emptyList()
+        }
+        val edges = lattice(text, prefixMode, primaryPhrases)
         val order = if (prefixMode) prefixOrder else exactOrder
         val paths = Array(text.length + 1) { mutableListOf<Path>() }
         val surfaces = arrayOfNulls<String>(text.length)
@@ -148,27 +159,40 @@ internal class PhraseConverter(
             .toList().ifEmpty {
                 listOf(PhraseCandidate(text, listOf(literal(text, 0, text.length, unknown = true)), 0, PhraseEvidence()))
             }
-        val phrases = registeredPhrases.map { candidate ->
-            val exact = candidate.reading.replace(" ", "") == compactInput
-            PhraseCandidate(
+        fun registeredPhrase(candidate: DictionaryCandidate): PhraseCandidate {
+            return PhraseCandidate(
                 candidate.surface,
                 listOf(
                     Segment(0, text.length, candidate.surface,
-                        if (exact) SegmentKind.EXACT else SegmentKind.COMPLETION,
+                        if (isExactPhrase(candidate)) SegmentKind.EXACT else SegmentKind.COMPLETION,
                         candidate.reading, candidate.cost),
                 ),
                 candidate.cost,
                 grammar.score(arrayOf<String?>(candidate.surface), 1),
             )
         }
-        // Once the phrase's first word is fully typed, offer its registered spelling
-        // before ordinary completions. Short prefixes still favor word completion.
+        // Once a primary phrase's first word is fully typed, offer its registered
+        // spelling before ordinary completions.
+        val phrases = primaryPhrases.map(::registeredPhrase)
         val exactWords = candidates.filter { it.segments.singleOrNull()?.kind == SegmentKind.EXACT }
         val typedLength = text.count { !it.isWhitespace() }
         val completedFirstWord = phrases.filter {
             checkNotNull(it.segments.single().reading).substringBefore(' ').length <= typedLength
         }
-        return (exactWords + completedFirstWord + candidates + phrases).distinctBy { it.text }.take(limit)
+        val ranked = (exactWords + completedFirstWord + candidates + phrases).distinctBy { it.text }
+        if (deferredPhrases.isEmpty()) return ranked.take(limit)
+
+        // Preserve a lower-cost registered spelling, such as Android Studio
+        // ahead of AndroidStudio, while favoring common closed compounds.
+        val compactSpellingCosts = deferredPhrases
+            .groupingBy { lookupKey(it.surface).filterNot(Char::isWhitespace) }
+            .fold(Int.MAX_VALUE) { cost, phrase -> minOf(cost, phrase.cost) }
+        val (compactVariants, preferred) = ranked.partition {
+            it.segments.singleOrNull()?.kind == SegmentKind.COMPLETION &&
+                (compactSpellingCosts[lookupKey(it.text)] ?: Int.MAX_VALUE) < it.dictionaryCost
+        }
+        return (preferred + deferredPhrases.map(::registeredPhrase) + compactVariants)
+            .distinctBy { it.text }.take(limit + minOf(extraWordSlots, preferred.size))
     }
 
     private fun isExactNounCompound(first: Segment?, second: Segment?, grammar: PhraseGrammar): Boolean =
