@@ -132,6 +132,11 @@ android {
             all {
                 maxHeapSize = '2g'
                 inputs.file(rootProject.file("tools/classified-dictionaries/distribution-manifest.json"))
+                def fixtureRoot = providers.gradleProperty('classifiedFixtureRoot').orNull
+                if (fixtureRoot != null) {
+                    systemProperty 'classifiedFixtureRoot', fixtureRoot
+                    outputs.upToDateWhen { false }
+                }
             }
         }
     }

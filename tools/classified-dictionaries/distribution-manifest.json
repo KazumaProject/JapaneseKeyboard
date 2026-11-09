@@ -1542,6 +1542,8 @@
     "revision": "f4c7151ac69d41586135037e658364bf48dae7a8",
     "archiveSha256": "8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69",
     "supportArchiveSha256": "4d8109de90d2afff02fbf96380110edcaa15f93a1cef004a36473600357fd435",
+    "catalogUrl": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/f4c7151ac69d41586135037e658364bf48dae7a8/english-ime/data/catalog/NAMED-VOCABULARY.md",
+    "reviewedGrammarSourceUrl": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz",
     "assets": {
       "app/src/main/assets/english/reading.dat.zip": "d16b7d669b28f6c5a0859a67db1234884d98464febb4e21f7eb79fd4ff6fe0e0",
       "app/src/main/assets/english/word.dat": "cd0679d884ef452ff0fca1432a58c6b7a9d2bbcfd216615f099f0c3d636f6259",
