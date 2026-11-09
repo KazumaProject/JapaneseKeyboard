@@ -9,6 +9,7 @@ object GgufEngine {
     external fun capabilities(handle: Long): Int
     external fun resetCancellation(handle: Long)
     external fun generate(handle: Long, prompt: String, mediaPath: String, mediaType: Int, instruction: String, targetLanguage: String): String
+    external fun score(handle: Long, prefix: String, candidates: Array<String>): FloatArray
     external fun cancel(handle: Long)
     external fun close(handle: Long)
 }
