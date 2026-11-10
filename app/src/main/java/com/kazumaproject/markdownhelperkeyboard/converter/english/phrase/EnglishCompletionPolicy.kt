@@ -13,15 +13,27 @@ internal class EnglishCompletionPolicy(
 
     fun allowsWord(reading: String, surface: String, cost: Int): Boolean {
         if (!plainPrefix) return true
-        val symbol = if (cost >= CATALOG_COST) surface.indexOfFirst(::isIdentifierCharacter) else -1
+        val symbol = surface.indexOfFirst(::isIdentifierCharacter)
         if (symbol >= 0) {
-            // A compact alias is useful once the user types into the part after
-            // the separator. An ordinary word such as "it" remains ambiguous.
-            return !isOrdinaryWord && (reading == prefix || symbol < prefix.length &&
-                surface.regionMatches(0, prefix, 0, symbol, ignoreCase = true))
+            // A low dictionary cost does not supply the missing identifier syntax.
+            // Keep compact aliases once the typed letters reach past the separator.
+            return !isOrdinaryWord && symbol < prefix.length &&
+                (reading == prefix || surface.regionMatches(0, prefix, 0, symbol, ignoreCase = true))
         }
         return reading == prefix || !isOrdinaryWord ||
             !isCatalogName(surface, personalOnly = cost < CATALOG_COST)
+    }
+
+    fun completionCost(reading: String, surface: String, cost: Int): Int {
+        if (cost >= CATALOG_COST || !plainPrefix || reading == prefix) return cost
+        // Wait until the first component is typed before applying the boost
+        // for stylized spellings such as GitHub or OpenAI.
+        for (index in 1 until surface.length) {
+            if (surface[index].isUpperCase() && surface[index - 1].isLowerCase()) {
+                return if (index > prefix.length) CATALOG_COST else cost
+            }
+        }
+        return cost
     }
 
     // Specific terms can start a registered phrase such as Android Studio.

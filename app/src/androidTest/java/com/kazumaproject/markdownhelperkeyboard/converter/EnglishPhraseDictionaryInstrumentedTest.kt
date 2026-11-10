@@ -181,7 +181,7 @@ class EnglishPhraseDictionaryInstrumentedTest {
                     "hello" to "Hello", "taken" to "Taken", "hell" to "hello",
                     "i said hello" to "I said hello", "he tak" to "he takes",
                     "takenj" to "Takenjam", "hello8" to "Hello82", "helloapp" to "Hello.app",
-                    "hello g" to "Hello Games", "op" to "OpenAI", "auto" to "AutoCAD",
+                    "hello g" to "Hello Games", "opena" to "OpenAI", "auto" to "AutoCAD",
                     "don'" to "don't", "androidstudio" to "Android Studio",
                 )) {
                     val candidates = query(input)
@@ -206,10 +206,11 @@ class EnglishPhraseDictionaryInstrumentedTest {
         val data = checkNotNull(reader.loadBundledEnglishForEngine())
         val words = EnglishPhraseDictionary(data, checkNotNull(reader.loadBundledEnglishGrammar()))
         val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
-        val ordinary = EnglishCompletionCorpus.words(data, words)
-        val firstKeys = ('a'..'z').map(Char::toString)
-        val partial = (firstKeys + ordinary.flatMap { word -> (2 until word.length).map(word::take) })
-            .distinct().sorted()
+        val corpus = EnglishCompletionCorpus(data, words)
+        val ordinary = corpus.ordinary
+        val partial = corpus.partial
+        assertTrue("Expected broad word coverage", ordinary.size >= 6_000)
+        assertTrue("Expected broad prefix coverage", partial.size >= 11_000)
         val targets = ordinary.filter { it.length >= 4 }
         val lexicalPartsOfSpeech = setOf("verb", "adjective", "adverb")
         val excluded = mapOf(
@@ -218,10 +219,14 @@ class EnglishPhraseDictionaryInstrumentedTest {
             "and" to "Andrew", "august" to "Augusta", "how" to "Howard", "owe" to "Owen",
         )
         val expected = mapOf(
-            "bette" to "better", "donati" to "donations", "privat" to "private",
+            "bette" to "better", "donati" to "donations", "privat" to "private", "ne" to "never",
             "peopl" to "people", "schoo" to "school",
         )
-        val retained = mapOf("andr" to "Andrew", "howa" to "Howard", "ne" to "Next.js", "and" to "Android")
+        val retained = mapOf(
+            "andr" to "Andrew", "howa" to "Howard", "and" to "Android",
+            "nextj" to "Next.js", "nextjs" to "Next.js",
+            "opena" to "OpenAI", "chatg" to "ChatGPT", "gith" to "GitHub",
+        )
         val failures = mutableListOf<String>()
         for (legacy in listOf(false, true)) {
             val path = if (legacy) "legacy" else "conversion"
@@ -236,16 +241,35 @@ class EnglishPhraseDictionaryInstrumentedTest {
                 putString("stream", "\nENGLISH_COMPLETION $path $message\n")
             })
 
+            report("coverage distinct=${inputsToQuery.size} bigrams=${corpus.bigrams.size} " +
+                "referencePrefixes=${corpus.expectedCompletions.size}")
             for ((kind, inputs) in listOf("word" to ordinary, "partial" to partial)) {
                 val symbols = mutableListOf<String>()
                 val names = mutableListOf<String>()
+                val premature = mutableListOf<String>()
+                val stylizedFirst = mutableListOf<String>()
                 for (input in inputs) {
-                    for ((index, surface) in visible(input).withIndex()) {
+                    val candidates = visible(input)
+                    val reference = corpus.expectedCompletions[input].orEmpty()
+                    for ((index, surface) in candidates.withIndex()) {
                         val key = surface.lowercase()
                         if (key == input) continue
                         val example = "$input => $surface (${index + 1})"
-                        if (surface.none(Char::isWhitespace) && surface.any { it.isDigit() || it in "./_+:&@" }) {
+                        val alternatives = reference.filter { word ->
+                            candidates.take(index).none { it.equals(word, ignoreCase = true) }
+                        }
+                        val mark = surface.indexOfFirst { it.isDigit() || it in "./_+:&@#" }
+                        if (mark >= 0 && surface.none(Char::isWhitespace)) {
                             symbols += example
+                            if (mark >= input.length && alternatives.isNotEmpty()) {
+                                premature += "$example before ${alternatives.joinToString()}"
+                            }
+                        }
+                        val component = surface.zipWithNext().indexOfFirst { (a, b) ->
+                            a.isLowerCase() && b.isUpperCase()
+                        } + 1
+                        if (surface.all(Char::isLetter) && component > input.length && alternatives.isNotEmpty()) {
+                            stylizedFirst += "$example before ${alternatives.joinToString()}"
                         }
                         val roles = words.grammarRoles.lookup(surface, key)
                         if (roles.any { it == "noun_proper" || it.startsWith("name_") } &&
@@ -255,12 +279,19 @@ class EnglishPhraseDictionaryInstrumentedTest {
                         }
                     }
                 }
-                // These counts include intentional results such as Next.js and country names.
-                report("$kind cases=${inputs.size} symbol=${symbols.size} name=${names.size}")
+                // Raw name and symbol counts include intentional spellings. Only
+                // early identifiers that outrank reference words fail this check.
+                report("$kind cases=${inputs.size} symbol=${symbols.size} name=${names.size} " +
+                    "premature=${premature.size} stylizedFirst=${stylizedFirst.size}")
+                report("$kind premature examples=${premature.take(20)}")
+                report("$kind stylized examples=${stylizedFirst.take(20)}")
                 report("$kind symbol examples=${symbols.take(20)}")
                 report("$kind name examples=${names.take(20)}")
-                if (symbols.size * 100 > inputs.size) {
-                    failures += "$path $kind: too many symbol candidates (${symbols.size}/${inputs.size})"
+                if (premature.isNotEmpty()) {
+                    failures += "$path $kind: ${premature.size} early identifiers: ${premature.take(10)}"
+                }
+                if (stylizedFirst.isNotEmpty()) {
+                    failures += "$path $kind: ${stylizedFirst.size} early stylized spellings: ${stylizedFirst.take(10)}"
                 }
             }
             val misses = targets.filter { word ->
@@ -269,7 +300,7 @@ class EnglishPhraseDictionaryInstrumentedTest {
             val hits = targets.size - misses.size
             report("penultimate recall=$hits/${targets.size} misses=${misses.take(20)}")
             if (hits * 100 < targets.size * 95) failures += "$path: penultimate recall $hits/${targets.size}"
-            for (input in firstKeys) {
+            for (input in corpus.firstKeys) {
                 val extensions = byInput.getValue(input).filterNot { it.equals(input, ignoreCase = true) }
                 if (extensions.isNotEmpty()) failures += "$path $input: unexpected extensions $extensions"
             }
@@ -279,6 +310,8 @@ class EnglishPhraseDictionaryInstrumentedTest {
                     failures += "$path $input: unexpected $surface in $candidates"
                 }
             }
+            val ne = visible("ne")
+            if (!ne.containsAll(listOf("new", "need", "next"))) failures += "$path ne: missing ordinary words in $ne"
             for ((input, surface) in retained) {
                 val candidates = byInput.getValue(input)
                 if (surface !in candidates) failures += "$path $input: missing $surface in $candidates"
@@ -308,6 +341,7 @@ class EnglishPhraseDictionaryInstrumentedTest {
         val referenceConverter = PhraseConverter(EnglishPhraseDictionary(unindexed, verifiedGrammar), beamWidth = 24, completionLimit = 32)
         val inputs = listOf(
             "he", "th", "an", "in", "re", "op", "te", "ke", "zz", "re-", "don'", "a1",
+            "ne", "nex", "juris", "ch", "gi", "gith",
             "the", "there", "keyboa", "hecantake", "he can tak", "New Yo", "elonmusk",
             "taylor swift", "twofactorauthentication", "thequickbrownfoxjumpsoverthelazydog",
         )
@@ -470,7 +504,7 @@ class EnglishPhraseDictionaryInstrumentedTest {
                 .map { it.commitText }
 
         for ((input, word) in listOf(
-            "ja" to "Java", "ba" to "battery", "ra" to "ran", "ta" to "tap", "op" to "OpenAI", "auto" to "AutoCAD",
+            "ja" to "Java", "ba" to "battery", "ra" to "ran", "ta" to "tap", "op" to "opens", "auto" to "AutoCAD",
         )) {
             val candidates = query(input)
             assertEquals("$input: $candidates", listOf(input, word), candidates.take(2))
