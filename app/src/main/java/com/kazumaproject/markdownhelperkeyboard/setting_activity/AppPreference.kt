@@ -37,10 +37,12 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSpaceReplacement
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingLanguage
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.CustomThemeBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
 import java.io.File
+import java.io.InputStream
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import timber.log.Timber
@@ -5267,6 +5269,60 @@ object AppPreference {
             }
         )
     }
+
+    private val customThemeBackup by lazy {
+        CustomThemeBackup(
+            preferenceDefaults = listOf(
+                KEYBOARD_THEME_MODE,
+                KeyboardSkinId.PREFERENCE_KEY to KeyboardSkinId.DEFAULT.preferenceValue,
+                CUSTOM_THEME_BG_COLOR,
+                CUSTOM_THEME_KEY_COLOR,
+                CUSTOM_THEME_SPECIAL_KEY_COLOR,
+                CUSTOM_THEME_KEY_TEXT_COLOR,
+                CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR,
+                CUSTOM_THEME_CANDIDATE_TEXT_COLOR,
+                CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR,
+                CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR,
+                CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_BG_COLOR,
+                CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_TEXT_COLOR,
+                CUSTOM_THEME_SHORTCUT_ICON_COLOR,
+                KEY_POPUP_USE_CUSTOM_COLOR,
+                KEY_POPUP_BACKGROUND_COLOR,
+                KEY_POPUP_TEXT_COLOR,
+                CUSTOM_THEME_INPUT_COLOR_ENABLE,
+                CUSTOM_THEME_PRE_EDIT_BG,
+                CUSTOM_THEME_PRE_EDIT_TEXT,
+                CUSTOM_THEME_POST_EDIT_BG,
+                CUSTOM_THEME_POST_EDIT_TEXT,
+                CUSTOM_THEME_BORDER_ENABLE,
+                CUSTOM_THEME_BORDER_COLOR,
+                CUSTOM_THEME_BORDER_WIDTH,
+                ROUND_KEYBOARD_CORNER_PREFERENCE,
+                KEYBOARD_CORNER_RADIUS_DP_PREFERENCE,
+                KEYBOARD_CORNER_TOP_LEFT_PREFERENCE,
+                KEYBOARD_CORNER_TOP_RIGHT_PREFERENCE,
+                KEYBOARD_CORNER_BOTTOM_LEFT_PREFERENCE,
+                KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE,
+                LIQUID_GLASS_ENABLE,
+                LIQUID_GLASS_BLUR_RADIUS,
+                LIQUID_GLASS_KEY_ALPHA,
+            ),
+            integerRanges = mapOf(
+                CUSTOM_THEME_BORDER_WIDTH.first to 1..8,
+                KEYBOARD_CORNER_RADIUS_DP_PREFERENCE.first to 0..64,
+                LIQUID_GLASS_BLUR_RADIUS.first to 0..255,
+                LIQUID_GLASS_KEY_ALPHA.first to 0..255,
+            ),
+            stringValues = mapOf(
+                KEYBOARD_THEME_MODE.first to setOf("default", "light", "dark", "custom"),
+                KeyboardSkinId.PREFERENCE_KEY to KeyboardSkinId.entries.map { it.preferenceValue }.toSet(),
+            ),
+        )
+    }
+
+    internal fun exportCustomThemeToJson(): String = customThemeBackup.export(preferences)
+
+    internal fun importCustomThemeFromJson(input: InputStream) = customThemeBackup.restore(input, preferences)
 
     /**
      * SharedPreferences 全体を JSON として書き出す（将来キーが増えても自動対応）

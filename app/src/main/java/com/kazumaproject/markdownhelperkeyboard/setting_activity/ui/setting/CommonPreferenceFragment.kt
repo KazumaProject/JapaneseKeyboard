@@ -216,7 +216,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
         }
     }
 
-    private fun writeTextToUri(uri: Uri, text: String) {
+    protected fun writeTextToUri(uri: Uri, text: String) {
         val cr = requireContext().contentResolver
         cr.openOutputStream(uri).use { out ->
             if (out == null) error("Cannot open output stream")
@@ -227,7 +227,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
         }
     }
 
-    private fun toast(msg: String) {
+    protected fun toast(msg: String) {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
     }
 
