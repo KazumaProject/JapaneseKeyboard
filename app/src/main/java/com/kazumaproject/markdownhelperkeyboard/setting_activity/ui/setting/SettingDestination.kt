@@ -878,6 +878,7 @@ object SettingDestinations {
             "setting_route_hardware_keyboard_preferences" -> R.id.hardwareKeyboardPreferenceFragment
             "setting_route_common_preferences" -> R.id.commonPreferenceFragment
             "setting_route_zenz_preferences" -> R.id.zenzPreferenceFragment.takeIf { AppVariantConfig.hasZenz }
+            "setting_route_candidate_rerank" -> R.id.candidateRerankPreferenceFragment.takeIf { AppVariantConfig.hasZenz }
             "setting_route_gemma_preferences" -> R.id.gemmaPreferenceFragment.takeIf { AppVariantConfig.hasGemma }
             "custom_romaji_preference" -> R.id.romajiMapFragment
             "shortcut_toolbar_item_preference" -> R.id.shortcutSettingFragment

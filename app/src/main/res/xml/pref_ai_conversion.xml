@@ -12,6 +12,12 @@
 
         <Preference
             android:icon="@drawable/lightbulb_24dp"
+            android:key="setting_route_candidate_rerank"
+            android:summary="@string/candidate_rerank_summary"
+            android:title="@string/candidate_rerank_title" />
+
+        <Preference
+            android:icon="@drawable/lightbulb_24dp"
             android:key="setting_route_gemma_preferences"
             android:summary="@string/setting_route_gemma_summary"
             android:title="@string/category_gemma_translation_title" />
