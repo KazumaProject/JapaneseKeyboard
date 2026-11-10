@@ -11,7 +11,7 @@ import zipfile
 
 
 def verify(bundle, readelf):
-    release_abis = {'arm64-v8a', 'x86_64'}
+    release_abis = {'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'}
     required = {(abi, library) for abi in release_abis
                 for library in ('libzenz.so', 'libomp.so')}
     with zipfile.ZipFile(bundle) as archive, tempfile.TemporaryDirectory() as directory:
