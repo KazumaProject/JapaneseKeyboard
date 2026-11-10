@@ -97,7 +97,8 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
                 R.string.custom_theme_import_error,
                 onSuccess = { requireActivity().recreate() },
             ) {
-                appPreference.importCustomThemeFromJson(readTextFromUri(uri))
+                val input = requireNotNull(requireContext().contentResolver.openInputStream(uri))
+                input.use(appPreference::importCustomThemeFromJson)
             }
         }
 

@@ -65,7 +65,7 @@ class CustomThemeBackupTest {
 
         preferences.edit().clear().putString(unrelated, "content://destination/background").apply()
         AppPreference.keyboardSkin = KeyboardSkinId.CUPERTINO_DARK
-        AppPreference.importCustomThemeFromJson(json)
+        AppPreference.importCustomThemeFromJson(json.byteInputStream())
 
         assertEquals(original + (unrelated to "content://destination/background"), preferences.all)
         assertEquals("custom", AppPreference.theme_mode)
@@ -82,7 +82,7 @@ class CustomThemeBackupTest {
         AppPreference.custom_theme_key_text_color = Color.WHITE
         AppPreference.custom_theme_candidate_text_color = Color.GREEN
 
-        AppPreference.importCustomThemeFromJson(json)
+        AppPreference.importCustomThemeFromJson(json.byteInputStream())
 
         assertFalse(preferences.contains(CustomThemeColorPreferenceKeys.CANDIDATE_TEXT_COLOR))
         assertEquals(Color.RED, AppPreference.custom_theme_candidate_text_color)
@@ -110,8 +110,28 @@ class CustomThemeBackupTest {
         )
 
         for (json in invalidFiles) {
-            assertThrows(RuntimeException::class.java) { AppPreference.importCustomThemeFromJson(json) }
+            assertThrows(RuntimeException::class.java) {
+                AppPreference.importCustomThemeFromJson(json.byteInputStream())
+            }
             assertEquals(original, preferences.all)
         }
+    }
+
+    @Test
+    fun rejectsThemeFilesOver64KiBBeforeWritingPreferences() {
+        AppPreference.theme_mode = "custom"
+        val json = AppPreference.exportCustomThemeToJson()
+        val atLimit = json + " ".repeat(64 * 1024 - json.encodeToByteArray().size)
+
+        AppPreference.theme_mode = "default"
+        AppPreference.importCustomThemeFromJson(atLimit.byteInputStream())
+        assertEquals("custom", AppPreference.theme_mode)
+
+        AppPreference.theme_mode = "default"
+        val original = preferences.all
+        assertThrows(IllegalArgumentException::class.java) {
+            AppPreference.importCustomThemeFromJson((atLimit + " ").byteInputStream())
+        }
+        assertEquals(original, preferences.all)
     }
 }

@@ -200,7 +200,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
         }
 
     // ヘルパーを class 内に追記
-    protected fun readTextFromUri(uri: Uri): String {
+    private fun readTextFromUri(uri: Uri): String {
         val cr = requireContext().contentResolver
         cr.openInputStream(uri).use { input ->
             if (input == null) error("Cannot open input stream")
