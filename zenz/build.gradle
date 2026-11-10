@@ -35,7 +35,7 @@ def zenzDebugNativeAbis = providers.gradleProperty("zenzDebugNativeAbis")
         .collect { it.trim() }
         .findAll { it }
 def zenzReleaseNativeAbis = providers.gradleProperty("zenzReleaseNativeAbis")
-        .orElse(localProperties.getProperty("zenzReleaseNativeAbis") ?: System.getenv("ZENZ_RELEASE_NATIVE_ABIS") ?: "arm64-v8a,x86_64")
+        .orElse(localProperties.getProperty("zenzReleaseNativeAbis") ?: System.getenv("ZENZ_RELEASE_NATIVE_ABIS") ?: "arm64-v8a,armeabi-v7a,x86,x86_64")
         .get()
         .split(",")
         .collect { it.trim() }
