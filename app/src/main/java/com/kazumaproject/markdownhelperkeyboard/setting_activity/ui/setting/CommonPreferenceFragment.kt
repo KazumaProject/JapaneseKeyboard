@@ -1047,7 +1047,6 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             "setting_route_utility_candidates" to R.id.utilityCandidatePreferenceFragment,
             "setting_route_dictionary" to R.id.dictionaryPreferenceFragment,
             "setting_route_ai_conversion" to R.id.aiConversionPreferenceFragment,
-            "setting_route_candidate_rerank" to R.id.candidateRerankPreferenceFragment,
             "setting_route_clipboard_shortcut" to R.id.clipboardShortcutPreferenceFragment,
             "setting_route_operation_feedback" to R.id.operationFeedbackPreferenceFragment,
             "setting_route_general_info" to R.id.generalInfoPreferenceFragment,
@@ -1077,8 +1076,6 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
         bindCanonicalSettingLinks()
 
         findPreference<Preference>("setting_route_zenz_preferences")?.conditionVisible =
-            AppVariantConfig.hasZenz
-        findPreference<Preference>("setting_route_candidate_rerank")?.conditionVisible =
             AppVariantConfig.hasZenz
         findPreference<Preference>("setting_route_gemma_preferences")?.conditionVisible =
             AppVariantConfig.hasGemma

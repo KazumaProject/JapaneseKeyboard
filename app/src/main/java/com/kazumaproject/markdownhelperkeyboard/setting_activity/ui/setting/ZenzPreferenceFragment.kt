@@ -29,9 +29,6 @@ class ZenzPreferenceFragment : AsyncPreferenceFragment() {
             true
         }
 
-        findPreference<Preference>("setting_route_candidate_rerank")?.setOnPreferenceClickListener {
-            navigateSafely(R.id.candidateRerankPreferenceFragment)
-        }
         updateModelPrefSummary()
         applyLegacySearchResultFilterIfNeeded()
     }
