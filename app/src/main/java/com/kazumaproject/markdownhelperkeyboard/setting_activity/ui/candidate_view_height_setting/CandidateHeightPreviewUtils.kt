@@ -34,6 +34,7 @@ import com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.resolveInitialCustomKeyboardSelection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.ModeKeySizing
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionApplier
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionDisplayMetadata
@@ -51,12 +52,16 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
 import timber.log.Timber
 import kotlin.math.roundToInt
 
 internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
     return listOf(
         "学校に行く" to "がっこうにいく",
+        "ペ" to "ぺ",
+        "ﾍﾟ" to "ぺ",
         "変換候補" to "へんかんこうほ",
         "変換する" to "へんかんする",
         "日本語" to "にほんご",
@@ -71,7 +76,11 @@ internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
     ).mapIndexed { index, (text, yomi) ->
         Candidate(
             string = text,
-            type = if (index == 0) 9.toByte() else 1.toByte(),
+            type = when (text) {
+                "ペ" -> CANDIDATE_TYPE_KATAKANA
+                "ﾍﾟ" -> CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
+                else -> if (index == 0) 9.toByte() else 1.toByte()
+            },
             length = text.length.toUByte(),
             score = 4000 - index,
             yomi = yomi,
@@ -134,6 +143,7 @@ internal data class CandidateKeyboardPreviewViews(
     val container: FrameLayout,
     val tenKey: TenKey,
     val gojuon: GojuonKeyboardView,
+    val morse: com.kazumaproject.morse_keyboard.MorseKeyboardView,
     val qwerty: QWERTYKeyboardView,
     val flick: FlickKeyboardView
 )
@@ -159,6 +169,7 @@ internal fun renderCandidateKeyboardPreview(
 
     views.tenKey.isVisible = false
     views.gojuon.isVisible = false
+    views.morse.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
@@ -241,10 +252,16 @@ private fun renderNonCustomKeyboardPreviewType(
 
     views.tenKey.isVisible = false
     views.gojuon.isVisible = false
+    views.morse.isVisible = false
     views.qwerty.isVisible = false
     views.flick.isVisible = false
 
     when (type) {
+        KeyboardType.MORSE -> {
+            val prefs = com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferences(fragment.requireContext())
+            views.morse.configure(prefs.settings().copy(sound = false, vibration = false), prefs.enabledMaps(), prefs.selectedMapId)
+            views.morse.isVisible = true
+        }
         KeyboardType.TENKEY, KeyboardType.SPLIT -> {
             views.tenKey.isVisible = true
             configureTenKeyPreview(fragment.requireContext(), appPreference, views.tenKey)
@@ -275,6 +292,7 @@ private fun renderNonCustomKeyboardPreviewType(
                 guideEnabled = appPreference.sumire_keymap_guide_japanese,
                 allowMultiCharacterGuideLabels = true
             )
+            ModeKeySizing.applySumire(views.flick, KeyboardInputMode.HIRAGANA)
             fragment.viewLifecycleOwner.lifecycleScope.launch {
                 val layoutType = appPreference.sumire_input_method
                 val inputMode = KeyboardInputMode.HIRAGANA
@@ -500,8 +518,7 @@ private fun configureTenKeyPreview(
     tenKey.setUseQwertyNumberWhenThreeStateOff(
         appPreference.tenkey_switch_number_to_qwerty_number_preference
     )
-    tenKey.setKeyLetterSize((appPreference.key_letter_size ?: 0.0f) + 17f)
-    tenKey.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
+    ModeKeySizing.applyTenkey(tenKey)
     tenKey.setKeySizeScale(
         appPreference.tenkey_key_width_scale_percent ?: 100,
         appPreference.tenkey_key_height_scale_percent ?: 100
@@ -784,6 +801,7 @@ private fun createPreviewSumireKeyboardLayout(
         dynamicKeyStates = dynamicStates,
         inputLayoutType = layoutType,
         inputStyle = appPreference.sumire_keyboard_style,
+        highlightSelectedMode = appPreference.sumire_mode_key_highlight_preference,
         deleteKeyFlickSettings = currentDeleteKeyFlickSettings(appPreference)
     )
     val circularLayout = CircularSlotActionApplier.apply(

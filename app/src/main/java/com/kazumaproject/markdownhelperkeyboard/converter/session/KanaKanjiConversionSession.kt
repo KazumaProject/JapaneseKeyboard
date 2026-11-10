@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.session
 
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.NBestCandidateCollector
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
@@ -30,11 +32,7 @@ data class KanaKanjiQueryRequest(
     val mode: CandidateQueryMode,
     val bunsetsuSeparation: Boolean,
     val n: Int,
-    val mozcUtPersonName: Boolean?,
-    val mozcUtPlaces: Boolean?,
-    val mozcUtWiki: Boolean?,
-    val mozcUtNeologd: Boolean?,
-    val mozcUtWeb: Boolean?,
+    val enabledDictionaryCategories: Set<DictionaryCategory> = emptySet(),
     val userDictionaryRepository: UserDictionaryRepository,
     val learnRepository: LearnRepository?,
     val omissionSearchEnabled: Boolean,
@@ -52,6 +50,8 @@ data class KanaKanjiQueryResult(
     val candidates: List<Candidate>,
     val bunsetsuResult: BunsetsuCandidateResult? = null,
     val candidateSegmentsByString: Map<String, List<CandidateConversionSegment>> = emptyMap(),
+    val bestNBestCandidate: Candidate? = null,
+    val nBestSelectionNs: Long? = null,
 )
 
 /**
@@ -72,7 +72,10 @@ class KanaKanjiConversionSession(
         null
     }
 
+    private var measureNBestSelection = false
+
     internal fun enablePerformanceProbe() {
+        measureNBestSelection = true
         incrementalState?.enablePerformanceProbe()
     }
 
@@ -88,6 +91,7 @@ class KanaKanjiConversionSession(
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
+            val nBestCollector = NBestCandidateCollector(measureNBestSelection)
             val result = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
@@ -96,11 +100,13 @@ class KanaKanjiConversionSession(
                     ),
                 )
 
-                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request)
-                CandidateQueryMode.PREDICTION -> queryPrediction(request)
-                CandidateQueryMode.CONVERSION -> queryConversion(request)
+                CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request, nBestCollector)
+                CandidateQueryMode.PREDICTION -> queryPrediction(request, nBestCollector)
+                CandidateQueryMode.CONVERSION -> queryConversion(request, nBestCollector)
             }
             val composedResult = result.copy(
+                bestNBestCandidate = nBestCollector.best,
+                nBestSelectionNs = nBestCollector.selectionNs,
                 candidates = DateCandidateComposer.compose(
                     request.input,
                     result.candidates,
@@ -131,17 +137,13 @@ class KanaKanjiConversionSession(
         }
     }
 
-    private suspend fun queryOriginal(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+    private suspend fun queryOriginal(request: KanaKanjiQueryRequest, nBestCollector: NBestCandidateCollector): KanaKanjiQueryResult {
         val segmentCollector = request.newCandidateSegmentCollector()
         return if (request.bunsetsuSeparation) {
             engine.getCandidatesOriginalWithBunsetsu(
                 input = request.input,
                 n = request.n,
-                mozcUtPersonName = request.mozcUtPersonName,
-                mozcUTPlaces = request.mozcUtPlaces,
-                mozcUTWiki = request.mozcUtWiki,
-                mozcUTNeologd = request.mozcUtNeologd,
-                mozcUTWeb = request.mozcUtWeb,
+                enabledDictionaryCategories = request.enabledDictionaryCategories,
                 userDictionaryRepository = request.userDictionaryRepository,
                 learnRepository = request.learnRepository,
                 isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -153,17 +155,14 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 candidateSegmentCollector = segmentCollector,
+                nBestCandidateCollector = nBestCollector,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
                 candidates = engine.getCandidatesOriginal(
                     input = request.input,
                     n = request.n,
-                    mozcUtPersonName = request.mozcUtPersonName,
-                    mozcUTPlaces = request.mozcUtPlaces,
-                    mozcUTWiki = request.mozcUtWiki,
-                    mozcUTNeologd = request.mozcUtNeologd,
-                    mozcUTWeb = request.mozcUtWeb,
+                    enabledDictionaryCategories = request.enabledDictionaryCategories,
                     userDictionaryRepository = request.userDictionaryRepository,
                     learnRepository = request.learnRepository,
                     isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -175,23 +174,20 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     candidateSegmentCollector = segmentCollector,
+                    nBestCandidateCollector = nBestCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )
         }
     }
 
-    private suspend fun queryPrediction(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+    private suspend fun queryPrediction(request: KanaKanjiQueryRequest, nBestCollector: NBestCandidateCollector): KanaKanjiQueryResult {
         val segmentCollector = request.newCandidateSegmentCollector()
         return if (request.bunsetsuSeparation) {
             engine.getCandidatesWithBunsetsuSeparation(
                 input = request.input,
                 n = request.n,
-                mozcUtPersonName = request.mozcUtPersonName,
-                mozcUTPlaces = request.mozcUtPlaces,
-                mozcUTWiki = request.mozcUtWiki,
-                mozcUTNeologd = request.mozcUtNeologd,
-                mozcUTWeb = request.mozcUtWeb,
+                enabledDictionaryCategories = request.enabledDictionaryCategories,
                 userDictionaryRepository = request.userDictionaryRepository,
                 learnRepository = request.learnRepository,
                 isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -203,17 +199,14 @@ class KanaKanjiConversionSession(
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
                 candidateSegmentCollector = segmentCollector,
+                nBestCandidateCollector = nBestCollector,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
                 candidates = engine.getCandidates(
                     input = request.input,
                     n = request.n,
-                    mozcUtPersonName = request.mozcUtPersonName,
-                    mozcUTPlaces = request.mozcUtPlaces,
-                    mozcUTWiki = request.mozcUtWiki,
-                    mozcUTNeologd = request.mozcUtNeologd,
-                    mozcUTWeb = request.mozcUtWeb,
+                    enabledDictionaryCategories = request.enabledDictionaryCategories,
                     userDictionaryRepository = request.userDictionaryRepository,
                     learnRepository = request.learnRepository,
                     isOmissionSearchEnable = request.omissionSearchEnabled,
@@ -225,56 +218,49 @@ class KanaKanjiConversionSession(
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
                     candidateSegmentCollector = segmentCollector,
+                    nBestCandidateCollector = nBestCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )
         }
     }
 
-    private suspend fun queryConversion(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+    private suspend fun queryConversion(request: KanaKanjiQueryRequest, nBestCollector: NBestCandidateCollector): KanaKanjiQueryResult {
         val segmentCollector = request.newCandidateSegmentCollector()
         return if (request.bunsetsuSeparation) {
             engine.getCandidatesWithoutPredictionWithBunsetsu(
                 input = request.input,
                 n = request.n,
-                mozcUtPersonName = request.mozcUtPersonName,
-                mozcUTPlaces = request.mozcUtPlaces,
-                mozcUTWiki = request.mozcUtWiki,
-                mozcUTNeologd = request.mozcUtNeologd,
-                mozcUTWeb = request.mozcUtWeb,
+                enabledDictionaryCategories = request.enabledDictionaryCategories,
                 userDictionaryRepository = request.userDictionaryRepository,
                 learnRepository = request.learnRepository,
+                isOmissionSearchEnable = request.omissionSearchEnabled,
+                enableTypoCorrectionJapaneseFlick = request.typoCorrectionJapaneseFlickEnabled,
                 typoCorrectionOffsetScore = request.typoCorrectionOffsetScore,
                 omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
-                predictionConfig = request.predictionConfig.copy(
-                    japanesePredictionEnabled = false,
-                    englishPredictionEnabled = false,
-                ),
+                predictionConfig = request.predictionConfig.copy(japanesePredictionEnabled = false),
                 candidateSegmentCollector = segmentCollector,
+                nBestCandidateCollector = nBestCollector,
             ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
                 candidates = engine.getCandidatesWithoutPrediction(
                     input = request.input,
                     n = request.n,
-                    mozcUtPersonName = request.mozcUtPersonName,
-                    mozcUTPlaces = request.mozcUtPlaces,
-                    mozcUTWiki = request.mozcUtWiki,
-                    mozcUTNeologd = request.mozcUtNeologd,
-                    mozcUTWeb = request.mozcUtWeb,
+                    enabledDictionaryCategories = request.enabledDictionaryCategories,
                     userDictionaryRepository = request.userDictionaryRepository,
                     learnRepository = request.learnRepository,
+                    isOmissionSearchEnable = request.omissionSearchEnabled,
+                    enableTypoCorrectionJapaneseFlick = request.typoCorrectionJapaneseFlickEnabled,
                     typoCorrectionOffsetScore = request.typoCorrectionOffsetScore,
                     omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
-                    predictionConfig = request.predictionConfig.copy(
-                        japanesePredictionEnabled = false,
-                        englishPredictionEnabled = false,
-                    ),
+                    predictionConfig = request.predictionConfig.copy(japanesePredictionEnabled = false),
                     candidateSegmentCollector = segmentCollector,
+                    nBestCandidateCollector = nBestCollector,
                 ),
                 candidateSegmentsByString = segmentCollector.orEmpty(),
             )

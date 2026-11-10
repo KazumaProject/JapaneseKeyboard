@@ -1,4 +1,7 @@
 <resources>
+    <dimen name="settings_card_corner_radius">8dp</dimen>
+    <dimen name="settings_card_stroke_width">1dp</dimen>
+    <dimen name="settings_row_min_height">76dp</dimen>
     <dimen name="local_font_screen_padding">20dp</dimen>
     <dimen name="local_font_section_spacing">12dp</dimen>
     <dimen name="local_font_sample_padding">12dp</dimen>

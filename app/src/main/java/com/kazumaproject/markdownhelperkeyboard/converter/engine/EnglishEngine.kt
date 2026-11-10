@@ -2,6 +2,14 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ENGLISH
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.EnglishCompletionPolicy
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.EnglishPhraseDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.GrammarRoles
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.PhraseConverter
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.lookupKey
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.phraseContinuations
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
@@ -51,15 +59,8 @@ internal fun candidateCaseVariants(input: String, candidate: String): List<Pair<
     ).distinctBy { (surface, _) -> surface }
 
 class EnglishEngine : QwertyGlideCandidateProvider {
-    private lateinit var readingLOUDS: LOUDSWithTermId
-    private lateinit var wordLOUDS: LOUDS
-    private lateinit var tokenArray: TokenArray
-    private lateinit var succinctBitVectorLBSReading: SuccinctBitVector
-    private lateinit var succinctBitVectorReadingIsLeaf: SuccinctBitVector
-    private lateinit var succinctBitVectorTokenArray: SuccinctBitVector
-    private lateinit var succinctBitVectorLBSWord: SuccinctBitVector
     @Volatile
-    private var dictionariesReady: Boolean = false
+    private var dictionaryData: EnglishDictionaryData? = null
     @Volatile
     private var dictionaryLoader: (() -> EnglishDictionaryData)? = null
     @Volatile
@@ -84,14 +85,13 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         englishSuccinctBitVectorReadingIsLeaf: SuccinctBitVector,
         englishSuccinctBitVectorTokenArray: SuccinctBitVector,
     ) {
-        this.readingLOUDS = englishReadingLOUDS
-        this.wordLOUDS = englishWordLOUDS
-        this.tokenArray = englishTokenArray
-        this.succinctBitVectorLBSReading = englishSuccinctBitVectorLBSReading
-        this.succinctBitVectorLBSWord = englishSuccinctBitVectorLBSWord
-        this.succinctBitVectorReadingIsLeaf = englishSuccinctBitVectorReadingIsLeaf
-        this.succinctBitVectorTokenArray = englishSuccinctBitVectorTokenArray
-        dictionariesReady = true
+        dictionaryData = EnglishDictionaryData(
+            CompactEnglishDictionary(
+                englishReadingLOUDS, englishWordLOUDS, englishTokenArray,
+                englishSuccinctBitVectorLBSReading, englishSuccinctBitVectorReadingIsLeaf,
+                englishSuccinctBitVectorLBSWord, englishSuccinctBitVectorTokenArray,
+            ),
+        )
         dictionaryLoader = null
         qwertyGlideDictionaryReady = false
         qwertyGlideDecoder = null
@@ -104,7 +104,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
 
     fun configureLazyDictionaryLoading(reader: DictionaryBinaryReader) {
         dictionaryLoader = { loadDictionaryData(reader) }
-        dictionariesReady = false
+        dictionaryData = null
         qwertyGlideDictionaryReady = false
         qwertyGlideDecoder = null
         qwertyGlideInputEnabled = false
@@ -184,7 +184,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         synchronized(this) {
             cancelQwertyGlideWarmup()
             dictionaryLoader = { loadDictionaryData(reader) }
-            dictionariesReady = false
+            dictionaryData = null
             this.qwertyGlideInputEnabled = qwertyGlideInputEnabled
             qwertyGlideDictionaryReady = false
             qwertyGlideDecoder = null
@@ -449,27 +449,27 @@ class EnglishEngine : QwertyGlideCandidateProvider {
     }
 
     private fun buildGlideDictionaryEntries(): List<QwertyGlideDictionaryEntry> {
-        ensureDictionariesLoaded()
+        val dictionary = ensureDictionariesLoaded().dictionary
         val entries = linkedMapOf<String, QwertyGlideDictionaryEntry>()
-        val readings = readingLOUDS.predictiveSearch(
+        val readings = dictionary.readingTrie.predictiveSearch(
             prefix = "",
-            succinctBitVector = succinctBitVectorLBSReading
+            succinctBitVector = dictionary.readingLbsIndex
         )
         for (reading in readings) {
             if (reading.length !in 2..24 || !reading.all { it in 'a'..'z' }) continue
-            val nodeIndex = readingLOUDS.getNodeIndex(
+            val nodeIndex = dictionary.readingTrie.getNodeIndex(
                 reading,
-                succinctBitVector = succinctBitVectorLBSReading
+                succinctBitVector = dictionary.readingLbsIndex
             )
             if (nodeIndex <= 0) continue
-            val termId = readingLOUDS.getTermId(
+            val termId = dictionary.readingTrie.getTermId(
                 nodeIndex,
-                succinctBitVector = succinctBitVectorReadingIsLeaf
+                succinctBitVector = dictionary.readingLeafIndex
             )
             if (termId < 0) continue
-            val tokens = tokenArray.getListDictionaryByYomiTermId(
+            val tokens = dictionary.tokenArray.getListDictionaryByYomiTermId(
                 termId,
-                succinctBitVector = succinctBitVectorTokenArray
+                succinctBitVector = dictionary.tokenIndex
             )
             if (tokens.isEmpty()) {
                 entries.mergeGlideEntry(reading, 9000)
@@ -477,9 +477,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                 for (entry in tokens) {
                     val word = when (entry.nodeId) {
                         -1 -> reading
-                        else -> wordLOUDS.getLetter(
+                        else -> dictionary.wordTrie.getLetter(
                             entry.nodeId,
-                            succinctBitVector = succinctBitVectorLBSWord
+                            succinctBitVector = dictionary.wordLbsIndex
                         )
                     }.lowercase()
                     if (word.length in 2..24 && word.all { it in 'a'..'z' }) {
@@ -509,27 +509,118 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enablePrediction: Boolean,
     ): List<Candidate> {
         if (input.isEmpty()) return emptyList()
-        ensureDictionariesLoaded()
+        return getCandidates(
+            input, enableTypoCorrection, enablePrediction, ensureDictionariesLoaded(),
+            rankWordCompletions = true,
+        )
+    }
 
-        val defaultType = 29.toByte()
+    internal fun getPhraseContinuations(committedText: String): List<String> {
+        if (committedText.length !in 1..254) return emptyList()
+        val prefix = lookupKey(committedText.trimStart(' '))
+        if (prefix.endsWith(' ') || prefix.none(Char::isLetter)) return emptyList()
+        if (prefix.any { char ->
+                char !in '0'..'9' && char !in " '-" &&
+                    Character.UnicodeScript.of(char.code) != Character.UnicodeScript.LATIN &&
+                    Character.getType(char) != Character.NON_SPACING_MARK.toInt()
+            }
+        ) return emptyList()
+        return ensureDictionariesLoaded().dictionary.phraseContinuations(prefix, limit = 48)
+    }
+
+    internal fun getConversionCandidates(
+        input: String,
+        legacyInput: String?,
+        enableTypoCorrection: Boolean,
+        enablePrediction: Boolean,
+        prefixMode: Boolean,
+        fallback: List<Candidate>,
+    ): List<Candidate> {
+        val usePhrases = enablePrediction && input.length in 2..255 &&
+            input.any(Char::isLetter) && input.all { char ->
+                if (char.isLetter()) Character.UnicodeScript.of(char.code) == Character.UnicodeScript.LATIN
+                else char in ' '..'~' || char == '’' || char == '\t' ||
+                    Character.getType(char) == Character.NON_SPACING_MARK.toInt()
+            }
+        if (legacyInput == null && !usePhrases) return fallback
+        val data = ensureDictionariesLoaded()
+        val legacy = if (legacyInput != null) {
+            // The Conversion tab uses the English setting for exact phrases while
+            // leaving single-word completion to the prediction modes.
+            getCandidates(legacyInput, enableTypoCorrection, enablePrediction && prefixMode, data)
+        } else {
+            fallback
+        }
+        if (!usePhrases) return legacy
+        val phraseConverter = data.phraseConverter ?: return legacy
+        val phraseLimit = 12
+        val phraseTexts = phraseConverter.convert(input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit)
+            .asSequence()
+            .map { phrase ->
+                val text = resolveCandidateCase(input, phrase.text)
+                if (input.first().isUpperCase() && text.none(Char::isUpperCase)) {
+                    text.replaceFirstChar(Char::uppercaseChar)
+                } else {
+                    text
+                }
+            }
+            .filter { it != input }
+            .distinct()
+            .toList()
+        if (phraseTexts.isEmpty()) return legacy
+
+        val seen = hashSetOf(input)
+        return buildList {
+            add(Candidate(input, CANDIDATE_TYPE_ENGLISH, input.length.toUByte(), 500))
+            phraseTexts.forEachIndexed { index, text ->
+                if (seen.add(text)) {
+                    add(Candidate(text, CANDIDATE_TYPE_ENGLISH, input.length.toUByte(), 501 + index))
+                }
+            }
+            val legacyScoreFloor = 501 + maxOf(phraseLimit, phraseTexts.size)
+            legacy.forEach { candidate ->
+                if (seen.add(candidate.string)) add(candidate.copy(score = maxOf(legacyScoreFloor, candidate.score)))
+            }
+        }
+    }
+
+    private fun getCandidates(
+        input: String,
+        enableTypoCorrection: Boolean,
+        enablePrediction: Boolean,
+        data: EnglishDictionaryData,
+        rankWordCompletions: Boolean = false,
+    ): List<Candidate> {
+        val dictionary = data.dictionary
+        val defaultType = CANDIDATE_TYPE_ENGLISH
         val lowerInput = input.lowercase()
         val limit = if (input.length <= 2) 6 else 12
+        val singleWordOnly = input.none(Char::isWhitespace)
 
-        val predictiveSearchReading = if (enablePrediction) {
-            readingLOUDS.predictiveSearch(
+        val plainWord = lowerInput.all { it in 'a'..'z' }
+        val rankedWords = if (enablePrediction && rankWordCompletions && plainWord && lowerInput.length >= 2) {
+            data.words?.let { words ->
+                words.exact(lowerInput, forPrediction = true) + words.complete(lowerInput, null, limit)
+            }
+        } else null
+        val predictiveSearchReading = when {
+            !enablePrediction || rankedWords != null -> emptyList()
+            // The phrase converter starts completion at two letters. Match it
+            // on the bundled fallback path without loading grammar on the first tap.
+            plainWord && lowerInput.length == 1 && dictionary.wordCompletionBounds != null -> listOf(lowerInput)
+            else -> dictionary.readingTrie.predictiveSearch(
                 prefix = lowerInput,
-                succinctBitVector = succinctBitVectorLBSReading,
-                limit = limit
+                succinctBitVector = dictionary.readingLbsIndex,
+                limit = limit,
+                singleWordOnly = singleWordOnly,
             )
-        } else {
-            emptyList()
         }
 
         // ★ typo はフラグが true のときだけ
         val typoCorrection = if (enableTypoCorrection && input.length > 2) {
-            readingLOUDS.commonPrefixSearchWithOmission(
+            dictionary.readingTrie.commonPrefixSearchWithOmission(
                 str = lowerInput,
-                succinctBitVector = succinctBitVectorLBSReading
+                succinctBitVector = dictionary.readingLbsIndex
             ).filter { it.yomi.length == lowerInput.length }
         } else {
             emptyList()
@@ -562,7 +653,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         )
 
         // ★ fallback は predictive も (typo有効時のtypoも) 空のときだけ
-        if (predictiveSearchReading.isEmpty() && typoCorrection.isEmpty()) {
+        if (predictiveSearchReading.isEmpty() && rankedWords.isNullOrEmpty() && typoCorrection.isEmpty()) {
             return listOf(
                 Candidate(
                     string = input,
@@ -587,42 +678,53 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         // ============
         // 1) predictive（通常）
         // ============
+        fun addPrediction(base: String, cost: Int) {
+            candidateCaseVariants(input, base).forEach { (surface, casePenalty) ->
+                predictions += Candidate(
+                    string = surface,
+                    type = defaultType,
+                    length = surface.length.toUByte(),
+                    score = cost + casePenalty,
+                )
+            }
+        }
+        rankedWords?.forEach { entry ->
+            if (matchesSingleWordPrediction(lowerInput, entry.surface)) addPrediction(entry.surface, entry.cost)
+        }
+        val completionPolicy = if (plainWord && lowerInput.length >= 2 && predictiveSearchReading.isNotEmpty()) {
+            data.grammar?.let { EnglishCompletionPolicy(lowerInput, it) }
+        } else null
         for (readingStr in predictiveSearchReading) {
-            val nodeIndex = readingLOUDS.getNodeIndex(
+            val nodeIndex = dictionary.readingTrie.getNodeIndex(
                 readingStr,
-                succinctBitVector = succinctBitVectorLBSReading
+                succinctBitVector = dictionary.readingLbsIndex
             )
             if (nodeIndex <= 0) continue
 
-            val termId = readingLOUDS.getTermId(
+            val termId = dictionary.readingTrie.getTermId(
                 nodeIndex,
-                succinctBitVector = succinctBitVectorReadingIsLeaf
+                succinctBitVector = dictionary.readingLeafIndex
             )
             if (termId < 0) continue
 
             val listToken =
-                tokenArray.getListDictionaryByYomiTermId(termId, succinctBitVectorTokenArray)
+                dictionary.tokenArray.getListDictionaryByYomiTermId(termId, dictionary.tokenIndex)
 
-            val variants = listToken.flatMap { entry ->
+            for (entry in listToken) {
                 val base = when (entry.nodeId) {
                     -1 -> readingStr
-                    else -> wordLOUDS.getLetter(
+                    else -> dictionary.wordTrie.getLetter(
                         entry.nodeId,
-                        succinctBitVector = succinctBitVectorLBSWord
+                        succinctBitVector = dictionary.wordLbsIndex
                     )
                 }
-
-                candidateCaseVariants(input, base).map { (surface, casePenalty) ->
-                    Candidate(
-                        string = surface,
-                        type = defaultType,
-                        length = surface.length.toUByte(),
-                        score = entry.wordCost.toInt() + casePenalty
-                    )
+                val cost = entry.wordCost.toInt()
+                if ((!singleWordOnly || matchesSingleWordPrediction(lowerInput, base)) &&
+                    completionPolicy?.allowsWord(readingStr, base, cost) != false
+                ) {
+                    addPrediction(base, completionPolicy?.completionCost(readingStr, base, cost) ?: cost)
                 }
             }
-
-            predictions += variants
         }
 
         // ============
@@ -631,6 +733,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         if (enableTypoCorrection && typoCorrection.isNotEmpty()) {
             val typoType = 35.toByte()
             val predictiveSet = predictiveSearchReading.toHashSet()
+            rankedWords?.forEach { predictiveSet.add(it.reading) }
 
             val maxEdits = maxEditsByLength(lowerInput.length)
 
@@ -638,35 +741,37 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                 val readingStr = typo.yomi
                 if (!predictiveSet.add(readingStr)) continue
 
-                val nodeIndex = readingLOUDS.getNodeIndex(
+                val nodeIndex = dictionary.readingTrie.getNodeIndex(
                     readingStr,
-                    succinctBitVector = succinctBitVectorLBSReading
+                    succinctBitVector = dictionary.readingLbsIndex
                 )
                 if (nodeIndex <= 0) continue
 
-                val termId = readingLOUDS.getTermId(
+                val termId = dictionary.readingTrie.getTermId(
                     nodeIndex,
-                    succinctBitVector = succinctBitVectorReadingIsLeaf
+                    succinctBitVector = dictionary.readingLeafIndex
                 )
                 if (termId < 0) continue
 
                 val listToken =
-                    tokenArray.getListDictionaryByYomiTermId(termId, succinctBitVectorTokenArray)
+                    dictionary.tokenArray.getListDictionaryByYomiTermId(termId, dictionary.tokenIndex)
 
                 val penalty = if (typo.omissionOccurred) 9000 else 8000
 
                 val variants = listToken.flatMap { entry ->
                     val base = when (entry.nodeId) {
                         -1 -> readingStr
-                        else -> wordLOUDS.getLetter(
+                        else -> dictionary.wordTrie.getLetter(
                             entry.nodeId,
-                            succinctBitVector = succinctBitVectorLBSWord
+                            succinctBitVector = dictionary.wordLbsIndex
                         )
                     }
 
                     // ★ここで「input と似ているものだけ」に絞る（typo由来のみ）
                     val baseLower = base.lowercase()
-                    if (!withinEditDistance(baseLower, lowerInput, maxEdits)) {
+                    if ((singleWordOnly && !matchesSingleWordPrediction(lowerInput, base)) ||
+                        !withinEditDistance(baseLower, lowerInput, maxEdits)
+                    ) {
                         return@flatMap emptyList<Candidate>()
                     }
 
@@ -691,6 +796,11 @@ class EnglishEngine : QwertyGlideCandidateProvider {
 
         return deduped.sortedBy { it.score }
     }
+
+    // The phrase converter handles multiword predictions. A legacy dictionary
+    // can still offer a spaced spelling for a fully typed compact alias.
+    private fun matchesSingleWordPrediction(input: String, surface: String): Boolean =
+        surface.none(Char::isWhitespace) || surface.filterNot(Char::isWhitespace).equals(input, ignoreCase = true)
 
     private fun withinEditDistance(a: String, b: String, maxEdits: Int): Boolean {
         val la = a.length
@@ -723,53 +833,50 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         return prev[lb] <= maxEdits
     }
 
-    private fun ensureDictionariesLoaded() {
-        if (dictionariesReady) return
-        synchronized(this) {
-            if (dictionariesReady) return
-            val loader = checkNotNull(dictionaryLoader) {
+    private fun ensureDictionariesLoaded(): EnglishDictionaryData {
+        dictionaryData?.let { return it }
+        return synchronized(this) {
+            dictionaryData ?: checkNotNull(dictionaryLoader) {
                 "English dictionary loader is not configured"
+            }.invoke().also {
+                dictionaryData = it
+                dictionaryLoader = null
             }
-            installDictionaryData(loader())
-            dictionaryLoader = null
-            dictionariesReady = true
         }
     }
 
     private fun loadDictionaryData(reader: DictionaryBinaryReader): EnglishDictionaryData {
-        val newReadingLOUDS = reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
-        val newWordLOUDS = reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
-        val newTokenArray = reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
+        reader.loadBundledEnglishForEngine()?.let { bundled ->
+            return EnglishDictionaryData(bundled, reader::loadBundledEnglishGrammar)
+        }
+        val reading = reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
+        val word = reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
+        val token = reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
         return EnglishDictionaryData(
-            readingLOUDS = newReadingLOUDS,
-            wordLOUDS = newWordLOUDS,
-            tokenArray = newTokenArray,
-            succinctBitVectorLBSReading = reader.loadEnglishReadingLbsIndex(newReadingLOUDS),
-            succinctBitVectorLBSWord = reader.loadEnglishWordLbsIndex(newWordLOUDS),
-            succinctBitVectorReadingIsLeaf = reader.loadEnglishReadingLeafIndex(newReadingLOUDS),
-            succinctBitVectorTokenArray = reader.loadEnglishTokenIndex(newTokenArray),
+            CompactEnglishDictionary(
+                reading, word, token,
+                reader.loadEnglishReadingLbsIndex(reading),
+                reader.loadEnglishReadingLeafIndex(reading),
+                reader.loadEnglishWordLbsIndex(word),
+                reader.loadEnglishTokenIndex(token),
+            ),
         )
     }
 
-    private fun installDictionaryData(data: EnglishDictionaryData) {
-        readingLOUDS = data.readingLOUDS
-        wordLOUDS = data.wordLOUDS
-        tokenArray = data.tokenArray
-        succinctBitVectorLBSReading = data.succinctBitVectorLBSReading
-        succinctBitVectorLBSWord = data.succinctBitVectorLBSWord
-        succinctBitVectorReadingIsLeaf = data.succinctBitVectorReadingIsLeaf
-        succinctBitVectorTokenArray = data.succinctBitVectorTokenArray
+    private class EnglishDictionaryData(
+        val dictionary: CompactEnglishDictionary,
+        loadGrammar: (() -> GrammarRoles?)? = null,
+    ) {
+        val grammar by lazy { loadGrammar?.invoke() }
+        val words by lazy { grammar?.let { EnglishPhraseDictionary(dictionary, it) } }
+        val phraseConverter by lazy {
+            words?.let {
+                // Candidate generation runs on every keystroke. Keep the interactive
+                // search narrower than the standalone reference converter.
+                PhraseConverter(it, beamWidth = 24, completionLimit = 32)
+            }
+        }
     }
-
-    private data class EnglishDictionaryData(
-        val readingLOUDS: LOUDSWithTermId,
-        val wordLOUDS: LOUDS,
-        val tokenArray: TokenArray,
-        val succinctBitVectorLBSReading: SuccinctBitVector,
-        val succinctBitVectorLBSWord: SuccinctBitVector,
-        val succinctBitVectorReadingIsLeaf: SuccinctBitVector,
-        val succinctBitVectorTokenArray: SuccinctBitVector,
-    )
 
     private fun maxEditsByLength(len: Int): Int = when {
         len <= 3 -> 1

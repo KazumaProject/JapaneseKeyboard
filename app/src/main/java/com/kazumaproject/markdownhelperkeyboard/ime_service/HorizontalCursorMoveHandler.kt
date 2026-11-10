@@ -22,6 +22,8 @@ internal class HorizontalCursorMoveHandler(
     private val sendDpad: (Direction) -> Unit,
     private val readDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    private val inputGeneration: () -> Long = { 0L },
+    private val canMove: () -> Boolean = { true },
 ) {
     internal enum class Direction { Left, Right }
 
@@ -40,6 +42,8 @@ internal class HorizontalCursorMoveHandler(
 
     fun move(direction: Direction) {
         val connection = currentConnection() ?: return
+        val generation = inputGeneration()
+        if (!canMove()) return
         scope.launch {
             val result = readMutex.withLock {
                 val revision = currentRevision()
@@ -51,6 +55,7 @@ internal class HorizontalCursorMoveHandler(
 
             withContext(mainDispatcher) {
                 if (currentConnection() !== connection) return@withContext
+                if (generation != inputGeneration() || !canMove() || currentRevision() != result.revision) return@withContext
                 if ((result.decision is Decision.CollapseAt ||
                         result.decision == Decision.CollapseWithDpad) &&
                     (currentRevision() != result.revision ||

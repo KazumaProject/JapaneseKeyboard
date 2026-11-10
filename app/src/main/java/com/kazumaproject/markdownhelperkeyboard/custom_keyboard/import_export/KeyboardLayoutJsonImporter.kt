@@ -24,7 +24,7 @@ object KeyboardLayoutJsonImporter {
     /**
      * 想定する最新の schemaVersion。
      */
-    const val LATEST_SCHEMA_VERSION: Int = 4
+    const val LATEST_SCHEMA_VERSION: Int = 5
 
     internal val gson: Gson by lazy {
         GsonBuilder()

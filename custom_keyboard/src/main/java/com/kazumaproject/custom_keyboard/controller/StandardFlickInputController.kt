@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
 import android.view.ViewGroup
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -158,16 +159,19 @@ class StandardFlickInputController(
                 initialTouchY = event.rawY
                 listener?.onPress(characterMap[FlickDirection.TAP] ?: "")
                 segmentedDrawable?.highlightDirection = FlickDirection.TAP
-                showPopup(FlickDirection.TAP, refreshSkinGuide = true)
+                if (activeGestureConfig?.showFlickPopup == true) {
+                    showPopup(FlickDirection.TAP, refreshSkinGuide = true)
+                }
                 return true
             }
 
             MotionEvent.ACTION_MOVE -> {
-                val dx = event.rawX - initialTouchX
-                val dy = event.rawY - initialTouchY
+                val (dx, dy) = KeyboardGeometryMath.localDelta(
+                    event.rawX - initialTouchX, event.rawY - initialTouchY, anchorView?.rotation ?: 0f
+                )
                 val direction = calculateDirection(dx, dy)
                 segmentedDrawable?.highlightDirection = direction
-                showPopup(direction)
+                if (activeGestureConfig?.showFlickPopup == true) showPopup(direction)
                 listener?.onSelectionChanged(
                     characterMap[direction]?.takeIf(String::isNotEmpty),
                     direction != FlickDirection.TAP
@@ -177,8 +181,9 @@ class StandardFlickInputController(
 
             MotionEvent.ACTION_UP -> {
                 segmentedDrawable?.highlightDirection = null
-                val dx = event.rawX - initialTouchX
-                val dy = event.rawY - initialTouchY
+                val (dx, dy) = KeyboardGeometryMath.localDelta(
+                    event.rawX - initialTouchX, event.rawY - initialTouchY, anchorView?.rotation ?: 0f
+                )
                 val finalDirection = calculateDirection(dx, dy)
                 characterMap[finalDirection]?.let {
                     if (it.isNotEmpty()) {
@@ -233,6 +238,7 @@ class StandardFlickInputController(
         dismissSkinGuideImmediately()
 
         popupView.setFlickDirection(direction)
+        popupView.rotation = keyAnchor.rotation
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
         popupView.applyPopupViewStyle(popupStyle)
 

@@ -13,6 +13,7 @@ import com.kazumaproject.toBitSet
 import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
+import com.kazumaproject.markdownhelperkeyboard.converter.louds.loudsChildPosition
 import java.util.BitSet
 
 class LOUDSWithTermId {
@@ -110,6 +111,53 @@ class LOUDSWithTermId {
     }
 
 
+    /** Lazily walks terminal readings without expanding the complete dictionary. */
+    fun termIterator(lbs: SuccinctBitVector, leaves: SuccinctBitVector): Iterator<Pair<String, Int>> =
+        com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
+            LBS, lbs, labels.size, { index -> labels[index] },
+            { node -> if (isLeaf[node]) getTermId(node, leaves) else -1 },
+        )
+
+    internal fun termsStartingWith(
+        prefix: String,
+        lbs: SuccinctBitVector,
+        leaves: SuccinctBitVector,
+        includeChild: ((labelIndex: Int) -> Boolean)? = null,
+    ): Iterator<Pair<String, Int>> {
+        var node = 0
+        for (char in prefix) {
+            node = traverse(node, char, lbs)
+            if (node < 0) return emptyList<Pair<String, Int>>().iterator()
+        }
+        return com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
+            LBS, lbs, labels.size, { index -> labels[index] },
+            { position -> if (isLeaf[position]) getTermId(position, leaves) else -1 },
+            startNode = node, prefix = prefix, includeChild = includeChild,
+        )
+    }
+
+    /** Trie prefixes matching the typed characters with optional dictionary spaces. */
+    internal fun prefixesMatchingJoinedInput(input: String, lbs: SuccinctBitVector): List<String> {
+        var states = listOf(0 to "")
+        for (char in input) {
+            val next = ArrayList<Pair<Int, String>>()
+            for ((node, prefix) in states) {
+                val direct = traverse(node, char, lbs)
+                if (direct >= 0) next += direct to (prefix + char)
+                if (prefix.isNotEmpty()) {
+                    val space = traverse(node, ' ', lbs)
+                    if (space >= 0) {
+                        val spaced = traverse(space, char, lbs)
+                        if (spaced >= 0) next += spaced to (prefix + ' ' + char)
+                    }
+                }
+            }
+            if (next.isEmpty()) return emptyList()
+            states = next
+        }
+        return states.map { it.second }
+    }
+
     fun getNodeIndex(
         s: String,
         rank1Array: IntArray,
@@ -198,10 +246,8 @@ class LOUDSWithTermId {
         rank0Array: ShortArray,
         rank1Array: ShortArray
     ): Int {
-        val rank1Value = LBS.rank1CommonShort(pos, rank1Array)
-        val select0 = LBS.select0CommonShort(rank1Value, rank0Array)
-        val y = select0 + 1
-        return if (!LBS[y]) -1 else y
+        return loudsChildPosition(LBS, pos,
+            LBS.select0CommonShort(LBS.rank1CommonShort(pos, rank1Array), rank0Array).toInt())
     }
 
     private fun traverseShortArray(
@@ -222,14 +268,13 @@ class LOUDSWithTermId {
     }
 
     private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
-        val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
-        return if (y < 0 || !LBS[y]) -1 else y
+        return loudsChildPosition(LBS, pos,
+            LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array))
     }
 
     private fun firstChild(pos: Int, succinctBitVector: SuccinctBitVector): Int {
-        val rank1 = succinctBitVector.rank1(pos)
-        val select0 = succinctBitVector.select0(rank1) + 1
-        return if (select0 < 0 || !LBS[select0]) -1 else select0
+        return loudsChildPosition(LBS, pos,
+            succinctBitVector.select0(succinctBitVector.rank1(pos)))
     }
 
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
@@ -245,11 +290,15 @@ class LOUDSWithTermId {
 
     private fun traverse(pos: Int, c: Char, succinctBitVector: SuccinctBitVector): Int {
         var childPos = firstChild(pos, succinctBitVector)
-        while (childPos >= 0 && LBS[childPos]) {
-            if (c == labels[succinctBitVector.rank1(childPos)]) {
+        if (childPos < 0) return -1
+        // Siblings occupy consecutive set bits and consecutive labels.
+        var labelIndex = succinctBitVector.rank1(childPos)
+        while (LBS[childPos]) {
+            if (c == labels[labelIndex]) {
                 return childPos
             }
             childPos++
+            labelIndex++
         }
         return -1
     }
@@ -356,7 +405,8 @@ class LOUDSWithTermId {
     fun predictiveSearch(
         prefix: String,
         succinctBitVector: SuccinctBitVector,
-        limit: Int
+        limit: Int,
+        singleWordOnly: Boolean = false,
     ): List<String> {
         val result = mutableListOf<String>()
         val resultTemp = StringBuilder()
@@ -372,7 +422,7 @@ class LOUDSWithTermId {
         }
 
         // collect words under node n, but stop at [limit]
-        collectWords(n, resultTemp, succinctBitVector, result, limit)
+        collectWords(n, resultTemp, succinctBitVector, result, limit, singleWordOnly)
         return result
     }
 
@@ -385,7 +435,8 @@ class LOUDSWithTermId {
         prefix: StringBuilder,
         succinctBitVector: SuccinctBitVector,
         result: MutableList<String>,
-        limit: Int
+        limit: Int,
+        singleWordOnly: Boolean,
     ) {
         // stop immediately if we've hit the limit
         if (result.size >= limit) return
@@ -402,10 +453,12 @@ class LOUDSWithTermId {
             val idx = succinctBitVector.rank1(childPos)
             if (idx >= labels.size) break
 
-            // add edge label
-            prefix.append(labels[idx])
-            collectWords(childPos, prefix, succinctBitVector, result, limit)
-            prefix.deleteCharAt(prefix.lastIndex)
+            val letter = labels[idx]
+            if (!singleWordOnly || !letter.isWhitespace()) {
+                prefix.append(letter)
+                collectWords(childPos, prefix, succinctBitVector, result, limit, singleWordOnly)
+                prefix.deleteCharAt(prefix.lastIndex)
+            }
 
             childPos++
         }
@@ -503,7 +556,9 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = indexOfLabel(charIndex, LBSInBoolArrayPreprocess)
+                val nextIndex = loudsChildPosition(LBS, currentIndex,
+                    indexOfLabel(charIndex, LBSInBoolArrayPreprocess) - 1)
+                if (nextIndex < 0) return -1
                 return search(
                     nextIndex,
                     chars,
@@ -536,7 +591,8 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = succinctBitVector.select0(charIndex) + 1
+                val nextIndex = firstChild(currentIndex, succinctBitVector)
+                if (nextIndex < 0) return -1
                 return search(
                     nextIndex,
                     chars,
@@ -584,7 +640,9 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess)
+                val nextIndex = loudsChildPosition(LBS, currentIndex,
+                    indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess) - 1)
+                if (nextIndex < 0) return -1
                 return searchShortArray(
                     nextIndex,
                     chars,

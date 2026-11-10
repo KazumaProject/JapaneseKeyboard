@@ -1,10 +1,15 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.session
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.BunsetsuConversionSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.buildConvertedBunsetsuSegments
 import com.kazumaproject.markdownhelperkeyboard.ime_service.mergeBunsetsuCandidates
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateDisplayMerger
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_HALF_WIDTH_KATAKANA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ConversionCorrection
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.date.DateCandidateFormat
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
@@ -26,6 +31,205 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class KanaKanjiConversionSessionParityTest {
+
+    @Test fun kanaTypesAreConsistentAcrossConversionModesAndBackends() = runBlocking {
+        for (input in listOf("ぺ", "ぺんをかう")) {
+            for (bunsetsu in listOf(false, true)) for (mode in CandidateQueryMode.entries) {
+                val results = ConversionBackend.entries.map { backend ->
+                    KanaKanjiConversionSession(engine, backend).query(request(input, mode, bunsetsu)).candidates
+                }
+                val context = "$input/$mode/bunsetsu=$bunsetsu"
+                assertEquals(context, results[0].fingerprint(), results[1].fingerprint())
+                for (candidates in results) {
+                    assertTrue(context, candidates.any { it.type == CANDIDATE_TYPE_KATAKANA && it.string.contains("ペ") })
+                    assertTrue(context, candidates.any { it.type == CANDIDATE_TYPE_HALF_WIDTH_KATAKANA && it.string.contains("ﾍﾟ") })
+                    if (input == "ぺ" && mode == CandidateQueryMode.NO_TAB_DEFAULT && !bunsetsu) {
+                        assertEquals(context, CANDIDATE_TYPE_KATAKANA,
+                            CandidateDisplayMerger.merge(candidates).first { it.string == "ペ" }.type)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun asciiInputKeepsHalfWidthUppercaseAcrossQueryModes() = runBlocking {
+        for (backend in ConversionBackend.entries) for (bunsetsu in listOf(false, true)) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in CandidateQueryMode.entries) for (englishPrediction in listOf(false, true)) {
+                for (input in listOf(
+                    "h8", "ab12", "8ab", "H8", "aB12",
+                    ":a", ":abc", "@ab", "#ab", "(abc)", "h-8", "a-b", "ab:", "a.b2", " ab", "ab c",
+                )) {
+                    val result = session.query(request(input, mode, bunsetsu).copy(
+                        predictionConfig = PredictionConfig(englishPredictionEnabled = englishPrediction),
+                    ))
+                    val context = "$backend/$bunsetsu/$mode/$englishPrediction/$input"
+                    val uppercase = result.candidates.firstOrNull { it.string == input.uppercase() }
+                    assertTrue("$context: ${result.candidates.map { it.string }}", uppercase != null)
+                    assertEquals("$context: committed uppercase", input.uppercase(), uppercase!!.commitText)
+                    assertEquals("$context: consumed input", input.length, uppercase.length.toInt())
+                    assertTrue("$context: capitalized input", result.candidates.any {
+                        it.string == input.replaceFirstChar { char -> char.uppercaseChar() }
+                    })
+                    assertTrue("$context: original input", result.candidates.any { it.string == input })
+                    assertTrue("$context: full-width lowercase", result.candidates.any {
+                        it.string == input.toFullWidth().lowercase()
+                    })
+                    assertTrue("$context: full-width uppercase", result.candidates.any {
+                        it.string == input.toFullWidth().uppercase()
+                    })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun literalAsciiVariantsExcludeInputsWithoutAsciiLettersAndNonAsciiInput() {
+        for (input in listOf("", "1234", ":", ":123", "()", "h８", "h8あ", "é1", "a\n", "a\t", "a\u007f")) {
+            val candidates = engine.getCandidatesEnglishKana(input)
+            assertFalse("$input: $candidates", candidates.any { it.type == 29.toByte() })
+        }
+    }
+
+    @Test fun defaultScoreFlickCorrectionKeepsWholeWordCandidatesInConversion() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in listOf(CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.PREDICTION,
+                CandidateQueryMode.CONVERSION)) {
+                val result = session.query(request("せんせあ", mode, true).copy(
+                    typoCorrectionJapaneseFlickEnabled = true,
+                ))
+                val teacher = result.candidates.first { it.string == "先生" && it.yomi == "せんせい" }
+                assertEquals(4, teacher.length.toInt())
+                val path = result.candidateSegmentsByString.getValue(teacher.string)
+                assertEquals(1, path.size)
+                assertEquals(0, path.single().inputStart)
+                assertEquals(4, path.single().inputEnd)
+            }
+        }
+    }
+
+    @Test
+    fun conversionRetainsOmissionAndFlickCorrectedLatticeCandidates() = runBlocking {
+        val cases = listOf(Triple("かつこう", "がっこう", true), Triple("とえけい", "とうけい", false))
+        for (backend in ConversionBackend.entries) for (bunsetsu in listOf(false, true)) {
+            for ((input, correctedReading, omission) in cases) {
+                val session = KanaKanjiConversionSession(engine, backend)
+                val base = request(input, CandidateQueryMode.PREDICTION, bunsetsu).copy(n = 64, beamWidth = 64)
+                for (both in listOf(false, true)) {
+                    val corrected = base.copy(
+                        omissionSearchEnabled = omission || both,
+                        typoCorrectionJapaneseFlickEnabled = !omission || both,
+                    )
+                    for (mode in listOf(CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.PREDICTION,
+                        CandidateQueryMode.CONVERSION)) {
+                        val result = session.query(corrected.copy(mode = mode))
+                        val candidate = result.candidates.firstOrNull {
+                            it.yomi == correctedReading && it.length.toInt() == input.length
+                        }
+                        assertTrue("Missing $correctedReading: $backend/$bunsetsu/$mode/both=$both: " +
+                            result.candidates.map { it.string to it.yomi }, candidate != null)
+                        val expectedMask = if (omission) ConversionCorrection.OMISSION else ConversionCorrection.JAPANESE_FLICK
+                        assertTrue("Missing correction provenance: $candidate", candidate!!.correctionMask and expectedMask != 0)
+                        assertTrue("N-best metadata must be captured", result.bestNBestCandidate != null)
+                        val path = result.candidateSegmentsByString[candidate.string].orEmpty()
+                        assertTrue("Corrected candidate needs a full input path", path.isNotEmpty())
+                        assertEquals(0, path.first().inputStart)
+                        assertEquals(input.length, path.last().inputEnd)
+                        assertEquals(candidate.string, path.joinToString("") { it.output })
+                    }
+                    // A settings change must rebuild a reused graph even with the same input.
+                    val disabled = session.query(base.copy(mode = CandidateQueryMode.CONVERSION))
+                    assertFalse(disabled.candidates.any { it.yomi == correctedReading })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun correctedConversionMatchesBackendsAcrossEditsAndModeChanges() = runBlocking {
+        for (bunsetsu in listOf(false, true)) for (omission in listOf(false, true)) {
+            for (typo in listOf(false, true)) {
+                val legacy = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
+                val incremental = KanaKanjiConversionSession(engine, ConversionBackend.INCREMENTAL_SESSION)
+                for ((input, mode) in listOf(
+                    "かつ" to CandidateQueryMode.PREDICTION,
+                    "かつこう" to CandidateQueryMode.PREDICTION,
+                    "かつこう" to CandidateQueryMode.CONVERSION,
+                    "かつこうにいく" to CandidateQueryMode.CONVERSION,
+                    "かつこう" to CandidateQueryMode.CONVERSION,
+                    "とえけい" to CandidateQueryMode.CONVERSION,
+                    "とえけい" to CandidateQueryMode.NO_TAB_DEFAULT,
+                )) {
+                    val query = request(input, mode, bunsetsu).copy(
+                        omissionSearchEnabled = omission, typoCorrectionJapaneseFlickEnabled = typo,
+                    )
+                    val expected = legacy.query(query)
+                    val actual = incremental.query(query)
+                    assertEquals("$input/$mode/$bunsetsu/$omission/$typo", expected.candidates.fingerprint(),
+                        actual.candidates.fingerprint())
+                    assertEquals(expected.candidateSegmentsByString, actual.candidateSegmentsByString)
+                    assertEquals(expected.bunsetsuResult?.splitPatterns, actual.bunsetsuResult?.splitPatterns)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun correctedSentenceKeepsItsDisplayAcrossSegmentLoadingAndBoundaryChanges() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            val query = request("かつこうにいく", CandidateQueryMode.PREDICTION, true).copy(
+                n = 64, omissionSearchEnabled = true,
+            )
+            val result = session.query(query)
+            val selected = result.candidates.first { it.string == "学校に行く" && it.yomi == "がっこうにいく" }
+            val snapshot = BunsetsuConversionSnapshot(query.input, listOf(selected), result.candidateSegmentsByString)
+            for (boundaries in listOf(emptyList(), listOf(4), listOf(4, 5))) {
+                val segments = buildConvertedBunsetsuSegments(query.input, boundaries, snapshot)
+                assertEquals(selected.string, segments.joinToString("") { it.displayText })
+                for (index in segments.indices.reversed()) {
+                    val segment = segments[index]
+                    val alternatives = session.query(query.copy(input = segment.reading, mode = CandidateQueryMode.CONVERSION))
+                    assertTrue("Conversion must not add predictive completions",
+                        alternatives.candidates.all { it.length.toInt() <= segment.reading.length })
+                    val loaded = mergeBunsetsuCandidates(segment,
+                        alternatives.candidates.filter { it.length.toInt() == segment.reading.length })
+                    assertEquals(segment.displayText, loaded.candidates[loaded.selectedIndex].string)
+                    if (segment.reading == "かつこう") {
+                        assertTrue("Moving to the corrected segment must load its alternatives",
+                            loaded.candidates.any { it.string == "学校" && it.yomi == "がっこう" })
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun correctedBunsetsuCandidatesRemainSelectableWithoutReplacingInitialDisplay() = runBlocking {
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            val query = request("かつこう", CandidateQueryMode.PREDICTION, true).copy(
+                n = 64, beamWidth = 64, omissionSearchEnabled = true, omissionSearchOffsetScore = 0,
+            )
+            val prediction = session.query(query)
+            val corrected = prediction.candidates.first { it.yomi == "がっこう" }
+            val snapshot = BunsetsuConversionSnapshot(query.input, listOf(corrected), prediction.candidateSegmentsByString)
+            val original = buildConvertedBunsetsuSegments(query.input, emptyList(), snapshot).single()
+            val alternatives = session.query(query.copy(mode = CandidateQueryMode.CONVERSION))
+            val merged = mergeBunsetsuCandidates(original,
+                alternatives.candidates.filter { it.length.toInt() == query.input.length })
+            assertEquals(corrected.string, merged.displayText)
+            assertEquals(corrected.string, merged.candidates[merged.selectedIndex].string)
+            assertTrue(merged.candidates.any { it.yomi == "がっこう" })
+            assertTrue(merged.candidates.all { it.length.toInt() == query.input.length })
+            // Cancel to raw input, then re-enter: a prior segment query cannot drop corrections.
+            session.query(query.copy(input = "かつ", mode = CandidateQueryMode.NO_TAB_DEFAULT))
+            val reentered = session.query(query.copy(mode = CandidateQueryMode.CONVERSION))
+            assertEquals(alternatives.candidates.fingerprint(), reentered.candidates.fingerprint())
+        }
+    }
 
     @Test
     fun bunsetsuDisplayPreservesFullLatticeResultAcrossBackendsAndCandidateLoading() = runBlocking {
@@ -487,11 +691,7 @@ class KanaKanjiConversionSessionParityTest {
         mode = mode,
         bunsetsuSeparation = bunsetsu,
         n = 4,
-        mozcUtPersonName = false,
-        mozcUtPlaces = false,
-        mozcUtWiki = false,
-        mozcUtNeologd = false,
-        mozcUtWeb = false,
+        enabledDictionaryCategories = emptySet(),
         userDictionaryRepository = userDictionaryRepository,
         learnRepository = null,
         omissionSearchEnabled = false,

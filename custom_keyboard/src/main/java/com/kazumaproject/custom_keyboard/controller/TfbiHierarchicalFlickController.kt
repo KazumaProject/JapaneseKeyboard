@@ -703,6 +703,12 @@ class TfbiHierarchicalFlickController(
         anchorView: View,
         showPetals: Boolean
     ) {
+        val config = currentGestureConfig()
+        if (showPetals && !config.showLongPressPopup) {
+            guidePopupHost.dismiss()
+            return
+        }
+        if (!showPetals && !config.showFlickPopup) return
         if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
             showGuidePopup(anchorView, showPetals)
         } else {

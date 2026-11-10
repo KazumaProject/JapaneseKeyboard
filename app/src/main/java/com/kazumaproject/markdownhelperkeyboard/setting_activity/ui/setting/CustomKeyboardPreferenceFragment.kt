@@ -11,12 +11,17 @@ class CustomKeyboardPreferenceFragment : AsyncPreferenceFragment() {
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
+        findPreference<Preference>("custom_layout_size_position_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.keyboardGeometrySettingsFragment, Bundle().apply { putString("geometryKeyboard", "CUSTOM") })
+            true
+        }
+
         val customKeyboardSizePreference =
             findPreference<Preference>("custom_keyboard_size_preference")
 
         customKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.flickKeyboardSizeSettingsFragment)
+                navigateSafely(R.id.flickKeyboardSizeSettingsFragment, Bundle().apply { putString("sizingSurface", "custom") })
                 true
             }
         }

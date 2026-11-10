@@ -1,0 +1,7 @@
+This software includes a binary version of data from
+
+  http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz,
+
+where the connection ids are remapped using CORE data in BCCWJ (except the PN category)
+
+  https://clrd.ninjal.ac.jp/bccwj/.

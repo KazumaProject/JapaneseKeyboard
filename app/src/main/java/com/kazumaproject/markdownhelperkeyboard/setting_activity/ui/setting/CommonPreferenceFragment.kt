@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPa
 import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.FlickPreviewDelaySettings
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.SettingsBackupRepository
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.BufferedReader
@@ -95,6 +96,9 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     lateinit var appPreference: AppPreference
 
     @Inject
+    lateinit var settingsBackupRepository: SettingsBackupRepository
+
+    @Inject
     lateinit var localFontRepositoryProvider: javax.inject.Provider<LocalFontRepository>
 
     private lateinit var packageInfo: android.content.pm.PackageInfo
@@ -111,13 +115,15 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
             if (uri == null) return@registerForActivityResult
-            runCatching {
-                val json = AppPreference.exportAllToJson()
-                writeTextToUri(uri, json)
-            }.onSuccess {
-                toast("Backup exported")
-            }.onFailure {
-                toast("Export failed: ${it.message}")
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val json = settingsBackupRepository.exportAllToJson()
+                    withContext(Dispatchers.IO) { writeTextToUri(uri, json) }
+                    toast("Backup exported")
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    toast("Export failed: ${e.message}")
+                }
             }
         }
 
@@ -127,7 +133,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val json = withContext(Dispatchers.IO) { readTextFromUri(uri) }
-                    AppPreference.importAllFromJson(json, replaceAll = true)
+                    settingsBackupRepository.importAllFromJson(json)
 
                     // Reset device-local display assets only after the JSON has been applied.
                     settingsIo(SettingsLoadStage.FONT) { localFontRepositoryProvider.get().restoreStandard() }
@@ -308,15 +314,15 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
                 colorMode
             }
         )
-        findPreference<ListPreference>("keyboard_touch_effect_quality_preference")?.isVisible =
+        findPreference<ListPreference>("keyboard_touch_effect_quality_preference")?.conditionVisible =
             visibility.showQuality
-        findPreference<ListPreference>("keyboard_touch_effect_color_mode_preference")?.isVisible =
+        findPreference<ListPreference>("keyboard_touch_effect_color_mode_preference")?.conditionVisible =
             visibility.showColorMode
 
         val fixedColorPreference =
             findPreference<Preference>("keyboard_touch_effect_color_preference")
 
-        fixedColorPreference?.isVisible = visibility.showFixedColor
+        fixedColorPreference?.conditionVisible = visibility.showFixedColor
 
         fixedColorPreference?.summary = if (visibility.showFixedColor) {
             getString(
@@ -327,26 +333,26 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             getString(R.string.keyboard_touch_effect_color_summary)
         }
 
-        findPreference<ListPreference>("keyboard_touch_effect_palette_preference")?.isVisible =
+        findPreference<ListPreference>("keyboard_touch_effect_palette_preference")?.conditionVisible =
             visibility.showPalette
 
         findPreference<SeekBarPreference>(
             KeyboardTouchEffectSettingVisibility.LIQUID_INK_DENSITY_KEY
-        )?.isVisible = KeyboardTouchEffectType.isLiquidInk(normalizedEffect)
+        )?.conditionVisible = KeyboardTouchEffectType.isLiquidInk(normalizedEffect)
         findPreference<SeekBarPreference>(
             KeyboardTouchEffectSettingVisibility.AURORA_INK_DENSITY_KEY
-        )?.isVisible = KeyboardTouchEffectType.isAuroraInk(normalizedEffect)
+        )?.conditionVisible = KeyboardTouchEffectType.isAuroraInk(normalizedEffect)
 
         findPreference<ListPreference>(
             "keyboard_touch_effect_cinematic_wave_color_mode_preference"
-        )?.isVisible = visibility.showCinematicWaveSettings
+        )?.conditionVisible = visibility.showCinematicWaveSettings
 
         val showCinematicCustomColors = visibility.showCinematicWaveCustomColors
         val primaryPreference =
             findPreference<Preference>(
                 "keyboard_touch_effect_cinematic_wave_primary_color_preference"
             )
-        primaryPreference?.isVisible = showCinematicCustomColors
+        primaryPreference?.conditionVisible = showCinematicCustomColors
         primaryPreference?.summary = if (showCinematicCustomColors) {
             getString(
                 R.string.keyboard_touch_effect_cinematic_wave_primary_color_summary_current,
@@ -361,18 +367,18 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
 
         findPreference<SwitchPreferenceCompat>(
             "keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference"
-        )?.isVisible = showCinematicCustomColors
+        )?.conditionVisible = showCinematicCustomColors
 
         findPreference<ListPreference>(
             "keyboard_touch_effect_cinematic_wave_type_preference"
-        )?.isVisible = visibility.showCinematicWaveSettings
+        )?.conditionVisible = visibility.showCinematicWaveSettings
 
         val secondaryPreference =
             findPreference<Preference>(
                 "keyboard_touch_effect_cinematic_wave_secondary_color_preference"
             )
         val showSecondaryColor = showCinematicCustomColors && !cinematicWaveSecondaryAuto
-        secondaryPreference?.isVisible = showSecondaryColor
+        secondaryPreference?.conditionVisible = showSecondaryColor
         secondaryPreference?.summary = if (showSecondaryColor) {
             getString(
                 R.string.keyboard_touch_effect_cinematic_wave_secondary_color_summary_current,
@@ -387,19 +393,19 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
 
         findPreference<SeekBarPreference>(
             "keyboard_touch_effect_cinematic_wave_opacity_percent_preference"
-        )?.isVisible = visibility.showCinematicWaveSettings
+        )?.conditionVisible = visibility.showCinematicWaveSettings
         findPreference<SeekBarPreference>(
             "keyboard_touch_effect_cinematic_wave_intensity_percent_preference"
-        )?.isVisible = visibility.showCinematicWaveSettings
+        )?.conditionVisible = visibility.showCinematicWaveSettings
         findPreference<ListPreference>(
             "keyboard_touch_effect_cinematic_wave_motion_preference"
-        )?.isVisible = visibility.showCinematicWaveSettings
+        )?.conditionVisible = visibility.showCinematicWaveSettings
         findPreference<ListPreference>(
             "keyboard_touch_effect_cinematic_wave_touch_response_preference"
-        )?.isVisible = visibility.showCinematicWaveSettings
+        )?.conditionVisible = visibility.showCinematicWaveSettings
         findPreference<ListPreference>(
             "keyboard_touch_effect_cinematic_wave_quality_preference"
-        )?.isVisible = visibility.showCinematicWaveSettings
+        )?.conditionVisible = visibility.showCinematicWaveSettings
     }
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
@@ -429,6 +435,12 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
                 true
             }
         }
+
+        findPreference<Preference>(com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings.RESET)
+            ?.setOnPreferenceClickListener {
+                com.kazumaproject.markdownhelperkeyboard.ime_service.floating_cursor.FloatingCursorSettings(guidePreferences).resetPlacement()
+                true
+            }
 
         findPreference<SwitchPreferenceCompat>(AppPreference.INLINE_SUGGESTION_ENABLED_KEY)?.let {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -1025,10 +1037,12 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
 
     private fun setupRoutePreferences() {
         val routeTargets = mapOf(
+            "candidate_indicator_style_settings" to R.id.candidateIndicatorPreferenceFragment,
             "date_candidate_settings_preference" to R.id.dateCandidateSettingsFragment,
             "setting_route_keyboard_display" to R.id.keyboardDisplayPreferenceFragment,
             "setting_route_input_method" to R.id.inputMethodPreferenceFragment,
             "setting_route_candidate_conversion" to R.id.candidateConversionPreferenceFragment,
+            "setting_route_candidate_display" to R.id.candidateDisplayPreferenceFragment,
             "setting_route_conversion_engine" to R.id.conversionEnginePreferenceFragment,
             "setting_route_utility_candidates" to R.id.utilityCandidatePreferenceFragment,
             "setting_route_dictionary" to R.id.dictionaryPreferenceFragment,
@@ -1040,6 +1054,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
             "setting_route_legacy_settings" to R.id.settingMainFragment,
             "setting_route_keyboard_theme" to R.id.keyboardThemeFragment,
             "setting_route_kana_preferences" to R.id.kanaPreferenceFragment,
+            "setting_route_gojuon_preferences" to R.id.gojuonPreferenceFragment,
             "setting_route_qwerty_preferences" to R.id.qwertyPreferenceFragment,
             "setting_route_qwerty_english_preferences" to R.id.qwertyEnglishPreferenceFragment,
             "setting_route_qwerty_romaji_preferences" to R.id.qwertyRomajiPreferenceFragment,
@@ -1058,10 +1073,11 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
                 true
             }
         }
+        bindCanonicalSettingLinks()
 
-        findPreference<Preference>("setting_route_zenz_preferences")?.isVisible =
+        findPreference<Preference>("setting_route_zenz_preferences")?.conditionVisible =
             AppVariantConfig.hasZenz
-        findPreference<Preference>("setting_route_gemma_preferences")?.isVisible =
+        findPreference<Preference>("setting_route_gemma_preferences")?.conditionVisible =
             AppVariantConfig.hasGemma
     }
 

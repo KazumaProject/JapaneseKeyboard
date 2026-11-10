@@ -108,6 +108,9 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
 
         setupMenu()
         setupAdapter()
+        suggestionAdapter.setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference)
+        suggestionAdapter.setShowCharacterTypeLabels(appPreference.candidate_character_type_labels_preference)
+        suggestionAdapter.setCharacterIndicatorStyles(appPreference.candidateIndicatorStyles)
         suggestionAdapter.setShowDictionaryCandidateLabels(
             appPreference.show_dictionary_candidate_labels_preference
         )
@@ -146,6 +149,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             parentFragmentManager.popBackStack()
         }
         binding.toolbar.inflateMenu(R.menu.fragment_reset_menu)
+        binding.toolbar.menu.findItem(R.id.action_reset)?.setTitle(R.string.candidate_display_reset_height)
         binding.toolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.action_candidate_default_height -> {
@@ -262,6 +266,9 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     }
 
     private fun applyCandidateAdapterPresentation() {
+        suggestionAdapter.setShowCharacterIndicators(appPreference.candidate_character_type_indicators_preference)
+        suggestionAdapter.setShowCharacterTypeLabels(appPreference.candidate_character_type_labels_preference)
+        suggestionAdapter.setCharacterIndicatorStyles(appPreference.candidateIndicatorStyles)
         suggestionAdapter.setKeyboardFont(com.kazumaproject.core.ui.font.KeyboardFontApplicator.processSnapshot)
         suggestionAdapter.setCandidateYomiMode(appPreference.live_conversion_candidate_yomi_mode)
         suggestionAdapter.setCandidateYomiTextSize(appPreference.live_conversion_candidate_yomi_size.toFloat())
@@ -846,6 +853,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
                 container = binding.keyboardPreviewContainer,
                 tenKey = binding.candidateHeightSettingTenkeyPreview,
                 gojuon = binding.candidateHeightSettingGojuonPreview,
+                morse = binding.candidateHeightSettingMorsePreview,
                 qwerty = binding.candidateHeightSettingQwertyPreview,
                 flick = binding.candidateHeightSettingFlickPreview
             ),

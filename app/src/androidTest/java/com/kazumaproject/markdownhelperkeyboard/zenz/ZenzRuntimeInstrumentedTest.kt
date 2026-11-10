@@ -8,15 +8,19 @@ import android.os.IBinder
 import android.os.Process
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.IZenzRuntime
 import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.IZenzRuntimeCallback
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeClient
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeConfig
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -92,6 +96,26 @@ class ZenzRuntimeInstrumentedTest {
         assertTrue("Final request was blocked by cancelled work", finalResult.isNotBlank())
     }
 
+    @Test(timeout = 120_000)
+    fun batchScoringMatchesSingleCandidateScoresInInputOrder() {
+        val service = bindRuntime()
+        initialize(service, copyBundledModel())
+        val reading = "ワタシハ"
+        val candidates = arrayOf(
+            "私は猫です", "私", "は", "私は犬です", "私は", "私",
+            "", "\uEE00", "長".repeat(700),
+        )
+        val scores = score(service, requestId = 10L, input = reading, candidates = candidates)
+
+        assertEquals(candidates.size, scores.size)
+        candidates.take(6).forEachIndexed { index, candidate ->
+            val singleScore = score(service, 11L + index, reading, arrayOf(candidate)).single()
+            assertTrue("Expected a finite score for $candidate", singleScore.isFinite())
+            assertEquals("Different score for $candidate", singleScore, scores[index], 1e-4f)
+        }
+        scores.drop(6).forEach { assertEquals(Float.NEGATIVE_INFINITY, it, 0.0f) }
+    }
+
     @Test(timeout = 180_000)
     fun generatedCandidatesStopAtProtocolBoundaryAcrossReadings() {
         val service = bindRuntime()
@@ -155,6 +179,86 @@ class ZenzRuntimeInstrumentedTest {
         assertSafeCandidate("まつ with marked context", candidateWithMarkerInContext)
     }
 
+    @Test(timeout = 120_000)
+    fun draftReviewKeepsTheRepairAndWholeResultAcrossRuntimeRequests() = runBlocking {
+        val client = ZenzRuntimeClient(context)
+        try {
+            val config = ZenzRuntimeConfig(copyBundledModel().absolutePath, 512, 4)
+            val input = "カゼガフク"
+            val text = client.generate(config, "", "", "", "", "", "", input, 32)
+            assertTrue(text.length > 1)
+            val wrong = text.dropLast(1) + if (text.endsWith("無")) "有" else "無"
+            suspend fun evaluate(candidate: String, id: String = "") = CandidateEvaluationResult.parse(
+                client.evaluate(config, null, null, null, null, null, null, input, candidate, id)
+            )
+
+            val repair = evaluate(wrong)
+            val whole = evaluate(text + "あ")
+            assertTrue(repair is CandidateEvaluationResult.FixRequired)
+            assertEquals(CandidateEvaluationResult.WholeResult(text), whole)
+
+            client.withDraftReview { id ->
+                assertEquals(repair, evaluate(wrong, id))
+                assertEquals(whole, evaluate(text + "あ", id))
+            }
+            client.withDraftReview { id ->
+                assertEquals(repair, evaluate(wrong, id))
+                assertEquals(CandidateEvaluationResult.Error, evaluate("\uEE08", id))
+                assertEquals(whole, evaluate(text + "あ", id))
+            }
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test(timeout = 900_000)
+    fun measureGenerationPerformance() {
+        val args = InstrumentationRegistry.getArguments()
+        assumeTrue(args.getString("zenzGenerationPerf") == "true")
+        val ins = InstrumentationRegistry.getInstrumentation()
+        val report = StringBuilder()
+        fun memory(pid: Int, label: String) {
+            val descriptor = ins.uiAutomation.executeShellCommand("dumpsys meminfo $pid")
+            val result = android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor)
+                .bufferedReader().use { it.readText() }
+            report.appendLine("memory/$label/pid=$pid\n$result")
+        }
+        memory(Process.myPid(), "imeBeforeLoad")
+        val bindStart = android.os.SystemClock.elapsedRealtimeNanos()
+        val service = bindRuntime()
+        report.appendLine("serviceBindNs=${android.os.SystemClock.elapsedRealtimeNanos()-bindStart}")
+        val copyStart = android.os.SystemClock.elapsedRealtimeNanos()
+        val model = copyBundledModel()
+        report.appendLine("modelAssetCopyNs=${android.os.SystemClock.elapsedRealtimeNanos()-copyStart}")
+        val start = android.os.SystemClock.elapsedRealtimeNanos()
+        val pid = initialize(service, model, nThreads = 4)
+        report.appendLine("modelLoadNs=${android.os.SystemClock.elapsedRealtimeNanos()-start},pid=$pid,nCtx=512,nThreads=4,maxTokens=32")
+        memory(pid, "zenzLoaded")
+        memory(Process.myPid(), "imeLoaded")
+        if (args.getString("coldOnly") != "true") {
+            val readings = listOf("キョウ", "ガッコウ", "センセイ", "コウエンニイキマス")
+            var requestId = 10L
+            for (reading in readings) {
+                repeat(3) { generate(service, requestId++, reading) }
+                val samples = ArrayList<Long>()
+                repeat(20) {
+                    val generatedAt = android.os.SystemClock.elapsedRealtimeNanos()
+                    val result = generate(service, requestId++, reading)
+                    samples += android.os.SystemClock.elapsedRealtimeNanos()-generatedAt
+                    assertTrue("Empty conversion for $reading", result.isNotBlank())
+                    assertSafeCandidate(reading, result)
+                    report.appendLine("generation,$reading,ns=${samples.last()},result=$result")
+                    File(context.filesDir, "zenz-generation-perf.txt").writeText(report.toString())
+                }
+                val sorted = samples.sorted()
+                report.appendLine("summary,$reading,meanMs=${samples.average()/1e6},p50Ms=${sorted[9]/1e6},p95Ms=${sorted[18]/1e6}")
+                memory(pid, "zenzAfter/$reading")
+                memory(Process.myPid(), "imeAfter/$reading")
+            }
+        }
+        File(context.filesDir, "zenz-generation-perf.txt").writeText(report.toString())
+    }
+
     private fun bindRuntime(): IZenzRuntime {
         val connected = CountDownLatch(1)
         val connection = object : ServiceConnection {
@@ -188,7 +292,7 @@ class ZenzRuntimeInstrumentedTest {
         return target
     }
 
-    private fun initialize(service: IZenzRuntime, model: File): Int {
+    private fun initialize(service: IZenzRuntime, model: File, nThreads: Int = 2): Int {
         val completed = CountDownLatch(1)
         val processPid = AtomicInteger(-1)
         val error = AtomicReference<String?>(null)
@@ -197,7 +301,7 @@ class ZenzRuntimeInstrumentedTest {
             requestId,
             model.absolutePath,
             512,
-            2,
+            nThreads,
             object : IZenzRuntimeCallback.Stub() {
                 override fun onReady(callbackRequestId: Long, pid: Int) {
                     if (callbackRequestId == requestId) {

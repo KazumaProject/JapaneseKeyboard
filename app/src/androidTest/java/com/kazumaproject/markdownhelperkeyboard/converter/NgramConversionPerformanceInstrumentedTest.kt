@@ -99,8 +99,7 @@ class NgramConversionPerformanceInstrumentedTest {
         engine.getCandidatesWithBunsetsuSeparation(
             input = "わたしはきのうともだちとえきまえであいました",
             n = 4,
-            mozcUtPersonName = false, mozcUTPlaces = false, mozcUTWiki = false,
-            mozcUTNeologd = false, mozcUTWeb = false,
+            enabledDictionaryCategories = emptySet(),
             userDictionaryRepository = repository, learnRepository = null,
             isOmissionSearchEnable = false,
             enableTypoCorrectionJapaneseFlick = false,

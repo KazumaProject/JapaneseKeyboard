@@ -233,6 +233,54 @@ class PhysicalCandidateCompositionInstrumentedTest {
         awaitText(preview + "あ")
     }
 
+    @Test fun japanese109AModeKeySwitchesDuringConversion() = withKeyboard {
+        type("toukyou")
+        awaitText("とうきょう")
+        key(KeyEvent.KEYCODE_SPACE)
+        awaitText("東京")
+        key(KeyEvent.KEYCODE_ZENKAKU_HANKAKU)
+        val committed = text()
+        key(KeyEvent.KEYCODE_A)
+        awaitText(committed + "a")
+        key(KeyEvent.KEYCODE_ZENKAKU_HANKAKU)
+        key(KeyEvent.KEYCODE_A)
+        awaitText(committed + "aあ")
+    }
+
+    @Test fun altApostropheSwitchesJapaneseAndEnglish() = withKeyboard {
+        key(KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.META_ALT_ON)
+        key(KeyEvent.KEYCODE_A)
+        awaitText("a")
+        key(KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.META_ALT_ON)
+        key(KeyEvent.KEYCODE_A)
+        awaitText("aあ")
+    }
+
+    @Test fun japanese109AKanaUsesRemappedDakutenAndBrackets() = withKeyboard(kana = true) {
+        key(KeyEvent.KEYCODE_Q)
+        key(KeyEvent.KEYCODE_AT)
+        awaitText("だ")
+        key(KeyEvent.KEYCODE_F)
+        key(KeyEvent.KEYCODE_LEFT_BRACKET)
+        awaitText("だぱ")
+        key(KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.META_SHIFT_ON)
+        key(KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.META_SHIFT_ON)
+        awaitText("だぱ「」")
+    }
+
+    @Test fun japanese109AKanaUsesAllPunctuationKanaKeys() = withKeyboard(kana = true) {
+        val keys = listOf(
+            KeyEvent.KEYCODE_MINUS,
+            KeyEvent.KEYCODE_EQUALS,
+            KeyEvent.KEYCODE_SEMICOLON,
+            KeyEvent.KEYCODE_APOSTROPHE
+        )
+        keys.forEach { key(it) }
+        awaitText("ほへれけ")
+        keys.forEach { key(it, KeyEvent.META_SHIFT_ON) }
+        awaitText("ほへれけほへれけ")
+    }
+
     @Test fun narrowedCandidateCanBeCancelledWithoutLosingSource() = withKeyboard {
         selectPartialCandidate()
         key(KeyEvent.KEYCODE_ESCAPE)
@@ -411,7 +459,7 @@ class PhysicalCandidateCompositionInstrumentedTest {
         val context = instrumentation.targetContext
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val values = mapOf<String, Any>(
-            "conversion_bunsetsu_separation_preference" to true,
+            "conversion_bunsetsu_separation_preference" to bunsetsu,
             "conversion_bunsetsu_cursor_move_preference" to bunsetsu,
             "candidate_order_override_enable_preference" to candidateOrdering,
             "learn_dictionary_preference" to false,

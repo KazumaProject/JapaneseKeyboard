@@ -106,6 +106,7 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <!-- RecyclerView for Suggestions -->
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
             android:layout_width="0dp"
@@ -152,6 +153,13 @@
         android:clickable="true"
         android:focusable="true"
         android:importantForAccessibility="yes"
+        android:visibility="gone" />
+
+    <com.kazumaproject.morse_keyboard.MorseKeyboardView
+        android:id="@+id/morse_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
         android:visibility="gone" />
 
     <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView

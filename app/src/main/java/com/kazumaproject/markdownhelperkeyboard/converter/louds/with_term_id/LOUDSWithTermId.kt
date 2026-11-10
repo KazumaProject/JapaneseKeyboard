@@ -26,6 +26,7 @@ import com.kazumaproject.toListInt
 import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
+import com.kazumaproject.markdownhelperkeyboard.converter.louds.loudsChildPosition
 import java.util.BitSet
 import java.util.concurrent.ConcurrentHashMap
 
@@ -197,6 +198,13 @@ class LOUDSWithTermId {
     }
 
 
+    /** Lazily walks terminal readings without expanding the complete dictionary. */
+    fun termIterator(lbs: SuccinctBitVector, leaves: SuccinctBitVector): Iterator<Pair<String, Int>> =
+        com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
+            LBS, lbs, labelCount, { index -> labelAt(index) },
+            { node -> if (isLeaf[node]) getTermId(node, leaves) else -1 },
+        )
+
     fun getNodeIndex(
         s: String, rank1Array: IntArray, LBSInBoolArrayPreprocess: IntArray
     ): Int {
@@ -207,11 +215,17 @@ class LOUDSWithTermId {
     fun getNodeIndex(
         s: String,
         succinctBitVector: SuccinctBitVector,
+    ): Int = if (s.isEmpty()) -1 else getNodeIndex(s.toCharArray(), succinctBitVector)
+
+    /** Allows a query to share its reading across several dictionaries. */
+    internal fun getNodeIndex(
+        reading: CharArray,
+        succinctBitVector: SuccinctBitVector,
     ): Int {
-        if (s.isEmpty()) return -1
+        if (reading.isEmpty()) return -1
         return search(
             2,
-            s.toCharArray(),
+            reading,
             0,
             succinctBitVector,
         )
@@ -271,10 +285,8 @@ class LOUDSWithTermId {
     private fun firstChildShortArray(
         pos: Int, rank0Array: ShortArray, rank1Array: ShortArray
     ): Int {
-        val rank1Value = LBS.rank1CommonShort(pos, rank1Array)
-        val select0 = LBS.select0CommonShort(rank1Value, rank0Array)
-        val y = select0 + 1
-        return if (!LBS[y]) -1 else y
+        return loudsChildPosition(LBS, pos,
+            LBS.select0CommonShort(LBS.rank1CommonShort(pos, rank1Array), rank0Array).toInt())
     }
 
     private fun traverseShortArray(
@@ -294,14 +306,13 @@ class LOUDSWithTermId {
     }
 
     private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
-        val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
-        return if (y < 0 || !LBS[y]) -1 else y
+        return loudsChildPosition(LBS, pos,
+            LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array))
     }
 
     private fun firstChild(pos: Int, succinctBitVector: SuccinctBitVector): Int {
-        val rank1 = succinctBitVector.rank1(pos)
-        val select0 = succinctBitVector.select0(rank1) + 1
-        return if (select0 < 0 || !LBS[select0]) -1 else select0
+        return loudsChildPosition(LBS, pos,
+            succinctBitVector.select0(succinctBitVector.rank1(pos)))
     }
 
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
@@ -457,17 +468,19 @@ class LOUDSWithTermId {
         pos: Int,
         prefix: StringBuilder,
         succinctBitVector: SuccinctBitVector,
-        result: MutableList<String>
+        result: MutableList<String>,
+        maxReadingLength: Int,
     ) {
         if (isLeaf[pos]) {
             result.add(prefix.toString())
         }
+        if (prefix.length >= maxReadingLength) return
         var childPos = firstChild(pos, succinctBitVector)
         while (childPos >= 0 && LBS[childPos]) {
             val index = succinctBitVector.rank1(childPos)
             if (index >= labelCount) break
             prefix.append(labelAt(index))
-            collectWords(childPos, prefix, succinctBitVector, result)
+            collectWords(childPos, prefix, succinctBitVector, result, maxReadingLength)
             prefix.deleteCharAt(prefix.length - 1)
             childPos++
         }
@@ -489,7 +502,57 @@ class LOUDSWithTermId {
         return result
     }
 
-    fun predictiveSearch(prefix: String, succinctBitVector: SuccinctBitVector): List<String> {
+    /** Visit terminals in the same DFS order as predictiveSearch, without exploring longer readings. */
+    fun forEachPredictiveMatch(
+        prefix: String,
+        maxReadingLength: Int,
+        lbsIndex: SuccinctBitVector,
+        leafIndex: SuccinctBitVector,
+        block: (reading: String, termId: Int) -> Unit,
+    ) {
+        if (maxReadingLength < prefix.length) return
+        val reading = StringBuilder(prefix.length)
+        var node = 0
+        for (char in prefix) {
+            node = traverse(node, char, lbsIndex)
+            if (node < 0) return
+            val index = lbsIndex.rank1(node)
+            if (index >= labelCount) return
+            reading.append(labelAt(index))
+        }
+        collectPredictiveMatches(node, reading, maxReadingLength, lbsIndex, leafIndex, block)
+    }
+
+    private fun collectPredictiveMatches(
+        node: Int,
+        reading: StringBuilder,
+        maxReadingLength: Int,
+        lbsIndex: SuccinctBitVector,
+        leafIndex: SuccinctBitVector,
+        block: (String, Int) -> Unit,
+    ) {
+        if (isLeaf[node]) block(reading.toString(), getTermId(node, leafIndex))
+        if (reading.length >= maxReadingLength) return
+        var child = firstChild(node, lbsIndex)
+        while (child >= 0 && LBS[child]) {
+            val index = lbsIndex.rank1(child)
+            if (index >= labelCount) break
+            reading.append(labelAt(index))
+            collectPredictiveMatches(child, reading, maxReadingLength, lbsIndex, leafIndex, block)
+            reading.deleteCharAt(reading.length - 1)
+            child++
+        }
+    }
+
+    fun predictiveSearch(prefix: String, succinctBitVector: SuccinctBitVector): List<String> =
+        predictiveSearch(prefix, succinctBitVector, Int.MAX_VALUE)
+
+    fun predictiveSearch(
+        prefix: String,
+        succinctBitVector: SuccinctBitVector,
+        maxReadingLength: Int,
+    ): List<String> {
+        if (prefix.length > maxReadingLength) return emptyList()
         val result = mutableListOf<String>()
         val resultTemp = StringBuilder()
         var n = 0
@@ -501,7 +564,7 @@ class LOUDSWithTermId {
             resultTemp.append(labelAt(index))
         }
         // Collect all words starting from the last matched node
-        collectWords(n, resultTemp, succinctBitVector, result)
+        collectWords(n, resultTemp, succinctBitVector, result, maxReadingLength)
         return result
     }
 
@@ -564,7 +627,9 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = indexOfLabel(charIndex, LBSInBoolArrayPreprocess)
+                val nextIndex = loudsChildPosition(LBS, currentIndex,
+                    indexOfLabel(charIndex, LBSInBoolArrayPreprocess) - 1)
+                if (nextIndex < 0) return -1
                 return search(
                     nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArrayPreprocess
                 )
@@ -594,7 +659,8 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = succinctBitVector.select0(charIndex) + 1
+                val nextIndex = firstChild(currentIndex, succinctBitVector)
+                if (nextIndex < 0) return -1
                 return search(
                     nextIndex,
                     chars,
@@ -643,7 +709,9 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else -1
                 }
-                val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess)
+                val nextIndex = loudsChildPosition(LBS, currentIndex,
+                    indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess) - 1)
+                if (nextIndex < 0) return -1
                 return searchShortArray(
                     nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArrayPreprocess
                 )

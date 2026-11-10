@@ -22,9 +22,11 @@ include ':tenkey'
 include ':symbol_keyboard'
 include ':core'
 include ':gojuon_keyboard'
+include ':morse_keyboard'
 include ':qwerty_keyboard'
 include ':custom_keyboard'
 include ':zenz'
+include ':ai-runtime'
 
 // Opt-in device laboratory; never packaged with the keyboard.
 if (providers.gradleProperty('enterParityLab').isPresent()) {

@@ -44,6 +44,7 @@ import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior
+import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
@@ -57,6 +58,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickSlotActionMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.HierarchicalFlickCodec
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingAdapter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingItem
@@ -104,6 +106,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private val binding get() = _binding!!
 
     private var currentKeyData: KeyData? = null
+    private var hierarchicalInitialized = false
+    private var savedHierarchyDraft: String? = null
 
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
     private var currentToggleFlickItems = mutableListOf<FlickMappingItem>()
@@ -176,6 +180,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyEditorBinding.bind(view)
 
+        hierarchicalInitialized = false
+        savedHierarchyDraft = savedInstanceState?.getString("hierarchicalFlickDraft")
+        savedHierarchyDraft?.let {
+            binding.hierarchicalFlickEditorView.setDefinition(HierarchicalFlickCodec.decode(it))
+            hierarchicalInitialized = true
+        }
+        binding.hierarchicalFlickEditorView.onDefinitionChanged = { updateDoneButtonState() }
         binding.buttonDone.isEnabled = false
         setupToolbarAndMenu()
         setupGridEditor()
@@ -562,6 +573,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun handleSpecialCategoryUi() {
+        binding.hierarchicalFlickEditorView.isVisible = false
         val isFlick = binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_flick
 
         binding.keyLabelLayout.isVisible = false
@@ -593,6 +605,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun handleInputStyleUi() {
         val selectedStyle = binding.inputStyleChipGroup.checkedChipId
+        val isHierarchical = selectedStyle == R.id.chip_three_stage_flick
         val isTwoStep = selectedStyle == R.id.chip_two_step_flick
         val isCircular = selectedStyle == R.id.chip_circular_flick
         val isFlickLongPress = selectedStyle == R.id.chip_flick_long_press
@@ -602,6 +615,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             binding.outputModeChipGroup.check(R.id.chip_normal_output)
         }
 
+        binding.hierarchicalFlickEditorView.isVisible = isHierarchical
+        binding.textOutputModeTitle.isVisible = !isHierarchical
+        binding.outputModeChipGroup.isVisible = !isHierarchical
         binding.keyLabelLayout.isVisible = true
         binding.customKeyboardTargetLayout.isVisible = false
         binding.flickGridEditorView.isVisible = true
@@ -612,7 +628,19 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         updateIconOverrideVisibility()
         currentCellMode = null
 
-        if (isCircular) {
+        if (isHierarchical) {
+            binding.flickGridEditorView.isVisible = false
+            if (!hierarchicalInitialized) {
+                val tap = currentFlickItems.firstOrNull { it.direction == FlickDirection.TAP }?.output
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: textOutputFromAction(currentKeyData?.action)
+                binding.hierarchicalFlickEditorView.setDefinition(TfbiFlickNode.StatefulKey(
+                    normalMap = if (tap.isNotEmpty()) mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input(tap)) else emptyMap(),
+                    label = binding.keyLabelEdittext.text.toString()
+                ))
+                hierarchicalInitialized = true
+            }
+        } else if (isCircular) {
             binding.flickGridEditorView.isVisible = false
             binding.textSelectedDirection.isVisible = false
             binding.textCharInputLayout.isVisible = false
@@ -670,7 +698,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             )
         }
 
-        if (!isCircular) {
+        if (!isCircular && !isHierarchical) {
             binding.flickGridEditorView.selectInitialCell()
         }
     }
@@ -1130,7 +1158,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_two_step_flick
                 val isFlickLongPress =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_flick_long_press
-                if (isTwoStep) {
+                if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_three_stage_flick) {
+                    binding.hierarchicalFlickEditorView.hasOutput()
+                } else if (isTwoStep) {
                     // TwoStep: base (TAP->TAP) must be filled
                     val base = currentTwoStepItems
                         .firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }
@@ -1308,7 +1338,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 outputEditMode = OutputEditMode.NORMAL
 
                 // Input style: petal or two-step
-                if (key.keyType == KeyType.TWO_STEP_FLICK) {
+                if (key.keyType == KeyType.HIERARCHICAL_FLICK) {
+                    binding.inputStyleChipGroup.check(R.id.chip_three_stage_flick)
+                } else if (key.keyType == KeyType.TWO_STEP_FLICK) {
                     binding.inputStyleChipGroup.check(R.id.chip_two_step_flick)
                 } else if (key.keyType == KeyType.FLICK_LONG_PRESS) {
                     binding.inputStyleChipGroup.check(R.id.chip_flick_long_press)
@@ -1319,7 +1351,16 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 }
 
                 // Restore editors
-                if (key.keyType == KeyType.TWO_STEP_FLICK) {
+                if (key.keyType == KeyType.HIERARCHICAL_FLICK) {
+                    binding.keyLabelEdittext.setText(key.label)
+                    if (savedHierarchyDraft == null) {
+                        val definition = state.layout.hierarchicalFlickMaps[key.keyId]
+                            ?: state.layout.hierarchicalFlickMaps[key.label]
+                            ?: TfbiFlickNode.StatefulKey(emptyMap(), label = key.label)
+                        binding.hierarchicalFlickEditorView.setDefinition(definition)
+                    }
+                    hierarchicalInitialized = true
+                } else if (key.keyType == KeyType.TWO_STEP_FLICK) {
                     binding.keyLabelEdittext.setText(key.label)
 
                     // Restore from layout.twoStepFlickKeyMaps
@@ -1912,7 +1953,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 val isFlickLongPress =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_flick_long_press
 
-                if (isCircular) {
+                if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_three_stage_flick) {
+                    newKeyType = KeyType.HIERARCHICAL_FLICK
+                    val definition = binding.hierarchicalFlickEditorView.definition
+                    val tap = (definition.normalMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char.orEmpty()
+                    newLabel = binding.keyLabelEdittext.text.toString().ifEmpty { tap }
+                    newAction = tap.takeIf { it.isNotEmpty() }?.let { KeyAction.Text(it) }
+                    newLongPressFlickMap = emptyMap()
+                    newTwoStepLongPressMap = emptyMap()
+                } else if (isCircular) {
                     newKeyType = KeyType.CIRCULAR_FLICK
                     newLabel = binding.keyLabelEdittext.text.toString()
                     val tapOutput = currentCircularFlickMaps
@@ -2103,7 +2152,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             newTwoStepLongPressMap,
             newCircularFlickMaps,
             flexibleRowSpanUnits = currentRowSpanUnits.takeIf { isFlexibleSizeEditing },
-            flexibleColumnSpanUnits = currentColumnSpanUnits.takeIf { isFlexibleSizeEditing }
+            flexibleColumnSpanUnits = currentColumnSpanUnits.takeIf { isFlexibleSizeEditing },
+            hierarchicalFlick = binding.hierarchicalFlickEditorView.definition
+                .takeIf { newKeyType == KeyType.HIERARCHICAL_FLICK }
         )
         if (updated) {
             didSaveKey = true
@@ -2120,6 +2171,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 .forEach { deleteUserIconFile(it) }
             pendingUserIconPaths.clear()
             findNavController().popBackStack()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (_binding != null && hierarchicalInitialized) {
+            outState.putString("hierarchicalFlickDraft",
+                HierarchicalFlickCodec.encode(binding.hierarchicalFlickEditorView.definition))
         }
     }
 

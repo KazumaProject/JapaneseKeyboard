@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import android.content.Context
 import android.os.Looper
 import android.widget.FrameLayout
@@ -12,6 +13,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -44,6 +46,24 @@ class SuggestionAdapterUserTemplateTypeTest {
     }
 
     @Test
+    fun taxonomyLabelIsAlwaysVisibleAndClearedOnHolderReuse() {
+        val adapter = SuggestionAdapter()
+        adapter.setShowDictionaryCandidateLabels(false)
+        val holder = createHolder(adapter)
+        adapter.suggestions = listOf(candidate("分類語", 1).copy(dictionaryCategories = setOf(DictionaryCategory.CLASSIFIED_PERSON_ACTOR)))
+        awaitItemCount(adapter, 1)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("[俳優]", holder.typeText.text.toString())
+        adapter.suggestions = emptyList()
+        awaitItemCount(adapter, 0)
+        adapter.suggestions = listOf(candidate("123", 23))
+        awaitItemCount(adapter, 1)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("", holder.typeText.text.toString())
+        adapter.release()
+    }
+
+    @Test
     fun userTemplatesDoNotShowFullWidthLabel() {
         val adapter = SuggestionAdapter()
         adapter.suggestions = listOf(
@@ -57,7 +77,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         repeat(3) { position ->
             adapter.onBindViewHolder(holder, position)
             assertEquals("", holder.typeText.text.toString())
-            assertNotEquals("[全]", holder.typeText.text.toString())
+            assertNotEquals(holder.itemView.context.getString(R.string.candidate_label_full_width), holder.typeText.text.toString())
         }
 
         adapter.release()
@@ -71,7 +91,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         awaitItemCount(adapter, 1)
 
         adapter.onBindViewHolder(holder, 0)
-        assertEquals("[全]", holder.typeText.text.toString())
+        assertEquals(holder.itemView.context.getString(R.string.candidate_label_full_width), holder.typeText.text.toString())
 
         adapter.suggestions = listOf(
             candidate("ありがとうございます", CANDIDATE_TYPE_USER_TEMPLATE)
@@ -91,7 +111,7 @@ class SuggestionAdapterUserTemplateTypeTest {
 
         adapter.onBindViewHolder(holder, 0)
 
-        assertEquals("[全]", holder.typeText.text.toString())
+        assertEquals(holder.itemView.context.getString(R.string.candidate_label_full_width), holder.typeText.text.toString())
         adapter.release()
     }
 
@@ -108,7 +128,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         repeat(2) { position ->
             adapter.onBindViewHolder(holder, position)
             assertEquals("", holder.typeText.text.toString())
-            assertNotEquals("[全]", holder.typeText.text.toString())
+            assertNotEquals(holder.itemView.context.getString(R.string.candidate_label_full_width), holder.typeText.text.toString())
         }
 
         adapter.release()
@@ -191,9 +211,28 @@ class SuggestionAdapterUserTemplateTypeTest {
         val holder = createHolder(adapter)
 
         adapter.onBindViewHolder(holder, 0)
-        assertEquals("[Calc]", holder.typeText.text.toString())
+        assertEquals("[計算]", holder.typeText.text.toString())
         adapter.onBindViewHolder(holder, 1)
-        assertEquals("[Convert]", holder.typeText.text.toString())
+        assertEquals("[換算]", holder.typeText.text.toString())
+        adapter.release()
+    }
+
+    @Test
+    fun characterIndicatorsRefreshWithoutChangingCandidateAndClearOnDisable() {
+        val adapter = SuggestionAdapter()
+        adapter.suggestions = listOf(candidate("カナ１２ABC", 1))
+        awaitItemCount(adapter, 1)
+        val holder = createHolder(adapter)
+        adapter.setShowCharacterIndicators(true)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("カナ１２ABC", holder.text.text.toString().trim())
+        assertEquals("", holder.typeText.text.toString())
+        org.junit.Assert.assertNotNull(holder.text.contentDescription)
+        adapter.setShowCharacterIndicators(false)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("", holder.typeText.text.toString())
+        org.junit.Assert.assertNull(holder.text.contentDescription)
+        assertEquals("カナ１２ABC", adapter.suggestions.single().commitText)
         adapter.release()
     }
 

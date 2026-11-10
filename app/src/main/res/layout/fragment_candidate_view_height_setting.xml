@@ -142,6 +142,12 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent" />
 
+                    <com.kazumaproject.morse_keyboard.MorseKeyboardView
+                        android:id="@+id/candidate_height_setting_morse_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone" />
+
                     <com.kazumaproject.gojuon_keyboard.GojuonKeyboardView
                         android:id="@+id/candidate_height_setting_gojuon_preview"
                         android:layout_width="match_parent"
@@ -349,6 +355,7 @@
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/candidate_column_label"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
@@ -357,6 +364,7 @@
 
                     <com.google.android.material.button.MaterialButtonToggleGroup
                         android:id="@+id/candidate_column_toggle_group"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
@@ -392,6 +400,7 @@
                     </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <LinearLayout
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="20dp"
@@ -415,6 +424,7 @@
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/candidate_letter_size_input_layout"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
@@ -435,6 +445,7 @@
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/candidate_letter_size_seekbar"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"

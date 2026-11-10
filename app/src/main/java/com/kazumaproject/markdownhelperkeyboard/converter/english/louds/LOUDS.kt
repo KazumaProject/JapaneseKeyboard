@@ -15,6 +15,7 @@ import com.kazumaproject.toBitSet
 import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
+import com.kazumaproject.markdownhelperkeyboard.converter.louds.loudsChildPosition
 import java.util.BitSet
 
 class LOUDS {
@@ -61,10 +62,7 @@ class LOUDS {
 
 
     private fun firstChild(pos: Int): Int {
-        LBS.apply {
-            val y = select0(rank1(pos)) + 1
-            return if (!this[y]) -1 else y
-        }
+        return loudsChildPosition(LBS, pos, LBS.select0(LBS.rank1(pos)))
     }
 
     private fun traverse(pos: Int, c: Char): Int {
@@ -237,7 +235,9 @@ class LOUDS {
                 } else if (wordOffset2 + 1 == chars.size) {
                     return index2
                 }
-                return search(indexOfLabel(charIndex), chars, ++wordOffset2)
+                val child = firstChild(index2)
+                if (child < 0) return -1
+                return search(child, chars, ++wordOffset2)
             } else {
                 index2++
             }
@@ -246,20 +246,6 @@ class LOUDS {
         return -1
     }
 
-    private fun indexOfLabel(label: Int): Int {
-        var count = 0
-        var i = 0
-        while (i < LBS.size()) {
-            if (!LBS[i]) {
-                if (++count == label) {
-                    break
-                }
-            }
-            i++
-        }
-
-        return i + 1
-    }
 
     fun writeExternalNotCompress(out: ObjectOutput) {
         try {

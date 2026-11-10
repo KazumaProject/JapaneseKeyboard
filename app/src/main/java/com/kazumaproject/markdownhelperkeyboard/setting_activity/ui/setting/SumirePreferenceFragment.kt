@@ -12,6 +12,16 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_sumire
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        findPreference<Preference>("setting_route_candidate_display")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.candidateDisplayPreferenceFragment, Bundle().apply { putString("geometryKeyboard", "SUMIRE") })
+            true
+        }
+
+
+        findPreference<Preference>("sumire_geometry_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.keyboardGeometrySettingsFragment, Bundle().apply { putString("geometryKeyboard", "SUMIRE") })
+            true
+        }
 
         val sumireKeyboardSizePreference =
             findPreference<Preference>("sumire_keyboard_size_preference")
@@ -30,6 +40,19 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
             findPreference<ListPreference>("flick_tfbi_flick_start_position_preference")
         val tfbiDiagonalRecognitionPreference =
             findPreference<ListPreference>("tfbi_diagonal_recognition_mode_preference")
+        val sumireFlickRotationPreference =
+            findPreference<ListPreference>("sumire_flick_rotation_preference")
+        val sumireFlickInputModePreference =
+            findPreference<ListPreference>("sumire_flick_input_mode_preference")
+
+        sumireFlickRotationPreference?.summaryProvider = Preference.SummaryProvider<ListPreference> {
+            listOfNotNull(it.entry, getString(R.string.sumire_flick_rotation_summary))
+                .joinToString("\n")
+        }
+        sumireFlickInputModePreference?.summaryProvider = Preference.SummaryProvider<ListPreference> {
+            listOfNotNull(it.entry, getString(R.string.sumire_flick_input_mode_summary))
+                .joinToString("\n")
+        }
 
         fun isTfbiStyle(value: String?): Boolean {
             return value == "second-flick" || value == "third-flick"
@@ -45,6 +68,8 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
             hierarchicalFlickAngleMarginPreference?.isVisible = (value == "third-flick")
             tfbiFlickStartPositionPreference?.isVisible = isTfbiStyle(value)
             tfbiDiagonalRecognitionPreference?.isVisible = isTfbiStyle(value)
+            sumireFlickRotationPreference?.isVisible = isTfbiStyle(value)
+            sumireFlickInputModePreference?.isVisible = (value == "third-flick")
             sumireCustomAnglePreference?.isVisible = (value == "sumire")
             circularSlotActionSettingPreference?.isVisible = (value == "sumire")
 
@@ -62,6 +87,8 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
                 hierarchicalFlickAngleMarginPreference?.isVisible = (stringValue == "third-flick")
                 tfbiFlickStartPositionPreference?.isVisible = isTfbiStyle(stringValue)
                 tfbiDiagonalRecognitionPreference?.isVisible = isTfbiStyle(stringValue)
+                sumireFlickRotationPreference?.isVisible = isTfbiStyle(stringValue)
+                sumireFlickInputModePreference?.isVisible = (stringValue == "third-flick")
                 sumireCustomAnglePreference?.isVisible = (stringValue == "sumire")
                 circularSlotActionSettingPreference?.isVisible = (stringValue == "sumire")
 
@@ -87,7 +114,7 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
 
         sumireKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.flickKeyboardSizeSettingsFragment)
+                navigateSafely(R.id.flickKeyboardSizeSettingsFragment, Bundle().apply { putString("sizingSurface", "sumire") })
                 true
             }
         }
