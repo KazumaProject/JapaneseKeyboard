@@ -110,6 +110,96 @@ class EnglishPhraseDictionaryInstrumentedTest {
     }
 
     @Test
+    fun ordinaryWordsDoNotExpandToUnrelatedCatalogNames() = withDictionary { _, _, reader ->
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        fun legacy(input: String, typo: Boolean = false) =
+            engine.getCandidates(input, enableTypoCorrection = typo).map { it.commitText }
+
+        for ((input, excluded) in listOf(
+            "hello" to listOf("Hello82", "Hello.app", "HelloFresh", "Hello Games"),
+            "taken" to listOf("Takenjam"),
+            "about" to listOf("About.me", "About.com"),
+            "computer" to listOf("Computer.com"),
+            "went" to listOf("Wente", "Wentzel"),
+            "yes" to listOf("YES24eBook", "YESCO"),
+        )) {
+            for (typed in listOf(input, input.replaceFirstChar(Char::uppercaseChar), input.uppercase())) {
+                for (typo in listOf(false, true)) {
+                    val legacyCandidates = legacy(typed, typo)
+                    val conversion = engine.getConversionCandidates(typed, typed, typo, true, true, emptyList())
+                        .map { it.commitText }
+                    for (candidates in listOf(legacyCandidates, conversion)) {
+                        assertEquals(typed, candidates.first())
+                        assertFalse("$typed: $candidates", excluded.any { name ->
+                            candidates.any { it.equals(name, ignoreCase = true) }
+                        })
+                    }
+                }
+            }
+        }
+
+        for ((input, expected) in listOf(
+            "takenj" to "Takenjam", "takenjam" to "Takenjam",
+            "hello8" to "Hello82", "hello82" to "Hello82",
+            "helloa" to "Hello.app", "helloapp" to "Hello.app",
+            "hello.a" to "Hello.app",
+        )) {
+            assertTrue("$input: ${legacy(input)}", expected in legacy(input))
+        }
+    }
+
+    @Test
+    fun englishCompletionQualityAcrossConversionSessions() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entry = EntryPointAccessors.fromApplication(context, KanaKanjiEngineEntryPoint::class.java)
+        val engine = entry.kanaKanjiEngine()
+        val repository = entry.userDictionaryRepository()
+        for (backend in ConversionBackend.entries) {
+            val session = KanaKanjiConversionSession(engine, backend)
+            for (mode in listOf(CandidateQueryMode.PREDICTION, CandidateQueryMode.NO_TAB_DEFAULT)) {
+                suspend fun query(input: String, enabled: Boolean = true): List<String> = session.query(
+                    KanaKanjiQueryRequest(
+                        input = input,
+                        mode = mode,
+                        bunsetsuSeparation = false,
+                        n = 4,
+                        userDictionaryRepository = repository,
+                        learnRepository = null,
+                        omissionSearchEnabled = false,
+                        typoCorrectionJapaneseFlickEnabled = false,
+                        typoCorrectionQwertyEnglishEnabled = false,
+                        typoCorrectionOffsetScore = 3000,
+                        omissionSearchOffsetScore = 1900,
+                        beamWidth = 20,
+                        predictionConfig = PredictionConfig(englishPredictionEnabled = enabled),
+                    ),
+                ).candidates.map { it.commitText }
+
+                for ((input, expected) in listOf(
+                    "hello" to "Hello", "taken" to "Taken", "hell" to "hello",
+                    "i said hello" to "I said hello", "he tak" to "he takes",
+                    "takenj" to "Takenjam", "hello8" to "Hello82", "helloapp" to "Hello.app",
+                    "hello g" to "Hello Games", "op" to "OpenAI", "auto" to "AutoCAD",
+                    "don'" to "don't", "androidstudio" to "Android Studio",
+                )) {
+                    val candidates = query(input)
+                    assertTrue("$backend $mode $input: $candidates", expected in candidates)
+                }
+                for (input in listOf("hello", "taken", "have taken", "i said hello")) {
+                    val candidates = query(input)
+                    assertFalse("$backend $mode $input: $candidates", candidates.any { candidate ->
+                        listOf("Hello82", "Hello.app", "Takenjam", "Hello Games").any {
+                            candidate.endsWith(it, ignoreCase = true)
+                        }
+                    })
+                }
+                assertEquals(listOf("taken", "Taken", "TAKEN"), query("taken").distinct().take(3))
+                assertFalse("Takenjam" in query("takenj", enabled = false))
+            }
+        }
+    }
+
+    @Test
     fun indexedCompletionPreservesOrderedCandidates() = withDictionary { _, _, reader ->
         val data = checkNotNull(reader.loadBundledEnglishForEngine())
         checkNotNull(data.wordCompletionBounds)

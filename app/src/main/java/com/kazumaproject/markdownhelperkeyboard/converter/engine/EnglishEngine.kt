@@ -4,6 +4,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ENGLISH
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.EnglishCompletionPolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.EnglishPhraseDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.GrammarRoles
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.PhraseConverter
@@ -508,7 +509,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enablePrediction: Boolean,
     ): List<Candidate> {
         if (input.isEmpty()) return emptyList()
-        return getCandidates(input, enableTypoCorrection, enablePrediction, ensureDictionariesLoaded().dictionary)
+        return getCandidates(input, enableTypoCorrection, enablePrediction, ensureDictionariesLoaded())
     }
 
     internal fun getPhraseContinuations(committedText: String): List<String> {
@@ -543,7 +544,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         val legacy = if (legacyInput != null) {
             // The Conversion tab uses the English setting for exact phrases while
             // leaving single-word completion to the prediction modes.
-            getCandidates(legacyInput, enableTypoCorrection, enablePrediction && prefixMode, data.dictionary)
+            getCandidates(legacyInput, enableTypoCorrection, enablePrediction && prefixMode, data)
         } else {
             fallback
         }
@@ -584,8 +585,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         input: String,
         enableTypoCorrection: Boolean,
         enablePrediction: Boolean,
-        dictionary: CompactEnglishDictionary,
+        data: EnglishDictionaryData,
     ): List<Candidate> {
+        val dictionary = data.dictionary
         val defaultType = CANDIDATE_TYPE_ENGLISH
         val lowerInput = input.lowercase()
         val limit = if (input.length <= 2) 6 else 12
@@ -664,6 +666,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         // ============
         // 1) predictive（通常）
         // ============
+        val completionPolicy = if (lowerInput.length >= 2 && predictiveSearchReading.isNotEmpty()) {
+            data.grammar?.let { EnglishCompletionPolicy(lowerInput, it) }
+        } else null
         for (readingStr in predictiveSearchReading) {
             val nodeIndex = dictionary.readingTrie.getNodeIndex(
                 readingStr,
@@ -689,7 +694,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                     )
                 }
 
-                if (singleWordOnly && !matchesSingleWordPrediction(lowerInput, base)) {
+                if ((singleWordOnly && !matchesSingleWordPrediction(lowerInput, base)) ||
+                    completionPolicy?.allowsWord(readingStr, base, entry.wordCost.toInt()) == false
+                ) {
                     return@flatMap emptyList<Candidate>()
                 }
                 candidateCaseVariants(input, base).map { (surface, casePenalty) ->
@@ -844,8 +851,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         val dictionary: CompactEnglishDictionary,
         loadGrammar: (() -> GrammarRoles?)? = null,
     ) {
+        val grammar by lazy { loadGrammar?.invoke() }
         val phraseConverter by lazy {
-            loadGrammar?.invoke()?.let {
+            grammar?.let {
                 // Candidate generation runs on every keystroke. Keep the interactive
                 // search narrower than the standalone reference converter.
                 PhraseConverter(EnglishPhraseDictionary(dictionary, it), beamWidth = 24, completionLimit = 32)
