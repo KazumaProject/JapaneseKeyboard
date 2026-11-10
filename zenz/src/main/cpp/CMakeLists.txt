@@ -32,7 +32,24 @@ add_definitions(-D__ANDROID__)
 # Androidではそもそも使えませんが、ARM NEONなどは自動で有効になります。
 # 基本的に -O3 があれば大丈夫です。
 
+# The bundled zenz engine supplies all four Full Play ABIs.
+# The llamafile kernel assumes ARM half-precision loads absent on ARMv7.
+if(ANDROID_ABI STREQUAL "armeabi-v7a")
+    set(GGML_LLAMAFILE OFF CACHE BOOL "" FORCE)
+endif()
+
 add_subdirectory(llama.cpp)
+
+# The upstream CPU target enables SSE4.2 unconditionally on x86.
+# The Android x86 ABI only guarantees SSSE3.
+if(ANDROID_ABI STREQUAL "x86")
+    get_target_property(ggml_cpu_options ggml-cpu COMPILE_OPTIONS)
+    list(REMOVE_ITEM ggml_cpu_options "-msse4.2")
+    set_property(TARGET ggml-cpu PROPERTY COMPILE_OPTIONS "${ggml_cpu_options}")
+    get_target_property(ggml_cpu_definitions ggml-cpu COMPILE_DEFINITIONS)
+    list(REMOVE_ITEM ggml_cpu_definitions "GGML_SSE42")
+    set_property(TARGET ggml-cpu PROPERTY COMPILE_DEFINITIONS "${ggml_cpu_definitions}")
+endif()
 
 # -------------------------------------------------------------------
 # zenz ブリッジ
