@@ -3,18 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/zenz_preference_category_title">
-        <Preference
-            android:key="candidate_scoring_model"
-            android:title="@string/candidate_scoring_model" />
-
-        <Preference
-            android:key="candidate_scoring_tokenizer"
-            android:title="@string/candidate_scoring_tokenizer" />
-
-        <Preference
-            android:key="candidate_scoring_clear"
-            android:title="@string/candidate_scoring_clear" />
-
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="enable_ai_conversion_zenz_preference"

@@ -56,14 +56,3 @@ target_link_libraries(keyboard_ai PRIVATE llama-common mtmd Vulkan::Headers log)
 target_link_options(keyboard_ai PRIVATE "-Wl,--wrap=vkGetPhysicalDeviceFeatures2")
 # Keep this llama/ggml version private; Zenz and LiteRT-LM use their own native libraries.
 target_link_options(keyboard_ai PRIVATE "-Wl,--exclude-libs,ALL" "-Wl,-z,max-page-size=16384")
-
-# The scorer's tokenizer is supplied with the model. Keep SentencePiece private to this library.
-set(SPM_ENABLE_SHARED OFF CACHE BOOL "" FORCE)
-set(SPM_ENABLE_TCMALLOC OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(ai_sentencepiece
-    URL https://codeload.github.com/google/sentencepiece/tar.gz/refs/tags/v0.2.1
-    URL_HASH SHA256=c1a59e9259c9653ad0ade653dadff074cd31f0a6ff2a11316f67bee4189a8f1b)
-FetchContent_MakeAvailable(ai_sentencepiece)
-target_sources(keyboard_ai PRIVATE sentencepiece_bridge.cpp)
-target_include_directories(keyboard_ai PRIVATE "${ai_sentencepiece_SOURCE_DIR}/src")
-target_link_libraries(keyboard_ai PRIVATE sentencepiece-static)
