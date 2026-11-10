@@ -1,8 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import android.content.Context
+import android.os.Bundle
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.EnglishPhraseDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.PhraseConverter
 import com.kazumaproject.markdownhelperkeyboard.converter.english.phrase.RuntimeGrammarRoles
@@ -197,6 +199,98 @@ class EnglishPhraseDictionaryInstrumentedTest {
                 assertFalse("Takenjam" in query("takenj", enabled = false))
             }
         }
+    }
+
+    @Test
+    fun auditEnglishCompletionCorpus() = withDictionary { _, _, reader ->
+        val data = checkNotNull(reader.loadBundledEnglishForEngine())
+        val words = EnglishPhraseDictionary(data, checkNotNull(reader.loadBundledEnglishGrammar()))
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        val ordinary = EnglishCompletionCorpus.words(data, words)
+        val firstKeys = ('a'..'z').map(Char::toString)
+        val partial = (firstKeys + ordinary.flatMap { word -> (2 until word.length).map(word::take) })
+            .distinct().sorted()
+        val targets = ordinary.filter { it.length >= 4 }
+        val lexicalPartsOfSpeech = setOf("verb", "adjective", "adverb")
+        val excluded = mapOf(
+            "it" to "I.T", "in" to "I.N", "do" to "d/o", "co" to "c/o", "be" to "B/E", "us" to "U/S",
+            "bette" to "Better.com", "donati" to "DonationCoder.com", "privat" to "Private.Me",
+            "and" to "Andrew", "august" to "Augusta", "how" to "Howard", "owe" to "Owen",
+        )
+        val expected = mapOf(
+            "bette" to "better", "donati" to "donations", "privat" to "private",
+            "peopl" to "people", "schoo" to "school",
+        )
+        val retained = mapOf("andr" to "Andrew", "howa" to "Howard", "ne" to "Next.js", "and" to "Android")
+        val failures = mutableListOf<String>()
+        for (legacy in listOf(false, true)) {
+            val path = if (legacy) "legacy" else "conversion"
+            val inputsToQuery = (ordinary + partial + excluded.keys + expected.keys + retained.keys).distinct()
+            val byInput = inputsToQuery.associateWith { input ->
+                val candidates = if (legacy) engine.getCandidates(input, false, true)
+                else engine.getConversionCandidates(input, input, false, true, true, emptyList())
+                candidates.map { it.commitText }.distinctBy(String::lowercase)
+            }
+            fun visible(input: String) = byInput.getValue(input).take(8)
+            fun report(message: String) = InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply {
+                putString("stream", "\nENGLISH_COMPLETION $path $message\n")
+            })
+
+            for ((kind, inputs) in listOf("word" to ordinary, "partial" to partial)) {
+                val symbols = mutableListOf<String>()
+                val names = mutableListOf<String>()
+                for (input in inputs) {
+                    for ((index, surface) in visible(input).withIndex()) {
+                        val key = surface.lowercase()
+                        if (key == input) continue
+                        val example = "$input => $surface (${index + 1})"
+                        if (surface.none(Char::isWhitespace) && surface.any { it.isDigit() || it in "./_+:&@" }) {
+                            symbols += example
+                        }
+                        val roles = words.grammarRoles.lookup(surface, key)
+                        if (roles.any { it == "noun_proper" || it.startsWith("name_") } &&
+                            (surface.any(Char::isUpperCase) || roles.none { it in lexicalPartsOfSpeech })
+                        ) {
+                            names += example
+                        }
+                    }
+                }
+                // These counts include intentional results such as Next.js and country names.
+                report("$kind cases=${inputs.size} symbol=${symbols.size} name=${names.size}")
+                report("$kind symbol examples=${symbols.take(20)}")
+                report("$kind name examples=${names.take(20)}")
+                if (symbols.size * 100 > inputs.size) {
+                    failures += "$path $kind: too many symbol candidates (${symbols.size}/${inputs.size})"
+                }
+            }
+            val misses = targets.filter { word ->
+                visible(word.dropLast(1)).none { it.equals(word, ignoreCase = true) }
+            }
+            val hits = targets.size - misses.size
+            report("penultimate recall=$hits/${targets.size} misses=${misses.take(20)}")
+            if (hits * 100 < targets.size * 95) failures += "$path: penultimate recall $hits/${targets.size}"
+            for (input in firstKeys) {
+                val extensions = byInput.getValue(input).filterNot { it.equals(input, ignoreCase = true) }
+                if (extensions.isNotEmpty()) failures += "$path $input: unexpected extensions $extensions"
+            }
+            for ((input, surface) in excluded) {
+                val candidates = byInput.getValue(input)
+                if (candidates.any { it.equals(surface, ignoreCase = true) }) {
+                    failures += "$path $input: unexpected $surface in $candidates"
+                }
+            }
+            for ((input, surface) in retained) {
+                val candidates = byInput.getValue(input)
+                if (surface !in candidates) failures += "$path $input: missing $surface in $candidates"
+            }
+            for ((input, surface) in expected) {
+                val candidates = visible(input)
+                if (!candidates.getOrNull(1).equals(surface, ignoreCase = true)) {
+                    failures += "$path $input: expected $surface second in $candidates"
+                }
+            }
+        }
+        assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 
     @Test

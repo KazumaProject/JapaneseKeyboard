@@ -509,7 +509,10 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enablePrediction: Boolean,
     ): List<Candidate> {
         if (input.isEmpty()) return emptyList()
-        return getCandidates(input, enableTypoCorrection, enablePrediction, ensureDictionariesLoaded())
+        return getCandidates(
+            input, enableTypoCorrection, enablePrediction, ensureDictionariesLoaded(),
+            rankWordCompletions = true,
+        )
     }
 
     internal fun getPhraseContinuations(committedText: String): List<String> {
@@ -586,6 +589,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enableTypoCorrection: Boolean,
         enablePrediction: Boolean,
         data: EnglishDictionaryData,
+        rankWordCompletions: Boolean = false,
     ): List<Candidate> {
         val dictionary = data.dictionary
         val defaultType = CANDIDATE_TYPE_ENGLISH
@@ -593,15 +597,23 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         val limit = if (input.length <= 2) 6 else 12
         val singleWordOnly = input.none(Char::isWhitespace)
 
-        val predictiveSearchReading = if (enablePrediction) {
-            dictionary.readingTrie.predictiveSearch(
+        val plainWord = lowerInput.all { it in 'a'..'z' }
+        val rankedWords = if (enablePrediction && rankWordCompletions && plainWord && lowerInput.length >= 2) {
+            data.words?.let { words ->
+                words.exact(lowerInput, forPrediction = true) + words.complete(lowerInput, null, limit)
+            }
+        } else null
+        val predictiveSearchReading = when {
+            !enablePrediction || rankedWords != null -> emptyList()
+            // The phrase converter starts completion at two letters. Match it
+            // on the bundled fallback path without loading grammar on the first tap.
+            plainWord && lowerInput.length == 1 && dictionary.wordCompletionBounds != null -> listOf(lowerInput)
+            else -> dictionary.readingTrie.predictiveSearch(
                 prefix = lowerInput,
                 succinctBitVector = dictionary.readingLbsIndex,
                 limit = limit,
                 singleWordOnly = singleWordOnly,
             )
-        } else {
-            emptyList()
         }
 
         // ★ typo はフラグが true のときだけ
@@ -641,7 +653,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         )
 
         // ★ fallback は predictive も (typo有効時のtypoも) 空のときだけ
-        if (predictiveSearchReading.isEmpty() && typoCorrection.isEmpty()) {
+        if (predictiveSearchReading.isEmpty() && rankedWords.isNullOrEmpty() && typoCorrection.isEmpty()) {
             return listOf(
                 Candidate(
                     string = input,
@@ -666,7 +678,20 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         // ============
         // 1) predictive（通常）
         // ============
-        val completionPolicy = if (lowerInput.length >= 2 && predictiveSearchReading.isNotEmpty()) {
+        fun addPrediction(base: String, cost: Int) {
+            candidateCaseVariants(input, base).forEach { (surface, casePenalty) ->
+                predictions += Candidate(
+                    string = surface,
+                    type = defaultType,
+                    length = surface.length.toUByte(),
+                    score = cost + casePenalty,
+                )
+            }
+        }
+        rankedWords?.forEach { entry ->
+            if (matchesSingleWordPrediction(lowerInput, entry.surface)) addPrediction(entry.surface, entry.cost)
+        }
+        val completionPolicy = if (plainWord && lowerInput.length >= 2 && predictiveSearchReading.isNotEmpty()) {
             data.grammar?.let { EnglishCompletionPolicy(lowerInput, it) }
         } else null
         for (readingStr in predictiveSearchReading) {
@@ -685,7 +710,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
             val listToken =
                 dictionary.tokenArray.getListDictionaryByYomiTermId(termId, dictionary.tokenIndex)
 
-            val variants = listToken.flatMap { entry ->
+            for (entry in listToken) {
                 val base = when (entry.nodeId) {
                     -1 -> readingStr
                     else -> dictionary.wordTrie.getLetter(
@@ -693,23 +718,13 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                         succinctBitVector = dictionary.wordLbsIndex
                     )
                 }
-
-                if ((singleWordOnly && !matchesSingleWordPrediction(lowerInput, base)) ||
-                    completionPolicy?.allowsWord(readingStr, base, entry.wordCost.toInt()) == false
+                val cost = entry.wordCost.toInt()
+                if ((!singleWordOnly || matchesSingleWordPrediction(lowerInput, base)) &&
+                    completionPolicy?.allowsWord(readingStr, base, cost) != false
                 ) {
-                    return@flatMap emptyList<Candidate>()
-                }
-                candidateCaseVariants(input, base).map { (surface, casePenalty) ->
-                    Candidate(
-                        string = surface,
-                        type = defaultType,
-                        length = surface.length.toUByte(),
-                        score = entry.wordCost.toInt() + casePenalty
-                    )
+                    addPrediction(base, cost)
                 }
             }
-
-            predictions += variants
         }
 
         // ============
@@ -718,6 +733,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         if (enableTypoCorrection && typoCorrection.isNotEmpty()) {
             val typoType = 35.toByte()
             val predictiveSet = predictiveSearchReading.toHashSet()
+            rankedWords?.forEach { predictiveSet.add(it.reading) }
 
             val maxEdits = maxEditsByLength(lowerInput.length)
 
@@ -852,11 +868,12 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         loadGrammar: (() -> GrammarRoles?)? = null,
     ) {
         val grammar by lazy { loadGrammar?.invoke() }
+        val words by lazy { grammar?.let { EnglishPhraseDictionary(dictionary, it) } }
         val phraseConverter by lazy {
-            grammar?.let {
+            words?.let {
                 // Candidate generation runs on every keystroke. Keep the interactive
                 // search narrower than the standalone reference converter.
-                PhraseConverter(EnglishPhraseDictionary(dictionary, it), beamWidth = 24, completionLimit = 32)
+                PhraseConverter(it, beamWidth = 24, completionLimit = 32)
             }
         }
     }
