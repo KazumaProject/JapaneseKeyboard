@@ -164,7 +164,6 @@ object SettingSearchIndex {
         R.id.generalInfoPreferenceFragment,
         R.id.advancedPreferenceFragment,
         R.id.zenzPreferenceFragment,
-        R.id.candidateRerankPreferenceFragment,
         R.id.gemmaPreferenceFragment,
         R.id.legacyCommonPreferenceFragment,
         R.id.keyboardThemeFragment,
@@ -250,14 +249,7 @@ object SettingSearchIndex {
         val indicatorItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
-        val rerankItems = if (AppVariantConfig.hasZenz) {
-            val route = readPreferenceXml(context, aiConversionSource)
-                .filter { it.key == "setting_route_candidate_rerank" }
-            (route + readPreferenceXml(context, candidateRerankSource))
-                .map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
-        } else emptyList()
-        return (candidateItems + listOfNotNull(themeItem, textMacroItem) + rerankItems + xmlItems + indicatorItems)
-            .distinctBy { it.key }
+        return (candidateItems + listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { it.key }
     }
 
     fun search(
@@ -420,13 +412,6 @@ object SettingSearchIndex {
             else -> null
         }
 
-    private val aiConversionSource = PreferenceXmlSource(
-        R.xml.pref_ai_conversion, R.id.aiConversionPreferenceFragment, SettingCategory.AI_CONVERSION,
-    )
-    private val candidateRerankSource = PreferenceXmlSource(
-        R.xml.pref_candidate_rerank, R.id.candidateRerankPreferenceFragment, SettingCategory.AI_CONVERSION,
-    )
-
     private fun sources(): List<PreferenceXmlSource> = buildList {
         add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_theme, R.id.keyboardThemeFragment, SettingCategory.KEYBOARD_DISPLAY))
@@ -441,10 +426,9 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
         add(PreferenceXmlSource(R.xml.pref_utility_candidate, R.id.utilityCandidatePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_dictionary, R.id.dictionaryPreferenceFragment, SettingCategory.DICTIONARY))
-        add(aiConversionSource)
+        add(PreferenceXmlSource(R.xml.pref_ai_conversion, R.id.aiConversionPreferenceFragment, SettingCategory.AI_CONVERSION))
         if (AppVariantConfig.hasZenz) {
             add(PreferenceXmlSource(R.xml.pref_zenz, R.id.zenzPreferenceFragment, SettingCategory.AI_CONVERSION))
-            add(candidateRerankSource)
         }
         if (AppVariantConfig.hasGemma) {
             add(PreferenceXmlSource(R.xml.pref_gemma, R.id.gemmaPreferenceFragment, SettingCategory.AI_CONVERSION))
@@ -506,7 +490,6 @@ object SettingSearchIndex {
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
                             key != "candidate_display_preview" &&
-                            key != "candidate_rerank_current" &&
                             !key.startsWith("setting_route_canonical_") &&
                             !key.startsWith("settings_theme_enable_") &&
                             !key.startsWith("settings_theme_unavailable_") &&
@@ -667,7 +650,7 @@ object SettingSearchIndex {
 
     private fun isVisibleInCurrentVariant(key: String): Boolean =
         when (key) {
-            "setting_route_zenz_preferences", "setting_route_candidate_rerank" -> AppVariantConfig.hasZenz
+            "setting_route_zenz_preferences" -> AppVariantConfig.hasZenz
             "setting_route_gemma_preferences" -> AppVariantConfig.hasGemma
             else -> true
         }
