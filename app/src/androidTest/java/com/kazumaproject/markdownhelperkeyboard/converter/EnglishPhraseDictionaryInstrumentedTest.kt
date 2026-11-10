@@ -25,6 +25,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOv
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.ObjectInputStream
@@ -340,7 +341,7 @@ class EnglishPhraseDictionaryInstrumentedTest {
         }
         val referenceConverter = PhraseConverter(EnglishPhraseDictionary(unindexed, verifiedGrammar), beamWidth = 24, completionLimit = 32)
         val inputs = listOf(
-            "he", "th", "an", "in", "re", "op", "te", "ke", "zz", "re-", "don'", "a1",
+            "he", "th", "an", "and", "can", "for", "in", "re", "op", "te", "ke", "zz", "re-", "don'", "a1",
             "ne", "nex", "juris", "ch", "gi", "gith",
             "the", "there", "keyboa", "hecantake", "he can tak", "New Yo", "elonmusk",
             "taylor swift", "twofactorauthentication", "thequickbrownfoxjumpsoverthelazydog",
@@ -348,6 +349,21 @@ class EnglishPhraseDictionaryInstrumentedTest {
         for (text in inputs) for (prefix in listOf(false, true)) {
             assertEquals("$text prefix=$prefix", referenceConverter.convert(text, prefix, 12), indexedConverter.convert(text, prefix, 12))
         }
+    }
+
+    @Test
+    fun wordCompletionStopsWhenTheQueryIsCancelled() = withDictionary { _, _, reader ->
+        val data = checkNotNull(reader.loadBundledEnglishForEngine())
+        val grammar = checkNotNull(reader.loadBundledEnglishGrammar())
+        val converter = PhraseConverter(EnglishPhraseDictionary(data, grammar), beamWidth = 24, completionLimit = 32)
+        val expected = converter.convert("and", prefixMode = true, limit = 12)
+        var checks = 0
+        assertThrows(CancellationException::class.java) {
+            converter.convert("and", prefixMode = true, limit = 12) {
+                if (++checks == 20) throw CancellationException()
+            }
+        }
+        assertEquals(expected, converter.convert("and", prefixMode = true, limit = 12))
     }
 
     @Test
