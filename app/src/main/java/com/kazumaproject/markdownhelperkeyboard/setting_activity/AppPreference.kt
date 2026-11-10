@@ -40,8 +40,10 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwriti
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
+import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
+import timber.log.Timber
 import com.kazumaproject.core.R as CoreR
 
 internal object CustomThemeColorPreferenceKeys {
@@ -1023,8 +1025,22 @@ object AppPreference {
                 } catch (_: Throwable) {
                     // init completed its future exceptionally; the loading UI owns retry.
                 }
+                runCatching { removeObsoleteCandidateScorerData(context.applicationContext) }
+                    .onFailure { Timber.w(it, "Could not remove obsolete candidate scorer data") }
             }, "AppPreferenceInit").start()
         }
+    }
+
+    private fun removeObsoleteCandidateScorerData(context: Context) {
+        context.deleteSharedPreferences("candidate_scoring_models")
+        // The importer wrote copies here. Never follow paths from the old preferences.
+        val directory = File(context.noBackupFilesDir.canonicalFile, "candidate-scorer")
+        if (!directory.isDirectory || directory.canonicalFile != directory) return
+        val extensions = setOf("gguf", "onnx", "model")
+        directory.listFiles { file ->
+            file.isFile && file.name.startsWith("scorer-") && file.extension in extensions
+        }?.forEach { it.delete() }
+        directory.delete()
     }
 
     suspend fun awaitInitializationSuspending() = kotlinx.coroutines.suspendCancellableCoroutine<Unit> { continuation ->
