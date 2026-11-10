@@ -35,22 +35,27 @@ internal class EnglishPhraseDictionary(
         return false
     }
 
-    fun exact(text: String): List<DictionaryCandidate> {
+    fun exact(text: String, forPrediction: Boolean = false): List<DictionaryCandidate> {
         val node = dictionary.readingTrie.getNodeIndex(text, dictionary.readingLbsIndex)
         if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return emptyList()
         val term = dictionary.readingTrie.getTermId(node, dictionary.readingLeafIndex)
+        val policy = if (forPrediction) EnglishCompletionPolicy(text, grammarRoles) else null
         return buildList {
-            dictionary.forEachCandidate(text, term) { candidate -> add(candidate) }
+            dictionary.forEachCandidate(text, term) { candidate ->
+                if (policy?.allowsWord(text, candidate.surface, candidate.cost) != false) add(candidate)
+            }
         }
     }
 
     fun complete(prefix: String, surfacePrefix: String?, limit: Int): List<DictionaryCandidate> {
         val best = PriorityQueue(completionOrder.reversed())
+        val policy = EnglishCompletionPolicy(surfacePrefix ?: prefix, grammarRoles)
         val terms = dictionary.readingTrie.termsStartingWith(
             prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
             dictionary.wordCompletionBounds?.let { bounds ->
                 { label ->
                     val bound = bounds[label]
+                    // Completion adjustments only raise costs, so the raw bound still applies.
                     bound != Int.MAX_VALUE && (best.size < limit || bound <= completionRank(best.element()))
                 }
             },
@@ -60,13 +65,16 @@ internal class EnglishPhraseDictionary(
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
             dictionary.forEachCandidate(key, term, maxCost) { candidate ->
                 if (candidate.surface.none(Char::isWhitespace) &&
-                    (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix))
+                    (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix)) &&
+                    policy.allowsWord(key, candidate.surface, candidate.cost)
                 ) {
+                    val cost = policy.completionCost(key, candidate.surface, candidate.cost)
+                    val ranked = if (cost == candidate.cost) candidate else candidate.copy(cost = cost)
                     if (best.size < limit) {
-                        best.add(candidate)
-                    } else if (completionOrder.compare(candidate, best.element()) < 0) {
+                        best.add(ranked)
+                    } else if (completionOrder.compare(ranked, best.element()) < 0) {
                         best.remove()
-                        best.add(candidate)
+                        best.add(ranked)
                     }
                 }
             }
@@ -83,6 +91,7 @@ internal class EnglishPhraseDictionary(
         val order = compareBy<DictionaryCandidate> { if (it.reading.replace(" ", "") == compact) 0 else 1 }
             .then(completionOrder)
         val best = PriorityQueue(order.reversed())
+        val policy = EnglishCompletionPolicy(prefix, grammarRoles)
 
         fun collect(readingPrefix: String) {
             val terms = if (prefixMode) dictionary.readingTrie.termsStartingWith(
@@ -122,7 +131,7 @@ internal class EnglishPhraseDictionary(
                     cutoff.cost
                 } else Int.MAX_VALUE
                 dictionary.forEachCandidate(reading, term, maxCost) { candidate ->
-                    if (' ' in candidate.surface) {
+                    if (' ' in candidate.surface && (exact || policy.allowsPhrase(candidate))) {
                         if (best.size < limit) best.add(candidate)
                         else if (order.compare(candidate, best.element()) < 0) {
                             best.remove()
