@@ -22,6 +22,8 @@ internal class CandidateScoringModels(private val context: Context) {
         return Selection(model, tokenizer)
     }
 
+    fun requiresTokenizer(): Boolean = prefs.getString(MODEL, null)?.endsWith(".onnx") == true
+
     fun label(tokenizer: Boolean): String? =
         prefs.getString((if (tokenizer) TOKENIZER else MODEL) + "_label", null)
 
