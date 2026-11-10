@@ -9,10 +9,12 @@ import java.io.InputStream
 
 internal class CustomThemeBackup(
     preferenceDefaults: List<Pair<String, Any>>,
-    private val integerRanges: Map<String, IntRange>,
-    private val stringValues: Map<String, Set<String>>,
+    integerRanges: Map<String, IntRange>,
+    stringValues: Map<String, Set<String>>,
 ) {
     private val fields = preferenceDefaults.toMap()
+    private val integerRanges = integerRanges
+    private val stringValues = stringValues
     private val gson = GsonBuilder()
         .setStrictness(Strictness.STRICT)
         .serializeNulls()
