@@ -535,6 +535,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enablePrediction: Boolean,
         prefixMode: Boolean,
         fallback: List<Candidate>,
+        cancellationCheck: () -> Unit = {},
     ): List<Candidate> {
         val usePhrases = enablePrediction && input.length in 2..255 &&
             input.any(Char::isLetter) && input.all { char ->
@@ -554,7 +555,10 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         if (!usePhrases) return legacy
         val phraseConverter = data.phraseConverter ?: return legacy
         val phraseLimit = 12
-        val phraseTexts = phraseConverter.convert(input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit)
+        val phraseTexts = phraseConverter.convert(
+            input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit,
+            cancellationCheck = cancellationCheck,
+        )
             .asSequence()
             .map { phrase ->
                 val text = resolveCandidateCase(input, phrase.text)

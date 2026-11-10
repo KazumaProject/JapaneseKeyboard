@@ -47,21 +47,28 @@ internal class EnglishPhraseDictionary(
         }
     }
 
-    fun complete(prefix: String, surfacePrefix: String?, limit: Int): List<DictionaryCandidate> {
+    fun complete(
+        prefix: String,
+        surfacePrefix: String?,
+        limit: Int,
+        cancellationCheck: () -> Unit = {},
+    ): List<DictionaryCandidate> {
+        if (prefix.any { it !in 'a'..'z' && it !in '0'..'9' }) return emptyList()
         val best = PriorityQueue(completionOrder.reversed())
         val policy = EnglishCompletionPolicy(surfacePrefix ?: prefix, grammarRoles)
+        val bounds = dictionary.wordCompletionBounds
         val terms = dictionary.readingTrie.termsStartingWith(
             prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
-            dictionary.wordCompletionBounds?.let { bounds ->
-                { label ->
-                    val bound = bounds[label]
-                    // Completion adjustments only raise costs, so the raw bound still applies.
-                    bound != Int.MAX_VALUE && (best.size < limit || bound <= completionRank(best.element()))
-                }
-            },
-        )
+        ) { label ->
+            val letter = dictionary.readingTrie.labels[label]
+            // Reject an ineligible reading once, before visiting its descendants.
+            // Completion adjustments only raise costs, so the raw bound still applies.
+            (letter in 'a'..'z' || letter in '0'..'9') &&
+                (bounds == null || best.size < limit || bounds[label] <= completionRank(best.element()))
+        }
         for ((key, term) in terms) {
-            if (key == prefix || key.any { it !in 'a'..'z' && it !in '0'..'9' }) continue
+            cancellationCheck()
+            if (key == prefix) continue
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
             dictionary.forEachCandidate(key, term, maxCost) { candidate ->
                 if (candidate.surface.none(Char::isWhitespace) &&

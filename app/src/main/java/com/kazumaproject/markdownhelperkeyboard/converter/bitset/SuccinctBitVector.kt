@@ -138,20 +138,19 @@ class SuccinctBitVector private constructor(
         // 大ブロック開始までの 1 の数との差分が、この大ブロック内での目標となる
         val localTarget = nodeId - bigBlockRanks[bigBlock]
 
-        // 該当大ブロック内の小ブロックを線形探索
+        // Find the last small block with fewer than localTarget ones before it.
         val baseSmallIndex = bigBlock * numSmallBlocksPerBig
-        var smallBlock = 0
-        while (smallBlock < numSmallBlocksPerBig - 1) {
-            val nextGlobalSmallIndex = baseSmallIndex + smallBlock + 1
-            if (nextGlobalSmallIndex >= smallBlockRanks.size) break
-
-            if (smallBlockRanks[nextGlobalSmallIndex].toInt().and(0xFF) < localTarget) {
-                smallBlock++
-
+        lo = 0
+        hi = min(numSmallBlocksPerBig, smallBlockRanks.size - baseSmallIndex) - 1
+        while (lo < hi) {
+            val mid = (lo + hi + 1) ushr 1
+            if (smallBlockRanks[baseSmallIndex + mid].toInt().and(0xFF) < localTarget) {
+                lo = mid
             } else {
-                break
+                hi = mid - 1
             }
         }
+        val smallBlock = lo
 
         // 小ブロック内をビット単位に走査して正確な位置を求める
         val globalSmallIndex = baseSmallIndex + smallBlock
@@ -198,20 +197,20 @@ class SuccinctBitVector private constructor(
         val zerosBeforeBlock = bigBlock * bigBlockSize - bigBlockRanks[bigBlock]
         val localTarget = nodeId - zerosBeforeBlock
 
-        // 大ブロック内での小ブロック線形探索:
+        // Find the last small block with fewer than localTarget zeros before it.
         val baseSmallIndex = bigBlock * numSmallBlocksPerBig
-        val smallBlocksInThisBig = min(numSmallBlocksPerBig, smallBlockRanks.size - baseSmallIndex)
-        var smallBlock = 0
-        while (smallBlock < smallBlocksInThisBig - 1) {
-            val nextZeros =
-                (smallBlock + 1) * smallBlockSize -
-                    smallBlockRanks[baseSmallIndex + smallBlock + 1].toInt().and(0xFF)
-            if (nextZeros < localTarget) {
-                smallBlock++
+        lo = 0
+        hi = min(numSmallBlocksPerBig, smallBlockRanks.size - baseSmallIndex) - 1
+        while (lo < hi) {
+            val mid = (lo + hi + 1) ushr 1
+            val zeros = mid * smallBlockSize - smallBlockRanks[baseSmallIndex + mid].toInt().and(0xFF)
+            if (zeros < localTarget) {
+                lo = mid
             } else {
-                break
+                hi = mid - 1
             }
         }
+        val smallBlock = lo
         val globalSmallIndex = baseSmallIndex + smallBlock
         val zerosBeforeSmall =
             (smallBlock * smallBlockSize) - smallBlockRanks[globalSmallIndex].toInt().and(0xFF)

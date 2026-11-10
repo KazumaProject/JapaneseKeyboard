@@ -3926,12 +3926,13 @@ class KanaKanjiEngine {
             }.distinctBy { it.string }
     }
 
-    private fun getEnglishConversionCandidates(
+    private suspend fun getEnglishConversionCandidates(
         input: String,
         enableTypoCorrection: Boolean = false,
         enablePrediction: Boolean,
         prefixMode: Boolean,
     ): List<Candidate> {
+        val conversionContext = currentCoroutineContext()
         val legacyInput = when {
             input.isAllEnglishLetters() -> input
             input.isAllFullWidthAscii() -> input.toHankakuAlphabet()
@@ -3944,6 +3945,7 @@ class KanaKanjiEngine {
             enablePrediction = enablePrediction,
             prefixMode = prefixMode,
             fallback = if (legacyInput == null) createAsciiCaseCandidates(input) else emptyList(),
+            cancellationCheck = { conversionContext.ensureActive() },
         )
     }
 

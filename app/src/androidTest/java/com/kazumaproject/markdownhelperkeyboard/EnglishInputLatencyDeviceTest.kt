@@ -123,7 +123,9 @@ class EnglishInputLatencyDeviceTest {
             val suggestions = adapter.suggestions
             if (suggestions !== previousSuggestions) {
                 previousSuggestions = suggestions
-                if (suggestions.any { it.string.equals(typed, ignoreCase = true) }) {
+                // A completion from the previous input can spell the new input,
+                // for example "and" in the list for "an".
+                if (suggestions.any { it.length.toInt() == typed.length && it.string.equals(typed, ignoreCase = true) }) {
                     if (captureOrder) candidateOrders.putIfAbsent(typed, suggestions.map { it.string })
                     candidateTimes.putIfAbsent(typed, SystemClock.uptimeMillis())
                 }
