@@ -42,6 +42,7 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBack
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
 import java.io.File
+import java.io.InputStream
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import timber.log.Timber
@@ -5321,7 +5322,7 @@ object AppPreference {
 
     internal fun exportCustomThemeToJson(): String = customThemeBackup.export(preferences)
 
-    internal fun importCustomThemeFromJson(json: String) = customThemeBackup.restore(json, preferences)
+    internal fun importCustomThemeFromJson(input: InputStream) = customThemeBackup.restore(input, preferences)
 
     /**
      * SharedPreferences 全体を JSON として書き出す（将来キーが増えても自動対応）
