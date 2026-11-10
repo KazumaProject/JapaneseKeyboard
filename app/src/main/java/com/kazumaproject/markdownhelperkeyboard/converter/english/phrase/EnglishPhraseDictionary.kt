@@ -55,6 +55,7 @@ internal class EnglishPhraseDictionary(
             dictionary.wordCompletionBounds?.let { bounds ->
                 { label ->
                     val bound = bounds[label]
+                    // Completion adjustments only raise costs, so the raw bound still applies.
                     bound != Int.MAX_VALUE && (best.size < limit || bound <= completionRank(best.element()))
                 }
             },
@@ -67,11 +68,13 @@ internal class EnglishPhraseDictionary(
                     (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix)) &&
                     policy.allowsWord(key, candidate.surface, candidate.cost)
                 ) {
+                    val cost = policy.completionCost(key, candidate.surface, candidate.cost)
+                    val ranked = if (cost == candidate.cost) candidate else candidate.copy(cost = cost)
                     if (best.size < limit) {
-                        best.add(candidate)
-                    } else if (completionOrder.compare(candidate, best.element()) < 0) {
+                        best.add(ranked)
+                    } else if (completionOrder.compare(ranked, best.element()) < 0) {
                         best.remove()
-                        best.add(candidate)
+                        best.add(ranked)
                     }
                 }
             }

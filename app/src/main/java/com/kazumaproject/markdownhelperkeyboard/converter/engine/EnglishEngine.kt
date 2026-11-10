@@ -722,7 +722,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                 if ((!singleWordOnly || matchesSingleWordPrediction(lowerInput, base)) &&
                     completionPolicy?.allowsWord(readingStr, base, cost) != false
                 ) {
-                    addPrediction(base, cost)
+                    addPrediction(base, completionPolicy?.completionCost(readingStr, base, cost) ?: cost)
                 }
             }
         }
