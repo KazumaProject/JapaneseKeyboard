@@ -1034,6 +1034,14 @@
     <string name="theme_dark">ダーク</string>
     <string name="theme_category_custom">カスタム</string>
     <string name="theme_custom">カスタム</string>
+    <string name="custom_theme_export_title">カスタムテーマをエクスポート</string>
+    <string name="custom_theme_export_summary">現在のテーマ設定を JSON ファイルに保存します。</string>
+    <string name="custom_theme_export_success">カスタムテーマをエクスポートしました。</string>
+    <string name="custom_theme_export_error">カスタムテーマをエクスポートできませんでした。</string>
+    <string name="custom_theme_import_title">カスタムテーマをインポート</string>
+    <string name="custom_theme_import_summary">カスタムテーマの JSON ファイルからテーマ設定を復元します。</string>
+    <string name="custom_theme_import_success">カスタムテーマをインポートしました。</string>
+    <string name="custom_theme_import_error">カスタムテーマをインポートできませんでした。有効なカスタムテーマの JSON ファイルを選択してください。</string>
     <string name="theme_custom_bg_color">背景色</string>
     <string name="theme_custom_key_color">通常キーの色</string>
     <string name="theme_custom_special_key_color">特殊キーの色</string>

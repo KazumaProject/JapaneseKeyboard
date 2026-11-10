@@ -52,13 +52,17 @@ abstract class AsyncPreferenceFragment : PreferenceFragmentCompat() {
     protected open fun createPreferenceHierarchy(context: Context): PreferenceScreen =
         preferenceManager.inflateFromResource(context, preferencesXmlRes, null)
 
-    // Programmatic builders describe callbacks on IO; only main attaches listeners.
+    // Programmatic builders queue UI mutations while constructing the unpublished hierarchy.
+    protected fun configureHierarchyOnMain(action: () -> Unit) {
+        checkNotNull(hierarchyListeners.get()).add(action)
+    }
+
     protected fun Preference.configureClickListener(listener: Preference.OnPreferenceClickListener) {
-        checkNotNull(hierarchyListeners.get()).add { onPreferenceClickListener = listener }
+        configureHierarchyOnMain { onPreferenceClickListener = listener }
     }
 
     protected fun Preference.configureChangeListener(listener: Preference.OnPreferenceChangeListener) {
-        checkNotNull(hierarchyListeners.get()).add { onPreferenceChangeListener = listener }
+        configureHierarchyOnMain { onPreferenceChangeListener = listener }
     }
 
     protected open suspend fun preparePreferenceData(context: Context) = Unit
