@@ -213,7 +213,7 @@ internal class PhraseConverter(
         }
         val wordEnds = spans.map { it.last + 1 }.toSet()
         val exact = mutableMapOf<String, List<DictionaryCandidate>>()
-        fun lookup(reading: String) = exact.getOrPut(reading) { dictionary.exact(reading) }
+        fun lookup(reading: String) = exact.getOrPut(reading) { dictionary.exact(reading, forPrediction = prefixMode) }
         var previousEnd = 0
         for (span in spans) {
             val start = span.first
