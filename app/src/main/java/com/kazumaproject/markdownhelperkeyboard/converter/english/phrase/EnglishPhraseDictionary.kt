@@ -35,12 +35,15 @@ internal class EnglishPhraseDictionary(
         return false
     }
 
-    fun exact(text: String): List<DictionaryCandidate> {
+    fun exact(text: String, forPrediction: Boolean = false): List<DictionaryCandidate> {
         val node = dictionary.readingTrie.getNodeIndex(text, dictionary.readingLbsIndex)
         if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return emptyList()
         val term = dictionary.readingTrie.getTermId(node, dictionary.readingLeafIndex)
+        val policy = if (forPrediction) EnglishCompletionPolicy(text, grammarRoles) else null
         return buildList {
-            dictionary.forEachCandidate(text, term) { candidate -> add(candidate) }
+            dictionary.forEachCandidate(text, term) { candidate ->
+                if (policy?.allowsWord(text, candidate.surface, candidate.cost) != false) add(candidate)
+            }
         }
     }
 
