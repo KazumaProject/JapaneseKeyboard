@@ -200,7 +200,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
         }
 
     // ヘルパーを class 内に追記
-    private fun readTextFromUri(uri: Uri): String {
+    protected fun readTextFromUri(uri: Uri): String {
         val cr = requireContext().contentResolver
         cr.openInputStream(uri).use { input ->
             if (input == null) error("Cannot open input stream")
@@ -216,7 +216,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
         }
     }
 
-    private fun writeTextToUri(uri: Uri, text: String) {
+    protected fun writeTextToUri(uri: Uri, text: String) {
         val cr = requireContext().contentResolver
         cr.openOutputStream(uri).use { out ->
             if (out == null) error("Cannot open output stream")
@@ -227,7 +227,7 @@ open class CommonPreferenceFragment : AsyncPreferenceFragment() {
         }
     }
 
-    private fun toast(msg: String) {
+    protected fun toast(msg: String) {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
     }
 
