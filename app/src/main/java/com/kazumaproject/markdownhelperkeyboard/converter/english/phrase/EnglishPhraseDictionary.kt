@@ -46,6 +46,7 @@ internal class EnglishPhraseDictionary(
 
     fun complete(prefix: String, surfacePrefix: String?, limit: Int): List<DictionaryCandidate> {
         val best = PriorityQueue(completionOrder.reversed())
+        val policy = EnglishCompletionPolicy(surfacePrefix ?: prefix, grammarRoles)
         val terms = dictionary.readingTrie.termsStartingWith(
             prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
             dictionary.wordCompletionBounds?.let { bounds ->
@@ -60,7 +61,8 @@ internal class EnglishPhraseDictionary(
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
             dictionary.forEachCandidate(key, term, maxCost) { candidate ->
                 if (candidate.surface.none(Char::isWhitespace) &&
-                    (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix))
+                    (surfacePrefix == null || lookupKey(candidate.surface).startsWith(surfacePrefix)) &&
+                    policy.allowsWord(key, candidate.surface, candidate.cost)
                 ) {
                     if (best.size < limit) {
                         best.add(candidate)
@@ -83,6 +85,7 @@ internal class EnglishPhraseDictionary(
         val order = compareBy<DictionaryCandidate> { if (it.reading.replace(" ", "") == compact) 0 else 1 }
             .then(completionOrder)
         val best = PriorityQueue(order.reversed())
+        val policy = EnglishCompletionPolicy(prefix, grammarRoles)
 
         fun collect(readingPrefix: String) {
             val terms = if (prefixMode) dictionary.readingTrie.termsStartingWith(
@@ -122,7 +125,7 @@ internal class EnglishPhraseDictionary(
                     cutoff.cost
                 } else Int.MAX_VALUE
                 dictionary.forEachCandidate(reading, term, maxCost) { candidate ->
-                    if (' ' in candidate.surface) {
+                    if (' ' in candidate.surface && (exact || policy.allowsPhrase(candidate))) {
                         if (best.size < limit) best.add(candidate)
                         else if (order.compare(candidate, best.element()) < 0) {
                             best.remove()
