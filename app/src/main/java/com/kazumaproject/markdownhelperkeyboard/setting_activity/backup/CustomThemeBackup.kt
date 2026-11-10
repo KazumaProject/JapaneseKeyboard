@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import com.google.gson.Strictness
+import java.io.InputStream
 
 internal class CustomThemeBackup(
     preferenceDefaults: List<Pair<String, Any>>,
@@ -43,7 +44,16 @@ internal class CustomThemeBackup(
         })
     }
 
-    fun restore(json: String, preferences: SharedPreferences) {
+    fun restore(input: InputStream, preferences: SharedPreferences) {
+        val buffer = ByteArray(MAX_JSON_BYTES + 1)
+        var size = 0
+        while (size < buffer.size) {
+            val count = input.read(buffer, size, buffer.size - size)
+            if (count == -1) break
+            size += count
+        }
+        require(size <= MAX_JSON_BYTES) { "Theme backup exceeds $MAX_JSON_BYTES bytes" }
+        val json = buffer.decodeToString(endIndex = size)
         val backup = requireNotNull(gson.fromJson(json, JsonObject::class.java))
         require(backup["format"] == JsonPrimitive(FORMAT))
         val version = backup["version"] as? JsonPrimitive
@@ -89,5 +99,6 @@ internal class CustomThemeBackup(
     private companion object {
         const val FORMAT = "japanese-keyboard-custom-theme"
         const val VERSION = 1
+        const val MAX_JSON_BYTES = 64 * 1024
     }
 }
