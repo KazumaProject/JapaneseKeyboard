@@ -13,6 +13,18 @@
 
         <Preference android:key="theme_custom" android:title="@string/theme_custom" />
 
+        <Preference
+            android:key="custom_theme_export"
+            android:order="100"
+            android:title="@string/custom_theme_export_title"
+            android:summary="@string/custom_theme_export_summary" />
+
+        <Preference
+            android:key="custom_theme_import"
+            android:order="101"
+            android:title="@string/custom_theme_import_title"
+            android:summary="@string/custom_theme_import_summary" />
+
     </com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory>
 
     <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
