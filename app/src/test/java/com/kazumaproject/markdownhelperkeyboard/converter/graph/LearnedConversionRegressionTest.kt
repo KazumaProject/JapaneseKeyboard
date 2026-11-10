@@ -121,6 +121,20 @@ class LearnedConversionRegressionTest {
     }
 
     @Test
+    fun learnedOnlyNamesKeepExactPreferenceAndPreserveHistory() = runBlocking {
+        val assets = RealDictionaryFixture()
+        val history = listOf(
+            LearnEntity("けい", "慧人", score = 0, leftId = 1851, rightId = 1851, id = 42),
+        )
+        val repository = LearnRepository(InMemoryReadOnlyLearnDao(history))
+        for (ngram in listOf(false, true)) for (bunsetsu in listOf(false, true)) {
+            assertEquals("慧人", assets.convert("けい", repository, ngram, bunsetsu).first().string)
+            assertEquals("計算", assets.convert("けいさん", repository, ngram, bunsetsu).first().string)
+        }
+        assertEquals(history, repository.allSuspend())
+    }
+
+    @Test
     fun cachedAppendDeletionAndCatchUpMatchFreshGraphsForLegacyAndSessionCaches() = runBlocking {
         val assets = RealDictionaryFixture()
         val history = listOf(
@@ -131,35 +145,36 @@ class LearnedConversionRegressionTest {
         val sequences = listOf(
             listOf("け", "けい", "けいさ", "けいさん", "けいさ", "けい", "けいさん"),
             listOf("ち", "ちょ", "ちょう", "ちょうし"),
+            listOf("かん", "かんけい", "かんけいない"),
         )
 
-        for (sequence in sequences) {
+        for (ngram in listOf(false, true)) for (bunsetsu in listOf(false, true)) for (sequence in sequences) {
             for (sessionCache in listOf(false, true)) {
                 val reusedBuilder = GraphBuilder()
                 val reusedState = if (sessionCache) reusedBuilder.createSessionState() else null
-                val reusedFinder = FindPath()
+                val reusedFinder = assets.createFinder(ngram, bunsetsu)
                 val reusedPathState = if (sessionCache) reusedFinder.createSessionState() else null
 
                 for (input in sequence) {
                     val cached = assets.convert(
                         input = input,
                         learnRepository = repository,
-                        ngramEnabled = false,
-                        bunsetsuEnabled = false,
+                        ngramEnabled = ngram,
+                        bunsetsuEnabled = bunsetsu,
                         graphBuilder = reusedBuilder,
                         graphSessionState = reusedState,
                         findPath = reusedFinder,
                         pathSessionState = reusedPathState,
-                    ).map { Triple(it.string, it.score, it.leftId to it.rightId) }
+                    ).fingerprint()
                     val fresh = assets.convert(
                         input = input,
                         learnRepository = repository,
-                        ngramEnabled = false,
-                        bunsetsuEnabled = false,
-                    ).map { Triple(it.string, it.score, it.leftId to it.rightId) }
+                        ngramEnabled = ngram,
+                        bunsetsuEnabled = bunsetsu,
+                    ).fingerprint()
 
                     assertEquals(
-                        "Cached/fresh mismatch for '$input' (sessionCache=$sessionCache)",
+                        "Cached/fresh mismatch for '$input' (sessionCache=$sessionCache, ngram=$ngram, bunsetsu=$bunsetsu)",
                         fresh,
                         cached,
                     )
@@ -167,6 +182,10 @@ class LearnedConversionRegressionTest {
             }
         }
         assertEquals("Conversion must preserve both learned records", history, repository.allSuspend())
+    }
+
+    private fun List<Candidate>.fingerprint(): List<List<Any?>> = map {
+        listOf(it.string, it.score, it.type, it.length, it.yomi, it.leftId, it.rightId)
     }
 
     private data class RegressionCase(
@@ -197,6 +216,11 @@ class LearnedConversionRegressionTest {
             ),
         )
 
+        fun createFinder(ngramEnabled: Boolean, bunsetsuEnabled: Boolean) = FindPath(
+            systemNgramDictionaryProvider = { if (ngramEnabled) ngram else EmptySystemNgramDictionary },
+            mozcSegmenterProvider = { if (bunsetsuEnabled) segmenter else null },
+        )
+
         suspend fun convert(
             input: String,
             learnRepository: LearnRepository?,
@@ -225,10 +249,7 @@ class LearnedConversionRegressionTest {
                 graphNodeTrace = null,
                 sessionState = graphSessionState,
             )
-            val activeFinder = findPath ?: FindPath(
-                systemNgramDictionaryProvider = { if (ngramEnabled) ngram else EmptySystemNgramDictionary },
-                mozcSegmenterProvider = { if (bunsetsuEnabled) segmenter else null },
-            )
+            val activeFinder = findPath ?: createFinder(ngramEnabled, bunsetsuEnabled)
 
             if (bunsetsuEnabled) {
                 val result = activeFinder.backwardAStarWithBunsetsu(
@@ -276,8 +297,8 @@ class LearnedConversionRegressionTest {
             asset(path) { ObjectInputStream(BufferedInputStream(it)).use(block) }
     }
 
-    private class InMemoryReadOnlyLearnDao(entries: List<LearnEntity>) : LearnDao {
-        private val rows = entries.toMutableList()
+    internal class InMemoryReadOnlyLearnDao(entries: List<LearnEntity>) : LearnDao {
+        private val rows = entries.toList()
 
         override suspend fun findByInputPrefix(prefix: String, prefixUpperBound: String): List<LearnEntity> =
             rows.filter { it.input >= prefix && it.input < prefixUpperBound }

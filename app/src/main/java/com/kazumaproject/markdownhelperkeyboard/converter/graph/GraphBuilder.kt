@@ -17,9 +17,11 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCa
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTable
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.GraphNodeTrace
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearningScorePolicy
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -28,6 +30,7 @@ class GraphBuilder {
     internal data class CachedGraph(
         val input: String,
         val signature: Int,
+        val hasExactLearnedMatch: Boolean,
         val graph: MutableMap<Int, MutableList<Node>>,
         val systemOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
         val systemUserOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
@@ -372,6 +375,7 @@ class GraphBuilder {
         val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
+                !it.hasExactLearnedMatch &&
                 // Typo lookup starts only when a suffix has more than two characters. An
                 // append can therefore introduce corrected nodes inside the cached prefix,
                 // which the append frontier would skip. Rebuild this optional lattice.
@@ -402,6 +406,67 @@ class GraphBuilder {
         val systemUserPrefixStates = LinkedHashMap<Int, Int>()
         val classifiedPrefixStates = classifiedDictionaries.keys.associateWith { LinkedHashMap<Int, Int>() }
         val typoTopTokenScratch = IntArray(5)
+        var hasExactLearnedMatch = false
+        var learnedWordCostResolver: LearnedWordCostResolver? = null
+
+        fun learnedWordReferenceCost(
+            reading: String,
+            surface: String,
+            leftId: Short,
+            rightId: Short,
+            userWords: List<UserWord>,
+        ): Int? {
+            val resolver = learnedWordCostResolver ?: buildList {
+                add(
+                    TripleDictionaryData(
+                        tangoTrie = tangoTrie,
+                        yomiTrie = yomiTrie,
+                        tokenArray = tokenArray,
+                        succinctBitVectorLBSYomi = succinctBitVectorLBSYomi,
+                        succinctBitVectorIsLeafYomi = succinctBitVectorIsLeafYomi,
+                        succinctBitVectorTokenArray = succinctBitVectorTokenArray,
+                        succinctBitVectorTangoLBS = succinctBitVectorTangoLBS,
+                    ),
+                )
+                val localSystemUserYomiTrie = systemUserYomiTrie
+                val localSystemUserTangoTrie = systemUserTangoTrie
+                val localSystemUserTokenArray = systemUserTokenArray
+                val localSystemUserLBSYomi = systemUserSuccinctBitVectorLBSYomi
+                val localSystemUserIsLeafYomi = systemUserSuccinctBitVectorIsLeafYomi
+                val localSystemUserTokenBitVector = systemUserSuccinctBitVectorTokenArray
+                val localSystemUserTangoLBS = systemUserSuccinctBitVectorTangoLBS
+                if (
+                    localSystemUserYomiTrie != null &&
+                    localSystemUserTangoTrie != null &&
+                    localSystemUserTokenArray != null &&
+                    localSystemUserLBSYomi != null &&
+                    localSystemUserIsLeafYomi != null &&
+                    localSystemUserTokenBitVector != null &&
+                    localSystemUserTangoLBS != null
+                ) {
+                    add(
+                        TripleDictionaryData(
+                            tangoTrie = localSystemUserTangoTrie,
+                            yomiTrie = localSystemUserYomiTrie,
+                            tokenArray = localSystemUserTokenArray,
+                            succinctBitVectorLBSYomi = localSystemUserLBSYomi,
+                            succinctBitVectorIsLeafYomi = localSystemUserIsLeafYomi,
+                            succinctBitVectorTokenArray = localSystemUserTokenBitVector,
+                            succinctBitVectorTangoLBS = localSystemUserTangoLBS,
+                        ),
+                    )
+                }
+                addAll(classifiedDictionaries.values)
+            }.let(::LearnedWordCostResolver).also { learnedWordCostResolver = it }
+
+            return resolver.referenceCost(
+                reading = reading,
+                surface = surface,
+                leftId = leftId,
+                rightId = rightId,
+                userWords = userWords,
+            )
+        }
 
         fun prefixSearch(
             trie: LOUDSWithTermId,
@@ -647,12 +712,31 @@ class GraphBuilder {
             if (learnedWords.isNotEmpty()) foundInAnyDictionary = true
             learnedWords.forEach { learnedWord ->
                 val endIndex = i + learnedWord.input.length
+                val isExactInputMatch = i == 0 && endIndex == str.length
+                if (isExactInputMatch) hasExactLearnedMatch = true
+                val leftId = learnedWord.leftId ?: 1851.toShort()
+                val rightId = learnedWord.rightId ?: 1851.toShort()
+                val score = LearningScorePolicy.conversionCost(
+                    learnedScore = learnedWord.score,
+                    dictionaryWordCost = if (isExactInputMatch) {
+                        null
+                    } else {
+                        learnedWordReferenceCost(
+                            reading = learnedWord.input,
+                            surface = learnedWord.out,
+                            leftId = leftId,
+                            rightId = rightId,
+                            userWords = userWords,
+                        )
+                    },
+                    isExactInput = isExactInputMatch,
+                )
                 val node = Node(
-                    l = learnedWord.leftId ?: 1851.toShort(),
-                    r = learnedWord.rightId ?: 1851.toShort(),
-                    score = learnedWord.score.toInt(),
-                    f = learnedWord.score.toInt(),
-                    g = learnedWord.score.toInt(),
+                    l = leftId,
+                    r = rightId,
+                    score = score,
+                    f = score,
+                    g = score,
                     tango = learnedWord.out,
                     yomiUsed = learnedWord.input,
                     len = learnedWord.input.length.toShort(),
@@ -1215,6 +1299,7 @@ class GraphBuilder {
         val updatedCache = CachedGraph(
             input = str,
             signature = signature,
+            hasExactLearnedMatch = hasExactLearnedMatch,
             graph = if (sessionState != null) graph else graph.deepCopyForGraphBuild(),
             systemOmissionStates = systemOmissionStates,
             systemUserOmissionStates = systemUserOmissionStates,
