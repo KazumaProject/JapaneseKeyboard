@@ -3,6 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_th
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.core.os.bundleOf
 import androidx.core.content.ContextCompat
@@ -22,6 +25,11 @@ import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 @AndroidEntryPoint
 class KeyboardThemeFragment : CommonPreferenceFragment() {
@@ -65,10 +73,54 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
         private const val PREF_KEY_CUSTOM_POST_EDIT_BG = "theme_custom_post_edit_bg_color"
         private const val PREF_KEY_CUSTOM_POST_EDIT_TEXT = "theme_custom_post_edit_text_color"
         private const val PREF_KEY_LOCAL_FONT = "local_font_settings_preference"
+        private const val PREF_KEY_EXPORT_THEME = "custom_theme_export"
+        private const val PREF_KEY_IMPORT_THEME = "custom_theme_import"
 
         // Modes
         private const val MODE_DEFAULT = "default"
         private const val MODE_CUSTOM = "custom"
+    }
+
+    private val exportThemeLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri == null) return@registerForActivityResult
+            transferTheme(R.string.custom_theme_export_success, R.string.custom_theme_export_error) {
+                writeTextToUri(uri, appPreference.exportCustomThemeToJson())
+            }
+        }
+
+    private val importThemeLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            transferTheme(
+                R.string.custom_theme_import_success,
+                R.string.custom_theme_import_error,
+                onSuccess = { requireActivity().recreate() },
+            ) {
+                val input = requireNotNull(requireContext().contentResolver.openInputStream(uri))
+                input.use(appPreference::importCustomThemeFromJson)
+            }
+        }
+
+    private fun transferTheme(
+        @StringRes successMessage: Int,
+        @StringRes errorMessage: Int,
+        onSuccess: () -> Unit = {},
+        transfer: () -> Unit,
+    ) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) { transfer() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Custom theme transfer failed")
+                toast(getString(errorMessage))
+                return@launch
+            }
+            toast(getString(successMessage))
+            onSuccess()
+        }
     }
 
     override fun createPreferenceHierarchy(context: Context): PreferenceScreen {
@@ -400,12 +452,15 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
             preference.parent?.removePreference(preference)
             parent.addPreference(preference)
         }
-        listOf(systemCategory, customCategory, inputCategory).forEach { group ->
-            val children = (0 until group.preferenceCount).map(group::getPreference)
-            children.filterNot { it.key == PREF_KEY_ROUND_CORNER }.forEach(::transfer)
+        // PreferenceGroup clears its recycled IDs on main, so replace the entries there.
+        configureHierarchyOnMain {
+            listOf(systemCategory, customCategory, inputCategory).forEach { group ->
+                val children = (0 until group.preferenceCount).map(group::getPreference)
+                children.filterNot { it.key == PREF_KEY_ROUND_CORNER }.forEach(::transfer)
+            }
+            transfer(skinPreference)
+            transfer(localFontPreference)
         }
-        transfer(skinPreference)
-        transfer(localFontPreference)
         return canonical
     }
 
@@ -413,6 +468,14 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
         super.onPreferencesReady(savedInstanceState, rootKey)
         updateCheckStates(appPreference.theme_mode)
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
+        findPreference<Preference>(PREF_KEY_EXPORT_THEME)?.setOnPreferenceClickListener {
+            exportThemeLauncher.launch("sumire_custom_theme.json")
+            true
+        }
+        findPreference<Preference>(PREF_KEY_IMPORT_THEME)?.setOnPreferenceClickListener {
+            importThemeLauncher.launch(arrayOf("application/json", "text/plain"))
+            true
+        }
         findPreference<Preference>("settings_theme_enable_composing_guide_link")?.setOnPreferenceClickListener {
             navigateSafely(R.id.legacyCommonPreferenceFragment, bundleOf(ARG_HIGHLIGHT_PREFERENCE_KEY to "composing_guide_text_enabled"))
             true
