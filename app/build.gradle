@@ -260,7 +260,6 @@ androidComponents {
                 '**/liblitertlm_jni.so',
                 '**/libLiteRtCompilerPlugin_google_tensor.so',
                 '**/libLiteRtDispatch_GoogleTensor.so',
-                '**/libonnxruntime.so',
             ])
         }
     }
@@ -1346,7 +1345,6 @@ dependencies {
     implementation project(':custom_keyboard')
     fullImplementation project(':zenz')
     fullImplementation project(':ai-runtime')
-    fullImplementation 'com.microsoft.onnxruntime:onnxruntime-android:1.23.2'
 
     implementation 'androidx.fragment:fragment-ktx:1.8.8'
     implementation 'androidx.emoji2:emoji2:1.5.0'
