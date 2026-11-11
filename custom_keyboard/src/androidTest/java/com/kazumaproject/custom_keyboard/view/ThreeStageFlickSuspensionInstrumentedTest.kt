@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.view.doOnLayout
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -12,6 +13,8 @@ import com.kazumaproject.custom_keyboard.data.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class ThreeStageFlickSuspensionInstrumentedTest {
@@ -19,6 +22,7 @@ class ThreeStageFlickSuspensionInstrumentedTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch(SumireFlickRotationTestActivity::class.java).use { scenario ->
             for (popup in TfbiPopupPresentationMode.entries) for (hitMode in KeyHitTestMode.entries) {
+                val laidOut = CountDownLatch(1)
                 scenario.onActivity { activity ->
                     activity.configure("third-flick", TfbiFlickRotation.DEFAULT, popup)
                     val blocked = KeyData("saved", 0, 0, true, action = KeyAction.Text("blocked"),
@@ -29,13 +33,16 @@ class ThreeStageFlickSuspensionInstrumentedTest {
                     activity.keyboard.setLongPressTimeout(100)
                     activity.keyboard.setKeyboard(KeyboardLayout(listOf(blocked, ordinary), emptyMap(), 2, 1,
                         hierarchicalFlickMaps = mapOf("saved" to saved)), hitMode)
+                    activity.keyboard.doOnLayout { laidOut.countDown() }
                 }
+                assertTrue("Keyboard layout did not finish", laidOut.await(5, TimeUnit.SECONDS))
                 instrumentation.waitForIdleSync()
                 fun tap(index: Int, hold: Boolean = false) {
                     var x = 0f; var y = 0f
                     scenario.onActivity { activity ->
                         val key = activity.keyboard.getChildAt(index)
                         assertEquals(index != 0, key.isEnabled)
+                        assertTrue("Unmeasured key: $index ${key.width}x${key.height}", key.width > 0 && key.height > 0)
                         val position = IntArray(2).also(key::getLocationOnScreen)
                         x = position[0] + key.width / 2f; y = position[1] + key.height / 2f
                     }
@@ -47,7 +54,7 @@ class ThreeStageFlickSuspensionInstrumentedTest {
                         finally { event.recycle() }
                     }
                     send(MotionEvent.ACTION_DOWN)
-                    if (hold) SystemClock.sleep(200)
+                    SystemClock.sleep(if (hold) 200 else 40)
                     send(MotionEvent.ACTION_UP)
                     instrumentation.waitForIdleSync()
                 }
@@ -61,7 +68,7 @@ class ThreeStageFlickSuspensionInstrumentedTest {
                     assertTrue(activity.actions.isEmpty())
                 }
                 tap(1)
-                scenario.onActivity { assertEquals(listOf(KeyAction.Text("ok")), it.actions) }
+                scenario.onActivity { assertEquals("$popup/$hitMode", listOf(KeyAction.Text("ok")), it.actions) }
             }
         }
     }
