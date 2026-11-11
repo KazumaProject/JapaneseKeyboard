@@ -1007,6 +1007,7 @@ class KeyboardEditorViewModel @Inject constructor(
         flexibleColumnSpanUnits: Int? = null,
         hierarchicalFlick: TfbiFlickNode.StatefulKey? = null
     ): Boolean {
+        if (newKeyData.keyType == KeyType.HIERARCHICAL_FLICK) return false
         val keyId = newKeyData.keyId ?: run {
             Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
             return false
@@ -1018,12 +1019,8 @@ class KeyboardEditorViewModel @Inject constructor(
 
             val oldKeyData = layout.keys.find { it.keyId == keyId } ?: return@update currentState
             val finalHierarchicalMaps = layout.hierarchicalFlickMaps.toMutableMap()
-            if (newKeyData.keyType == KeyType.HIERARCHICAL_FLICK) {
-                val definition = hierarchicalFlick ?: finalHierarchicalMaps[keyId] ?: return@update currentState
-                finalHierarchicalMaps[keyId] = definition.copy(label = newKeyData.label)
-            } else {
-                finalHierarchicalMaps.remove(keyId)
-            }
+            if (oldKeyData.keyType == KeyType.HIERARCHICAL_FLICK) return@update currentState
+            finalHierarchicalMaps.remove(keyId)
             val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
             val finalCircularFlickMaps = layout.circularFlickKeyMaps.toMutableMap()
             val finalTwoStepMaps = layout.twoStepFlickKeyMaps.toMutableMap()
