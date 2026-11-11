@@ -30,33 +30,44 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class ThreeStageFlickPersistenceTest {
-
-
-    @Test fun flexibleHalfCellResizeAndMoveKeepTheHierarchy() = runBlocking<Unit> {
+    @Test fun oldDefinitionSurvivesOtherKeyEditsSaveReloadDuplicateAndBackup() = runBlocking<Unit> {
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java)
             .allowMainThreadQueries().build()
         try {
             val repository = KeyboardRepository(db.keyboardLayoutDao())
             val editor = KeyboardEditorViewModel(repository)
-            val key = KeyData("custom", 0, 0, true, keyId = "hierarchy", keyType = KeyType.HIERARCHICAL_FLICK)
-            val other = KeyData("other", 0, 2, false, keyId = "other")
-            val node = TfbiFlickNode.StatefulKey(mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("x")), label = key.label)
-            editor.applyTemplate(KeyboardLayout(
-                keys = listOf(key, other), flickKeyMaps = emptyMap(), columnCount = 5, rowCount = 4,
-                items = listOf(KeyItem("hierarchy", key, GridPlacement(0, 0, 1, 1)),
-                    KeyItem("other", other, GridPlacement(0, 4, 1, 2))),
-                isFlexiblePlacementLayout = true, hierarchicalFlickMaps = mapOf("hierarchy" to node)
-            ))
-            assertTrue(editor.updateKeyAndMappings(key.copy(label = "renamed"), emptyMap(), emptyMap(), emptyMap(), emptyMap(),
-                flexibleRowSpanUnits = 1, flexibleColumnSpanUnits = 2, hierarchicalFlick = node))
-            editor.swapKeys("hierarchy", "other")
-            val updated = editor.uiState.value.layout
-            assertEquals(GridPlacement(0, 4, 1, 2), updated.items.single { it.id == "hierarchy" }.placement)
-            val id = repository.saveLayout(updated, "Flexible hierarchy", null)
+            assertFalse(editor.availableTemplates.any { it.nameResId == R.string.template_three_stage_flick })
+            val saved = KeyData("saved", 0, 0, true, keyType = KeyType.HIERARCHICAL_FLICK, keyId = "saved")
+            val ordinary = KeyData("other", 0, 1, false, keyId = "other")
+            val definition = TfbiFlickNode.StatefulKey(
+                mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("preserved😀")), label = "saved")
+            editor.applyTemplate(KeyboardLayout(listOf(saved, ordinary), emptyMap(), 2, 1,
+                hierarchicalFlickMaps = mapOf("saved" to definition)))
+            val before = editor.uiState.value.layout
+            val oldKey = before.keys.single { it.keyType == KeyType.HIERARCHICAL_FLICK }
+            val other = before.keys.single { it.keyType != KeyType.HIERARCHICAL_FLICK }
+            assertFalse(editor.updateKeyAndMappings(oldKey.copy(label = "changed"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
+            assertFalse(editor.updateKeyAndMappings(other.copy(keyType = KeyType.HIERARCHICAL_FLICK), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
+            assertTrue(editor.updateKeyAndMappings(other.copy(label = "edited"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
+            val edited = editor.uiState.value.layout
+            assertEquals(before.hierarchicalFlickMaps, edited.hierarchicalFlickMaps)
+            val id = repository.saveLayout(edited, "Suspended", null)
             val reloaded = repository.getFullLayout(id).first()
-            assertEquals(updated.hierarchicalFlickMaps, reloaded.hierarchicalFlickMaps)
-            assertEquals(updated.items.single { it.id == "hierarchy" }.placement,
-                reloaded.items.single { it.id == "hierarchy" }.placement)
+            assertEquals(edited.hierarchicalFlickMaps, reloaded.hierarchicalFlickMaps)
+            repository.duplicateLayout(id)
+            val duplicateId = repository.getLayoutsNotFlow().single { it.layoutId != id }.layoutId
+            assertEquals(reloaded.hierarchicalFlickMaps, repository.getFullLayout(duplicateId).first().hierarchicalFlickMaps)
+            val json = KeyboardLayoutJsonExporter.toJson(repository.getAllFullLayoutsForExport())
+            val parsed = KeyboardLayoutJsonImporter.parse(json) as KeyboardLayoutImportResult.Success
+            parsed.layouts.forEach { imported ->
+                assertEquals(reloaded.hierarchicalFlickMaps, imported.keysWithFlicks.mapNotNull {
+                    it.key.hierarchicalFlickJson?.let { data -> it.key.keyIdentifier to HierarchicalFlickCodec.decode(data) }
+                }.toMap())
+            }
+            assertTrue(repository.importLayouts(parsed.layouts) is KeyboardLayoutImportResult.Success)
+            repository.getAllCustomKeyboardLayouts().first().forEach {
+                assertEquals(reloaded.hierarchicalFlickMaps, it.hierarchicalFlickMaps)
+            }
         } finally { db.close() }
     }
 

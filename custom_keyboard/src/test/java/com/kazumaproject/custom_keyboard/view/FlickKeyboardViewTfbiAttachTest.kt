@@ -144,24 +144,11 @@ class FlickKeyboardViewTfbiAttachTest {
                 inputLayoutType = layoutType,
                 inputStyle = "second-flick"
             )
-            val thirdLayout = KeyboardDefaultLayouts.createFinalLayout(
-                mode = KeyboardInputMode.HIRAGANA,
-                dynamicKeyStates = emptyMap(),
-                inputLayoutType = layoutType,
-                inputStyle = "third-flick"
-            )
-
             assertNotNull("$layoutType second-flick na map", secondLayout.twoStepFlickKeyMaps["な"])
-            assertNotNull("$layoutType third-flick na map", thirdLayout.hierarchicalFlickMaps["な"])
             assertEquals(
                 "$layoutType second-flick key type",
                 KeyType.TWO_STEP_FLICK,
                 secondLayout.keys.first { it.label == "な" }.keyType
-            )
-            assertEquals(
-                "$layoutType third-flick key type",
-                KeyType.HIERARCHICAL_FLICK,
-                thirdLayout.keys.first { it.label == "な" }.keyType
             )
         }
     }

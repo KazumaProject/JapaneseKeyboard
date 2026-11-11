@@ -1213,6 +1213,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             val key = currentKeyData!!
+            if (key.keyType == KeyType.HIERARCHICAL_FLICK) {
+                AlertDialog.Builder(requireContext())
+                    .setMessage(com.kazumaproject.core.R.string.three_stage_flick_suspended)
+                    .setPositiveButton(android.R.string.ok) { _, _ -> findNavController().popBackStack() }
+                    .setOnCancelListener { findNavController().popBackStack() }
+                    .show()
+                return@launch
+            }
             selectedIconRef = key.icon?.takeIf { it.isOverride() }
             originalIconRef = selectedIconRef
             key.doubleTapBinding
@@ -1778,6 +1786,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun onDone() {
         val originalKey = currentKeyData ?: return
+        if (originalKey.keyType == KeyType.HIERARCHICAL_FLICK) return
 
         if (
             binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&

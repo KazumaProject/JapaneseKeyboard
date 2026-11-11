@@ -513,8 +513,10 @@ data class ImePreferencesSnapshot(
                 keySoundVolumePercent = appPreference.key_sound_volume_percent_preference ?: 0,
                 sumireInputKeyType =
                     appPreference.sumire_input_selection_preference ?: "flick-default",
-                sumireInputKeyLayoutType = appPreference.sumire_input_method,
-                sumireInputStyle = appPreference.sumire_keyboard_style,
+                sumireInputKeyLayoutType = if (appPreference.sumire_keyboard_style == "third-flick") "flick"
+                    else appPreference.sumire_input_method,
+                sumireInputStyle = if (appPreference.sumire_keyboard_style == "third-flick") "default"
+                    else appPreference.sumire_keyboard_style,
                 candidateColumns = appPreference.candidate_column_preference,
                 candidateColumnsLandscape = appPreference.candidate_column_landscape_preference,
                 candidateTabVisibility = appPreference.candidate_tab_preference,

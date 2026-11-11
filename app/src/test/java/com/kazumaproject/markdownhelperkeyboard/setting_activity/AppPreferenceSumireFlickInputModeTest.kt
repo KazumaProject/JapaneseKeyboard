@@ -70,25 +70,20 @@ class AppPreferenceSumireFlickInputModeTest {
     }
 
     @Test
-    fun searchableSettingUsesDescriptiveJapaneseAndEnglishChoices() {
-        val item = SettingSearchIndex.searchable(context)
-            .first { it.key == AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY }
-        assertTrue(item.summary.isNotBlank())
-        assertFalse("Search results must not expose summary placeholders", item.summary.contains("%"))
-        val setting = item.destination as SettingDestinationType.ListPreference
-        assertEquals(R.id.sumirePreferenceFragment, setting.destinationId)
-        assertEquals("all", setting.defaultValue)
-        assertEquals(listOf("contracted", "voiced", "all"),
-            context.resources.getStringArray(setting.entryValuesResId).toList())
-        val japanese = context.createConfigurationContext(
-            Configuration(context.resources.configuration).apply { setLocale(Locale.JAPANESE) }
-        )
-        val english = context.createConfigurationContext(
-            Configuration(context.resources.configuration).apply { setLocale(Locale.ENGLISH) }
-        )
-        assertEquals(listOf("拗音・拗長音", "濁音・半濁音", "すべて（標準）"),
-            japanese.resources.getStringArray(setting.entriesResId).toList())
-        assertEquals(listOf("Contracted sounds and long vowels", "Voiced and semi-voiced kana", "All (default)"),
-            english.resources.getStringArray(setting.entriesResId).toList())
+    fun restoredThreeStageSelectionUsesNormalFlickWithoutOverwritingTheBackup() {
+        preferences.edit().putString("sumire_keyboard_style_preference", "third-flick")
+            .putString("sumire_input_method_preference", "toggle").commit()
+        val backup = AppPreference.exportAllToJson()
+        repeat(2) {
+            AppPreference.init(context)
+            val snapshot = ImePreferencesSnapshot.from(AppPreference)
+            assertEquals("default", snapshot.sumireInputStyle)
+            assertEquals("flick", snapshot.sumireInputKeyLayoutType)
+            assertEquals("third-flick", AppPreference.sumire_keyboard_style)
+            assertEquals("toggle", AppPreference.sumire_input_method)
+        }
+        AppPreference.importAllFromJson(backup)
+        assertEquals("default", ImePreferencesSnapshot.from(AppPreference).sumireInputStyle)
+        assertFalse(SettingSearchIndex.searchable(context).any { it.key == AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY })
     }
 }

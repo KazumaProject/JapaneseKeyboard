@@ -1,11 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 
-import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import org.junit.Assert.*
 import org.junit.Test
 
 class HierarchicalFlickCodecTest {
-
+    @Test fun savedDefinitionRoundTripsWithoutAnInputController() {
+        val json = """{"label":"saved","normal":{"TAP":{"type":"input","output":"saved"}}}"""
+        val saved = HierarchicalFlickCodec.decode(json)
+        assertEquals(saved, HierarchicalFlickCodec.decode(HierarchicalFlickCodec.encode(saved)))
+    }
 
     @Test fun optionalBranchFieldsUseTheirDefaults() {
         val node = HierarchicalFlickCodec.decode("""{"normal":{"RIGHT":{"type":"submenu","children":{"UP":{"type":"input","output":"x"}}}}}""")

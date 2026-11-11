@@ -1,6 +1,7 @@
 name: Android Release CI
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -97,8 +98,20 @@ jobs:
         run: |
           ./gradlew :app:bundleFullStandardRelease --stacktrace --no-daemon --max-workers=1
           python3 tools/release/verify-native-symbols.py app/build/outputs/bundle/fullStandardRelease/app-full-standard-release.aab
+          ./gradlew :app:bundleLiteStandardRelease --stacktrace --no-daemon --max-workers=1
           ./gradlew -I tools/licenses/export-release.init.gradle :app:exportLicenseDependencies --no-configuration-cache --no-daemon --max-workers=1
           python3 tools/licenses/prepare-libraries.py build/reports/licenses/resolved-release.json --check
+
+      - name: Upload signed internal test bundles
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: internal-test-bundles-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            app/build/outputs/bundle/fullStandardRelease/*.aab
+            app/build/outputs/bundle/liteStandardRelease/*.aab
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2

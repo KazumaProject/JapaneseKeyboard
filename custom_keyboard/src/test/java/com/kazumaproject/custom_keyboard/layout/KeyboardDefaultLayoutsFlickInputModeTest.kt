@@ -23,61 +23,13 @@ class KeyboardDefaultLayoutsFlickInputModeTest {
 
 
 
-    @Test
-    fun contractedKeepsYoonAndLongVowelsWithoutVoicedOutputsOrStates() {
-        val result = layout(SumireFlickInputMode.CONTRACTED)
-        val ka = result.hierarchicalFlickMaps.getValue("か")
-        assertEquals("きゅ", ka.normalMap.branch(LEFT).branch(UP).input(UP).char)
-        assertEquals("きゅう", ka.normalMap.branch(LEFT).branch(UP).input(UP_LEFT).char)
-        assertEquals("きょ", ka.normalMap.branch(LEFT).branch(DOWN).input(DOWN).char)
-        assertFalse(ka.normalMap.containsKey(UP_RIGHT))
-        assertNull(ka.dakutenMap)
-        assertNull(ka.handakutenMap)
-        assertFalse(result.outputs().any { text ->
-            Normalizer.normalize(text, Normalizer.Form.NFD).any { it == '\u3099' || it == '\u309A' }
-        })
-        assertFalse(result.outputs().contains("ぎゅう"))
-        assertValidStages(result)
-    }
 
-    @Test
-    fun voicedKeepsDiacriticsAndSmallKanaWithoutCompositeOutputs() {
-        val result = layout(SumireFlickInputMode.VOICED)
-        val ka = result.hierarchicalFlickMaps.getValue("か")
-        assertEquals("ぎ", ka.normalMap.branch(LEFT).input(DOWN_LEFT).char)
-        assertNotNull(ka.dakutenMap)
-        assertFalse(ka.normalMap.branch(LEFT).containsKey(UP))
-        assertFalse(ka.normalMap.branch(LEFT).containsKey(RIGHT))
-        assertFalse(ka.normalMap.branch(LEFT).containsKey(DOWN))
-        val outputs = result.outputs()
-        assertTrue(outputs.containsAll(listOf("が", "ぱ", "び", "ぷ", "ゔ", "っ")))
-        assertFalse(outputs.any { it.codePointCount(0, it.length) > 1 && it.any { char -> char in '\u3041'..'\u3096' } })
-        assertFalse(outputs.contains("てぃ"))
-        assertValidStages(result)
-    }
 
-    @Test
-    fun limitedModesRemoveDigitExtrasAndKeepOrdinarySmallKanaAndSymbols() {
-        for (mode in listOf(SumireFlickInputMode.CONTRACTED, SumireFlickInputMode.VOICED)) {
-            val result = layout(mode)
-            assertFalse(result.outputs().any { it.isNotEmpty() && it.all { char -> char in '0'..'9' } })
-            assertTrue(result.outputs().containsAll(listOf("あ", "い", "う", "え", "お",
-                "ぁ", "ぃ", "ぅ", "ぇ", "ぉ", "ゃ", "ゅ", "ょ", "ゎ", "っ")))
-            assertEquals(layout(SumireFlickInputMode.ALL).hierarchicalFlickMaps["、。?!"],
-                result.hierarchicalFlickMaps["、。?!"])
-            assertEquals(layout(SumireFlickInputMode.ALL).flickKeyMaps, result.flickKeyMaps)
-        }
-    }
 
-    @Test
-    fun contractedDoesNotMoveRemainingExtensionsWhenRotationChanges() {
-        for (layoutType in layoutTypes) {
-            val original = layout(SumireFlickInputMode.CONTRACTED, layoutType = layoutType)
-            for (rotation in TfbiFlickRotation.entries) {
-                assertEquals(original, layout(SumireFlickInputMode.CONTRACTED, rotation, layoutType))
-            }
-        }
-    }
+
+
+
+
 
 
 
@@ -101,18 +53,7 @@ class KeyboardDefaultLayoutsFlickInputModeTest {
             .flatMap { it.values.flatMap { node -> node.outputs() } }
     }
 
-    private fun assertValidStages(layout: KeyboardLayout) {
-        fun verify(map: Map<TfbiFlickDirection, TfbiFlickNode>) {
-            assertTrue(map.isNotEmpty())
-            map.values.filterIsInstance<TfbiFlickNode.SubMenu>().forEach { submenu ->
-                assertTrue(map.keys.containsAll(submenu.parentContinuationDirections))
-                verify(submenu.nextMap)
-            }
-        }
-        layout.hierarchicalFlickMaps.values.forEach { key ->
-            listOfNotNull(key.normalMap, key.dakutenMap, key.handakutenMap).forEach(::verify)
-        }
-    }
+
 
     private fun Map<TfbiFlickDirection, TfbiFlickNode>.branch(direction: TfbiFlickDirection) =
         (getValue(direction) as TfbiFlickNode.SubMenu).nextMap

@@ -28,42 +28,7 @@ class SumireFlickSettingsDialogInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val preferences get() = PreferenceManager.getDefaultSharedPreferences(context)
 
-    @Test
-    fun rotationAndInputFeaturesDialogsShowChoicesAndPersistSelections() {
-        assumeTrue("Only change the isolated Sumire verification package",
-            context.packageName.startsWith("com.kazumaproject.sumirerotation535"))
-        AppPreference.awaitInitialization()
-        val originalBackup = AppPreference.exportAllToJson()
-        try {
-            check(preferences.edit()
-                .putString("sumire_keyboard_style_preference", "third-flick")
-                .putString(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY, "contracted")
-                .putString(AppPreference.SUMIRE_FLICK_ROTATION_KEY, "default")
-                .commit())
-            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-                scenario.awaitSettingsContentReady()
-                scenario.onActivity { host(it).navController.navigate(R.id.sumirePreferenceFragment) }
-                await("Sumire preferences did not finish loading") {
-                    var ready = false
-                    scenario.onActivity {
-                        val fragment = sumire(it) ?: return@onActivity
-                        ready = fragment.findPreference<ListPreference>(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY)
-                            ?.isVisible == true && fragment.listView.childCount > 0
-                    }
-                    ready
-                }
-                assertEquals("contracted", preferences.getString(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY, null))
 
-                // Rotation remains configurable while contracted-only input is selected.
-                selectVisibleChoice(scenario, AppPreference.SUMIRE_FLICK_ROTATION_KEY, "clockwise")
-                selectVisibleChoice(scenario, AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY, "voiced")
-                selectVisibleChoice(scenario, AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY, "all")
-                assertEquals("clockwise", preferences.getString(AppPreference.SUMIRE_FLICK_ROTATION_KEY, null))
-            }
-        } finally {
-            AppPreference.importAllFromJson(originalBackup)
-        }
-    }
 
     private fun selectVisibleChoice(
         scenario: ActivityScenario<MainActivity>,

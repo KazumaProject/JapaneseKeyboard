@@ -54,45 +54,7 @@ class SumireModeKeyHighlightTest {
         }
     }
 
-    @Test
-    fun modeSwitchesHonorBothSettingsAndReleaseOrdinaryKeys() {
-        for (enabled in listOf(false, true)) for (independent in listOf(false, true)) {
-            val keyboard = keyboard(independent)
-            var mode = KeyboardInputMode.HIRAGANA
-            var currentLayout = layout(mode, "third-flick", enabled)
-            val actions = mutableListOf<KeyAction>()
-            keyboard.setOnKeyboardActionListener(object : FlickKeyboardView.OnKeyboardActionListener {
-                override fun onPress(action: KeyAction) = Unit
-                override fun onAction(action: KeyAction, isFlick: Boolean) {
-                    actions += action
-                    val next = KeyboardInputMode.entries.firstOrNull { it.action() == action } ?: return
-                    mode = next
-                    currentLayout = layout(mode, "third-flick", enabled)
-                    keyboard.setKeyboard(currentLayout)
-                }
-                override fun onActionLongPress(action: KeyAction) = Unit
-                override fun onActionUpAfterLongPress(action: KeyAction) = Unit
-                override fun onFlickDirectionChanged(direction: FlickDirection) = Unit
-                override fun onFlickActionLongPress(action: KeyAction) = Unit
-                override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) = Unit
-            })
-            keyboard.setKeyboard(currentLayout)
-            for (next in listOf(KeyboardInputMode.ENGLISH, KeyboardInputMode.SYMBOLS, KeyboardInputMode.HIRAGANA)) {
-                repeat(2) {
-                    measure(keyboard)
-                    val index = currentLayout.keys.indexOfFirst { it.action == next.action() }
-                    touch(keyboard, index)
-                    assertEquals(next, mode)
-                    assertEquals(next.action(), actions.last())
-                    if (enabled) assertSelected(keyboard, index)
-                    else assertTrue((0 until keyboard.childCount).none { keyboard.getChildAt(it).isPressed })
-                }
-                val ordinary = currentLayout.keys.indexOfFirst { !it.isSpecialKey }
-                touch(keyboard, ordinary)
-                assertFalse(keyboard.getChildAt(ordinary).isPressed)
-            }
-        }
-    }
+
 
     private fun assertSelected(keyboard: FlickKeyboardView, index: Int) {
         assertEquals(listOf(index), (0 until keyboard.childCount).filter { keyboard.getChildAt(it).isPressed })

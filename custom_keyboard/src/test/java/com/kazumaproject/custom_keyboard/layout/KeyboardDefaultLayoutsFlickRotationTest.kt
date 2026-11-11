@@ -79,74 +79,11 @@ class KeyboardDefaultLayoutsFlickRotationTest {
 
 
 
-    @Test
-    fun yoonAndLongVowelsKeepTheirFixedDirections() {
-        val original = layout("third-flick").hierarchicalFlickMaps.getValue("か")
-        TfbiFlickRotation.entries.forEach { rotation ->
-            val rotated = layout("third-flick", rotation = rotation).hierarchicalFlickMaps.getValue("か")
-            val kyu = rotated.normalMap.branch(LEFT).subMenu(UP)
-            assertEquals("きゅ", kyu.label)
-            assertEquals("きゅ", kyu.nextMap.input(UP).char)
-            assertEquals("きゅう", kyu.nextMap.input(UP_LEFT).char)
-            assertEquals(setOf(UP, RIGHT, DOWN), kyu.parentContinuationDirections)
-            assertEquals("きゃ", rotated.normalMap.branch(LEFT).input(RIGHT).char)
-            assertEquals("きょ", rotated.normalMap.branch(LEFT).branch(DOWN).input(DOWN).char)
-            listOf(UP, RIGHT, DOWN).forEach { direction ->
-                assertEquals(original.normalMap.branch(LEFT)[direction], rotated.normalMap.branch(LEFT)[direction])
-                assertEquals(original.dakutenMap!!.branch(LEFT)[direction], rotated.dakutenMap!!.branch(LEFT)[direction])
-            }
-        }
-    }
 
-    @Test
-    fun relocatedDiagonalSubmenuKeepsItsDirectCommitAndCardinalLongVowel() {
-        val counterclockwise = layout("third-flick", rotation = TfbiFlickRotation.COUNTERCLOCKWISE)
-            .hierarchicalFlickMaps.getValue("た")
-        assertEquals("てぃ", counterclockwise.normalMap.branch(RIGHT).branch(DOWN_RIGHT).input(DOWN_RIGHT).char)
-        assertEquals(
-            "てぃー",
-            counterclockwise.normalMap.branch(RIGHT).branch(DOWN_RIGHT).input(UP).char
-        )
-        assertEquals("でぃ", counterclockwise.dakutenMap!!.branch(RIGHT).input(DOWN).char)
-        assertEquals("でぃー", counterclockwise.dakutenMap!!.branch(RIGHT).input(DOWN_LEFT).char)
-        val clockwise = layout("third-flick", rotation = TfbiFlickRotation.CLOCKWISE)
-            .hierarchicalFlickMaps.getValue("は")
-        assertEquals("ふう", clockwise.normalMap.branch(UP).input(RIGHT).char)
-        assertEquals("ふぁ", clockwise.normalMap.branch(UP).branch(LEFT).input(LEFT).char)
-        assertEquals("ふぇ", clockwise.normalMap.branch(UP).branch(LEFT).input(RIGHT).char)
-    }
 
-    @Test
-    fun diagonalSwapRemapsOnlyContinuationMetadataInItsParentStage() {
-        val nested = TfbiFlickNode.SubMenu(
-            nextMap = mapOf(UP to TfbiFlickNode.Input("きゅ")),
-            label = "きゅ",
-            cancelOnTap = true,
-            parentContinuationDirections = setOf(DOWN_LEFT, RIGHT)
-        )
-        val rootBranch = TfbiFlickNode.SubMenu(
-            nextMap = mapOf(UP to nested, DOWN_LEFT to TfbiFlickNode.Input("ぎ")),
-            label = "き",
-            cancelOnTap = true,
-            parentContinuationDirections = setOf(UP)
-        )
-        val base = layout("third-flick").copy(
-            hierarchicalFlickMaps = mapOf(
-                "か" to TfbiFlickNode.StatefulKey(
-                    normalMap = mapOf(LEFT to rootBranch), label = "か"
-                )
-            )
-        )
-        val result = SumireFlickRotationMapper.apply(base, TfbiFlickRotation.CLOCKWISE)
-            .hierarchicalFlickMaps.getValue("か").normalMap.subMenu(LEFT)
-        assertEquals(setOf(UP), result.parentContinuationDirections)
-        assertEquals(rootBranch.label, result.label)
-        assertEquals(rootBranch.cancelOnTap, result.cancelOnTap)
-        assertEquals(setOf(UP_LEFT, RIGHT), result.nextMap.subMenu(UP).parentContinuationDirections)
-        assertSame(nested.nextMap, result.nextMap.subMenu(UP).nextMap)
-        assertEquals(nested.label, result.nextMap.subMenu(UP).label)
-        assertEquals(nested.cancelOnTap, result.nextMap.subMenu(UP).cancelOnTap)
-    }
+
+
+
 
     @Test
     fun rotationsKeepAllOutputsSpecialKeysAndPunctuation() {

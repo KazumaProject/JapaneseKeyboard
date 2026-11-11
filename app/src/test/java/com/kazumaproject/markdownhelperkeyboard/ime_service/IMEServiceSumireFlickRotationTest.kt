@@ -101,41 +101,9 @@ class IMEServiceSumireFlickRotationTest {
             .getValue(TfbiFlickDirection.LEFT).getValue(TfbiFlickDirection.DOWN_LEFT))
     }
 
-    @Test
-    fun inputModePreferenceListenerSelectsContractedVoicedOrAllCharacters() {
-        ReflectionHelpers.setField(service, "sumireInputStyle", "third-flick")
-        for (mode in SumireFlickInputMode.entries) {
-            AppPreference.sumire_flick_input_mode_preference = mode
-            notifyPreferenceChanged(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY)
-            val layout = ReflectionHelpers.callInstanceMethod<KeyboardLayout>(
-                service, "createSumireKeyboardLayout")
-            val outputs = layout.hierarchicalFlickMaps.getValue("か").outputs()
-            assertTrue(outputs.containsAll(listOf("か", "き", "く", "け", "こ")))
-            assertEquals(mode != SumireFlickInputMode.CONTRACTED, "ぎ" in outputs)
-            assertEquals(mode != SumireFlickInputMode.VOICED, "きゅ" in outputs)
-            assertEquals(mode != SumireFlickInputMode.VOICED, "きゅう" in outputs)
-        }
-    }
 
-    @Test
-    fun changingInputModeOnFloatingSumireAlsoUpdatesCachedDockedLayout() {
-        val (main, floating) = installSumireSurfaces("third-flick")
-        ReflectionHelpers.setField(service, "isKeyboardFloatingMode", true)
-        AppPreference.sumire_flick_input_mode_preference = SumireFlickInputMode.CONTRACTED
-        notifyPreferenceChanged(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY)
-        for (view in listOf(main.customLayoutDefault, floating.customLayoutFloating)) {
-            val outputs = layoutOf(view).hierarchicalFlickMaps.getValue("か").outputs()
-            assertTrue("Contracted sounds remain available", "きゅう" in outputs)
-            assertFalse("Voiced kana are removed from the contracted preset", "ぎ" in outputs)
-        }
-        AppPreference.sumire_flick_input_mode_preference = SumireFlickInputMode.VOICED
-        notifyPreferenceChanged(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY)
-        for (view in listOf(main.customLayoutDefault, floating.customLayoutFloating)) {
-            val outputs = layoutOf(view).hierarchicalFlickMaps.getValue("か").outputs()
-            assertTrue("Voiced kana remain available", "ぎ" in outputs)
-            assertFalse("Contracted sounds are removed from the voiced preset", "きゅう" in outputs)
-        }
-    }
+
+
 
     @Test
     fun changingRotationOnFloatingSumireAlsoUpdatesCachedDockedLayout() {
@@ -204,46 +172,9 @@ class IMEServiceSumireFlickRotationTest {
         assertEquals(SplitSlot.SUB, ReflectionHelpers.getField<SplitSlot>(service, "activeSplitSlot"))
     }
 
-    @Test
-    fun highlightPreferenceRefreshesDockedAndFloatingSurfacesInEveryMode() {
-        val (main, floating) = installSumireSurfaces("third-flick")
-        ReflectionHelpers.setField(service, "sumireInputKeyLayoutType", "flick")
-        ReflectionHelpers.setField(service, "isKeyboardFloatingMode", true)
-        for (mode in KeyboardInputMode.entries) {
-            ReflectionHelpers.setField(service, "customKeyboardMode", mode)
-            for (enabled in listOf(true, false)) {
-                AppPreference.sumire_mode_key_highlight_preference = enabled
-                notifyPreferenceChanged(AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY)
-                for (view in listOf(main.customLayoutDefault, floating.customLayoutFloating)) {
-                    assertEquals(if (enabled) 1 else 0, layoutOf(view).keys.count { it.isHiLighted })
-                }
-            }
-        }
-    }
 
-    @Test
-    fun splitHighlightRefreshIncludesEnglishAndNumbersAndDefersTouchingPane() {
-        val (_, floating) = installSumireSurfaces("third-flick")
-        ReflectionHelpers.setField(service, "sumireInputKeyLayoutType", "flick")
-        ReflectionHelpers.setField(service, "splitController",
-            SplitKeyboardController(floating.root.context, View(floating.root.context), {}, {}, {}))
-        val state = installSplitInput(SplitSlot.MAIN, floating, KeyboardType.SUMIRE)
-        for (mode in KeyboardInputMode.entries) {
-            ReflectionHelpers.setField(state, "customMode", mode)
-            for (enabled in listOf(true, false)) {
-                ReflectionHelpers.setField(state, "touching", true)
-                AppPreference.sumire_mode_key_highlight_preference = enabled
-                notifyPreferenceChanged(AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY)
-                val pending = ReflectionHelpers.getField<(() -> Unit)?>(state, "pendingLayout")
-                assertNotNull(pending)
-                ReflectionHelpers.setField(state, "touching", false)
-                pending!!.invoke()
-                ReflectionHelpers.setField(state, "pendingLayout", null)
-                assertEquals(if (enabled) 1 else 0,
-                    layoutOf(floating.customLayoutFloating).keys.count { it.isHiLighted })
-            }
-        }
-    }
+
+
 
     private fun installSumireSurfaces(
         style: String = "second-flick"
