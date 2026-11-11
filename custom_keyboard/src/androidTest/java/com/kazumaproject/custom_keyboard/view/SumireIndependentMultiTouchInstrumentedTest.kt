@@ -20,7 +20,7 @@ class SumireIndependentMultiTouchTestActivity : SumireNearestKeyTestActivity()
 
 @RunWith(AndroidJUnit4::class)
 class SumireIndependentMultiTouchInstrumentedTest {
-    @Test fun curvedKeysCanBeTappedInNormalAndFloatingPositions() {
+    @Test fun legacyCurveSettingsKeepKeysFlatAndTappableInBothWindowPositions() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val activity = instrumentation.startActivitySync(Intent(instrumentation.context,
             SumireIndependentMultiTouchTestActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as SumireIndependentMultiTouchTestActivity
@@ -32,7 +32,13 @@ class SumireIndependentMultiTouchInstrumentedTest {
                 }
                 instrumentation.waitForIdleSync()
                 lateinit var bounds: Rect
-                instrumentation.runOnMainSync { bounds = activity.keyBounds("あ") }
+                var allKeysFlat = false
+                instrumentation.runOnMainSync {
+                    val keyboard = activity.keyboard
+                    allKeysFlat = (0 until keyboard.childCount).all { keyboard.getChildAt(it).rotation == 0f }
+                    bounds = activity.keyBounds("あ")
+                }
+                assertTrue("floating=$floating hand=$hand keys should be flat", allKeysFlat)
                 val time = SystemClock.uptimeMillis()
                 for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
                     val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, bounds.exactCenterX(), bounds.exactCenterY(), 0)

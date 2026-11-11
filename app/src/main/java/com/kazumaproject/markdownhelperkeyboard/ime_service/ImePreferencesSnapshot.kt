@@ -241,6 +241,7 @@ data class ImePreferencesSnapshot(
     val zenzProfilePreference: String,
     val zenzEnableLongPressConversionPreference: Boolean,
     val zenzRerankPreference: Boolean,
+    val zenzaiDraftPreference: Boolean,
     val qwertyKeyVerticalMargin: Float,
     val qwertyKeyHorizontalGap: Float,
     val qwertyKeyIndentLarge: Float,
@@ -512,8 +513,10 @@ data class ImePreferencesSnapshot(
                 keySoundVolumePercent = appPreference.key_sound_volume_percent_preference ?: 0,
                 sumireInputKeyType =
                     appPreference.sumire_input_selection_preference ?: "flick-default",
-                sumireInputKeyLayoutType = appPreference.sumire_input_method,
-                sumireInputStyle = appPreference.sumire_keyboard_style,
+                sumireInputKeyLayoutType = if (appPreference.sumire_keyboard_style == "third-flick") "flick"
+                    else appPreference.sumire_input_method,
+                sumireInputStyle = if (appPreference.sumire_keyboard_style == "third-flick") "default"
+                    else appPreference.sumire_keyboard_style,
                 candidateColumns = appPreference.candidate_column_preference,
                 candidateColumnsLandscape = appPreference.candidate_column_landscape_preference,
                 candidateTabVisibility = appPreference.candidate_tab_preference,
@@ -671,6 +674,7 @@ data class ImePreferencesSnapshot(
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_long_press_preference,
                 zenzRerankPreference =
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_rerank_preference,
+                zenzaiDraftPreference = AppVariantConfig.hasZenz && appPreference.enable_zenzai_preference,
                 qwertyKeyVerticalMargin = appPreference.qwerty_key_vertical_margin ?: 5.0f,
                 qwertyKeyHorizontalGap = appPreference.qwerty_key_horizontal_gap ?: 2.0f,
                 qwertyKeyIndentLarge = appPreference.qwerty_key_indent_large ?: 23.0f,

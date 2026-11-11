@@ -1,3 +1,10 @@
 
 # Preserve the pinned upstream legal-code notice verbatim, including its final blank line.
 app/src/main/assets/licenses/sources/cc-by-sa-4.txt whitespace=-blank-at-eof
+
+# Preserve bundled third-party notices byte-for-byte, including upstream CRLF and whitespace.
+app/src/main/assets/software-licenses/*.txt -text -whitespace
+app/src/full/assets/software-licenses/*.txt -text -whitespace
+
+# The release notice is hash-verified; preserve upstream line endings and spacing.
+app/src/main/assets/licenses/sources/distribution-licenses.txt -text -whitespace

@@ -52,6 +52,9 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
         }
 
         sumireStylePreference?.apply {
+            if (value == "third-flick") {
+                summary = getString(com.kazumaproject.core.R.string.three_stage_flick_suspended)
+            }
             // Summaryの初期設定
             if (findIndexOfValue(value) >= 0) {
                 summary = entries[findIndexOfValue(value)].toString()

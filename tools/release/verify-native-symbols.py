@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject Play bundles missing extractable native symbols, and verify ELF build IDs."""
+"""Verify the Full Play bundle's ABIs, native symbols, and ELF build IDs."""
 import argparse
 import os
 from pathlib import Path
@@ -11,7 +11,8 @@ import zipfile
 
 
 def verify(bundle, readelf):
-    required = {(abi, library) for abi in ('arm64-v8a', 'x86_64')
+    release_abis = {'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'}
+    required = {(abi, library) for abi in release_abis
                 for library in ('libzenz.so', 'libomp.so')}
     with zipfile.ZipFile(bundle) as archive, tempfile.TemporaryDirectory() as directory:
         def build_id(name):
@@ -24,6 +25,10 @@ def verify(bundle, readelf):
             return match[1]
 
         names = set(archive.namelist())
+        native_abis = {name.split('/')[2] for name in names
+                       if name.startswith('base/lib/') and name.endswith('.so')}
+        if native_abis != release_abis:
+            raise ValueError(f'Unexpected Full bundle native ABIs: {sorted(native_abis)}')
         for abi, library in sorted(required):
             binary = f'base/lib/{abi}/{library}'
             symbols = f'BUNDLE-METADATA/com.android.tools.build.debugsymbols/{abi}/{library}.sym'

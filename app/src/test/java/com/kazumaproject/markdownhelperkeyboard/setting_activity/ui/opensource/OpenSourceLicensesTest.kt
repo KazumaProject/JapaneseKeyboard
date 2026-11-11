@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.BuildConfig
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ClassifiedDictionaries
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -9,6 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.security.MessageDigest
 
 @RunWith(RobolectricTestRunner::class)
@@ -16,6 +18,7 @@ import java.security.MessageDigest
 class OpenSourceLicensesTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val catalog get() = OpenSourceLicenses(context)
+    private val distribution get() = JSONObject(File("../tools/classified-dictionaries/distribution-manifest.json").readText())
 
     @Test fun editionsHaveOnlyTheirResolvedLibrariesAndModelsWithoutDuplicates() {
         val full = catalog.sections("full", false).flatMap { it.items }
@@ -25,15 +28,28 @@ class OpenSourceLicensesTest {
             assertEquals(items.size, items.map { it.id }.toSet().size)
             assertTrue(items.all { it.title.isNotBlank() && it.summary.isNotBlank() })
         }
-        assertEquals(137, full.count { it.id.startsWith("library/") })
+        assertEquals(138, full.count { it.id.startsWith("library/") })
         assertEquals(136, lite.count { it.id.startsWith("library/") })
         assertEquals(lite.map { it.id }.toSet(), fdroid.map { it.id }.toSet())
         assertTrue(full.any { it.id == "zenz-model" })
         assertFalse(lite.any { it.id in listOf("zenz-model", "llama.cpp", "external-models") })
         assertTrue(full.any { it.id.contains("litertlm-android") })
         assertFalse(lite.any { it.id.contains("litertlm-android") })
+        assertTrue(full.any { it.id.contains("litert-npu-runtime-google-tensor") })
+        assertFalse(lite.any { it.id.contains("litert-npu-runtime-google-tensor") })
         assertTrue(full.any { it.id == "library/androidx.core:core/1.17.0" })
         assertTrue(lite.any { it.id == "library/androidx.core:core/1.16.0" })
+    }
+
+    @Test fun universalAiRuntimeKeepsPinnedNoticesInFullEditionOnly() {
+        val native = catalog.sections("full", false).flatMap { it.items }.first { it.id == "ai-runtime" }.document()
+        assertTrue(native.contains("cd959bae99ff4bed22bef2604f45241c09bbb8c8"))
+        assertTrue(native.contains("0d3f509e57041fbd073a1ee84cd9ccd36d148446"))
+        assertTrue(native.contains("04f10f650d514df88b76d25e83db360142c7b174"))
+        assertTrue(native.contains("The ggml authors"))
+        assertTrue(native.contains("Sean Barrett"))
+        assertTrue(native.contains("David Reid"))
+        assertFalse(catalog.sections("lite", false).flatMap { it.items }.any { it.id == "ai-runtime" })
     }
 
     @Test fun dictionaryNoticesCoverEverySelectableCategoryAndCurrentRelease() {
@@ -43,11 +59,23 @@ class OpenSourceLicensesTest {
         ClassifiedDictionaries.all.forEach { spec ->
             assertTrue(items.any { it.id == "dictionary/classified/${spec.id}" })
         }
+        val manifest = distribution
+        val version = manifest.getString("version")
+        val revision = manifest.getString("revision")
         items.forEach {
             val html = it.document()
-            assertTrue(it.id, html.contains("v1.7.283 (b9f3375a1cfb0ce5e56f4da622ecc4e983364581)"))
+            assertTrue(it.id, html.contains("配布: $version ($revision)"))
             assertTrue(it.id, html.contains("<pre>"))
         }
+    }
+
+    @Test fun dictionaryDetailsShowPinnedEnglishInputs() {
+        val english = catalog.sections("lite", false).flatMap { it.items }
+            .single { it.id == "dictionary/english" }.document()
+        val manifest = distribution.getJSONObject("englishDictionary")
+        assertTrue(english.contains("<code>${manifest.getString("revision")}</code>"))
+        assertTrue(english.contains(manifest.getString("catalogUrl")))
+        assertTrue(english.contains(manifest.getString("reviewedGrammarSourceUrl")))
     }
 
     @Test fun correctedModelAndCoroutinesLicensesKeepOfflineOriginals() {
@@ -72,6 +100,7 @@ class OpenSourceLicensesTest {
             val notices = module.getJSONArray("notices")
             for (j in 0 until notices.length()) {
                 val notice = notices.getJSONObject(j)
+                if (notice.optString("sourceSet") == "full" && !BuildConfig.HAS_ZENZ) continue
                 val bytes = context.assets.open(notice.getString("asset")).use { it.readBytes() }
                 val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
                 assertEquals(notice.getString("asset"), notice.getString("sha256"), hash)

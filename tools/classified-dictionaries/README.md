@@ -1,9 +1,10 @@
 # Pinned classified dictionary distribution
 
-`prepare.py` imports `v1.7.283`, verifies its archive and all 463 asset
-hashes, and derives category provenance from hash-verified frozen source data.
-The 143 categories include 29 person, 59 facility, 6 event, 15 term and 8 media audience categories,
-Kampo (434 records) and Medical (92,683 records). New subcategories default OFF;
+The [dictionary license reference](../../docs/licenses/DICTIONARIES.md) identifies the
+bundled release, its categories, and the source notices. `prepare.py` verifies the
+published archive and per-file hashes and derives provenance from hash-verified inputs.
+The category set includes person, facility, event, term and media audience dictionaries,
+Kampo and Medical. New subcategories default OFF;
 retired person/event/term/facility switches are not inherited. Other saved category
 choices are preserved. Of the 67 distribution additions since v1.7.268, 65 populated categories are selectable and default OFF.
 The two empty media categories are excluded from the app registry and settings;
@@ -20,15 +21,33 @@ the converter.
 The five original input acquisition revisions and per-record copyright attribution
 are unconfirmed. Notice snapshot revisions are recorded separately.
 
+To update the bundled release, specify its published tag:
+
 ```sh
-python3 tools/classified-dictionaries/prepare.py
+python3 tools/classified-dictionaries/prepare.py --release <tag>
 python3 tools/classified-dictionaries/prepare.py --check
 ```
 
-`ClassifiedDictionaryInstrumentedTest` compares all 863,278 decoded records
-against count and SHA-256 multiset fingerprints generated from the frozen
-reading/surface/left POS/right POS/cost records. A second fixture verifies all
-5,138 English-reading pairs and costs against the pinned catalog. It also exercises category
+The importer resolves the release commit and published SHA-256 values on GitHub,
+verifies the archives and their manifests, and generates the offline HTML and the
+release-specific sections in `docs/licenses/DICTIONARIES.md`. Running `prepare.py`
+without a tag regenerates the pinned release. `--check` verifies the files locally
+and is used by release CI.
+
+Release and unsigned release builds run the dictionary license generator automatically
+before merging Android assets, including local AAB builds from Gradle or Android Studio.
+The generator uses `python3` and the checked-in manifest and notices, verifies the bundled
+dictionary hashes, and writes the HTML to Gradle's build directory. Import a different
+release with `--release <tag>` before building with that dictionary.
+
+Filtered releases with changed category triples rebuild the expected-record fixture
+from the staged binaries with the app’s JVM readers. This step uses the local
+Android SDK and Gradle setup. A release that changes category IDs or binary formats
+also needs the corresponding app support.
+
+`ClassifiedDictionaryInstrumentedTest` compares the decoded category records
+against counts and SHA-256 multiset fingerprints of reading, surface, left/right POS,
+and cost. A second fixture verifies English-reading pairs and costs against the pinned catalog. It also exercises category
 selection across the legacy and incremental backends and all three Japanese
 candidate modes, including prefix prediction. The SHA-256 fingerprints are summed
 modulo 2^256 so record ordering does not affect the comparison; duplicates still
@@ -103,7 +122,7 @@ builds, not release-device end-to-end keyboard latency.
 
 ```sh
 adb shell pm clear com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite
-adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.283 \
+adb shell am instrument -w -e dictionaryUpdatePerf true -e dictionaryVersion v1.7.285 \
   -e class com.kazumaproject.markdownhelperkeyboard.converter.DictionaryUpdatePerformanceInstrumentedTest \
   com.kazumaproject.markdownhelperkeyboard.classifiedprobe.lite.test/androidx.test.runner.AndroidJUnitRunner
 ```

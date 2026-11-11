@@ -284,4 +284,5 @@
     <string name="enable_direct_input_mode">Direct input mode</string>
     <string name="cursor_left">Move cursor left</string>
     <string name="cursor_right">Move cursor right</string>
+    <string name="three_stage_flick_suspended">3-stage flick is temporarily unavailable. The built-in keyboard uses normal flick input. Existing custom key definitions are preserved, but their 3-stage keys cannot be used or edited.</string>
 </resources>

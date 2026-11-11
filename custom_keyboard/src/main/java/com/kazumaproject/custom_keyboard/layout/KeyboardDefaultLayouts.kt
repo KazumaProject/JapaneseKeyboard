@@ -171,6 +171,12 @@ object KeyboardDefaultLayouts {
         sumireFlickInputMode: SumireFlickInputMode = SumireFlickInputMode.ALL,
         highlightSelectedMode: Boolean = true
     ): KeyboardLayout {
+        if (inputStyle == "third-flick") {
+            return createFinalLayout(
+                mode, dynamicKeyStates, "flick", "default", deleteKeyFlickSettings,
+                tfbiFlickRotation, sumireFlickInputMode, highlightSelectedMode
+            )
+        }
         val baseLayout = when (inputLayoutType) {
             "toggle" -> {
                 when (mode) {
@@ -5528,6 +5534,7 @@ object KeyboardDefaultLayouts {
             }
 
 
+
             "sumire" -> {
                 return createHiraganaLayoutToggle(
                     deleteKeyFlickSettings = deleteKeyFlickSettings, keys = keys
@@ -7071,6 +7078,7 @@ object KeyboardDefaultLayouts {
 
                 return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
             }
+
 
 
             "sumire" -> {
@@ -8987,6 +8995,7 @@ object KeyboardDefaultLayouts {
 
                 return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
             }
+
 
 
             "sumire" -> {

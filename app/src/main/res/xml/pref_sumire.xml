@@ -6,6 +6,11 @@
         android:key="sumire_input_preference_category"
         android:title="@string/category_sumire_input_keyboard_title"
         app:isPreferenceVisible="true">
+
+        <Preference
+            android:key="three_stage_flick_suspension_notice"
+            android:selectable="false"
+            android:summary="@string/three_stage_flick_suspended" />
         <Preference android:key="setting_route_candidate_display" android:title="@string/candidate_display_title" android:summary="@string/candidate_display_summary" />
 
 
@@ -20,6 +25,16 @@
             android:key="flick_keyboard_popup_view_style_preference"
             android:title="@string/flick_keyboard_popup_view_style_preference_title"
             android:summary="@string/flick_keyboard_popup_view_style_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="sumire_show_flick_popup_preference"
+            android:title="@string/show_flick_key_popup_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="sumire_show_long_press_popup_preference"
+            android:title="@string/show_long_press_key_popup_title" />
 
         <ListPreference
             android:defaultValue="touch_point"

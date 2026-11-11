@@ -295,6 +295,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var isEnglishFlickGuideEnabled: Boolean = false
     private var isNumberFlickGuideEnabled: Boolean = false
     private var popupViewStyle = PopupViewStyle(100, 28f)
+    private var showFlickPopup = true
+    private var showLongPressPopup = true
     private var keyboardFontSnapshot = KeyboardFontSnapshot()
 
     override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
@@ -821,6 +823,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         applyPopupTextSize()
         applyPopupColors()
         applyPopupKeyboardFont()
+    }
+
+    fun setKeyPopupVisibility(showFlickPopup: Boolean, showLongPressPopup: Boolean) {
+        if (this.showFlickPopup == showFlickPopup && this.showLongPressPopup == showLongPressPopup) return
+        this.showFlickPopup = showFlickPopup
+        this.showLongPressPopup = showLongPressPopup
+        cancelActiveTouch(KeyTouchCancelReason.PointerInterrupted)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -1541,6 +1550,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Padding setters for side keys (symbol, cursors, delete, enter, previous char) **/
     fun setPaddingToSideKeySymbol(paddingSize: Int) {
         binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
+    }
+
+    fun setSpecialKeyLabelScalePercent(percent: Int) {
+        val scale = percent.coerceIn(60, 150) / 100f
+        binding.keySwitchKeyMode.labelScale = scale
+        binding.sideKeySymbolModeContainer.setLabelScale(scale)
     }
 
     fun setUseThreeStateKeyboard(enabled: Boolean, numberSymbolKeyGapDp: Int = 4) {
@@ -2607,6 +2622,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Called when a long‐press is detected; show all related popups **/
     private fun onLongPressed() {
+        if (!showLongPressPopup) return
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
@@ -2705,7 +2721,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             skinGuide?.select(com.kazumaproject.core.ui.skin.PopupDirection.CENTER)
             return
         }
-        if (!isLongPressed) popupWindowActive.hide()
+        val showLongPressGuide = isLongPressed && showLongPressPopup
+        if (!showLongPressGuide) popupWindowActive.hide()
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
@@ -2713,29 +2730,29 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         it.setTenKeyTextWhenTapJapanese(it.id)
-                        if (isLongPressed) popTextActive.setTextTapJapanese(it.id)
+                        if (showLongPressGuide) popTextActive.setTextTapJapanese(it.id)
                     }
 
                     InputMode.ModeEnglish -> {
                         it.setTenKeyTextWhenTapEnglish(it.id)
-                        if (isLongPressed) popTextActive.setTextTapEnglish(it.id)
+                        if (showLongPressGuide) popTextActive.setTextTapEnglish(it.id)
                     }
 
                     InputMode.ModeNumber -> {
                         it.setTenKeyTextWhenTapNumber(it.id)
-                        if (isLongPressed) popTextActive.setTextTapNumber(it.id)
+                        if (showLongPressGuide) popTextActive.setTextTapNumber(it.id)
                     }
                 }
 
-                if (isLongPressed) {
+                if (showLongPressGuide) {
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 }
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                 it.isPressed = true
                 KeyboardFontGlyphDrawable.setImageDrawable(it, cachedOpenBracketDrawable, keyboardFontSnapshot)
-                if (isLongPressed) popTextActive.setTextTapNumber(it.id)
-                if (isLongPressed) {
+                if (showLongPressGuide) popTextActive.setTextTapNumber(it.id)
+                if (showLongPressGuide) {
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 }
             }
@@ -2745,6 +2762,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Called during a “flick” gesture in an ongoing move event **/
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
+        val popupEnabled = if (isLongPressed) showLongPressPopup else showFlickPopup
+        if (!popupEnabled) return
         if (skinGuide?.isShowing == true) {
             val direction = when (gestureType) {
                 GestureType.FlickLeft -> com.kazumaproject.core.ui.skin.PopupDirection.LEFT

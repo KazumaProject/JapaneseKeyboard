@@ -37,11 +37,15 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSpaceReplacement
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingLanguage
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.CustomThemeBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
+import java.io.File
+import java.io.InputStream
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
+import timber.log.Timber
 import com.kazumaproject.core.R as CoreR
 
 internal object CustomThemeColorPreferenceKeys {
@@ -58,6 +62,19 @@ object AppPreference {
     const val VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY = "voice_input_space_replacement_enabled"
     const val VOICE_INPUT_SPACE_REPLACEMENT_KEY = "voice_input_space_replacement"
     const val VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY = "voice_input_space_custom_text"
+    const val VOICE_INPUT_ENGINE_KEY = "voice_input_engine"
+    const val VOICE_INPUT_MODEL_KEY = "voice_input_model"
+    const val VOICE_INPUT_BACKEND_KEY = "voice_input_backend"
+
+    var voice_input_engine: String
+        get() = preferences.getString(VOICE_INPUT_ENGINE_KEY, "system") ?: "system"
+        set(value) = preferences.edit { it.putString(VOICE_INPUT_ENGINE_KEY, value) }
+    var voice_input_model: String
+        get() = preferences.getString(VOICE_INPUT_MODEL_KEY, "") ?: ""
+        set(value) = preferences.edit { it.putString(VOICE_INPUT_MODEL_KEY, value) }
+    var voice_input_backend: String
+        get() = preferences.getString(VOICE_INPUT_BACKEND_KEY, "cpu") ?: "cpu"
+        set(value) = preferences.edit { it.putString(VOICE_INPUT_BACKEND_KEY, value) }
 
     var voice_input_space_replacement_enabled: Boolean
         get() = preferences.getBoolean(VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY, false)
@@ -82,6 +99,9 @@ object AppPreference {
             enabled = voice_input_space_replacement_enabled,
             replacement = VoiceInputSpaceReplacement.fromPreference(voice_input_space_replacement),
             customText = voice_input_space_custom_text,
+            engine = voice_input_engine,
+            modelPath = voice_input_model,
+            backend = voice_input_backend,
         )
 
     const val PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY =
@@ -140,11 +160,16 @@ object AppPreference {
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
         "flick_tfbi_flick_start_position_preference"
     const val FLICK_EDITOR_PREVIEW_KEY = "flick_editor_preview_preference"
+    const val TENKEY_SHOW_FLICK_POPUP_KEY = "tenkey_show_flick_popup_preference"
+    const val TENKEY_SHOW_LONG_PRESS_POPUP_KEY = "tenkey_show_long_press_popup_preference"
+    const val SUMIRE_SHOW_FLICK_POPUP_KEY = "sumire_show_flick_popup_preference"
+    const val SUMIRE_SHOW_LONG_PRESS_POPUP_KEY = "sumire_show_long_press_popup_preference"
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
     const val TENKEY_USE_THREE_STATE_KEY = "tenkey_use_three_state_keyboard_preference"
     const val TENKEY_NUMBER_SYMBOL_KEY_GAP_KEY = "tenkey_number_symbol_key_gap_preference"
+    const val TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY = "tenkey_special_key_label_scale_percent"
     const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
@@ -1002,8 +1027,22 @@ object AppPreference {
                 } catch (_: Throwable) {
                     // init completed its future exceptionally; the loading UI owns retry.
                 }
+                runCatching { removeObsoleteCandidateScorerData(context.applicationContext) }
+                    .onFailure { Timber.w(it, "Could not remove obsolete candidate scorer data") }
             }, "AppPreferenceInit").start()
         }
+    }
+
+    private fun removeObsoleteCandidateScorerData(context: Context) {
+        context.deleteSharedPreferences("candidate_scoring_models")
+        // The importer wrote copies here. Never follow paths from the old preferences.
+        val directory = File(context.noBackupFilesDir.canonicalFile, "candidate-scorer")
+        if (!directory.isDirectory || directory.canonicalFile != directory) return
+        val extensions = setOf("gguf", "onnx", "model")
+        directory.listFiles { file ->
+            file.isFile && file.name.startsWith("scorer-") && file.extension in extensions
+        }?.forEach { it.delete() }
+        directory.delete()
     }
 
     suspend fun awaitInitializationSuspending() = kotlinx.coroutines.suspendCancellableCoroutine<Unit> { continuation ->
@@ -1952,6 +1991,18 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putString(SUMIRE_FLICK_INPUT_MODE_KEY, value.preferenceValue)
         }
+
+    val tenkey_show_flick_popup_preference: Boolean
+        get() = preferences.getBoolean(TENKEY_SHOW_FLICK_POPUP_KEY, true)
+
+    val tenkey_show_long_press_popup_preference: Boolean
+        get() = preferences.getBoolean(TENKEY_SHOW_LONG_PRESS_POPUP_KEY, true)
+
+    val sumire_show_flick_popup_preference: Boolean
+        get() = preferences.getBoolean(SUMIRE_SHOW_FLICK_POPUP_KEY, true)
+
+    val sumire_show_long_press_popup_preference: Boolean
+        get() = preferences.getBoolean(SUMIRE_SHOW_LONG_PRESS_POPUP_KEY, true)
 
     var sumire_mode_key_highlight_preference: Boolean
         get() = preferences.getBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, false)
@@ -3519,6 +3570,13 @@ object AppPreference {
             )
         }
 
+    var tenkey_special_key_label_scale_percent: Int
+        get() = preferences.getInt(TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY, 100).coerceIn(60, 150)
+        set(value) = preferences.edit {
+            if (value == 100) it.remove(TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY)
+            else it.putInt(TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY, value.coerceIn(60, 150))
+        }
+
     var gojuon_key_width_scale_percent: Int
         get() = preferences.getInt("gojuon_key_width_scale_percent", 100).coerceIn(60, 140)
         set(value) = preferences.edit { it.putInt("gojuon_key_width_scale_percent", value.coerceIn(60, 140)) }
@@ -4020,6 +4078,9 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first, value)
         }
+
+    val enable_zenzai_preference: Boolean
+        get() = preferences.getBoolean("enable_ai_conversion_zenzai_preference", false)
 
     var enable_zenz_rerank_preference: Boolean
         get() = preferences.getBoolean(
@@ -5208,6 +5269,60 @@ object AppPreference {
             }
         )
     }
+
+    private val customThemeBackup by lazy {
+        CustomThemeBackup(
+            preferenceDefaults = listOf(
+                KEYBOARD_THEME_MODE,
+                KeyboardSkinId.PREFERENCE_KEY to KeyboardSkinId.DEFAULT.preferenceValue,
+                CUSTOM_THEME_BG_COLOR,
+                CUSTOM_THEME_KEY_COLOR,
+                CUSTOM_THEME_SPECIAL_KEY_COLOR,
+                CUSTOM_THEME_KEY_TEXT_COLOR,
+                CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR,
+                CUSTOM_THEME_CANDIDATE_TEXT_COLOR,
+                CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR,
+                CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR,
+                CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_BG_COLOR,
+                CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_TEXT_COLOR,
+                CUSTOM_THEME_SHORTCUT_ICON_COLOR,
+                KEY_POPUP_USE_CUSTOM_COLOR,
+                KEY_POPUP_BACKGROUND_COLOR,
+                KEY_POPUP_TEXT_COLOR,
+                CUSTOM_THEME_INPUT_COLOR_ENABLE,
+                CUSTOM_THEME_PRE_EDIT_BG,
+                CUSTOM_THEME_PRE_EDIT_TEXT,
+                CUSTOM_THEME_POST_EDIT_BG,
+                CUSTOM_THEME_POST_EDIT_TEXT,
+                CUSTOM_THEME_BORDER_ENABLE,
+                CUSTOM_THEME_BORDER_COLOR,
+                CUSTOM_THEME_BORDER_WIDTH,
+                ROUND_KEYBOARD_CORNER_PREFERENCE,
+                KEYBOARD_CORNER_RADIUS_DP_PREFERENCE,
+                KEYBOARD_CORNER_TOP_LEFT_PREFERENCE,
+                KEYBOARD_CORNER_TOP_RIGHT_PREFERENCE,
+                KEYBOARD_CORNER_BOTTOM_LEFT_PREFERENCE,
+                KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE,
+                LIQUID_GLASS_ENABLE,
+                LIQUID_GLASS_BLUR_RADIUS,
+                LIQUID_GLASS_KEY_ALPHA,
+            ),
+            integerRanges = mapOf(
+                CUSTOM_THEME_BORDER_WIDTH.first to 1..8,
+                KEYBOARD_CORNER_RADIUS_DP_PREFERENCE.first to 0..64,
+                LIQUID_GLASS_BLUR_RADIUS.first to 0..255,
+                LIQUID_GLASS_KEY_ALPHA.first to 0..255,
+            ),
+            stringValues = mapOf(
+                KEYBOARD_THEME_MODE.first to setOf("default", "light", "dark", "custom"),
+                KeyboardSkinId.PREFERENCE_KEY to KeyboardSkinId.entries.map { it.preferenceValue }.toSet(),
+            ),
+        )
+    }
+
+    internal fun exportCustomThemeToJson(): String = customThemeBackup.export(preferences)
+
+    internal fun importCustomThemeFromJson(input: InputStream) = customThemeBackup.restore(input, preferences)
 
     /**
      * SharedPreferences 全体を JSON として書き出す（将来キーが増えても自動対応）

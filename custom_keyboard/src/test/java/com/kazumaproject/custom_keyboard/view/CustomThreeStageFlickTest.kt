@@ -1,72 +1,89 @@
 package com.kazumaproject.custom_keyboard.view
 
 import android.app.Activity
+import android.os.Looper
 import android.view.ContextThemeWrapper
 import android.view.MotionEvent
 import android.view.View
 import com.kazumaproject.custom_keyboard.data.*
-import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection.*
-import org.junit.Assert.assertEquals
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class CustomThreeStageFlickTest {
-    @Test fun idMapsWinOverLabelsAndThreeStageGesturesCommitOnlyTheirOwnOutput() {
+    @Test fun restoredBuiltInStylesUseNormalFlickForEveryLanguageAndOldInputMethod() {
+        for (mode in KeyboardInputMode.entries) for (method in listOf("flick", "toggle", "romaji")) {
+            val expected = KeyboardDefaultLayouts.createFinalLayout(mode, emptyMap(), "flick", "default")
+            val restored = KeyboardDefaultLayouts.createFinalLayout(mode, emptyMap(), method, "third-flick")
+            assertEquals(expected, restored)
+            assertTrue(restored.hierarchicalFlickMaps.isEmpty())
+            assertFalse(restored.keys.any { it.keyType == KeyType.HIERARCHICAL_FLICK })
+        }
+    }
+
+    @Test fun suspendedKeysCannotDispatchTapHoldDoubleTapOrNearestKeyInputAfterRebuild() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
-        val view = FlickKeyboardView(ContextThemeWrapper(activity,
+        val keyboard = FlickKeyboardView(ContextThemeWrapper(activity,
             com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar))
         val actions = mutableListOf<KeyAction>()
-        view.setOnKeyboardActionListener(object : FlickKeyboardView.OnKeyboardActionListener {
+        keyboard.setOnKeyboardActionListener(object : FlickKeyboardView.OnKeyboardActionListener {
             override fun onPress(action: KeyAction) = Unit
             override fun onAction(action: KeyAction, isFlick: Boolean) { actions += action }
-            override fun onActionLongPress(action: KeyAction) = Unit
-            override fun onActionUpAfterLongPress(action: KeyAction) = Unit
+            override fun onActionLongPress(action: KeyAction) { actions += action }
+            override fun onActionUpAfterLongPress(action: KeyAction) { actions += action }
             override fun onFlickDirectionChanged(direction: FlickDirection) = Unit
-            override fun onFlickActionLongPress(action: KeyAction) = Unit
-            override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) = Unit
+            override fun onFlickActionLongPress(action: KeyAction) { actions += action }
+            override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) { actions += action }
         })
-        view.setFlickSensitivityValue(200)
-        fun node(text: String) = TfbiFlickNode.StatefulKey(mapOf(
-            TAP to TfbiFlickNode.Input("tap"),
-            RIGHT to TfbiFlickNode.SubMenu(mapOf(
-                RIGHT to TfbiFlickNode.Input("first"),
-                DOWN to TfbiFlickNode.SubMenu(mapOf(
-                    DOWN to TfbiFlickNode.Input("second"), LEFT to TfbiFlickNode.Input(text)
-                ))
-            ))
-        ), label = "same")
-        val keys = (0..1).map { KeyData(label = "same", row = 0, column = it, isFlickable = true,
-            keyType = KeyType.HIERARCHICAL_FLICK, keyId = "id$it") }
-        view.setKeyboard(KeyboardLayout(keys, emptyMap(), 2, 1,
-            hierarchicalFlickMaps = mapOf("id0" to node("one"), "id1" to node("two"), "same" to node("wrong"))))
-        activity.setContentView(view)
-        view.measure(View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY))
-        view.layout(0, 0, 800, 400)
-        fun gesture(index: Int, cancel: Boolean = false, releaseFirst: Boolean = false) {
-            val key = view.getChildAt(index)
-            val x = key.width / 2f
-            val y = key.height / 2f
-            val points = mutableListOf(Triple(MotionEvent.ACTION_DOWN, x, y),
-                Triple(MotionEvent.ACTION_MOVE, x + 80f, y))
-            if (!releaseFirst) {
-                points += Triple(MotionEvent.ACTION_MOVE, x, y + 80f)
-                points += Triple(MotionEvent.ACTION_MOVE, x - 80f, y)
-            }
-            val last = points.last()
-            points += Triple(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP, last.second, last.third)
-            points.forEachIndexed { n, point ->
-                val event = MotionEvent.obtain(0L, n * 20L, point.first, point.second, point.third, 0)
-                try { key.dispatchTouchEvent(event) } finally { event.recycle() }
+        val blocked = KeyData("saved", 0, 0, true, action = KeyAction.Text("blocked"),
+            keyType = KeyType.HIERARCHICAL_FLICK, keyId = "saved")
+        val ordinary = KeyData("ok", 0, 1, false, action = KeyAction.Text("ok"), keyId = "ordinary")
+        val saved = TfbiFlickNode.StatefulKey(mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("saved")), label = "saved")
+        val layout = KeyboardLayout(listOf(blocked, ordinary), emptyMap(), 2, 1,
+            hierarchicalFlickMaps = mapOf("saved" to saved))
+        activity.setContentView(keyboard)
+        fun tap(index: Int, hold: Boolean = false) {
+            val key = keyboard.getChildAt(index)
+            assertTrue("Key $index has no bounds", key.width > 0 && key.height > 0)
+            val position = IntArray(2).also(key::getLocationOnScreen)
+            val owner = IntArray(2).also(keyboard::getLocationOnScreen)
+            val x = position[0] + key.width / 2f
+            val y = position[1] + key.height / 2f
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                val now = android.os.SystemClock.uptimeMillis()
+                val event = MotionEvent.obtain(now, now, action, x, y, 0)
+                event.offsetLocation(-owner[0].toFloat(), -owner[1].toFloat())
+                keyboard.dispatchTouchEvent(event)
+                event.recycle()
+                if (action == MotionEvent.ACTION_DOWN && hold) shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
             }
         }
-        gesture(0); gesture(1); gesture(0, cancel = true); gesture(0, releaseFirst = true)
-        assertEquals(listOf(KeyAction.Text("one"), KeyAction.Text("two"), KeyAction.Text("first")), actions)
+        for (hitMode in KeyHitTestMode.entries) {
+            keyboard.setKeyboard(layout, hitMode)
+            keyboard.measure(View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY))
+            keyboard.layout(0, 0, 800, 400)
+            assertFalse(keyboard.getChildAt(0).isEnabled)
+            tap(0); tap(0); tap(0, hold = true)
+            assertTrue("$hitMode: $actions", actions.isEmpty())
+            keyboard.setVisibleKeyLabels(null)
+            keyboard.setKeyboard(layout, hitMode)
+            assertFalse(keyboard.getChildAt(0).isEnabled)
+            tap(0)
+            assertTrue(actions.isEmpty())
+            tap(1)
+            assertEquals(listOf(KeyAction.Text("ok")), actions)
+            actions.clear()
+            assertEquals(saved, layout.hierarchicalFlickMaps["saved"])
+        }
         activity.finish()
     }
 }

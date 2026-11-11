@@ -71,10 +71,12 @@ internal class OpenSourceLicenses(private val context: Context) {
                 val version = module.getString("version")
                 val licenses = module.getJSONArray("licenses")
                 val terms = (0 until licenses.length()).joinToString(" / ") { licenses.getJSONObject(it).getString("name") }
-                LicenseItem("library/$name/$version", name, "$version · Apache License 2.0") {
+                val usesApacheLicense = terms.contains("apache", ignoreCase = true)
+                val summary = if (usesApacheLicense) "Apache License 2.0" else terms
+                LicenseItem("library/$name/$version", name, "$version · $summary") {
                     val notices = module.getJSONArray("notices")
                     val originals = buildString {
-                        append(original("licenses/sources/apache-2.txt"))
+                        if (usesApacheLicense) append(original("licenses/sources/apache-2.txt"))
                         for (i in 0 until notices.length()) {
                             val notice = notices.getJSONObject(i)
                             append("<h3>${escape(notice.getString("title"))}</h3>")
@@ -111,6 +113,11 @@ internal class OpenSourceLicenses(private val context: Context) {
                         link("https://github.com/azooKey/llama.cpp/tree/88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c"),
                         "88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c",
                         text(R.string.license_llama_changes), "MIT License", original("software-licenses/llama-mit.txt"))
+                },
+                LicenseItem("ai-runtime", "ggml-org/llama.cpp / libmtmd / Vulkan headers", "MIT, Apache-2.0 and bundled third-party notices") {
+                    "<h1>llama.cpp / libmtmd</h1>" +
+                        link("https://github.com/ggml-org/llama.cpp/tree/cd959bae99ff4bed22bef2604f45241c09bbb8c8") +
+                        original("software-licenses/ai-runtime-notices.txt")
                 },
                 LicenseItem("openmp", "LLVM OpenMP runtime", "Apache License 2.0 with LLVM Exceptions") {
                     document("LLVM OpenMP runtime", text(R.string.license_openmp_overview),

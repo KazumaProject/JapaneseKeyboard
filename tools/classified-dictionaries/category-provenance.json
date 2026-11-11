@@ -1,7 +1,7 @@
 {
-  "personSourceSha256": "83a4ad28bc5cf0d44d72f68486a3c452a3c2b2e0af672f091f92bfcb4b55e0cf",
-  "revision": "b9f3375a1cfb0ce5e56f4da622ecc4e983364581",
-  "version": "v1.7.283",
+  "personSourceSha256": "f012781c9077679da2267dff02b440a310dc9d10875756d2caee9566b77f524a",
+  "revision": "f14e2793ef07c93f0d7136f14bbd5270eb3e0c07",
+  "version": "v1.7.285",
   "inputSha256": {
     "src/main/bin/names.txt": "20562a407ab185c53ade0f3818a36ed310ff730f02718e99f200392b963ce58a",
     "src/main/bin/only_neologd.txt.zip": "64222fa806e424556b662619fb7cba9ac9683f89959afee909dadb112027458e",
@@ -152,9 +152,14 @@
     "src/main/classification/reviews/2026-10-30-wikidata-event-restorations.jsonl": "2be30b1359e762b19f7d77f29b3a156d8b5b98b380c9750f8a944bd00950fc36",
     "src/main/classification/reviews/2026-11-01-neologism-issues.jsonl": "9451d6fd7da668c867932eb5fcf3e7dc5ef5bf7a3a931b8f9a0511e400b68a13",
     "src/main/classification/reviews/2026-11-01-open-candidate-issues.jsonl": "7028c4c04fa8b1553c1842505e5b03bb6ea6073d1b3f9800e9c34f78c39bc660",
+    "src/main/classification/reviews/2026-11-02-open-candidate-issues.jsonl": "d65b00bde2e70dcc5572d111c043ad9cb6f9c348309e0970184b539aa39939a3",
+    "src/main/classification/reviews/2026-11-02-open-candidate-issues_demographics.jsonl": "e15072bc3a06b419b53ad678a83ccfb00f54811cbf77ea7095fdd5f4893d5dfe",
+    "src/main/classification/reviews/2026-11-02-person-unit-type-corrections.jsonl": "1dd402f6d208d861da34affa77cd8b4f584b3b69f15061fb2c12aa5bbaff3ef4",
+    "src/main/classification/reviews/2026-11-08-open-candidate-issues.jsonl": "7f3d5e964a451123355610de7b5e291a5db9501b0f743fe13e2fad2c1dd94a00",
+    "src/main/classification/reviews/2026-11-08-open-candidate-issues_demographics.jsonl": "5c5180334c3b13802166054241ac419390998b68415ff70ebfd6c6073c6a7f08",
     "src/main/classification/reviews/collection-cf7e87c20f1b1c28.jsonl": "0b871422af9c55e7d172b5b0bd9efcfcbae45bdcdebce43bfece67875732addb"
   },
-  "decisionSha256": "baffaa01d3a5f78275fce031f59136c7f5c262986485740780888b4db0e89163",
+  "decisionSha256": "b07bb1c4a7b7e26ed5162077a0d3b748980c07ab27f7a501aabaddfc28fc3fc5",
   "categorySourcePairs": {
     "address": {
       "place": 147777,
@@ -597,80 +602,80 @@
       "person": 12
     },
     "organization": {
-      "neologd": 18715,
+      "neologd": 18716,
       "person": 1343,
       "web": 19605,
       "wiki": 8182
     },
     "person/actor": {
-      "wiki": 957,
       "web": 3817,
-      "person": 1119,
-      "neologd": 1472
+      "neologd": 1472,
+      "wiki": 957,
+      "person": 1119
     },
     "person/art_design": {
+      "neologd": 25,
       "wiki": 120,
-      "person": 17,
       "web": 778,
-      "neologd": 25
+      "person": 17
     },
     "person/broadcaster": {
-      "web": 1134,
-      "person": 333,
       "neologd": 52,
-      "wiki": 111
+      "person": 333,
+      "wiki": 111,
+      "web": 1134
     },
     "person/business": {
-      "person": 225,
-      "web": 2777,
       "neologd": 432,
+      "web": 2777,
+      "person": 225,
       "wiki": 769
     },
     "person/comedian": {
       "person": 1715,
+      "wiki": 5,
       "neologd": 24,
-      "web": 17,
-      "wiki": 5
+      "web": 17
     },
     "person/competitive_games": {
-      "web": 93,
       "person": 1082,
-      "neologd": 3,
-      "wiki": 7
+      "wiki": 7,
+      "web": 93,
+      "neologd": 3
     },
     "person/film_game_creator": {
-      "person": 59,
-      "web": 162,
       "wiki": 20,
+      "web": 162,
+      "person": 59,
       "neologd": 16
     },
     "person/given_name_origin_foreign": {
-      "neologd": 7,
+      "wiki": 25,
       "web": 18,
-      "wiki": 23
+      "neologd": 7
     },
     "person/given_name_origin_japanese": {
       "neologd": 606,
-      "web": 1238,
-      "wiki": 373,
-      "person": 289
+      "wiki": 372,
+      "web": 1236,
+      "person": 288
     },
     "person/given_name_origin_unconfirmed": {
-      "wiki": 722,
-      "person": 543,
+      "neologd": 1064,
+      "wiki": 721,
       "web": 2386,
-      "neologd": 1064
+      "person": 542
     },
     "person/idol": {
       "person": 105,
-      "web": 106,
       "wiki": 40,
+      "web": 106,
       "neologd": 3
     },
     "person/manga_illustration": {
       "neologd": 74,
-      "web": 126,
       "person": 22,
+      "web": 126,
       "wiki": 6
     },
     "person/musician": {
@@ -681,103 +686,103 @@
     },
     "person/online_creator": {
       "person": 72,
-      "wiki": 31,
       "web": 48,
+      "wiki": 31,
       "neologd": 25
     },
     "person/other_identified": {
       "neologd": 259,
-      "wiki": 1206,
       "person": 186,
-      "web": 3518
+      "web": 3518,
+      "wiki": 1206
     },
     "person/performing_arts": {
-      "person": 18,
       "web": 229,
       "wiki": 25,
-      "neologd": 40
+      "neologd": 40,
+      "person": 18
     },
     "person/personal_name_origin_foreign": {
-      "neologd": 516,
-      "web": 1112,
+      "neologd": 532,
+      "wiki": 728,
       "person": 107,
-      "wiki": 724
+      "web": 1120
     },
     "person/personal_name_origin_japanese": {
-      "person": 8037,
-      "web": 42248,
-      "neologd": 14916,
-      "wiki": 15093,
+      "neologd": 14907,
+      "web": 42250,
+      "person": 8040,
+      "wiki": 15091,
       "place": 3
     },
     "person/personal_name_origin_unconfirmed": {
-      "wiki": 19014,
-      "person": 10206,
-      "neologd": 20387,
-      "web": 51039,
+      "person": 10208,
+      "web": 51038,
+      "neologd": 20381,
+      "wiki": 19012,
       "place": 8
     },
     "person/politics_public": {
       "wiki": 263,
       "web": 1240,
-      "person": 53,
-      "neologd": 49
+      "neologd": 49,
+      "person": 53
     },
     "person/royalty_nobility": {
-      "neologd": 42,
       "wiki": 84,
+      "neologd": 42,
       "web": 160,
       "person": 2
     },
     "person/science_education": {
-      "wiki": 1210,
-      "web": 5268,
       "neologd": 967,
-      "person": 700
+      "web": 5268,
+      "person": 700,
+      "wiki": 1210
     },
     "person/sports": {
       "person": 2872,
+      "neologd": 215,
       "web": 3853,
-      "wiki": 997,
-      "neologd": 215
+      "wiki": 997
     },
     "person/surname_origin_foreign": {
-      "web": 19,
-      "wiki": 30,
-      "person": 3,
-      "neologd": 17
+      "web": 21,
+      "neologd": 19,
+      "wiki": 31,
+      "person": 3
     },
     "person/surname_origin_japanese": {
-      "wiki": 4762,
-      "neologd": 5407,
-      "web": 14239,
-      "person": 2172,
+      "neologd": 5403,
+      "web": 14234,
+      "wiki": 4761,
+      "person": 2170,
       "place": 1
     },
     "person/surname_origin_unconfirmed": {
-      "neologd": 5037,
-      "web": 13964,
-      "wiki": 4623,
-      "person": 2091,
-      "place": 6
+      "place": 6,
+      "neologd": 5036,
+      "person": 2090,
+      "web": 13960,
+      "wiki": 4623
     },
     "person/thought": {
       "person": 357,
-      "web": 93,
       "wiki": 8,
+      "web": 93,
       "neologd": 4
     },
     "person/voice_actor": {
-      "web": 482,
       "person": 395,
       "wiki": 55,
+      "web": 482,
       "neologd": 35
     },
     "person/writer": {
       "web": 921,
-      "neologd": 122,
       "wiki": 85,
-      "person": 54
+      "person": 54,
+      "neologd": 122
     },
     "place": {
       "wiki": 14677,
@@ -993,6 +998,2372 @@
     "categoryCounts": {
       "term/specialist/law_politics": 373
     }
+  },
+  "releaseReview": {
+    "addedDictionaryRows": 69,
+    "addedPairs": 66,
+    "alreadyConvertedPairs": 7,
+    "alreadyRegisteredPairs": 17,
+    "audienceAssignments": 3,
+    "baseArchiveSha256": "76a2a8f029260dfb865eabe4f25beb56172c627b271736411d616d15248a44ae",
+    "baseRelease": "english-dictionary-preview.3",
+    "builderRevision": "b5a9e49560f7e83814adfeec3ded023b2557ebd8",
+    "classificationManifestSha256": "1450e01f71e8e6655f4996b22a7bea4a584a746f7d13f6995090fc860c7ee93b",
+    "reviewPath": "src/main/classification/reviews/2026-11-08-open-candidate-issues.jsonl",
+    "reviewSha256": "7f3d5e964a451123355610de7b5e291a5db9501b0f743fe13e2fad2c1dd94a00",
+    "reviewedCandidates": 91,
+    "reviewedIssues": 39,
+    "verificationScope": "Shipped-binary readback and JVM CLI checks; application-wide ranking and Android behavior unverified",
+    "withheldPairs": 1,
+    "records": [
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "0db9a1c3f432eed4272500f8f52fc1200714ab842b72c9631a7980203b4d9cec",
+        "categories": [
+          "term/specialist/economics_management"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/economics_management"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/318",
+          "kind": "independent_source",
+          "reading": "あんほすてっどうぉれっと",
+          "reference": "https://www.fsa.go.jp/inter/fatf/20260303/20260303.html",
+          "related_references": [
+            "https://bittimes.net/news/218513.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "dce3c1050f660b67d992e2cf35a3e0cedcf687930fc6edacfd9f080b88f2e39f",
+          "surface": "アンホステッド・ウォレット"
+        },
+        "reading": "あんほすてっどうぉれっと",
+        "reason": "Issue #318。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "アンホステッド・ウォレット"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "1138e49e0871e7bedd92bba9641e9fd2e7d5cd83274a35ee05a10ea25ebb390c",
+        "categories": [
+          "work_anime"
+        ],
+        "evidence": {
+          "categories": [
+            "work_anime"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/305",
+          "kind": "independent_source",
+          "reading": "めいでんぶらっど",
+          "reference": "https://news.ponycanyon.co.jp/2026/11/127564",
+          "related_references": [
+            "https://www.ppi.co.jp/news/ppipress20260821/",
+            "https://maiden-blood.com/news/information/14/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "1b58cd03debe5cf484115a1a28e776ace195e4eeef9cde3aa694e88bfccb0f13",
+          "surface": "Maiden Blood"
+        },
+        "reading": "めいでんぶらっど",
+        "reason": "Issue #305。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Maiden Blood"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 8400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "13bc6e5a1a17f590bf213a228dbdf1fc9915e03ce3023ac7075e8ee9630efc1e",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/257",
+          "kind": "independent_source",
+          "reading": "えこーたいむ",
+          "reference": "https://www.amazon.co.jp/Echo-Time-2026",
+          "related_references": [
+            "https://press.aboutamazon.com/jp/2026/10/amazon-unveils-echo-time-and-echo-dot-designed-for-its-generative-ai-powered-alexa",
+            "https://www.aboutamazon.jp/news/devices/new-echo-time-and-echo-dot-for-alexa-plus",
+            "https://pixela-group.jp/press/2026/20261023.html",
+            "https://www.atpress.ne.jp/news/640971"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "df0b3d904c6491b292b1366f7adc2dab959aa50207d60c08fa85ef062aec25dd",
+          "surface": "Echo Time"
+        },
+        "reading": "えこーたいむ",
+        "reason": "Issue #257。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Echo Time"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "192dd540cdb63f1db837fbdb30d750daad6a80e01fe6e0c3f5bc11354705a6ef",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/319",
+          "kind": "independent_source",
+          "reading": "なのもんすたー",
+          "reference": "https://item.rakuten.co.jp/koizumi-onlineshop/khdm705/",
+          "related_references": [
+            "https://prtimes.jp/main/html/rd/p/000000249.000016333.html"
+          ],
+          "source_note": "メーカー直営店の製品見出しとその説明で英字名とカナの対応を確認。",
+          "source_sha256": "5e78a7a36f89b0f00ab4a0754ff8bcc897b1ba72bd043f6b2796e5b42c9e56ee",
+          "surface": "Nano MONSTER"
+        },
+        "reading": "なのもんすたー",
+        "reason": "Issue #319。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Nano MONSTER"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "2045a4935b9b89dcaf6f015cb9683e787a4cfa7ec50cb9ac0c01e47428d49f3c",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/299",
+          "kind": "independent_source",
+          "reading": "はっしゅじぇっとみにくーる",
+          "reference": "https://www.dyson.co.jp/discover/news/latest/introducing-hushjet-mini-cool",
+          "related_references": [
+            "https://www.dyson.co.jp/air-treatment/portable-fans/hushjet-mini-cool",
+            "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/232",
+            "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/154"
+          ],
+          "source_note": "メーカー発表の製品名と対応するカナを確認。ブランドに対応する読みを除き、製品固有名を採用。",
+          "surface": "HushJet Mini Cool"
+        },
+        "reading": "はっしゅじぇっとみにくーる",
+        "reason": "Issue #299。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "HushJet Mini Cool"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "2979b92293ec0d178c3783cc081ca4a53282999fdd671ca773477ff5a6bfdef0",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/322",
+          "kind": "independent_source",
+          "reading": "ぶれーどさや",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000285.000009955.html",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "c7ae81111a2ca99d8db6f95f4ffb0b29e7ab09b8ec1f8adedb7090d653d7bb72",
+          "surface": "BLADE SAYA"
+        },
+        "reading": "ぶれーどさや",
+        "reason": "Issue #322。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "BLADE SAYA"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "2a4a84d7702dec4737585bf404593a61af9d752be82f73322fc5783af6e5e0f6",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/322",
+          "kind": "independent_source",
+          "reading": "ぷらもほんやく",
+          "reference": "https://www.preferred.jp/ja/news/pr20261007",
+          "related_references": [
+            "https://translate.preferredai.jp/news/20261007-1-plamo3-major-update/",
+            "https://www.preferred.jp/ja/news/pr20251202",
+            "https://www.preferred.jp/ja/news/pr20261105"
+          ],
+          "source_note": "提供元発表でPLaMoのカナと翻訳サービス名を確認し、翻訳の標準読みを結合する。全文ルビの直接掲載とは区別する。",
+          "source_sha256": "e3bd562aedf75f86df7f090c74f9c5117af2ab7c54ddd4f8d7098580f640942b",
+          "surface": "PLaMo翻訳"
+        },
+        "reading": "ぷらもほんやく",
+        "reason": "Issue #322。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "PLaMo翻訳"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "2fc622e0971930b21399b79da872e69cf1a47b545a0443968cbafd23e450f513",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/314",
+          "kind": "independent_source",
+          "reading": "ぴこかん",
+          "reference": "https://bravegroup.co.jp/news/12288/",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "276c93f5526aa5a9be0a922bc99aa79aac7a793c7154c46704df62ca6605cce4",
+          "surface": "Pico-can"
+        },
+        "reading": "ぴこかん",
+        "reason": "Issue #314。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Pico-can"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "39abe24f08e76e757cd9c7056a49e7a44778d92efaee3cfcbab0a8c902a4c680",
+        "categories": [
+          "facility/entertainment/live_venue"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/entertainment/live_venue"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/302",
+          "kind": "independent_source",
+          "reading": "ざらいぶ",
+          "reference": "https://dena.com/jp/news/5175/",
+          "related_references": [
+            "https://the-live.com/news/a0hyz0fp",
+            "https://the-live.com/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "d37b4ca5a22647aa66e9b9c17cba16dedfb355a2f9759d4c14eaed5f371d6aa7",
+          "surface": "THE LIVE"
+        },
+        "reading": "ざらいぶ",
+        "reason": "Issue #302。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "THE LIVE"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "3a1116f114107e1c4ea95f0125d3d36b643a46eb7f3aa5440644d38d3bb14a9e",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/304",
+          "kind": "independent_source",
+          "reading": "どりーむりか",
+          "reference": "https://licca.takaratomy.co.jp/products/dreamlicca/",
+          "related_references": [
+            "https://www.takaratomy.co.jp/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "97f77922e9df29cfddb5ab0def4146a81e561a65508470aae0a1b9409a7f6c67",
+          "surface": "Dream Licca"
+        },
+        "reading": "どりーむりか",
+        "reason": "Issue #304。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Dream Licca"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "3a187de28f189f152ee2bdf9ebf90ecfa3faff5e61e94c8c29628747012eac67",
+        "categories": [
+          "term/specialist/chemistry_life_sciences"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/chemistry_life_sciences"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/318",
+          "kind": "independent_source",
+          "reading": "もれきゅらーぐるー",
+          "reference": "https://minerva-clinic.or.jp/academic/terminololgyofmedicalgenetics/molecular-glue/",
+          "related_references": [
+            "https://www.proglenth.com/article/dac-payload-comparison"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "b36d75a8fbf16a38153f4fc0f1abad1914e59e5e17d7b415b6b69f726cbb1d5c",
+          "surface": "モレキュラーグルー"
+        },
+        "reading": "もれきゅらーぐるー",
+        "reason": "Issue #318。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "モレキュラーグルー"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "3b87653455d49baedf60ffbc1cc7bb40b8b7acbf07915538ef6e91b65807a4bb",
+        "categories": [
+          "work_anime"
+        ],
+        "evidence": {
+          "categories": [
+            "work_anime"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/292",
+          "kind": "independent_source",
+          "reading": "ぐろてすく",
+          "reference": "https://www.aniplex.co.jp/lineup/movie-gtq123/",
+          "related_references": [
+            "https://movie-gtq123.com/",
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/news/detail/?id=70747"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "81ef1e36a24f8b4ee4a6568e144577d3e7c11a53c64cf5ca60f37a390ab23951",
+          "surface": "GROTESQQQUE"
+        },
+        "reading": "ぐろてすく",
+        "reason": "Issue #292。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "GROTESQQQUE"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "42f814cebcf2efe62113a50f271176213d3e4da3b56ecac1f1e195fd34400a94",
+        "categories": [
+          "term/specialist/earth_environment_resources"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/earth_environment_resources"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/303",
+          "kind": "independent_source",
+          "reading": "いーめたん",
+          "reference": "https://www.gas.or.jp/gastainable/e-methane/",
+          "related_references": [
+            "https://www.inpex.com/news/2026/20260604.html",
+            "https://prtimes.jp/main/html/rd/p/000000263.000139670.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "4888619b99329f136d3812197b92f79b155a656293d25c899868ffe78be5a9b5",
+          "surface": "e-methane"
+        },
+        "reading": "いーめたん",
+        "reason": "Issue #303。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "e-methane"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "46e708dc8afaba2cd6aca90def20a916d78cc23068caf34831dd1192ed4d9939",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/315",
+          "kind": "independent_source",
+          "reading": "ふぇいとえくすとられこーど",
+          "reference": "https://www.aniplex.co.jp/tgs/lineup/01/",
+          "related_references": [
+            "https://blog.ja.playstation.com/2026/09/04/20260904-sop-recap-o/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "b5f88c044e19b6bfdd7f2fba30968863c79b390d3267d5b796204946ebc1c077",
+          "surface": "Fate/EXTRA Record"
+        },
+        "reading": "ふぇいとえくすとられこーど",
+        "reason": "Issue #315。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Fate/EXTRA Record"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "4890636af93d41a5a91a79b73c7ca0ea0fe8f09a45b81a59bf74e116dc5e74f4",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/316",
+          "kind": "independent_source",
+          "reading": "ちーむぶれいん",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000024.000176655.html",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "4141e57807b01502177a55175f3dca0c9650a87da8ab171cd8698fe2fb475418",
+          "surface": "TeamBrain"
+        },
+        "reading": "ちーむぶれいん",
+        "reason": "Issue #316。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "TeamBrain"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "4e55594df0ad9b3a5bc90c4812b6c4278750baace8a7bf6b4fc2592fa70b0681",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/300",
+          "kind": "independent_source",
+          "reading": "さろす",
+          "reference": "https://blog.ja.playstation.com/2025/12/12/20251212-saros/",
+          "related_references": [
+            "https://www.playstation.com/ja-jp/games/saros/",
+            "https://blog.playstation.com/2025/02/12/announcing-saros-the-next-game-from-housemarque-coming-2026/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "6f3028426b2a978e929db0dde8d02202759270fd8872f7b5e106240ab4c7d76c",
+          "surface": "SAROS"
+        },
+        "reading": "さろす",
+        "reason": "Issue #300。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "SAROS"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "4fd5e65c8efcd2174695a68ccdd804028a11ce7b0987841f7517ed318720ffba",
+        "categories": [
+          "facility/residential/mixed_use_building"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/residential/mixed_use_building"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/294",
+          "kind": "independent_source",
+          "reading": "ざりんくぴらーつー",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000197.000003279.html",
+          "related_references": [
+            "https://prtimes.jp/main/html/rd/p/000001260.000017557.html",
+            "https://prtimes.jp/main/html/rd/p/000001513.000017557.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "13e472961af19026da1628f17bd5e818d4afc078176f026f4e45e21c04a74ccc",
+          "surface": "THE LINKPILLAR 2"
+        },
+        "reading": "ざりんくぴらーつー",
+        "reason": "Issue #294。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "THE LINKPILLAR 2"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "517fa6ab20c9f760379ea017613e148803df7db6624246ee935e0534ebaf3fc7",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/320",
+          "kind": "independent_source",
+          "reading": "るなりばーす",
+          "reference": "https://lunareverse.com/",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "544086d29fbf8e81a2475cdadcec0cdea788e616def9ee66ad005b72c032de4a",
+          "surface": "LunaReverse"
+        },
+        "reading": "るなりばーす",
+        "reason": "Issue #320。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "LunaReverse"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "57dff9bfefab2756a550739bc76999c995d81a713ae519a28eb8a8df8b78b0d6",
+        "categories": [
+          "work_manga"
+        ],
+        "evidence": {
+          "categories": [
+            "work_manga"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/329",
+          "kind": "independent_source",
+          "reading": "じゅじゅつかいせんもじゅろ",
+          "reference": "https://sp.shonenjump.com/j/rensai/jujutsu-modulo/",
+          "related_references": [
+            "https://www.shueisha.co.jp/books/items/contents.html?jdcn=08X10000000071298500"
+          ],
+          "source_note": "出版社の作品ページとコミックス名のモジュロ表記を確認。既存の主題名の読みと結合し、末尾の記号をそのまま保持。",
+          "source_sha256": "4d4acfca8f54bac6a226c46cd8ed2087f92b199c69567eb0adaa814627bc6f39",
+          "surface": "呪術廻戦≡"
+        },
+        "reading": "じゅじゅつかいせんもじゅろ",
+        "reason": "Issue #329。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "呪術廻戦≡"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "65339502cfd1dafbecf5930623c1d1abc5630a2887abc46df6dcb95dfbed3f76",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/301",
+          "kind": "independent_source",
+          "reading": "ぼいしー",
+          "reference": "https://biz.voicy.jp/",
+          "related_references": [
+            "https://service.voicy.jp/koenoshanaiho/",
+            "https://apps.apple.com/jp/app/id1115551289",
+            "https://corp.voicy.jp/2026/11/02/11748/",
+            "https://corp.voicy.jp/2026/09/24/11693/"
+          ],
+          "source_note": "運営元の法人向けサービスの表題で名称とカナを確認。",
+          "source_sha256": "d9649cf20acef9e29e0bff4eae9eda82a53b404f0bb9582b1d056b99a3b59fba",
+          "surface": "Voicy"
+        },
+        "reading": "ぼいしー",
+        "reason": "Issue #301。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Voicy"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "6af4fc58e57f00e66edb7414c8710ef4954754e3afc30989d120c6c1f71ad564",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/315",
+          "kind": "independent_source",
+          "reading": "がんだむろーぐおーびっと",
+          "reference": "https://sbn.bandainamcoent.co.jp/data/index_pc260611.html",
+          "related_references": [
+            "https://ghelix.ggame.jp/",
+            "https://blog.ja.playstation.com/2026/09/04/20260904-sop-recap-o/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "93d98b3f9fa29f45a4dc79033df00f955cdaece24ed484b36546774a08bfd30d",
+          "surface": "GUNDAM ROGUE ORBIT"
+        },
+        "reading": "がんだむろーぐおーびっと",
+        "reason": "Issue #315。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "GUNDAM ROGUE ORBIT"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "6da4b43262fa7d0f63a319c6da2e6d306f974b03dcb81cab872d1e05fc0da26b",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/301",
+          "kind": "independent_source",
+          "reading": "かっぷりー",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000002.000158394.html",
+          "related_references": [
+            "https://prtimes.jp/main/html/rd/p/000000011.000158394.html",
+            "https://coupply.co.jp/news/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "da2f2063eb76ab2595b4b3701ee89f91c5253eab2da4ac94ff2c353e461c7a98",
+          "surface": "COUPPLY"
+        },
+        "reading": "かっぷりー",
+        "reason": "Issue #301。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "COUPPLY"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "736744d2761b87ab192eb496ef8ce6323b9e0692eab55e573205c25db8095cbb",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/332",
+          "kind": "independent_source",
+          "reading": "ねびゅらこあ",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000087.000152961.html",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "c979d2b8c71982b352a645e178d760939f5c2fd50a01bea63e6eda5dbd0f6bf5",
+          "surface": "NebulaCore"
+        },
+        "reading": "ねびゅらこあ",
+        "reason": "Issue #332。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "NebulaCore"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "74b0311ab12d1babe1bb5514aec06ec4cf294392837fab247f9bf7fd27150059",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/319",
+          "kind": "independent_source",
+          "reading": "えくすぺーす",
+          "reference": "https://bruno-inc.com/?am=4350&cm=&dm=&pg=news_detail&q_str=",
+          "related_references": [
+            "https://bruno-inc.com/?am=07643408&pg=product_detail"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "8b914453d8d4ec5fd2a1bbba8089b3b995eb738121aa162e580a57c012fbaf57",
+          "surface": "EXPACE"
+        },
+        "reading": "えくすぺーす",
+        "reason": "Issue #319。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "EXPACE"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "74b7361228d255a0613e37b8d880123a7fcf25f44709d054cabefdb1b16f2c0c",
+        "categories": [
+          "term/specialist/chemistry_life_sciences"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/chemistry_life_sciences"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/318",
+          "kind": "independent_source",
+          "reading": "ちょうへんきょくえむあーるあい",
+          "reference": "https://www.qst.go.jp/site/q-leap/press261106.html",
+          "related_references": [
+            "https://www.yakuji.co.jp/entry141290.html",
+            "https://glossary.jps.or.jp/polarization/",
+            "https://saigata.hosp.go.jp/medical_dept/hoshasenka/mri.html"
+          ],
+          "source_note": "研究機関の発表で標準表記を確認。偏極の読みは物理学会用語集、MRIの字母読みは国立病院機構の検査案内と照合。超との標準的な複合読みであり、全文ルビの確認ではない。",
+          "source_sha256": "471167fbd5f66173deab47614e94a3dd68556f4d8cf722d443651d71761c6820",
+          "surface": "超偏極MRI"
+        },
+        "reading": "ちょうへんきょくえむあーるあい",
+        "reason": "Issue #318。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "超偏極MRI"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "7d1772d36802d165baeb8138407b60691ba7047df80e5d682cd4c0d1b6fea3ea",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/314",
+          "kind": "independent_source",
+          "reading": "よいんど",
+          "reference": "https://www.ucc.co.jp/company/news/2026/rel261104a.html",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "11c5b2b032eb459d6398010c24304daa439e32156a79f7222ce7ebd835968548",
+          "surface": "YOINED"
+        },
+        "reading": "よいんど",
+        "reason": "Issue #314。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "YOINED"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "7d7d68b0acda3ccd88df83da50ba36d58f626eabf427ed067542cce07289cfdb",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/320",
+          "kind": "independent_source",
+          "reading": "くりっきーあいらんど",
+          "reference": "https://www.pocketpair.jp/game-news/%E8%A1%97%E3%81%A5%E3%81%8F%E3%82%8Ax%E3%82%AF%E3%83%AA%E3%83%83%E3%82%AB%E3%83%BCx%E8%B3%87%E6%BA%90%E7%AE%A1%E7%90%86%E3%82%B2%E3%83%BC%E3%83%A0%E3%80%8E%E3%82%AF%E3%83%AA%E3%83%83/",
+          "related_references": [
+            "https://prtimes.jp/main/html/rd/p/000000153.000071410.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "15bfa791b968bf644364cdec789b3720aa7897ef02d60ea5dfc6628150180d34",
+          "surface": "Clicky Islands"
+        },
+        "reading": "くりっきーあいらんど",
+        "reason": "Issue #320。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Clicky Islands"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "7f3c2e61879cff0145d32c4c9121cd10688ab3b0a2717d8375199a81fe473896",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/332",
+          "kind": "independent_source",
+          "reading": "すてらえーあい",
+          "reference": "https://www.docomo.ne.jp/info/news_release/2024/11/22_00.html",
+          "related_references": [
+            "https://prtimes.jp/main/html/rd/p/000000106.000138218.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "cdbbd3c50d36e129937644299ac25bd9ab57d2d7f121a60e20a8db4aac0a64a3",
+          "surface": "Stella AI"
+        },
+        "reading": "すてらえーあい",
+        "reason": "Issue #332。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Stella AI"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "80ab329f67e29c2c67ed87c332a0f797b48f2543cfeb165456e2bbe260ac4f0d",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/306",
+          "kind": "independent_source",
+          "reading": "りも",
+          "reference": "https://apps.apple.com/jp/app/id6752482787",
+          "related_references": [
+            "https://rimo.app/about/company/news/rename-rimo"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "6b5345683e4d957447b4b6a45e858f5810c77fc5f76929e33000df79f1ff9386",
+          "surface": "Rimo"
+        },
+        "reading": "りも",
+        "reason": "Issue #306。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Rimo"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "81539d762d2a453675f19020cb1eef90803e0c4926052f234277c7f4b7d03601",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/319",
+          "kind": "independent_source",
+          "reading": "ぐらいどくりーん",
+          "reference": "https://www.sharkninja.jp/blogs/news/news261104-01",
+          "related_references": [
+            "https://www.sharkninja.jp/collections/glideclean"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "e84e8d4fd4f6de79bccd73a624894d44adda81178812c14542b4cedb7c995fc0",
+          "surface": "GlideClean"
+        },
+        "reading": "ぐらいどくりーん",
+        "reason": "Issue #319。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "GlideClean"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "825415c162fc637d0d7b2a45de9cd230b8ae675865e594cb932cb41064c7a465",
+        "categories": [
+          "vehicle"
+        ],
+        "evidence": {
+          "categories": [
+            "vehicle"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/314",
+          "kind": "independent_source",
+          "reading": "ぐらんでぱんだ",
+          "reference": "https://www.stellantis.jp/news/20261016_fiat_grande_panda_hybrid",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "8bfddd6d3f57c1fd20c1b4c8b354e2a7f4b2669979936bf723dd2692012d25ed",
+          "surface": "Grande Panda"
+        },
+        "reading": "ぐらんでぱんだ",
+        "reason": "Issue #314。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Grande Panda"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "855ad181841184a662b135a2ce954efb1d6a1eaaafbaabd2d5e67c93f4738724",
+        "categories": [
+          "work_film"
+        ],
+        "evidence": {
+          "categories": [
+            "work_film"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/292",
+          "kind": "independent_source",
+          "reading": "ごじらまいなすぜろ",
+          "reference": "https://www.toho.co.jp/our-moments/2026/10/godzilla-minuszero-20261019.html",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "c35344dff73c604047a268eec1f359afc96fbb4e75e9688c03b3d01d8244e40e",
+          "surface": "ゴジラ-0.0"
+        },
+        "reading": "ごじらまいなすぜろ",
+        "reason": "Issue #292。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "ゴジラ-0.0"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "8609aaff5d453f391e4751e568ff99147502cb622beb3e64c5870d385e9cf142",
+        "categories": [
+          "term/specialist/earth_environment_resources"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/earth_environment_resources"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/303",
+          "kind": "independent_source",
+          "reading": "いーふゅーえる",
+          "reference": "https://www.eto-sangyo.co.jp/hydrogen/page.php",
+          "related_references": [
+            "https://www.aist.go.jp/aist_j/magazine/20260422.html",
+            "https://www.meti.go.jp/shingikai/energy_environment/e_fuel/shoyoka_wg/index.html",
+            "https://www.decarbonation-tech.com/intro_6121/",
+            "https://www.sbbit.jp/article/cont1/95962"
+          ],
+          "source_note": "事業者の水素事業解説で英字名とカナの対応を確認。",
+          "source_sha256": "1444200fb93a22288deeab2a53f70e5bb2abce0b007c807a2ff9c898b48f5797",
+          "surface": "e-fuel"
+        },
+        "reading": "いーふゅーえる",
+        "reason": "Issue #303。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "e-fuel"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "863ea1fbd55efc9f8dc9865f182d929bb0fadf17ef18c5781bc1094d861f13e3",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/320",
+          "kind": "independent_source",
+          "reading": "すとれんじゃーざんへゔん",
+          "reference": "https://ryu-ga-gotoku.com/info/detail/004657.html",
+          "related_references": [
+            "https://www.sega.jp/topics/detail/260806_2/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "32871c94027ba3e38ab0e51ee8a03b1b9dccb95d65ea3ff60f9e8ea2e158c5ed",
+          "surface": "STRANGER THAN HEAVEN"
+        },
+        "reading": "すとれんじゃーざんへゔん",
+        "reason": "Issue #320。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "STRANGER THAN HEAVEN"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "89c2891db4094fdbb0fd0c57f39e355dbbceeea203666bd3269bb0f8fb386187",
+        "categories": [
+          "facility/cultural/memorial"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/cultural/memorial"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/333",
+          "kind": "independent_source",
+          "reading": "ゆいなす",
+          "reference": "https://www.city-yuzawa.jp/soshiki/122/6045.html",
+          "related_references": [
+            "https://www.city-yuzawa.jp/soshiki/122/6356.html",
+            "https://www.city-yuzawa.jp/soshiki/122/6514.html",
+            "https://www.jrhokkaido.co.jp/CM/Info/press/pdf/20260904_KO_BPstation.pdf",
+            "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/209"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "ed9212c64dc8950408635d25a39374f9fa28123abae9eba493c560b7d54f2907",
+          "surface": "Yuinas"
+        },
+        "reading": "ゆいなす",
+        "reason": "Issue #333。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Yuinas"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "8b699eb8dffb70a81b1ef4c46f671dcf8ac09f1abbe1abf2b8a9badb8dbc33ab",
+        "categories": [
+          "term/specialist/chemistry_life_sciences"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/chemistry_life_sciences"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/290",
+          "kind": "independent_source",
+          "reading": "おーてぃーしーるいじやく",
+          "reference": "https://www.mhlw.go.jp/stf/shingi/other-iyaku_470779_00024.html",
+          "related_references": [
+            "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryouhoken/juuyou/kougakuiryou/index_00001.html",
+            "https://note.com/tu_it/n/n2fc1a35c250a",
+            "https://www.jmedj.co.jp/blogs/product/product_29252"
+          ],
+          "source_note": "厚労省の議題に標準表記を確認。OTCは医薬品の通常の字母読み、類似薬は既存の漢字語読みを組み合わせたもので、全文ルビの確認ではない。",
+          "source_sha256": "cfeea1f2f4dd16627ab3995c43f5421f7dafd51a474ce34621d9a2f1a5a29c07",
+          "surface": "OTC類似薬"
+        },
+        "reading": "おーてぃーしーるいじやく",
+        "reason": "Issue #290。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "OTC類似薬"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "926a7cedd87e06642f9998ca325af9f0f53f5472a218b3e9ccdc644c8a68b42a",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/315",
+          "kind": "independent_source",
+          "reading": "えこーずおぶあいんくらっど",
+          "reference": "https://blog.ja.playstation.com/2026/03/06/20260306-eoa/",
+          "related_references": [
+            "https://blog.ja.playstation.com/2026/07/08/20260708-eoa-launch-reminder-s/",
+            "https://blog.ja.playstation.com/2026/09/04/20260904-sop-recap-o/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "2b29f6867a56273b3350372c188db8b5629a28ae0d00562ab36c908185142dd9",
+          "surface": "Echoes of Aincrad"
+        },
+        "reading": "えこーずおぶあいんくらっど",
+        "reason": "Issue #315。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Echoes of Aincrad"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "93ac1311d38c9f17f4ea035282b9bfec0f33e47a26068838689b691dff92d137",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/293",
+          "kind": "independent_source",
+          "reading": "とらんく",
+          "reference": "https://www.smbc.co.jp/hojin/kouza/special/kaisetsu/general.html",
+          "related_references": [
+            "https://www.smbc.co.jp/news/pdf/j20250526_01.pdf",
+            "https://www.smbc.co.jp/news/pdf/j20260907_01.pdf"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "30e4a8d106fe825d06f758e26ab62442a476d4a9f1893db3c1157119358866b2",
+          "surface": "Trunk"
+        },
+        "reading": "とらんく",
+        "reason": "Issue #293。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Trunk"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "94f742cd8e8da547abb6669c0d242fcaf8df8681faeb2cb5e9df8d6a84c7a876",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/320",
+          "kind": "independent_source",
+          "reading": "ゆびーとゆにっと",
+          "reference": "https://x.com/jubeat_staff/status/2115639770038575190",
+          "related_references": [
+            "https://www.konami.com/games/jp/ja/products/touch_jubeatplus/",
+            "https://p.eagate.573.jp/game/event/amusementexpo/2026/contents/index.html?title_id=jubeat"
+          ],
+          "source_note": "公式スタッフの新作告知でU'nitとユニットの対応を確認。jubeatはコナミ公式製品ページのユビートと組み合わせた読みで、全文カナの直接掲載とは区別する。",
+          "source_sha256": "7b6cd0a5f32a492f5fdb5d250404f110260d55806962ae11cfb318d5ebff3ab7",
+          "surface": "jubeat U'nit"
+        },
+        "reading": "ゆびーとゆにっと",
+        "reason": "Issue #320。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "jubeat U'nit"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "97cea798d8c00e545dd69f9178985af530a47ea90db356aab1ab7390ac8db961",
+        "categories": [
+          "term/specialist/economics_management"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/economics_management"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/311",
+          "kind": "independent_source",
+          "reading": "にーさびんぼう",
+          "reference": "https://www.gengoya.net/new-word/nisabinbou/",
+          "related_references": [
+            "https://www.newsweekjapan.jp/articles/-/316185",
+            "https://media.rakuten-sec.net/articles/-/52054",
+            "https://www.oricon.co.jp/news/2490887/full/",
+            "https://www.nomura.co.jp/terms/english/other/A02126.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "6915567904843c23d7935f7b092ba80d28baea79ca6880fa7f65e6b7eb4adb13",
+          "surface": "NISA貧乏"
+        },
+        "reading": "にーさびんぼう",
+        "reason": "Issue #311。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "NISA貧乏"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "97f664df0041e28b6c6a0b348fd3387b2f2d4cf876a2a75d2f9f03d8d54cca36",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/304",
+          "kind": "independent_source",
+          "reading": "あせんとえっくす",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000079.000114861.html",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "16afe93e340c5cc4cbf04a109cc18b6118fc19c681abd4a7f13b5e4ff70e5411",
+          "surface": "Ascent X"
+        },
+        "reading": "あせんとえっくす",
+        "reason": "Issue #304。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Ascent X"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "9cb5371d1a85ab0622798e9a742f126522e73d53a15c870b1d9623c85254eb18",
+        "categories": [
+          "facility/commercial/shopping"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/commercial/shopping"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/294",
+          "kind": "independent_source",
+          "reading": "みむれ",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000252.000003279.html",
+          "related_references": [
+            "https://www.newoman.jp/takanawa/mimure/",
+            "https://prtimes.jp/main/html/rd/p/000000244.000003279.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "e53982008b290dc3c6ff1141428dfaf55775bc3d3e81a32352edaed3dffc3664",
+          "surface": "MIMURE"
+        },
+        "reading": "みむれ",
+        "reason": "Issue #294。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "MIMURE"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "9d6207ef1218a74c4176a955aea5c7be045478f55436db722ddf811b1f964f5f",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/316",
+          "kind": "independent_source",
+          "reading": "ばいたす",
+          "reference": "https://vitas.fitness/",
+          "related_references": [
+            "https://vitas.inc/about/profile/",
+            "https://prtimes.jp/main/html/rd/p/000000176.000086328.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "cd93444703bd8297c83a955ab50cbd02f585a9ba5697431d9ed29972c1cbf26d",
+          "surface": "VITAS"
+        },
+        "reading": "ばいたす",
+        "reason": "Issue #316。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "VITAS"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "9dc62e71a68e1b372550ff38896093aabb2657998185ff7dd401930ae62f01e3",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/291",
+          "kind": "independent_source",
+          "reading": "それいる",
+          "reference": "https://news.panasonic.com/jp/press/jn260701-2",
+          "related_references": [
+            "https://appliance-biz.jpn.panasonic.com/dryer/products/nh-en12a1.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "8375d3a05fd5256b8ce51ff62d1298955763947806d05719b8ecb58a0d7cfe9f",
+          "surface": "Solaire"
+        },
+        "reading": "それいる",
+        "reason": "Issue #291。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Solaire"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "a2dbe5fa411f1e5c59c1e0abc7ec229f645ca2ce275fe8b4ea9a7794407792db",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/300",
+          "kind": "independent_source",
+          "reading": "りあにまる",
+          "reference": "https://blog.ja.playstation.com/2026/03/02/20260302-reanimal/",
+          "related_references": [
+            "https://thqnordic.com/news/reanimal-release-date-confirmed-for-friday-february-13-2026",
+            "https://www.playstation.com/ja-jp/games/reanimal/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "b8d0d56ec65f2772d312314fb2c9999f40a68fd1f2a36f2db3dc99d21f6893d5",
+          "surface": "REANIMAL"
+        },
+        "reading": "りあにまる",
+        "reason": "Issue #300。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "REANIMAL"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "a5a76ad6fec36ce7d8d69546564ddd23e3d472bd2193256e9fd606ee8f5f17aa",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/293",
+          "kind": "independent_source",
+          "reading": "うぇすも",
+          "reference": "https://wester.jr-odekake.net/wesmo/",
+          "related_references": [
+            "https://www.westjr.co.jp/sns/",
+            "https://wester.jr-odekake.net/campaign/detail/012027052802",
+            "https://wester.jr-odekake.net/campaign/detail/012027101901"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "cd88de0c904f86c9dc19215456a1fda1052fc714ea4b75372edbbacf977a9042",
+          "surface": "Wesmo!"
+        },
+        "reading": "うぇすも",
+        "reason": "Issue #293。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Wesmo!"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "a63a46405944853d1903bbab455b5e96ffbdf97059250fb9f3cae69e784c8ca7",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/332",
+          "kind": "independent_source",
+          "reading": "ありーしあ",
+          "reference": "https://jp.newsroom.ibm.com/2026-07-15-AI-Lifecycle-Shared-Engineering-Artifacts-ALSEA-GA",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "4debbc5e511bf853bd0f258935c93f7f31d3cc77aa454af5c49bca868dff11ba",
+          "surface": "ALSEA"
+        },
+        "reading": "ありーしあ",
+        "reason": "Issue #332。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "ALSEA"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "a9d32e2a07c83735ca1698726e77181b6249704b8ac26aea44c621e9c1f0a481",
+        "categories": [
+          "term/specialist/law_politics"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/law_politics"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/324",
+          "kind": "independent_source",
+          "reading": "とりてきほう",
+          "reference": "https://www.gov-online.go.jp/article/202511/entry-9983.html",
+          "related_references": [
+            "https://www.chusho.meti.go.jp/keiei/torihiki/2026/260610001.html",
+            "https://www.insource.co.jp/keywords/transaction-fairness.html",
+            "https://facutto.jp/column/torihiki-tekiseika"
+          ],
+          "source_note": "政府広報の検索可能な本文で略称と読みを確認。直接HTTP取得は403であり、取得済み原本のSHA-256は記録しない。",
+          "surface": "取適法"
+        },
+        "reading": "とりてきほう",
+        "reason": "Issue #324。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "取適法"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "ae52555cbb348b79c5c97acf9553b92497ce9abe2bd5d98d551a60927a31eac2",
+        "categories": [
+          "work_anime"
+        ],
+        "evidence": {
+          "categories": [
+            "work_anime"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/292",
+          "kind": "independent_source",
+          "reading": "えりぃあんず",
+          "reference": "https://movie-gtq123.com/",
+          "related_references": [
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/",
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/news/detail/?id=70747"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "a5b22d2036cc82408b2ec08b4ce08a31b32ccd729e768b517d313fc3462431c9",
+          "surface": "ÆLIENS"
+        },
+        "reading": "えりぃあんず",
+        "reason": "Issue #292。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "ÆLIENS"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "af0027751490619d7b7907fed4dc80c80a4e98d6e9e318834932ac6f97192d88",
+        "categories": [
+          "facility/entertainment/amusement"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/entertainment/amusement"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/308",
+          "kind": "independent_source",
+          "reading": "さんえっくすぱらだいす",
+          "reference": "https://www.san-x.co.jp/en/blog/2026-03-post-0649290/",
+          "related_references": [
+            "https://www.san-x.co.jp/ja/blog/2026-03-post-0649290/",
+            "https://prtimes.jp/main/html/rd/p/000000795.000018631.html",
+            "https://www.fujiq.jp/area/sanx/",
+            "https://www.fujiq.jp/special/sanxparadise/index.html",
+            "https://www.san-x.co.jp/en/blog/2026-03-post-0649290/",
+            "https://prtimes.jp/main/html/rd/p/000002038.000001110.html",
+            "https://www.san-x.co.jp/ja/blog/2026-06-post-0512390/"
+          ],
+          "source_note": "同一事業者の英語発表で英字名、日本語発表でカナ名を確認し、対応させた。",
+          "source_sha256": "d09ba3b70b01f0b96cc59ae4c8ff88baa9d9d9f9f72a8b5f7818c51be7c99616",
+          "surface": "San-X Paradise"
+        },
+        "reading": "さんえっくすぱらだいす",
+        "reason": "Issue #308。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "San-X Paradise"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "b39f3029d97e6617c0dc684a8fffc12b58353e731c69b5b8acbcf0f90ad52c64",
+        "categories": [
+          "work_music"
+        ],
+        "evidence": {
+          "categories": [
+            "work_music"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/300",
+          "kind": "independent_source",
+          "reading": "ほしあかり",
+          "reference": "https://rayearth-anime.com/music/",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "c503a42eb4e83cd920dc1dee51e955646127e102de1b78693c8e86c942afb87a",
+          "surface": "星灯"
+        },
+        "reading": "ほしあかり",
+        "reason": "Issue #300。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "星灯"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "beb76551f4aa56f8c5c182e6439408d62f72c65c3eab864594bf18d7713cfd26",
+        "categories": [
+          "facility/commercial/shopping"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/commercial/shopping"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/317",
+          "kind": "independent_source",
+          "reading": "るくあさうす",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000210.000014414.html",
+          "related_references": [
+            "https://www.lucua.jp/about/",
+            "https://prtimes.jp/main/html/rd/p/000000247.000014414.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "cfd96a38aec47995a4adc6ad0acc8c4890e7faee44b6c440a72666debb130e19",
+          "surface": "LUCUA SOUTH"
+        },
+        "reading": "るくあさうす",
+        "reason": "Issue #317。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "LUCUA SOUTH"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "cd65d4b7eda7fe52bb17ae38571e2489b6fb85a0456ac535f660a0f16984b88e",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/304",
+          "kind": "independent_source",
+          "reading": "ぶらすとぼす",
+          "reference": "https://www.sharkninja.jp/blogs/news/news260820-02",
+          "related_references": [
+            "https://www.sharkninja.jp/blogs/news/news260910-01"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "1edb404ccd59798e0544009b0749631ca3d57ad257c9f9482929aff799f8f426",
+          "surface": "BlastBoss"
+        },
+        "reading": "ぶらすとぼす",
+        "reason": "Issue #304。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "BlastBoss"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "cf537a692dc4661dbaf8b22452a6a17acf6628f69e3b8cf8451a3cef115ac8fb",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/306",
+          "kind": "independent_source",
+          "reading": "あんかー",
+          "reference": "https://www.ntt.com/bizon/customer-harassment-policy.html",
+          "related_references": [
+            "https://www.ntt.com/about-us/press-releases/news/article/2026/1028.html",
+            "https://www.ntt.com/about-us/press-releases/news/article/2025/0916.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "5b6a396054cd8576ecdcfb9187e840b3f4483fdc3afbba682918c8ed36f0a8c5",
+          "surface": "ANCAR"
+        },
+        "reading": "あんかー",
+        "reason": "Issue #306。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "ANCAR"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "d5ff77941c2aa024d5f32cb7d620ca6a4933797b4a8bc5b900ccb13f6ba3c0a0",
+        "categories": [
+          "facility/cultural/art_museum"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/cultural/art_museum"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/317",
+          "kind": "independent_source",
+          "reading": "すーぱーぶるーきょうと",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000179.000134094.html",
+          "related_references": [
+            "https://www.nttud.co.jp/news/detail/id/n28030.html"
+          ],
+          "source_note": "事業者の施設発表でSuperblueとスーパーブルーの対応、Kyotoと京都の対応を確認。京都の標準読みを結合し、全文カナの直接掲載とは区別する。",
+          "source_sha256": "59283df5c880b27dcd2f388d08b4706418596c84e258aa81d3297e2fc5330f6d",
+          "surface": "Superblue Kyoto"
+        },
+        "reading": "すーぱーぶるーきょうと",
+        "reason": "Issue #317。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Superblue Kyoto"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "d7ada826fe19a9bc1cf5564d434a4de93c6d1180831ed31669797f9b501fbf3a",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/328",
+          "kind": "independent_source",
+          "reading": "ぐらぶあんどごー",
+          "reference": "https://www.suntory.co.jp/softdrink/news/pr/article/SBF1562.html",
+          "related_references": [
+            "https://stories.starbucks.co.jp/press/2026/pr-2026-1104/"
+          ],
+          "source_note": "メーカー発表の商品名欄で製品シリーズ名とカナの対応を確認。ブランドと味名を除いた部分を採用。",
+          "surface": "GRAB&GO"
+        },
+        "reading": "ぐらぶあんどごー",
+        "reason": "Issue #328。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "GRAB&GO"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "d8e43f827bd78887a877fae54fa1082893316a98d495f5fbc1f4b0ea89d3c490",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/293",
+          "kind": "independent_source",
+          "reading": "ぺいびー",
+          "reference": "https://payb.jp/",
+          "related_references": [
+            "https://payb.jp/finance/",
+            "https://payb.jp/news/102146/",
+            "https://www.smbc.co.jp/news/pdf/j20260907_01.pdf",
+            "https://payb.jp/local/18619/",
+            "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/208",
+            "https://elyza.ai/news/2026/10/27/elyza_robotics"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "6c88d539f9186111539b2ad301c194692f23454c264711510e05de9be1c027ff",
+          "surface": "PayB"
+        },
+        "reading": "ぺいびー",
+        "reason": "Issue #293。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "PayB"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "d96bd6f50f8e0786c4e3bad0c9586be9a07a0b95d7b4cd889f00ee10fc97d1cb",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/316",
+          "kind": "independent_source",
+          "reading": "にゅーも",
+          "reference": "https://newmo.me/services/app",
+          "related_references": [
+            "https://newsroom.kddi.com/news/detail/kddi_nr_s-83_4819.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "5d32b5cf9ebefc6f6c76938f0f8a5bdb8fe20a72950a780d4dfbd4aa006be5c9",
+          "surface": "newmo"
+        },
+        "reading": "にゅーも",
+        "reason": "Issue #316。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "newmo"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "e3f6c7a428e12006f55131aa3557acde2e6b5eb7441c1e0af9ad5dd2230f2547",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/291",
+          "kind": "independent_source",
+          "reading": "ぶりーずくりあ",
+          "reference": "https://www.sharkninja.jp/blogs/news/news260820-03",
+          "related_references": [
+            "https://www.sharkninja.jp/collections/breatheclear",
+            "https://www.sharkninja.jp/blogs/news/news260928-01"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "e407c354941725f7ebc382e37ffe5187f7318b12d8bc9950cc452c8e58be9ebd",
+          "surface": "BreatheClear"
+        },
+        "reading": "ぶりーずくりあ",
+        "reason": "Issue #291。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "BreatheClear"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "e554c65ee0fb12b0015a22857fad227ba2aa9baf606c2762d5877e11f263ec15",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/319",
+          "kind": "independent_source",
+          "reading": "ひゅって",
+          "reference": "https://bruno-inc.com/?am=4365&cm=&dm=&pg=news_detail&q_str=",
+          "related_references": [
+            "https://bruno-inc.com/?am=07643398&pg=product_detail"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "5e021f41058e7b3cec10a415f61fa844cf67aa72c88e109afff4464bcd046014",
+          "surface": "Hütte"
+        },
+        "reading": "ひゅって",
+        "reason": "Issue #319。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Hütte"
+      },
+      {
+        "action": "hold",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "ea879a05beec18b33de0aa71ca7bb44f916024d05928fa328298a1f1c47252d4",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/329",
+          "kind": "review_note",
+          "reading": "まーべるとーこんふぁいてぃんぐそうるず",
+          "reference": "https://www.playstation.com/ja-jp/games/marvel-tokon-fighting-souls/",
+          "related_references": [
+            "https://www.famitsu.com/article/202608/83834",
+            "https://blog.ja.playstation.com/2026/10/08/20261008-mtfs-post-launch-update-o/"
+          ],
+          "source_note": "Issue #329。公式資料で英字タイトルを確認したが、提案の全文読み、とくに長音を含むとーこんを公式に確認できない。第三者資料のトウコンを推測で長音へ変えず今回は採用しない。",
+          "source_sha256": "6078fe131991fd5aed0402c96796cf6ecd39bead4233ed3b449b1c0ea803b5e7",
+          "surface": "MARVEL Tōkon: Fighting Souls"
+        },
+        "reading": "まーべるとーこんふぁいてぃんぐそうるず",
+        "reason": "Issue #329。公式資料で英字タイトルを確認したが、提案の全文読み、とくに長音を含むとーこんを公式に確認できない。第三者資料のトウコンを推測で長音へ変えず今回は採用しない。",
+        "surface": "MARVEL Tōkon: Fighting Souls"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "f0802f010580499e1a4cf22cc83e3dad0f7646442dc8020a4d5ed314bee56f02",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/304",
+          "kind": "independent_source",
+          "reading": "あくてぃくりーん",
+          "reference": "https://www.sharkninja.jp/blogs/news/news260820-01",
+          "related_references": [],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "9cf6f54db994d5b8b97b207108b6cf5121d28a237fde0a23cdcfe8512875c008",
+          "surface": "ActiClean"
+        },
+        "reading": "あくてぃくりーん",
+        "reason": "Issue #304。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "ActiClean"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "f105004c2f99434087ca5f63fcfcad71a3ff75fda51c0d283b5a2f99753bc53d",
+        "categories": [
+          "facility/cultural/art_museum"
+        ],
+        "evidence": {
+          "categories": [
+            "facility/cultural/art_museum"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/323",
+          "kind": "independent_source",
+          "reading": "ぬるぬるねくさす",
+          "reference": "https://www.macnica.co.jp/public-relations/news/2026/150088/",
+          "related_references": [
+            "https://null2.nexus/",
+            "https://www.value-press.com/pressrelease/382490"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "7fb435f9d7bc68e4b77a7496516c3ac688649d3fa0f38ecfeefb6b6e966e6091",
+          "surface": "null²ⁿ"
+        },
+        "reading": "ぬるぬるねくさす",
+        "reason": "Issue #323。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "null²ⁿ"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "f6e681eea2ab88f3c5ac3e54d8fcfd24f46edfb6ce82d8eb9fb85e83ea7c1537",
+        "categories": [
+          "term/specialist/chemistry_life_sciences"
+        ],
+        "evidence": {
+          "categories": [
+            "term/specialist/chemistry_life_sciences"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/303",
+          "kind": "independent_source",
+          "reading": "しーじーあーるぴー",
+          "reference": "https://zutsuu-nayami.jp/approach/prevention/",
+          "related_references": [
+            "https://tokyo-noudock.jp/brain/disease/cgrp-antibody/",
+            "https://www.kyodo.co.jp/pr/2026-04-17_4006168/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "288537635b88d39185c086439e73fdcf0cb9ca2461cdc8a0f23720b080391a24",
+          "surface": "CGRP"
+        },
+        "reading": "しーじーあーるぴー",
+        "reason": "Issue #303。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "CGRP"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "f845d815727598b9797069792d67098c7c525262e67b0458cefc6ae72209ece2",
+        "categories": [
+          "product"
+        ],
+        "evidence": {
+          "categories": [
+            "product"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/299",
+          "kind": "independent_source",
+          "reading": "りっぷとぅらぶせらむ",
+          "reference": "https://prtimes.jp/main/html/rd/p/000000166.000074953.html",
+          "related_references": [
+            "https://prtimes.jp/main/html/rd/p/000000184.000074953.html",
+            "https://prtimes.jp/main/html/rd/p/000000195.000074953.html"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "4c681a5bebe5e4274125aa68d60a87142bc1d575ee9498731fe71d260cc6a5e6",
+          "surface": "LIP TO LOVE SERUM"
+        },
+        "reading": "りっぷとぅらぶせらむ",
+        "reason": "Issue #299。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "LIP TO LOVE SERUM"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "fb8c05180835b58dcfdd6f44fc9e45bbd344233d07b12a5d670b3477faddf78d",
+        "categories": [
+          "work_game"
+        ],
+        "evidence": {
+          "categories": [
+            "work_game"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/305",
+          "kind": "independent_source",
+          "reading": "すてらーぶれいど",
+          "reference": "https://blog.ja.playstation.com/2024/04/26/20240426-ps5/",
+          "related_references": [
+            "https://blog.ja.playstation.com/2025/06/03/20250603-ps5atb100-4/",
+            "https://stellar-blade.com/ns2/jp/",
+            "https://tgs.sega.jp/2026/ja/lineup/19/"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "6ec87e3e45efaf65a79dea6d1add5de364197b4d088c19a7aa5e20469533d331",
+          "surface": "Stellar Blade"
+        },
+        "reading": "すてらーぶれいど",
+        "reason": "Issue #305。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "Stellar Blade"
+      },
+      {
+        "action": "add",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "fd94d49182ddde62e283720ac96199e6d04373a5c19bc4ffdb35262ca6a32c2c",
+        "categories": [
+          "work_manga"
+        ],
+        "evidence": {
+          "categories": [
+            "work_manga"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/300",
+          "kind": "independent_source",
+          "reading": "まじっくないとれいあーす",
+          "reference": "https://www.sega.jp/topics/detail/251020_2/",
+          "related_references": [
+            "https://rayearth-anime.com/",
+            "https://rayearth-anime.com/onair/"
+          ],
+          "source_note": "製作会社発表の魔法騎士のルビとレイアースを対応させる。漢字の通常読みへ置き換えない。",
+          "surface": "魔法騎士レイアース"
+        },
+        "reading": "まじっくないとれいあーす",
+        "reason": "Issue #300。候補別の公式・事業者資料で表記と読み、または明示された構成要素を照合し、専用カテゴリへ追加。",
+        "surface": "魔法騎士レイアース"
+      }
+    ],
+    "followupPath": "src/main/classification/reviews/2026-11-08-open-candidate-issues_demographics.jsonl",
+    "followupRecords": [
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "1138e49e0871e7bedd92bba9641e9fd2e7d5cd83274a35ee05a10ea25ebb390c",
+        "categories": [
+          "work_anime",
+          "media_demographic/audience/unspecified"
+        ],
+        "classification_origin": "verified",
+        "evidence": {
+          "categories": [
+            "work_anime",
+            "media_demographic/audience/unspecified"
+          ],
+          "kind": "media_demographic_source",
+          "reading": "めいでんぶらっど",
+          "reference": "https://news.ponycanyon.co.jp/2026/11/127564",
+          "related_references": [
+            "https://news.ponycanyon.co.jp/2026/11/127564"
+          ],
+          "source_note": "制作・提供元は完全オリジナルTVアニメと明記し、原作を制作スタッフとポニーキャニオンと記載。単一の漫画誌読者層を指定する原作ではないため対象層指定なしへ分類する。全年齢向け・成人内容不存在の確認ではない。",
+          "surface": "Maiden Blood"
+        },
+        "media_demographic": "unspecified",
+        "reading": "めいでんぶらっど",
+        "reason": "制作・提供元は完全オリジナルTVアニメと明記し、原作を制作スタッフとポニーキャニオンと記載。単一の漫画誌読者層を指定する原作ではないため対象層指定なしへ分類する。全年齢向け・成人内容不存在の確認ではない。",
+        "surface": "Maiden Blood"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "57dff9bfefab2756a550739bc76999c995d81a713ae519a28eb8a8df8b78b0d6",
+        "categories": [
+          "work_manga",
+          "media_demographic/audience/shonen"
+        ],
+        "classification_origin": "verified",
+        "evidence": {
+          "categories": [
+            "work_manga",
+            "media_demographic/audience/shonen"
+          ],
+          "kind": "media_demographic_source",
+          "reading": "じゅじゅつかいせんもじゅろ",
+          "reference": "https://sp.shonenjump.com/j/rensai/jujutsu-modulo/",
+          "related_references": [
+            "https://sp.shonenjump.com/j/rensai/jujutsu-modulo/"
+          ],
+          "source_note": "出版社の週刊少年ジャンプ作品ページに掲載される漫画として、掲載誌の少年向け分類を継承する。",
+          "surface": "呪術廻戦≡"
+        },
+        "media_demographic": "shonen",
+        "reading": "じゅじゅつかいせんもじゅろ",
+        "reason": "出版社の週刊少年ジャンプ作品ページに掲載される漫画として、掲載誌の少年向け分類を継承する。",
+        "surface": "呪術廻戦≡"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "fd94d49182ddde62e283720ac96199e6d04373a5c19bc4ffdb35262ca6a32c2c",
+        "categories": [
+          "work_manga",
+          "media_demographic/audience/shojo"
+        ],
+        "classification_origin": "verified",
+        "evidence": {
+          "categories": [
+            "work_manga",
+            "media_demographic/audience/shojo"
+          ],
+          "kind": "media_demographic_source",
+          "reading": "まじっくないとれいあーす",
+          "reference": "https://nakayosi.kodansha.co.jp/",
+          "related_references": [
+            "https://www.sega.jp/topics/detail/251020_2/"
+          ],
+          "source_note": "製作会社の公式紹介が原作をなかよし連載と明記。出版社の同誌公式サイトが少女漫画誌と明記するため、原作の対象読者を継承する。",
+          "surface": "魔法騎士レイアース"
+        },
+        "media_demographic": "shojo",
+        "reading": "まじっくないとれいあーす",
+        "reason": "製作会社の公式紹介が原作をなかよし連載と明記。出版社の同誌公式サイトが少女漫画誌と明記するため、原作の対象読者を継承する。",
+        "surface": "魔法騎士レイアース"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "3b87653455d49baedf60ffbc1cc7bb40b8b7acbf07915538ef6e91b65807a4bb",
+        "categories": [
+          "work_film"
+        ],
+        "evidence": {
+          "categories": [
+            "work_film"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/292",
+          "kind": "independent_source",
+          "reading": "ぐろてすく",
+          "reference": "https://www.aniplex.co.jp/lineup/movie-gtq123/",
+          "related_references": [
+            "https://movie-gtq123.com/",
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/news/detail/?id=70747"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "81ef1e36a24f8b4ee4a6568e144577d3e7c11a53c64cf5ca60f37a390ab23951",
+          "surface": "GROTESQQQUE"
+        },
+        "reading": "ぐろてすく",
+        "reason": "公式が示すアニメーション映画とその劇中エピソードとして映画作品カテゴリへ整理する。",
+        "surface": "GROTESQQQUE"
+      },
+      {
+        "action": "reclassify",
+        "added_record": {
+          "cost": 9400,
+          "left_id": 1851,
+          "right_id": 1851
+        },
+        "baseline": null,
+        "candidate_key": "ae52555cbb348b79c5c97acf9553b92497ce9abe2bd5d98d551a60927a31eac2",
+        "categories": [
+          "work_film"
+        ],
+        "evidence": {
+          "categories": [
+            "work_film"
+          ],
+          "checked_on": "2026-11-08",
+          "issue_url": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/issues/292",
+          "kind": "independent_source",
+          "reading": "えりぃあんず",
+          "reference": "https://movie-gtq123.com/",
+          "related_references": [
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/",
+            "https://www.aniplex.co.jp/lineup/movie-gtq123/news/detail/?id=70747"
+          ],
+          "source_note": "出典本文に標準表記と対応するカナを確認。カナをひらがな化し、区切り空白を読みから除いた。",
+          "source_sha256": "a5b22d2036cc82408b2ec08b4ce08a31b32ccd729e768b517d313fc3462431c9",
+          "surface": "ÆLIENS"
+        },
+        "reading": "えりぃあんず",
+        "reason": "公式が示すアニメーション映画とその劇中エピソードとして映画作品カテゴリへ整理する。",
+        "surface": "ÆLIENS"
+      }
+    ]
   },
   "personAdditions": [
     {
@@ -129011,9 +131382,9 @@
       "src/main/specialist/sources/hyakuyaku.jsonl.gz": "bbdefe7bec466e25d333adf2971bfd32e12ebf8eccf9e5c1dbe8132eba49027b",
       "src/main/specialist/sources/manbyo.jsonl.gz": "acf4105c8bfff7d7278fb9d2298481b3dae2d6b58eda824f31b3345e6aea9492"
     },
-    "classificationExclusionsSha256": "6875917a261697b004df59aae2d83b47a7cf748c4910dec1b9c5bcb7e12f9e1d",
+    "classificationExclusionsSha256": "817c83f5354730c9e1f8a2c327a8e724f20a4f96928aacc4ffb690c09eea0e83",
     "idDefSha256": "07a05a268c3783b7e02b36e4aa591555a2dd19a1f3c93891576740761c154f2d",
-    "existingInventorySha256": "f7e2cd8a5cd1d22839ffdf4f61cf1f8a079dd9540ab1829b85ea5f762ca6f271",
+    "existingInventorySha256": "fc3f6a268c4ee758a780805c0411f9cfe5ad372baa4d362f2b0e7ab731ba376a",
     "existingDictionaryIds": [
       "categories/address",
       "categories/agreement",
@@ -129135,7 +131506,7 @@
       "symbol",
       "system"
     ],
-    "existingUniquePairs": 1865993,
+    "existingUniquePairs": 1866073,
     "sourceRows": {
       "collected/collected-terms/cf7e87c20f1b1c28.jsonl": {
         "rows": 2,
@@ -129214,6 +131585,68 @@
       "Kana surfaces incompatible with the current sentinel encoding are withheld."
     ]
   },
+  "specialistSources": [
+    {
+      "id": "kampo_core",
+      "category": "kampo",
+      "version": "LATEST (取得時ハッシュ固定)",
+      "page": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-1.html",
+      "download": "https://dbarchive.biosciencedbc.jp/data/knapsack-kampo/LATEST/knapsack_kampo_core.zip",
+      "archiveSha256": "372d2d48aa51aedc8275bbcbcd8fe49417ab57857b56d72761ce0a5a5e66a63f",
+      "member": "knapsack_kampo_core.csv",
+      "encoding": "cp932",
+      "surfaceColumn": "漢方名[Kampo Name]",
+      "readingColumn": "漢方名[Kana]",
+      "license": "CC-BY-SA-2.1-JP",
+      "attribution": "KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本",
+      "notice": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/lic.html"
+    },
+    {
+      "id": "kampo_herb",
+      "category": "kampo",
+      "version": "LATEST (取得時ハッシュ固定)",
+      "page": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/data-2.html",
+      "download": "https://dbarchive.biosciencedbc.jp/data/knapsack-kampo/LATEST/knapsack_kampo_syoyaku.zip",
+      "archiveSha256": "b794a2c2f7b572bacec94594a9265919d21904f4431423e5907125d7c7193c7b",
+      "member": "knapsack_kampo_syoyaku.csv",
+      "encoding": "cp932",
+      "surfaceColumn": "生薬名 (漢字)",
+      "readingColumn": "生薬名 (カナ)",
+      "license": "CC-BY-SA-2.1-JP",
+      "attribution": "KNApSAcK Family © 金谷 重彦 (奈良先端科学技術大学院大学) licensed under CC表示 継承2.1 日本",
+      "notice": "https://dbarchive.biosciencedbc.jp/jp/knapsack-kampo/lic.html"
+    },
+    {
+      "id": "manbyo",
+      "category": "medical",
+      "version": "MANBYO_202106",
+      "page": "https://sociocom.naist.jp/manbyou-dic/",
+      "download": "https://sociocom.naist.jp/download/manbyo_202106/",
+      "archiveSha256": "60daa90df38726d68a68bcdf4112a7a4daaab624e3587993ccffddc3d70b1140",
+      "member": "MANBYO_202106/MANBYO_20210602.csv",
+      "encoding": "utf-8-sig",
+      "surfaceColumn": "出現形",
+      "readingColumn": "出現形よみ",
+      "license": "CC-BY-4.0",
+      "attribution": "奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 万病辞書 MANBYO_202106",
+      "notice": "https://sociocom.naist.jp/manbyou-dic/"
+    },
+    {
+      "id": "hyakuyaku",
+      "category": "medical",
+      "version": "HYAKUYAKU_202107",
+      "page": "https://sociocom.naist.jp/hyakuyaku-dic/",
+      "download": "https://sociocom.naist.jp/download/hyakuyaku_202107/",
+      "archiveSha256": "87ea9b70e50620345543483039dd2f4da7746d57eff12c6c78356b71f79cb769",
+      "member": "HYAKUYAKU_v20210706/HYAKUYAKU_20210706.csv",
+      "encoding": "utf-8-sig",
+      "surfaceColumn": "出現形",
+      "readingColumn": "出現形よみ",
+      "license": "CC-BY-4.0",
+      "attribution": "奈良先端科学技術大学院大学 ソーシャル・コンピューティング研究室 — 百薬辞書 HYAKUYAKU_202107",
+      "notice": "https://sociocom.naist.jp/hyakuyaku-dic/"
+    }
+  ],
   "collectedTerms": [
     {
       "category": "kampo",
@@ -129248,8 +131681,8 @@
       "surface": "桂枝茯苓丸加薏苡仁"
     }
   ],
-  "surfaceOverridesSha256": "87c78def60c33031a9697ce052776c1152815c19979d9ae780aa139b6595f80e",
+  "surfaceOverridesSha256": "c09f70f9652464fb3df02e39be39f4b49cad29bc4346459d1fa6da2534259590",
   "englishCatalogSha256": "dd49edb7e2e106ad683426e3fe97f538fd4d8be5fddedbe0169e8280311c694e",
-  "englishFixtureSha256": "6a11807af5932952d126115b838c89fa500e8bd1b243a6e14ddb091015730e97",
-  "classifiedFixtureSha256": "c71ecf637a822fc240a9aa96e66cca3be0fd0367bb68d897f31aa0b9c8c6e8e6"
+  "englishFixtureSha256": "dccaeb915539b22154f6747d3622f8b2eab95f04f07283dd495439823655d8c1",
+  "classifiedFixtureSha256": "0dea9ac0094b9f44a872c084ae6d2e18316e998964b897306dcad4baea728c77"
 }

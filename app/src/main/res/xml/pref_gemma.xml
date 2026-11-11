@@ -3,6 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/category_gemma_translation_title">
+        <Preference
+            android:key="ai_model_loading_preference"
+            android:title="@string/ai_model_loading_title"
+            android:selectable="false"
+            android:persistent="false"
+            android:widgetLayout="@layout/preference_ai_model_loading"
+            app:isPreferenceVisible="false" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="gemma_translation_enable_preference"
@@ -12,7 +20,6 @@
 
         <ListPreference
             android:defaultValue="cpu"
-            android:dependency="gemma_translation_enable_preference"
             android:entries="@array/gemma_translation_backend_entries"
             android:entryValues="@array/gemma_translation_backend_values"
             android:key="gemma_translation_backend_preference"
@@ -37,6 +44,11 @@
             android:key="gemma_translation_model_preference"
             android:title="@string/gemma_translation_model_title"
             app:summary="@string/gemma_translation_model_summary_default" />
+
+        <Preference
+            android:key="ai_projector_preference"
+            android:title="@string/ai_projector_title"
+            android:summary="@string/ai_projector_none" />
 
         <Preference
             android:key="gemma_supported_models_preference"

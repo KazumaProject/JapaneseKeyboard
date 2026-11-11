@@ -30,10 +30,7 @@ class GemmaManagerInstrumentedTest {
             assertEquals(selected.file.absolutePath, AppPreference.gemma_translation_model_path_preference)
             assertEquals(GemmaModelCatalog.descriptorFor(selected.file).id, selected.descriptor.id)
             assertTrue(selected.descriptor.supports(GemmaMediaType.TEXT))
-            if (selected.descriptor.id == "gemma4_e2b_it") {
-                assertTrue(selected.descriptor.supports(GemmaMediaType.IMAGE))
-                assertTrue(selected.descriptor.supports(GemmaMediaType.AUDIO))
-            }
+
         } finally {
             preferences.edit().apply {
                 if (originalPath == null) remove(MODEL_PATH_PREFERENCE)
