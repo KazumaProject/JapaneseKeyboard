@@ -2870,6 +2870,10 @@ object AppPreference {
             it.putBoolean(CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY, value)
         }
 
+    var custom_keyboard_show_key_preview: Boolean
+        get() = preferences.getBoolean("custom_keyboard_show_key_preview", true)
+        set(value) = preferences.edit { it.putBoolean("custom_keyboard_show_key_preview", value) }
+
     var custom_keyboard_input_in_empty_areas_preference: Boolean
         get() = preferences.getBoolean(
             CUSTOM_KEYBOARD_INPUT_IN_EMPTY_AREAS_PREFERENCE.first,

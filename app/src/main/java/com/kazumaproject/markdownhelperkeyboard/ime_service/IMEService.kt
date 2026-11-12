@@ -4004,9 +4004,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun scheduleEnglishCorrection(connection: InputConnection, committed: CharSequence?) {
-        if (!canShowEnglishCorrection() || committed.isNullOrBlank()) return
+        if (!canShowEnglishCorrection() || committed.isNullOrEmpty()) return
         val suffix = committed.takeLast(160).toString()
-        if (suffix.none { it in 'a'..'z' || it in 'A'..'Z' }) return
+        if (suffix.none { it in 'a'..'z' || it in 'A'..'Z' || it in ".!\n" }) return
         if (dictionarySourceResolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return
         val revision = editorMutationRevision.current()
         englishCorrectionJob = scope.launch {
@@ -11453,6 +11453,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         surface: FlickGuideSurface = when (qwertyMode.value) {
             TenKeyQWERTYMode.Sumire -> FlickGuideSurface.Sumire
             TenKeyQWERTYMode.Custom -> FlickGuideSurface.Custom
+            TenKeyQWERTYMode.Number -> if (numberUsageCustomKeyboardLayoutOrNull() != null) {
+                FlickGuideSurface.Custom
+            } else {
+                FlickGuideSurface.Other
+            }
             else -> FlickGuideSurface.Other
         }
     ) {
@@ -11494,8 +11499,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
         flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
-        applyCurrentFlickGuidePreference(flickView)
         val numberCustomLayout = numberUsageCustomKeyboardLayoutOrNull()
+        applyCurrentFlickGuidePreference(
+            flickView,
+            surface = if (numberCustomLayout != null) FlickGuideSurface.Custom else FlickGuideSurface.Other
+        )
         if (numberCustomLayout != null) {
             setKeyboardWithDeleteKeyFlickPreferences(
                 flickView,
@@ -15751,6 +15759,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun currentCustomQwertyPopupViewStyleSet(): QwertyPopupViewStyleSet {
+        val styles = currentQwertyPopupViewStyleSet()
+        if (keyboardThemeMode != "custom") return styles
+        fun colors(style: PopupViewStyle) = style.copy(
+            backgroundColor = style.backgroundColor ?: customThemeSpecialKeyColor,
+            textColor = style.textColor ?: customThemeSpecialKeyTextColor
+        )
+        return styles.copy(keyPreview = colors(styles.keyPreview), variation = colors(styles.variation))
+    }
+
     private fun currentFlickPopupViewStyleSet(): FlickPopupViewStyleSet {
         return FlickPopupViewStyleSet(
             directional = PopupViewStyle(
@@ -15846,6 +15864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
         )
         flickView.applyPopupViewStyleSet(currentFlickPopupViewStyleSet())
+        flickView.setQwertyPopupSettings(appPreference.custom_keyboard_show_key_preview, currentCustomQwertyPopupViewStyleSet())
         applyCurrentFlickGuidePreference(flickView)
         flickView.setFlickGuideTextSizeSp(
             (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
@@ -16725,8 +16744,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 consumeCustomKeyboardOneShotShift()
             }
 
+            override fun onResolvedText(text: String) {
+                handleAction(KeyAction.Text(text), false, caseResolved = true)
+            }
+
             override fun onAction(action: KeyAction, isFlick: Boolean) {
-                if (deferCursorInput { onAction(action, isFlick) }) return
+                handleAction(action, isFlick, caseResolved = false)
+            }
+
+            private fun handleAction(action: KeyAction, isFlick: Boolean, caseResolved: Boolean) {
+                if (deferCursorInput { handleAction(action, isFlick, caseResolved) }) return
+                fun outputCase(text: String): String =
+                    if (caseResolved) text else applyCustomLayoutShiftAndCapLock(text)
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 flushPendingBackspacesBefore(action)
@@ -16761,7 +16790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         when (qwertyMode.value) {
                             TenKeyQWERTYMode.Custom -> {
                                 if (text.isEmpty()) return
-                                val shiftedText = applyCustomLayoutShiftAndCapLock(text)
+                                val shiftedText = outputCase(text)
                                 if (dispatchDirectTextIfNeeded(shiftedText)) {
                                     consumeCustomKeyboardOneShotShift()
                                     return
@@ -16788,7 +16817,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     }
                                                 } else {
                                                     _inputString.update {
-                                                        applyCustomLayoutShiftAndCapLock(
+                                                        outputCase(
                                                             sb.toString()
                                                         )
                                                     }
@@ -16796,7 +16825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                                             } else {
                                                 _inputString.update {
-                                                    applyCustomLayoutShiftAndCapLock(
+                                                    outputCase(
                                                         customRomajiScreenConverter?.convert(sb.toString())
                                                             ?: sb.toString()
                                                     )
@@ -29582,9 +29611,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         EditorEnterPolicy.dispatch(
             action = EditorEnterPolicy.resolve(currentInputEditorInfo),
             sendKey = {
-                if (currentInputConnection != null) {
+                currentInputConnection?.let { connection ->
                     sendDownUpKeyEvents(it)
                     editorMutationRevision.advance()
+                    clearEnglishCorrection()
+                    scheduleEnglishCorrection(connection, "\n")
                 }
             },
             performAction = { performEditorAction(it) },
@@ -30462,11 +30493,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun finishInputEnterKey() {
+        val committedText = inputString.value
+        val hadTail = stringInTail.get().isNotEmpty()
+        val showEnglishContinuations = currentInputModeForSession == InputMode.ModeEnglish && !hadTail
         clearZeroQueryAllState(refresh = false)
         _inputString.update { "" }
-        finishComposingText()
+        val finished = finishComposingText()
         clearSuggestionStateAfterCommit()
         resetFlagsEnterKeyNotHenkan()
+        clearEnglishCorrection()
+        if (finished && showEnglishContinuations) {
+            rememberZeroQueryKeyAfterCommit(committedText)
+            consumePendingZeroQueryAfterCommit()
+        }
+        if (finished && !hadTail) {
+            currentInputConnection?.let { scheduleEnglishCorrection(it, committedText) }
+        }
     }
 
     /**

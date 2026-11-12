@@ -129,6 +129,13 @@
                 app:singleSelection="true">
 
                 <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_qwerty"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/qwerty_input_style" />
+
+                <com.google.android.material.chip.Chip
                     android:id="@+id/chip_petal_flick"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
@@ -142,6 +149,13 @@
                     android:layout_height="wrap_content"
                     android:text="@string/donuts_flick" />
 
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_two_step_flick"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/input_style_two_step" />
+
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_flick_long_press"
@@ -150,6 +164,12 @@
                     android:layout_height="wrap_content"
                     android:text="@string/input_style_flick_long_press" />
             </com.google.android.material.chip.ChipGroup>
+
+            <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.QwertyKeyEditorView
+                android:id="@+id/qwerty_key_editor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/text_output_mode_title"

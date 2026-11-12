@@ -114,7 +114,9 @@ data class KeyDefinitionDto(
     @SerializedName("textInputBehavior")
     val textInputBehavior: String? = null,
     @SerializedName("hierarchicalFlick")
-    val hierarchicalFlick: JsonElement? = null
+    val hierarchicalFlick: JsonElement? = null,
+    @SerializedName("qwerty")
+    val qwerty: JsonElement? = null
 )
 
 data class FlickMappingDto(

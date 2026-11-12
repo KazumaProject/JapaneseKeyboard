@@ -8,6 +8,7 @@ import com.google.gson.reflect.TypeToken
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+import com.kazumaproject.custom_keyboard.data.QwertyKeyConfigCodec
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior
 import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
@@ -288,6 +289,12 @@ object KeyboardBackupNormalizer {
                 return@mapIndexedNotNull null
             }
 
+            val qwertyConfig = QwertyKeyConfigCodec.decode(keyDto.qwerty?.toString())
+            if (keyDto.keyType == KeyType.QWERTY.name && qwertyConfig == null) {
+                errors += KeyboardLayoutImportError.ValidationFailed(layoutIndex,
+                    "Invalid QWERTY configuration for key ${keyIndex + 1}")
+                return@mapIndexedNotNull null
+            }
             val identifier = keyDto.keyIdentifier
                 ?.takeIf { it.isNotBlank() && it !in usedKeyIdentifiers }
                 ?: UUID.randomUUID().toString().also {
@@ -377,6 +384,7 @@ object KeyboardBackupNormalizer {
                 doubleTapAction = normalizedDoubleTapAction,
                 doubleTapPolicy = normalizedDoubleTapPolicy,
                 hierarchicalFlickJson = hierarchicalFlickJson,
+                qwertyConfigJson = qwertyConfig?.let(QwertyKeyConfigCodec::encode),
                 textInputBehavior = KeyTextInputBehavior
                     .fromDbValue(keyDto.textInputBehavior)
                     .dbValue

@@ -1983,4 +1983,28 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="mushroom_unsupported">Mushroom is unavailable in this input field</string>
     <string name="sumire_mode_key_highlight_title">Keep the selected mode key highlighted</string>
     <string name="sumire_mode_key_highlight_summary">In the flick key layout, keep the current Hiragana, English, or Number mode key highlighted after switching modes.</string>
+
+    <string name="qwerty_input_style">QWERTY</string>
+    <string name="qwerty_layer_normal">Normal</string>
+    <string name="qwerty_layer_shift">Shift / Caps Lock</string>
+    <string name="qwerty_custom_shift">Use custom Shift settings</string>
+    <string name="qwerty_key_label">Key label (empty: input text)</string>
+    <string name="qwerty_tap_output">Tap input text</string>
+    <string name="qwerty_preview_label">Key preview text (empty: input text)</string>
+    <string name="qwerty_columns">Popup columns</string>
+    <string name="qwerty_columns_error">Enter a column count from 1 to %1$d</string>
+    <string name="qwerty_grid_help">Tap a cell to edit its label and input. Clear a cell to keep an empty position. Without custom Shift settings, ASCII letters become uppercase.</string>
+    <string name="qwerty_candidate_output">Candidate input (empty: blank cell)</string>
+    <string name="qwerty_candidate_label">Candidate label (empty: input text)</string>
+    <string name="qwerty_add_slot">Add a cell</string>
+    <string name="qwerty_move_before">Move before</string>
+    <string name="qwerty_move_after">Move after</string>
+    <string name="qwerty_clear_slot">Clear cell</string>
+    <string name="qwerty_remove_slot">Remove cell</string>
+    <string name="qwerty_empty_slot">Empty</string>
+    <string name="qwerty_selected_slot">Row %1$d, column %2$d</string>
+    <string name="custom_keyboard_show_key_preview_title">Show QWERTY key previews</string>
+    <string name="custom_keyboard_show_key_preview_summary">Enlarge the pressed key text. Long-press alternatives remain available.</string>
+    <string name="custom_qwerty_popup_style_title">QWERTY popup appearance</string>
+    <string name="custom_qwerty_popup_style_summary">Share size and text settings with the standard QWERTY keyboard</string>
 </resources>
