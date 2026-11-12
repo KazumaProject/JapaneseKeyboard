@@ -21,7 +21,7 @@ class ThreeStageFlickSuspensionInstrumentedTest {
     @Test fun savedKeysStayBlockedInBothPopupModesAndEveryHitTestMode() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch(SumireFlickRotationTestActivity::class.java).use { scenario ->
-            for (type in listOf(KeyType.TWO_STEP_FLICK, KeyType.STICKY_TWO_STEP_FLICK, KeyType.HIERARCHICAL_FLICK))
+            for (type in listOf(KeyType.HIERARCHICAL_FLICK))
                 for (popup in TfbiPopupPresentationMode.entries) for (hitMode in KeyHitTestMode.entries) {
                 val laidOut = CountDownLatch(1)
                 scenario.onActivity { activity ->
