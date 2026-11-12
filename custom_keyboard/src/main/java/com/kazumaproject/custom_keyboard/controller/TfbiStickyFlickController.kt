@@ -1,0 +1,570 @@
+package com.kazumaproject.custom_keyboard.controller
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.util.Log
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.widget.PopupWindow
+import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
+import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
+import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
+import kotlin.math.abs
+import kotlin.math.atan2
+
+class TfbiStickyFlickController(
+    private val context: Context,
+    private val gestureConfigSource: GestureSessionConfigSource
+) {
+
+    constructor(
+        context: Context,
+        flickSensitivity: Float
+    ) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = flickSensitivity.coerceAtLeast(1f),
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
+    /**
+     * このコントローラー専用のリスナーインターフェース
+     */
+    interface TfbiListener {
+        fun onPress(first: TfbiFlickDirection, second: TfbiFlickDirection)
+        fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
+    }
+
+    private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
+
+    companion object {
+        private const val MAX_ANGLE_DIFFERENCE = 70.0
+        // CANCEL_THRESHOLD はこのクラスでは使用しない
+        // private const val CANCEL_THRESHOLD = 70f
+    }
+
+    private var flickState: FlickState = FlickState.NEUTRAL
+    private var firstFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
+    private var currentSecondFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
+    private var intermediateTouchX = 0f
+    private var intermediateTouchY = 0f
+    private var activeGestureConfig: GestureSessionConfig? = null
+    private var currentFingerPosition: TfbiGuideFingerPosition? = null
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
+    private var activeTfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
+
+    var listener: TfbiListener? = null
+    private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
+    private var attachedView: View? = null
+
+    private var popupView: TfbiFlickPopupView? = null
+    private var popupWindow: PopupWindow? = null
+    private var popupStyle = PopupViewStyle(100, 20f)
+    private var inputTextTransform: (String) -> String = { it }
+    private var popupBackgroundColor: Int? = null
+    private var popupHighlightedColor: Int? = null
+    private var popupTextColor: Int? = null
+
+    private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var popupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private val guidePopupHost by lazy {
+        TfbiGuidePopupHost(context) { popupWindowAnchorProvider?.invoke() }
+    }
+
+    private val longPressRunnable = Runnable {
+        val view = attachedView ?: return@Runnable
+        if (flickState != FlickState.NEUTRAL || activeGestureConfig == null) return@Runnable
+        popupWindow?.dismiss()
+        showPopup(view, TfbiFlickDirection.TAP, true)
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    fun attach(
+        view: View,
+        provider: (TfbiFlickDirection, TfbiFlickDirection) -> String
+    ) {
+        this.attachedView = view
+        this.characterMapProvider = provider
+
+        view.setOnTouchListener { _, event -> handleTouchEvent(event) }
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
+    }
+
+    fun setPopupPresentationMode(mode: TfbiPopupPresentationMode) {
+        if (popupPresentationMode == mode) return
+        popupWindow?.dismiss()
+        guidePopupHost.dismiss()
+        popupWindow = null
+        popupView = null
+        popupPresentationMode = mode
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
+    }
+
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
+        popupView?.setInputTextTransform(transform)
+        guidePopupHost.setInputTextTransform(transform)
+    }
+
+    fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
+        popupBackgroundColor = backgroundColor
+        popupHighlightedColor = highlightedColor
+        popupTextColor = textColor
+        guidePopupHost.setColors(backgroundColor, highlightedColor, textColor)
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor,
+            skinId = style.skinId
+        )
+        popupView?.applyPopupViewStyle(popupStyle)
+        guidePopupHost.applyPopupViewStyle(popupStyle)
+    }
+
+    fun cancel() {
+        resetState()
+        attachedView?.setOnTouchListener(null)
+        attachedView = null
+    }
+
+    private fun handleTouchEvent(event: MotionEvent): Boolean {
+        val view = attachedView ?: return false
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
+            MotionEvent.ACTION_MOVE -> handleTouchMove(event, view)
+            MotionEvent.ACTION_UP -> handleTouchUp(event)
+            MotionEvent.ACTION_CANCEL -> resetState()
+        }
+        return true
+    }
+
+    private fun handleTouchDown(event: MotionEvent, view: View) {
+        // 状態リセットはここで行う
+        resetState()
+        val gestureConfig = gestureConfigSource.snapshot()
+        activeGestureConfig = gestureConfig
+        flickState = FlickState.NEUTRAL
+        initialTouchX = event.x
+        initialTouchY = event.y
+        activeTfbiFlickStartPositionMode = tfbiFlickStartPositionMode
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = initialTouchX,
+            downY = initialTouchY
+        )
+        listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
+
+        // 最初は必ず花びらなしのポップアップを表示する
+        showPopup(view, TfbiFlickDirection.TAP, false)
+        view.postDelayed(longPressRunnable, gestureConfig.longPressTimeoutMillis)
+    }
+
+    private fun handleTouchMove(event: MotionEvent, view: View) {
+        updateGuideFingerPosition(view, event)
+        if (flickState == FlickState.NEUTRAL) {
+            val dx = event.x - initialTouchX
+            val dy = event.y - initialTouchY
+
+            if (isFlickThresholdCrossed(dx, dy)) {
+                view.removeCallbacks(longPressRunnable)
+                val enabledFirstDirections = getEnabledFirstFlickDirections()
+                val determinedDirection =
+                    calculateDirection(dx, dy, currentFlickThreshold(), enabledFirstDirections)
+                if (determinedDirection == TfbiFlickDirection.TAP) return
+
+                firstFlickDirection = determinedDirection
+                intermediateTouchX = event.x
+                intermediateTouchY = event.y
+                flickState = FlickState.FIRST_FLICK_DETERMINED
+
+                setupSecondStageUI(firstFlickDirection)
+                popupView?.highlightDirection(determinedDirection)
+                currentSecondFlickDirection = determinedDirection
+                updateGuideSecondStage()
+            }
+        } else {
+            // ===== ★ 変更点 1 =====
+            // 中央に戻った時のキャンセルしきい値チェックを削除
+            /*
+            val distanceFromInitial = hypot(
+                (event.x - initialTouchX).toDouble(),
+                (event.y - initialTouchY).toDouble()
+            ).toFloat()
+            if (distanceFromInitial < CANCEL_THRESHOLD) {
+                resetState()
+                showPopup(view, TfbiFlickDirection.TAP, false)
+                return
+            }
+            */
+            // ===== ★ 変更点 1 終了 =====
+
+            val dx = event.x - intermediateTouchX
+            val dy = event.y - intermediateTouchY
+            val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
+
+            var highlightTargetDirection =
+                resolveSecondDirection(dx, dy, enabledSecondDirections)
+
+            if (highlightTargetDirection == TfbiFlickDirection.TAP) {
+                // ===== ★ 変更点 2 =====
+                // TAP領域に戻った場合、最初のフリック方向(firstFlickDirection)ではなく、
+                // 「最後にハイライトしていた方向(currentSecondFlickDirection)」を維持する
+                highlightTargetDirection = currentSecondFlickDirection
+                // ===== ★ 変更点 2 終了 =====
+            }
+
+            if (highlightTargetDirection != currentSecondFlickDirection) {
+                popupView?.highlightDirection(highlightTargetDirection)
+                currentSecondFlickDirection = highlightTargetDirection
+                updateGuideSecondStage()
+            }
+        }
+    }
+
+    private fun handleTouchUp(event: MotionEvent) {
+        // (この関数内のロジックは元の TfbiInputController と同じで、変更不要です)
+        // ログのタグだけ "TfbStickyInput" に変更しています。
+
+        attachedView?.let { updateGuideFingerPosition(it, event) }
+
+        Log.d(
+            "TfbStickyInput", // ★ ログタグ
+            "handleTouchUp: START. Current state = $flickState"
+        )
+
+        var finalSecondDirection: TfbiFlickDirection
+        if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
+            val dx = event.x - intermediateTouchX
+            val dy = event.y - intermediateTouchY
+            val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
+            finalSecondDirection =
+                resolveSecondDirection(dx, dy, enabledSecondDirections)
+
+            Log.d(
+                "TfbStickyInput", // ★ ログタグ
+                "handleTouchUp: State=FIRST_FLICK_DETERMINED. dx=$dx, dy=$dy, calculatedDir=$finalSecondDirection"
+            )
+
+            // このロジックが「TAP領域で指を離しても、直前にハイライトしていた方向を採用する」
+            // という動作を担っているため、変更不要
+            if (finalSecondDirection == TfbiFlickDirection.TAP && currentSecondFlickDirection != TfbiFlickDirection.TAP) {
+                finalSecondDirection = currentSecondFlickDirection
+                Log.d(
+                    "TfbStickyInput", // ★ ログタグ
+                    "handleTouchUp: Using currentSecondFlickDirection. finalDir=$finalSecondDirection"
+                )
+            }
+        } else {
+            val dx = event.x - initialTouchX
+            val dy = event.y - initialTouchY
+            val enabledFirstDirections = getEnabledFirstFlickDirections()
+            firstFlickDirection =
+                calculateDirection(dx, dy, currentFlickThreshold(), enabledFirstDirections)
+            finalSecondDirection = TfbiFlickDirection.TAP
+
+            Log.d(
+                "TfbStickyInput", // ★ ログタグ
+                "handleTouchUp: State=NEUTRAL. dx=$dx, dy=$dy. firstDir=$firstFlickDirection, finalDir=$finalSecondDirection"
+            )
+        }
+
+        if (listener == null) {
+            Log.w("TfbStickyInput", "handleTouchUp: Listener is NULL!") // ★ ログタグ
+        }
+        Log.d(
+            "TfbStickyInput", // ★ ログタグ
+            "handleTouchUp: Calling onFlick(first=$firstFlickDirection, second=$finalSecondDirection)"
+        )
+
+        listener?.onFlick(firstFlickDirection, finalSecondDirection)
+        resetState()
+    }
+
+    // ===== 以下のヘルパーメソッドは TfbiInputController と同一です =====
+
+    private fun showPopup(
+        anchorView: View,
+        baseDirection: TfbiFlickDirection,
+        showPetals: Boolean
+    ) {
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            showGuidePopup(anchorView, baseDirection, showPetals)
+        } else {
+            showLegacyPopup(anchorView, baseDirection, showPetals)
+        }
+    }
+
+    private fun showGuidePopup(
+        anchorView: View,
+        baseDirection: TfbiFlickDirection,
+        showPetals: Boolean
+    ) {
+        val currentText = characterMapProvider?.invoke(baseDirection, TfbiFlickDirection.TAP).orEmpty()
+        val optionLabels = if (showPetals) {
+            getEnabledFirstFlickDirections().associateWith { direction ->
+                characterMapProvider?.invoke(direction, direction).orEmpty()
+            }.mapValues { (_, output) -> guideOptionLabel(currentText, output) }
+        } else {
+            emptyMap()
+        }
+        guidePopupHost.show(
+            anchor = anchorView,
+            state = TfbiGuidePopupState(
+                currentText = currentText,
+                currentSlot = TfbiFlickDirection.TAP,
+                optionLabels = optionLabels,
+                fingerPosition = currentFingerPosition
+            ),
+            direction = baseDirection.takeUnless { it == TfbiFlickDirection.TAP && !showPetals },
+            style = popupStyle,
+            inputTextTransform = inputTextTransform
+        )
+    }
+
+    private fun showLegacyPopup(
+        anchorView: View,
+        baseDirection: TfbiFlickDirection,
+        showPetals: Boolean
+    ) {
+        if (popupWindow?.isShowing == true && !showPetals) return
+
+        val tapCharacter = characterMapProvider?.invoke(baseDirection, TfbiFlickDirection.TAP) ?: ""
+
+        val petalChars = if (showPetals) {
+            val enabledDirections = getEnabledFirstFlickDirections()
+            enabledDirections.associateWith { direction ->
+                characterMapProvider?.invoke(direction, direction) ?: ""
+            }
+        } else {
+            emptyMap()
+        }
+
+        popupView = TfbiFlickPopupView(context).apply {
+            setInputTextTransform(inputTextTransform)
+            if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
+                setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
+            }
+            applyPopupViewStyle(popupStyle)
+            setCharacters(tapCharacter, petalChars)
+            highlightDirection(TfbiFlickDirection.TAP)
+        }
+        val scale = popupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (anchorView.width * 3 * scale).toInt().coerceAtLeast(1)
+        val popupHeight = (anchorView.height * 3 * scale).toInt().coerceAtLeast(1)
+        popupWindow = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
+            isTouchable = false
+            isFocusable = false
+            setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
+            isClippingEnabled = false
+        }
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
+        if (!isAnchorReady(anchorView, windowAnchor)) return
+        val location = getLocationRelativeToWindowAnchor(anchorView, windowAnchor)
+        val offsetX = location[0] + anchorView.width / 2 - popupWidth / 2
+        val offsetY = location[1] + anchorView.height / 2 - popupHeight / 2
+        runCatching {
+            popupWindow?.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, offsetX, offsetY)
+        }
+    }
+
+    private fun setupSecondStageUI(firstDirection: TfbiFlickDirection) {
+        val tapCharacter =
+            characterMapProvider?.invoke(firstDirection, TfbiFlickDirection.TAP) ?: ""
+        val enabledDirections = getEnabledSecondFlickDirections(firstDirection)
+        val petalChars = enabledDirections.associateWith {
+            characterMapProvider?.invoke(firstDirection, it) ?: ""
+        }
+        popupView?.setCharacters(tapCharacter, petalChars)
+    }
+
+    private fun updateGuideSecondStage() {
+        if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
+        val first = firstFlickDirection
+        val currentText = characterMapProvider?.invoke(first, currentSecondFlickDirection).orEmpty()
+            .ifEmpty { characterMapProvider?.invoke(first, TfbiFlickDirection.TAP).orEmpty() }
+        val options = getEnabledSecondFlickDirections(first).associateWith { direction ->
+            characterMapProvider?.invoke(first, direction).orEmpty()
+        }.mapValues { (_, output) -> guideOptionLabel(currentText, output) }
+        guidePopupHost.update(
+            state = TfbiGuidePopupState(
+                currentText = currentText,
+                currentSlot = first,
+                optionLabels = options,
+                selectedOption = currentSecondFlickDirection
+            ),
+            direction = currentSecondFlickDirection
+        )
+    }
+
+    private fun guideOptionLabel(currentText: String, output: String): String {
+        if (output.isEmpty()) return ""
+        return output.removePrefix(currentText).ifEmpty { output }
+    }
+
+    private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = initialTouchX,
+            downY = initialTouchY
+        )
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            guidePopupHost.updateFingerPosition(currentFingerPosition)
+        }
+    }
+
+
+    private fun resetState() {
+        attachedView?.removeCallbacks(longPressRunnable)
+        popupWindow?.dismiss()
+        guidePopupHost.dismiss()
+        popupWindow = null
+        popupView = null
+        flickState = FlickState.NEUTRAL
+        firstFlickDirection = TfbiFlickDirection.TAP
+        currentSecondFlickDirection = TfbiFlickDirection.TAP
+        activeGestureConfig = null
+        currentFingerPosition = null
+    }
+
+    private fun currentFlickThreshold(): Float {
+        return currentGestureConfig().flickThresholdPx
+    }
+
+    private fun currentGestureConfig(): GestureSessionConfig {
+        return activeGestureConfig ?: gestureConfigSource.snapshot()
+    }
+
+    private fun resolveSecondDirection(
+        dx: Float,
+        dy: Float,
+        enabledDirections: Set<TfbiFlickDirection>,
+    ): TfbiFlickDirection {
+        val config = currentGestureConfig()
+        val candidate = calculateDirection(dx, dy, config.flickThresholdPx, enabledDirections)
+        return guardTfbiSecondStageDiagonal(
+            candidate, firstFlickDirection, dx, dy, config.flickThresholdPx,
+            enabledDirections, config.tfbiDiagonalRecognitionMode
+        )
+    }
+
+    private fun isFlickThresholdCrossed(dx: Float, dy: Float): Boolean {
+        val config = currentGestureConfig()
+        return FlickGestureMath.isThresholdCrossed(
+            deltaX = dx,
+            deltaY = dy,
+            thresholdPx = config.flickThresholdPx,
+            thresholdShape = config.flickThresholdShape
+        )
+    }
+
+    private fun getEnabledFirstFlickDirections(): Set<TfbiFlickDirection> {
+        val provider = characterMapProvider ?: return emptySet()
+        return TfbiFlickDirection.entries.filter {
+            it != TfbiFlickDirection.TAP && provider(it, TfbiFlickDirection.TAP).isNotEmpty()
+        }.toSet()
+    }
+
+    private fun getEnabledSecondFlickDirections(baseDirection: TfbiFlickDirection): Set<TfbiFlickDirection> {
+        val provider = characterMapProvider ?: return emptySet()
+        return TfbiFlickDirection.entries.filter {
+            it != TfbiFlickDirection.TAP && provider(baseDirection, it).isNotEmpty()
+        }.toSet()
+    }
+
+    private fun calculateDirection(
+        dx: Float,
+        dy: Float,
+        threshold: Float,
+        enabledDirections: Set<TfbiFlickDirection>
+    ): TfbiFlickDirection {
+        val config = currentGestureConfig()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = threshold,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
+            return TfbiFlickDirection.TAP
+        }
+        if (enabledDirections.isEmpty()) {
+            return TfbiFlickDirection.TAP
+        }
+
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            currentFingerPosition?.let { position ->
+                return resolveTfbiGuideGridDirection(position, enabledDirections)
+            }
+        }
+
+        val centerAngles = mapOf(
+            TfbiFlickDirection.RIGHT to 0.0,
+            TfbiFlickDirection.DOWN_RIGHT to 35.0,
+            TfbiFlickDirection.DOWN to 90.0,
+            TfbiFlickDirection.DOWN_LEFT to 125.0,
+            TfbiFlickDirection.LEFT to 180.0,
+            TfbiFlickDirection.UP_LEFT to -125.0,
+            TfbiFlickDirection.UP to -90.0,
+            TfbiFlickDirection.UP_RIGHT to -35.0
+        )
+
+        val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
+
+        val closestDirectionData = enabledDirections.map { direction ->
+            val targetAngle =
+                if (direction == TfbiFlickDirection.LEFT && angle < 0) -180.0 else centerAngles[direction]!!
+
+            var diff = abs(angle - targetAngle)
+            if (diff > 180) {
+                diff = 360 - diff
+            }
+            Pair(direction, diff)
+        }.minByOrNull { it.second }
+
+        if (closestDirectionData == null || closestDirectionData.second > MAX_ANGLE_DIFFERENCE) {
+            return TfbiFlickDirection.TAP
+        }
+
+        return closestDirectionData.first
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
+    }
+}

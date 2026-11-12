@@ -276,7 +276,7 @@ object KeyboardDefaultLayouts {
         }
 
         var finalLayout = if (mode == KeyboardInputMode.HIRAGANA && inputStyle == "second-flick") {
-            baseLayout
+            SumireFlickRotationMapper.apply(baseLayout, tfbiFlickRotation)
         } else {
             baseLayout
         }
