@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,6 +23,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           submodules: recursive
 
@@ -87,10 +92,6 @@ jobs:
             --stacktrace \
             --no-daemon \
             --max-workers=1
-          ./gradlew :app:assembleLiteFdroidRelease \
-            --stacktrace \
-            --no-daemon \
-            --max-workers=1
 
       - name: Build and verify Play bundle native symbols
         env:
@@ -113,11 +114,156 @@ jobs:
             app/build/outputs/bundle/fullStandardRelease/*.aab
             app/build/outputs/bundle/liteStandardRelease/*.aab
 
-      - name: Create Release and Upload APK
+      - name: Upload standard APKs for source verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: standard-apks-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            app/build/outputs/apk/fullStandard/release/*.apk
+            app/build/outputs/apk/liteStandard/release/*.apk
+
+  fdroid:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build: [first, second]
+    steps:
+      - name: Checkout the exact workflow commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android API 37 and release build tools
+        run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;29.0.14206865"
+
+      - name: Verify release source guard
+        run: python3 -m unittest discover -s tools/release -p 'test_verify_release_source.py'
+
+      - name: Build unsigned F-Droid APK without restored caches
+        env:
+          # Each runner starts with a fresh checkout and an empty Gradle user home.
+          GRADLE_USER_HOME: ${{ runner.temp }}/fdroid-gradle-${{ matrix.build }}
+        # Use the release variant F-Droid builds, with no signing configuration.
+        # releaseUnsigned has a different BuildConfig.BUILD_TYPE.
+        run: |
+          ./gradlew clean :app:assembleLiteFdroidRelease \
+            --no-build-cache --no-configuration-cache \
+            --stacktrace --no-daemon --max-workers=1
+          python3 tools/release/verify-release-source.py --revision "$GITHUB_SHA" \
+            app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
+
+      - name: Upload unsigned F-Droid APK for comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: fdroid-unsigned-${{ matrix.build }}-${{ github.sha }}
+          if-no-files-found: error
+          path: app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
+
+  publish:
+    needs: [build, fdroid]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout verification tools from the workflow commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install APK signing tools
+        run: sdkmanager "build-tools;36.0.0"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: standard-apks-${{ github.sha }}
+          path: release/standard
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: fdroid-unsigned-first-${{ github.sha }}
+          path: fdroid/first
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: fdroid-unsigned-second-${{ github.sha }}
+          path: fdroid/second
+
+      - name: Require identical clean F-Droid builds
+        run: cmp fdroid/first/app-liteFdroid-release.apk fdroid/second/app-liteFdroid-release.apk
+
+      - name: Sign the verified F-Droid APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          key_store="$RUNNER_TEMP/fdroid-release.jks"
+          trap 'rm -f "$key_store"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$key_store"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -P 16 -f 4 \
+            fdroid/first/app-liteFdroid-release.apk "$RUNNER_TEMP/fdroid-aligned.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign \
+            --ks "$key_store" --ks-pass env:KEYSTORE_PASSWORD \
+            --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD \
+            --v1-signing-enabled false --v2-signing-enabled true \
+            --v3-signing-enabled false --v4-signing-enabled false \
+            --out release/app-liteFdroid-release.apk "$RUNNER_TEMP/fdroid-aligned.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify release/app-liteFdroid-release.apk
+
+      - name: Check APK revisions and the public tag for tag builds
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          mapfile -d '' apks < <(find release -name '*.apk' -print0)
+          source_args=(--revision "$GITHUB_SHA")
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            source_args+=(--tag "$RELEASE_TAG")
+          fi
+          python3 tools/release/verify-release-source.py \
+            "${source_args[@]}" "${apks[@]}"
+
+      - name: Refuse to replace assets of an existing release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let release;
+            try {
+              release = await github.rest.repos.getReleaseByTag({
+                ...context.repo, tag: context.ref.replace('refs/tags/', '')
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            if (release && release.data.assets.length > 0) {
+              throw new Error('Release already has assets. Publish changes with a new version/tag.');
+            }
+
+      - name: Create Release and Upload Verified APKs
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           generate_release_notes: true
-          files: app/build/outputs/apk/**/*.apk
+          overwrite_files: false
+          files: release/**/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
