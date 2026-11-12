@@ -30447,11 +30447,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun finishInputEnterKey() {
+        val committedText = inputString.value
+        val showEnglishContinuations = currentInputModeForSession == InputMode.ModeEnglish &&
+            stringInTail.get().isEmpty()
         clearZeroQueryAllState(refresh = false)
         _inputString.update { "" }
-        finishComposingText()
+        val finished = finishComposingText()
         clearSuggestionStateAfterCommit()
         resetFlagsEnterKeyNotHenkan()
+        if (finished && showEnglishContinuations) {
+            rememberZeroQueryKeyAfterCommit(committedText)
+            consumePendingZeroQueryAfterCommit()
+        }
     }
 
     /**
