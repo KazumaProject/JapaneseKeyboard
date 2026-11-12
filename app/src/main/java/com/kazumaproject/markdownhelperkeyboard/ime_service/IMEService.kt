@@ -4004,9 +4004,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun scheduleEnglishCorrection(connection: InputConnection, committed: CharSequence?) {
-        if (!canShowEnglishCorrection() || committed.isNullOrBlank()) return
+        if (!canShowEnglishCorrection() || committed.isNullOrEmpty()) return
         val suffix = committed.takeLast(160).toString()
-        if (suffix.none { it in 'a'..'z' || it in 'A'..'Z' }) return
+        if (suffix.none { it in 'a'..'z' || it in 'A'..'Z' || it in ".!\n" }) return
         if (dictionarySourceResolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return
         val revision = editorMutationRevision.current()
         englishCorrectionJob = scope.launch {
@@ -29582,9 +29582,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         EditorEnterPolicy.dispatch(
             action = EditorEnterPolicy.resolve(currentInputEditorInfo),
             sendKey = {
-                if (currentInputConnection != null) {
+                currentInputConnection?.let { connection ->
                     sendDownUpKeyEvents(it)
                     editorMutationRevision.advance()
+                    clearEnglishCorrection()
+                    scheduleEnglishCorrection(connection, "\n")
                 }
             },
             performAction = { performEditorAction(it) },
@@ -30462,11 +30464,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun finishInputEnterKey() {
+        val committedText = inputString.value
+        val hadTail = stringInTail.get().isNotEmpty()
         clearZeroQueryAllState(refresh = false)
         _inputString.update { "" }
-        finishComposingText()
+        val finished = finishComposingText()
         clearSuggestionStateAfterCommit()
         resetFlagsEnterKeyNotHenkan()
+        clearEnglishCorrection()
+        if (finished && !hadTail) {
+            currentInputConnection?.let { scheduleEnglishCorrection(it, committedText) }
+        }
     }
 
     /**
