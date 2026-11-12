@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="qwerty_romaji_initial_input_mode_entries">
+        <item>@string/qwerty_romaji_initial_input_mode_japanese</item>
+        <item>@string/qwerty_romaji_initial_input_mode_english</item>
+    </string-array>
+    <string-array name="qwerty_romaji_initial_input_mode_values">
+        <item>japanese</item>
+        <item>english</item>
+    </string-array>
+
     <string-array name="ng_word_match_mode_entries">
         <item>@string/ng_word_match_mode_partial</item>
         <item>@string/ng_word_match_mode_exact</item>
