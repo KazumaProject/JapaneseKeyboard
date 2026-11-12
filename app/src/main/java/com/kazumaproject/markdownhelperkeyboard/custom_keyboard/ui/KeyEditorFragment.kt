@@ -45,6 +45,9 @@ import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior
+import com.kazumaproject.custom_keyboard.data.QwertyKeyConfig
+import com.kazumaproject.custom_keyboard.data.QwertyKeyLayer
+import com.kazumaproject.custom_keyboard.data.QwertyKeyConfigCodec
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
@@ -105,6 +108,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private val binding get() = _binding!!
 
     private var currentKeyData: KeyData? = null
+    private var qwertyDraftInitialized = false
+    private var editingKeyIdentifier: String? = null
+    private var restoredEditingKeyIdentifier: String? = null
+    private var savedQwertyDraft: QwertyKeyConfig? = null
 
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
     private var currentToggleFlickItems = mutableListOf<FlickMappingItem>()
@@ -178,6 +185,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         _binding = FragmentKeyEditorBinding.bind(view)
 
         binding.buttonDone.isEnabled = false
+        restoredEditingKeyIdentifier = savedInstanceState?.getString("qwertyEditingKey")
+        savedQwertyDraft = QwertyKeyConfigCodec.decode(savedInstanceState?.getString("qwertyDraft"), requireOutput = false)
+        binding.qwertyKeyEditor.onChanged = { updateDoneButtonState() }
         setupToolbarAndMenu()
         setupGridEditor()
         setupUIListeners()
@@ -563,6 +573,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun handleSpecialCategoryUi() {
+        binding.qwertyKeyEditor.isVisible = false
         val isFlick = binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_flick
 
         binding.keyLabelLayout.isVisible = false
@@ -594,6 +605,31 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun handleInputStyleUi() {
         val selectedStyle = binding.inputStyleChipGroup.checkedChipId
+        val isQwerty = selectedStyle == R.id.chip_qwerty
+        binding.qwertyKeyEditor.isVisible = isQwerty
+        if (isQwerty) {
+            binding.keyLabelLayout.isVisible = false
+            binding.flickGridEditorView.isVisible = false
+            binding.circularFlickEditorGroup.isVisible = false
+            binding.specialFlickEditorGroup.isVisible = false
+            binding.textSelectedDirection.isVisible = false
+            binding.textCharInputLayout.isVisible = false
+            binding.textOutputModeTitle.isVisible = false
+            binding.outputModeChipGroup.isVisible = false
+            binding.customKeyboardTargetLayout.isVisible = false
+            currentCellMode = null
+            if (!qwertyDraftInitialized) {
+                qwertyDraftInitialized = true
+                val key = currentKeyData
+                binding.qwertyKeyEditor.setConfig(savedQwertyDraft ?: key?.qwertyConfig ?: QwertyKeyConfig(
+                    QwertyKeyLayer(output = textOutputFromAction(key?.action)
+                        .ifEmpty { key?.label.orEmpty() }, label = key?.label.orEmpty())
+                ))
+            }
+            updateIconOverrideVisibility()
+            return
+        }
+
         val isTwoStep = selectedStyle == R.id.chip_two_step_flick
         val isCircular = selectedStyle == R.id.chip_circular_flick
         val isFlickLongPress = selectedStyle == R.id.chip_flick_long_press
@@ -1102,6 +1138,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         if (outputEditMode != OutputEditMode.TOGGLE) {
             binding.textCharInputLayout.error = null
         }
+        if (binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
+            binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
+            binding.buttonDone.isEnabled = binding.qwertyKeyEditor.isInputValid
+            return
+        }
         val isEnabled = when (binding.keyTypeChipGroup.checkedChipId) {
             R.id.chip_special -> {
                 val isFlick =
@@ -1195,7 +1236,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // legacy KeyData.keyId. selectedKeyIdentifier carries item.id for
             // flexible layouts (so half-cell keys and editor-created keys
             // resolve correctly even when keyData.keyId is null/blank).
-            val selectedId = state.selectedKeyIdentifier
+            val selectedId = state.selectedKeyIdentifier ?: restoredEditingKeyIdentifier.takeIf { savedQwertyDraft != null }
+            editingKeyIdentifier = selectedId
             val selectedKeyItem = selectedId?.let { id ->
                 state.layout.items
                     .filterIsInstance<KeyItem>()
@@ -1318,8 +1360,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.outputModeChipGroup.check(R.id.chip_normal_output)
                 outputEditMode = OutputEditMode.NORMAL
 
-                // Input style: petal or two-step
-                if (key.keyType == KeyType.TWO_STEP_FLICK) {
+                // Restore the supported editor.
+                if (key.keyType == KeyType.QWERTY || savedQwertyDraft != null) {
+                    binding.inputStyleChipGroup.check(R.id.chip_qwerty)
+                } else if (key.keyType == KeyType.TWO_STEP_FLICK) {
                     binding.inputStyleChipGroup.check(R.id.chip_two_step_flick)
                 } else if (key.keyType == KeyType.FLICK_LONG_PRESS) {
                     binding.inputStyleChipGroup.check(R.id.chip_flick_long_press)
@@ -1800,6 +1844,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             return
         }
 
+        var newQwertyConfig: QwertyKeyConfig? = null
         val newLabel: String
         val newKeyType: KeyType
         val isSpecial: Boolean
@@ -1924,7 +1969,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 val isFlickLongPress =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_flick_long_press
 
-                if (isCircular) {
+                if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
+                    if (!binding.qwertyKeyEditor.isInputValid) return
+                    newQwertyConfig = binding.qwertyKeyEditor.config
+                    newKeyType = KeyType.QWERTY
+                    newLabel = newQwertyConfig.normal.displayLabel
+                    newAction = KeyAction.Text(newQwertyConfig.normal.output)
+                    newLongPressFlickMap = emptyMap()
+                    newTwoStepLongPressMap = emptyMap()
+                } else if (isCircular) {
                     newKeyType = KeyType.CIRCULAR_FLICK
                     newLabel = binding.keyLabelEdittext.text.toString()
                     val tapOutput = currentCircularFlickMaps
@@ -2077,7 +2130,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             isSpecialKey = isSpecial,
             action = newAction,
             // IMPORTANT: special flick should still be flickable (KeyType != NORMAL)
-            isFlickable = (newKeyType != KeyType.NORMAL),
+            isFlickable = newKeyType !in setOf(KeyType.NORMAL, KeyType.QWERTY),
+            qwertyConfig = newQwertyConfig,
             drawableResId = newDrawableResId,
             icon = savedIconRef,
             rowSpan = if (isFlexibleSizeEditing) {
@@ -2136,6 +2190,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        if (_binding != null && binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
+            binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
+            outState.putString("qwertyDraft", QwertyKeyConfigCodec.encode(binding.qwertyKeyEditor.config))
+            outState.putString("qwertyEditingKey", editingKeyIdentifier)
+        }
+        super.onSaveInstanceState(outState)
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
@@ -2145,6 +2207,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
         viewModel.doneNavigatingToKeyEditor()
 
+        qwertyDraftInitialized = false
         _binding = null
     }
 }

@@ -15759,6 +15759,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun currentCustomQwertyPopupViewStyleSet(): QwertyPopupViewStyleSet {
+        val styles = currentQwertyPopupViewStyleSet()
+        if (keyboardThemeMode != "custom") return styles
+        fun colors(style: PopupViewStyle) = style.copy(
+            backgroundColor = style.backgroundColor ?: customThemeSpecialKeyColor,
+            textColor = style.textColor ?: customThemeSpecialKeyTextColor
+        )
+        return styles.copy(keyPreview = colors(styles.keyPreview), variation = colors(styles.variation))
+    }
+
     private fun currentFlickPopupViewStyleSet(): FlickPopupViewStyleSet {
         return FlickPopupViewStyleSet(
             directional = PopupViewStyle(
@@ -15854,6 +15864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
         )
         flickView.applyPopupViewStyleSet(currentFlickPopupViewStyleSet())
+        flickView.setQwertyPopupSettings(appPreference.custom_keyboard_show_key_preview, currentCustomQwertyPopupViewStyleSet())
         applyCurrentFlickGuidePreference(flickView)
         flickView.setFlickGuideTextSizeSp(
             (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
@@ -16733,8 +16744,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 consumeCustomKeyboardOneShotShift()
             }
 
+            override fun onResolvedText(text: String) {
+                handleAction(KeyAction.Text(text), false, caseResolved = true)
+            }
+
             override fun onAction(action: KeyAction, isFlick: Boolean) {
-                if (deferCursorInput { onAction(action, isFlick) }) return
+                handleAction(action, isFlick, caseResolved = false)
+            }
+
+            private fun handleAction(action: KeyAction, isFlick: Boolean, caseResolved: Boolean) {
+                if (deferCursorInput { handleAction(action, isFlick, caseResolved) }) return
+                fun outputCase(text: String): String =
+                    if (caseResolved) text else applyCustomLayoutShiftAndCapLock(text)
                 activateSplitView(flickView)
                 if (isKeyboardLayoutEditModeActive()) return
                 flushPendingBackspacesBefore(action)
@@ -16769,7 +16790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         when (qwertyMode.value) {
                             TenKeyQWERTYMode.Custom -> {
                                 if (text.isEmpty()) return
-                                val shiftedText = applyCustomLayoutShiftAndCapLock(text)
+                                val shiftedText = outputCase(text)
                                 if (dispatchDirectTextIfNeeded(shiftedText)) {
                                     consumeCustomKeyboardOneShotShift()
                                     return
@@ -16796,7 +16817,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     }
                                                 } else {
                                                     _inputString.update {
-                                                        applyCustomLayoutShiftAndCapLock(
+                                                        outputCase(
                                                             sb.toString()
                                                         )
                                                     }
@@ -16804,7 +16825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                                             } else {
                                                 _inputString.update {
-                                                    applyCustomLayoutShiftAndCapLock(
+                                                    outputCase(
                                                         customRomajiScreenConverter?.convert(sb.toString())
                                                             ?: sb.toString()
                                                     )

@@ -39,17 +39,18 @@ class NgWordMigrationTest {
                 db.execSQL("INSERT INTO ng_word (yomi, tango) VALUES ('きょう', '今日')")
                 db.execSQL("DROP TABLE romaji_maps")
                 db.execSQL("CREATE TABLE romaji_maps (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, mapData TEXT NOT NULL, isActive INTEGER NOT NULL, isDeletable INTEGER NOT NULL)")
+                db.execSQL("ALTER TABLE key_definitions DROP COLUMN qwertyConfigJson")
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN hierarchicalFlickJson")
                 db.execSQL("PRAGMA user_version = 46")
             } finally {
                 initial.close()
             }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_46_47, AppDatabase.MIGRATION_47_48, AppDatabase.MIGRATION_48_49)
+                .addMigrations(AppDatabase.MIGRATION_46_47, AppDatabase.MIGRATION_47_48, AppDatabase.MIGRATION_48_49, AppDatabase.MIGRATION_49_50)
                 .allowMainThreadQueries().build()
             try {
                 val db = migrated.openHelper.writableDatabase
-                assertEquals(49, db.version)
+                assertEquals(50, db.version)
                 db.query("SELECT matchMode FROM ng_word").use { cursor ->
                     assertTrue(cursor.moveToFirst())
                     assertEquals("PARTIAL", cursor.getString(0))

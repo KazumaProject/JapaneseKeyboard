@@ -33,6 +33,10 @@ class CustomKeyboardPreferenceFragment : AsyncPreferenceFragment() {
             }
         }
 
+        findPreference<Preference>("custom_qwerty_popup_style")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.qwertyPopupStyleSettingFragment)
+            true
+        }
         applyLegacySearchResultFilterIfNeeded()
     }
 }
