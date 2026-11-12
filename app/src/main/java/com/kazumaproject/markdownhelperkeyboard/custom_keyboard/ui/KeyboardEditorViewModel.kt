@@ -1,6 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
-import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
+import com.kazumaproject.custom_keyboard.data.UnsupportedCustomFlick
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
@@ -1006,7 +1006,7 @@ class KeyboardEditorViewModel @Inject constructor(
         flexibleRowSpanUnits: Int? = null,
         flexibleColumnSpanUnits: Int? = null
     ): Boolean {
-        if (CustomFlickSuspension.isSuspended(newKeyData.keyType)) return false
+        if (UnsupportedCustomFlick.isUnsupported(newKeyData.keyType)) return false
         val keyId = newKeyData.keyId ?: run {
             Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
             return false
@@ -1018,7 +1018,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
             val oldKeyData = layout.keys.find { it.keyId == keyId } ?: return@update currentState
             val finalHierarchicalMaps = layout.preservedFlickDefinitions.toMutableMap()
-            if (CustomFlickSuspension.isSuspended(oldKeyData.keyType)) return@update currentState
+            if (UnsupportedCustomFlick.isUnsupported(oldKeyData.keyType)) return@update currentState
             finalHierarchicalMaps.remove(keyId)
             val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
             val finalCircularFlickMaps = layout.circularFlickKeyMaps.toMutableMap()

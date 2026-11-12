@@ -32,7 +32,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Run only with the isolated sumirerotation535 application ID supplied by a Gradle init script. */
+/** Explicit opt-in is required to change the IME on an isolated emulator. */
 @RunWith(AndroidJUnit4::class)
 @SdkSuppress(minSdkVersion = 29)
 class SumireFlickRotationDeviceTest {
@@ -41,9 +41,9 @@ class SumireFlickRotationDeviceTest {
     private val context get() = instrumentation.targetContext
 
     @Test
-    fun secondAndThirdFlickUseRotationChangesWhileTheImeIsOpen() {
-        assumeTrue("Use the isolated sumirerotation535 verification package",
-            context.packageName.startsWith("com.kazumaproject.sumirerotation535"))
+    fun builtInTwoStepUsesRotationChangesWhileTheImeIsOpen() {
+        assumeTrue(InstrumentationRegistry.getArguments().getString("builtInIsolatedEmulator") == "true" &&
+            shell("getprop ro.kernel.qemu").trim() == "1")
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val originalPreferences = preferences.all.toMap()
         val targetIme = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
@@ -79,9 +79,11 @@ class SumireFlickRotationDeviceTest {
             shell("ime enable $targetIme")
             shell("ime set $targetIme")
             shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name}")
-            for (style in listOf("second-flick")) {
+            for (popup in listOf("legacy_grid", "guide_above_key")) {
+                val style = "second-flick"
                 check(preferences.edit().putString("sumire_keyboard_style_preference", style)
-                    .putString(AppPreference.SUMIRE_FLICK_ROTATION_KEY, "default").commit())
+                    .putString(AppPreference.SUMIRE_FLICK_ROTATION_KEY, "default")
+                    .putString(AppPreference.FLICK_TFBI_POPUP_PRESENTATION_KEY, popup).commit())
                 withHost { it.restartEditorInput(clearText = true) }
                 awaitLayout(style, TfbiFlickRotation.DEFAULT)
                 key("か")
@@ -101,30 +103,12 @@ class SumireFlickRotationDeviceTest {
                         Triple(DOWN, if (rotation == TfbiFlickRotation.CLOCKWISE) DOWN_LEFT else DOWN_RIGHT, "ご")
                     )
                     for ((first, second, output) in paths) {
-                        flick(key("か"), style, first, second)
+                        flick(key("か"), popup, first, second)
                         expected += output
                         awaitText(expected, "$style $rotation $first/$second")
                     }
                 }
-                if (style == "third-flick") {
-                    for (mode in listOf(SumireFlickInputMode.CONTRACTED, SumireFlickInputMode.VOICED,
-                        SumireFlickInputMode.ALL)) {
-                        instrumentation.runOnMainSync {
-                            check(preferences.edit().putString(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY,
-                                mode.preferenceValue).commit())
-                        }
-                        awaitLayout(style, TfbiFlickRotation.COUNTERCLOCKWISE, mode)
-                        val output = if (mode == SumireFlickInputMode.VOICED) {
-                            flick(key("か"), style, LEFT, DOWN_LEFT)
-                            "ぎ"
-                        } else {
-                            flick(key("か"), style, LEFT, UP, UP_LEFT)
-                            "きゅう"
-                        }
-                        expected += output
-                        awaitText(expected, "Active three-step input mode $mode")
-                    }
-                }
+
             }
         } finally {
             instrumentation.runOnMainSync {
@@ -145,25 +129,21 @@ class SumireFlickRotationDeviceTest {
         }
     }
 
-    private fun flick(bounds: Rect, style: String, first: TfbiFlickDirection, second: TfbiFlickDirection,
-        third: TfbiFlickDirection? = null) {
+    private fun flick(bounds: Rect, popup: String, first: TfbiFlickDirection, second: TfbiFlickDirection) {
         val radius = 60f * context.resources.displayMetrics.density
         val start = PointF(bounds.exactCenterX(), bounds.exactCenterY())
         val firstPoint = point(start, first, radius)
-        val secondPoint = point(if (style == "second-flick") firstPoint else start, second, radius)
+        val secondPoint = point(if (popup == "legacy_grid") firstPoint else start, second, radius)
         val downTime = SystemClock.uptimeMillis()
-        val thirdPoint = third?.let { point(start, it, radius) }
-        (listOf(MotionEvent.ACTION_DOWN to start, MotionEvent.ACTION_MOVE to firstPoint,
-            MotionEvent.ACTION_MOVE to secondPoint) +
-            listOfNotNull(thirdPoint?.let { MotionEvent.ACTION_MOVE to it }) +
-            (MotionEvent.ACTION_UP to (thirdPoint ?: secondPoint)))
-            .forEach { (action, point) ->
-                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
-                    point.x, point.y, 0).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
-                try { check(automation.injectInputEvent(event, true)) }
-                finally { event.recycle() }
-                SystemClock.sleep(30)
-            }
+        for ((action, position) in listOf(MotionEvent.ACTION_DOWN to start,
+            MotionEvent.ACTION_MOVE to firstPoint, MotionEvent.ACTION_MOVE to secondPoint,
+            MotionEvent.ACTION_UP to secondPoint)) {
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
+                position.x, position.y, 0).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
+            try { check(automation.injectInputEvent(event, true)) }
+            finally { event.recycle() }
+            SystemClock.sleep(30)
+        }
     }
 
     private fun point(origin: PointF, direction: TfbiFlickDirection, radius: Float): PointF {
@@ -221,11 +201,8 @@ class SumireFlickRotationDeviceTest {
                 } ?: return@runOnMainSync
                 val layout = FlickKeyboardView::class.java.getDeclaredField("currentLayout")
                     .apply { isAccessible = true }.get(keyboard) as? KeyboardLayout ?: return@runOnMainSync
-                if (layout.keys.firstOrNull { it.label == "か" }?.keyType != KeyType.TWO_STEP_FLICK) return@runOnMainSync
-                val map = layout.twoStepFlickKeyMaps["か"] ?: return@runOnMainSync
-                val hasGi = map[LEFT]?.get(if (rotation == TfbiFlickRotation.CLOCKWISE) UP_LEFT else DOWN_LEFT) == "ぎ"
-                val hasGe = map[RIGHT]?.get(if (rotation == TfbiFlickRotation.COUNTERCLOCKWISE) UP_RIGHT else DOWN_RIGHT) == "げ"
-                ready = hasGi && hasGe
+                if (layout.keys.firstOrNull { it.label == "か" }?.keyType != KeyType.BUILT_IN_TWO_STEP) return@runOnMainSync
+                ready = layout.builtInTwoStepRotation == rotation
             }
             if (!ready) SystemClock.sleep(50)
         }

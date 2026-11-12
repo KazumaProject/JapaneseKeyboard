@@ -1,6 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
-import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
+import com.kazumaproject.custom_keyboard.data.UnsupportedCustomFlick
 import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -1141,9 +1141,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             val key = currentKeyData!!
-            if (CustomFlickSuspension.isSuspended(key.keyType)) {
+            if (UnsupportedCustomFlick.isUnsupported(key.keyType)) {
                 AlertDialog.Builder(requireContext())
-                    .setMessage(com.kazumaproject.core.R.string.custom_flick_suspended)
+                    .setMessage(com.kazumaproject.core.R.string.unsupported_custom_flick)
                     .setPositiveButton(android.R.string.ok) { _, _ -> findNavController().popBackStack() }
                     .setOnCancelListener { findNavController().popBackStack() }
                     .show()
@@ -1649,7 +1649,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun onDone() {
         val originalKey = currentKeyData ?: return
-        if (CustomFlickSuspension.isSuspended(originalKey.keyType)) return
+        if (UnsupportedCustomFlick.isUnsupported(originalKey.keyType)) return
 
         if (
             binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&

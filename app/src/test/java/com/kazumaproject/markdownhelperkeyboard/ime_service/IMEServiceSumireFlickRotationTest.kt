@@ -9,6 +9,7 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.custom_keyboard.data.BuiltInTwoStepKey
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
@@ -74,9 +75,8 @@ class IMEServiceSumireFlickRotationTest {
                 notifyPreferenceChanged()
                 val layout = ReflectionHelpers.callInstanceMethod<KeyboardLayout>(
                     service, "createSumireKeyboardLayout")
-                val input = layout.twoStepFlickKeyMaps.getValue("か")
-                        .getValue(TfbiFlickDirection.LEFT).getValue(direction)
-                assertEquals("$style $rotation", "ぎ", input)
+                assertEquals("$style $rotation", rotation, layout.builtInTwoStepRotation)
+                assertEquals(BuiltInTwoStepKey.KA, layout.keys.first { it.label == "か" }.builtInTwoStepKey)
             }
         }
     }
@@ -90,8 +90,8 @@ class IMEServiceSumireFlickRotationTest {
         notifyPreferenceChanged()
         val layout = ReflectionHelpers.callInstanceMethod<KeyboardLayout>(
             service, "createSumireKeyboardLayout")
-        assertEquals("ぎ", layout.twoStepFlickKeyMaps.getValue("か")
-            .getValue(TfbiFlickDirection.LEFT).getValue(TfbiFlickDirection.DOWN_LEFT))
+        assertEquals(TfbiFlickRotation.DEFAULT, layout.builtInTwoStepRotation)
+        assertTrue(layout.twoStepFlickKeyMaps.isEmpty())
     }
 
 
@@ -198,8 +198,10 @@ class IMEServiceSumireFlickRotationTest {
         ReflectionHelpers.getField(view, "currentLayout")
 
     private fun assertKaIColumn(view: FlickKeyboardView, direction: TfbiFlickDirection) {
-        assertEquals("ぎ", layoutOf(view).twoStepFlickKeyMaps.getValue("か")
-            .getValue(TfbiFlickDirection.LEFT).getValue(direction))
+        val layout = layoutOf(view)
+        assertEquals(BuiltInTwoStepKey.KA, layout.keys.first { it.label == "か" }.builtInTwoStepKey)
+        assertEquals(direction == TfbiFlickDirection.UP_LEFT,
+            layout.builtInTwoStepRotation == TfbiFlickRotation.CLOCKWISE)
     }
 
     private fun installSplitInput(

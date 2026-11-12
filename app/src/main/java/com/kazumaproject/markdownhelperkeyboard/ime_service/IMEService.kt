@@ -1,6 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
-import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateCorrectionOptions
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingInput
@@ -11408,13 +11407,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             appPreference.flick_special_key_text_size_sp ?: 12f
         )
         flickView.setFlickGuideTextSizeSp((flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat())
-        flickView.setKeyboard(
-            if (isUserDefinedCustomLayout) KeyboardDefaultLayouts.applyDeleteKeyFlickSettings(
-                layout, currentDeleteKeyFlickSettings().copy(down = true)
-            ) else applyDeleteKeyFlickPreferences(layout),
-            if (isUserDefinedCustomLayout) customKeyboardHitTestMode() else KeyHitTestMode.KEY_BOUNDS,
-            if (isUserDefinedCustomLayout) KeyboardLayoutOrigin.CUSTOM else KeyboardLayoutOrigin.BUILT_IN
-        )
+        val configuredLayout = if (isUserDefinedCustomLayout) KeyboardDefaultLayouts.applyDeleteKeyFlickSettings(
+            layout, currentDeleteKeyFlickSettings().copy(down = true)
+        ) else applyDeleteKeyFlickPreferences(layout)
+        if (isUserDefinedCustomLayout) {
+            flickView.setKeyboard(configuredLayout, customKeyboardHitTestMode())
+        } else {
+            flickView.setBuiltInKeyboard(configuredLayout, KeyHitTestMode.KEY_BOUNDS)
+        }
     }
 
     private fun syncCustomKeyboardTogglePresentation(
@@ -11478,7 +11478,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             layoutType = layoutType,
             inputMode = mode.name
         )
-        flickView.setKeyboard(createSumireKeyboardLayout(mode), KeyHitTestMode.NEAREST_KEY, KeyboardLayoutOrigin.BUILT_IN)
+        flickView.setBuiltInKeyboard(createSumireKeyboardLayout(mode), KeyHitTestMode.NEAREST_KEY)
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {

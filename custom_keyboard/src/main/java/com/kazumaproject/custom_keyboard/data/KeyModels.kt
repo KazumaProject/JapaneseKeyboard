@@ -162,7 +162,9 @@ data class KeyData(
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL,
     val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL,
     val doubleTapBinding: DoubleTapBinding? = null,
-    val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL
+    val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL,
+    /** Runtime-only identifier supplied by the built-in layout factory, never imported. */
+    val builtInTwoStepKey: BuiltInTwoStepKey? = null
 )
 
 data class GridPlacement(
@@ -606,7 +608,8 @@ data class KeyboardLayout(
     val columnUnitCount: Int = columnCount * 2,
     val rowUnitCount: Int = rowCount * 2,
     val isFlexiblePlacementLayout: Boolean = false,
-    val usageMode: KeyboardLayoutUsageMode = KeyboardLayoutUsageMode.Normal
+    val usageMode: KeyboardLayoutUsageMode = KeyboardLayoutUsageMode.Normal,
+    val builtInTwoStepRotation: TfbiFlickRotation = TfbiFlickRotation.DEFAULT
 )
 
 /**
@@ -629,6 +632,10 @@ enum class KeyType {
     /** Sumire guide popup with a cursor that starts at the key center. */
     CENTER_GUIDE_FLICK,
 
+    /** Runtime-only built-in kana input; custom layouts cannot enable it. */
+    BUILT_IN_TWO_STEP,
+
+    /** Legacy storage identifiers; no input implementation. */
     TWO_STEP_FLICK,
 
     STICKY_TWO_STEP_FLICK,

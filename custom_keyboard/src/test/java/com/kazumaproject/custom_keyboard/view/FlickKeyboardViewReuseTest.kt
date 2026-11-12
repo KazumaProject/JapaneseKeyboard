@@ -1,6 +1,5 @@
 package com.kazumaproject.custom_keyboard.view
 
-import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode

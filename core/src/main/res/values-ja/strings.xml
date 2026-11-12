@@ -284,6 +284,7 @@
     <string name="enable_direct_input_mode">直接入力モード</string>
     <string name="cursor_left">カーソルを左に移動</string>
     <string name="cursor_right">カーソルを右に移動</string>
-    <string name="three_stage_flick_suspended">3段フリックは一時停止中です。標準キーボードは通常フリックで入力できます。カスタムのキー定義は保持されますが、3段フリックのキーは入力・編集できません。</string>
-    <string name="custom_flick_suspended">カスタム二段・三段フリックのキーは一時停止中です。</string>
+    <string name="three_stage_flick_suspended">3段フリックは廃止されました。標準キーボードは通常フリックで入力できます。カスタムのキー定義は保持されますが、3段フリックのキーは入力・編集できません。</string>
+    <string name="unsupported_custom_flick">カスタム二段・三段フリックは利用できません。保存済みのキー定義は保持されます。</string>
+    <string name="unsupported_custom_flick_label">利用不可</string>
 </resources>

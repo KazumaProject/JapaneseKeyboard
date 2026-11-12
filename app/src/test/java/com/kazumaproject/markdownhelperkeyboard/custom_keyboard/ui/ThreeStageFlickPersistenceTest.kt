@@ -1,6 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
-import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
+import com.kazumaproject.custom_keyboard.data.UnsupportedCustomFlick
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -29,6 +29,26 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class ThreeStageFlickPersistenceTest {
+    @Test fun importedBuiltInTypeCannotAcquireRuntimeKeyMetadata() = runBlocking<Unit> {
+        val json = """{"schemaVersion":5,"layouts":[{"layout":{"name":"forged","columnCount":1,"rowCount":1,
+            "builtInTwoStepRotation":"CLOCKWISE"},"keysWithFlicks":[{"key":{"keyType":"BUILT_IN_TWO_STEP",
+            "label":"か","row":0,"column":0,"builtInTwoStepKey":"KA"},"flicks":[]}]}]}"""
+        val parsed = KeyboardLayoutJsonImporter.parse(json) as KeyboardLayoutImportResult.Success
+        val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java)
+            .allowMainThreadQueries().build()
+        try {
+            val repository = KeyboardRepository(db.keyboardLayoutDao())
+            assertTrue(repository.importLayouts(parsed.layouts) is KeyboardLayoutImportResult.Success)
+            val layout = repository.getAllCustomKeyboardLayouts().first().single()
+            val key = layout.keys.single()
+            assertEquals(KeyType.BUILT_IN_TWO_STEP, key.keyType)
+            assertNull(key.builtInTwoStepKey)
+            assertTrue(UnsupportedCustomFlick.isUnsupported(key.keyType))
+            assertEquals(com.kazumaproject.custom_keyboard.data.TfbiFlickRotation.DEFAULT,
+                layout.builtInTwoStepRotation)
+        } finally { db.close() }
+    }
+
     @Test fun oldDefinitionSurvivesOtherKeyEditsSaveReloadDuplicateAndBackup() = runBlocking<Unit> {
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDatabase::class.java)
             .allowMainThreadQueries().build()
@@ -49,7 +69,7 @@ class ThreeStageFlickPersistenceTest {
             val before = editor.uiState.value.layout
             val oldKey = before.keys.single { it.keyType == KeyType.HIERARCHICAL_FLICK }
             val other = before.keys.single { it.keyType == KeyType.NORMAL }
-            before.keys.filter { CustomFlickSuspension.isSuspended(it.keyType) }.forEach { key ->
+            before.keys.filter { UnsupportedCustomFlick.isUnsupported(it.keyType) }.forEach { key ->
                 assertFalse(editor.updateKeyAndMappings(key.copy(label = "changed"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
             }
             assertFalse(editor.updateKeyAndMappings(oldKey.copy(label = "changed"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))

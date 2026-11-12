@@ -1,6 +1,5 @@
 package com.kazumaproject.custom_keyboard.view
 
-import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.app.Activity
 import android.os.Looper
 import android.os.SystemClock
@@ -59,7 +58,7 @@ class FlickKeyboardViewLifecycleTest {
                     idle(500)
                     assertTrue("$scenario emitted input while hidden", events.isEmpty())
                     keyboard.visibility = View.VISIBLE
-                    keyboard.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN)
+                    keyboard.setBuiltInKeyboard(layout)
                     children.forEachIndexed { index, key -> assertSame(scenario, key, keyboard.getChildAt(index)) }
                     tapAllKeys()
                     assertEquals(scenario, expected, events)
@@ -192,7 +191,7 @@ class FlickKeyboardViewLifecycleTest {
     private fun actionLayout(type: KeyType) = KeyboardLayout(
         listOf(KeyData("paste", 0, 0, false, KeyAction.Paste, keyId = "paste", keyType = type)),
         mapOf("paste" to listOf(mapOf(FlickDirection.TAP to FlickAction.Action(KeyAction.Paste)))), 1, 1)
-    private fun install(layout: KeyboardLayout) { keyboard.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN); measure(); events.clear(); holds.clear() }
+    private fun install(layout: KeyboardLayout) { keyboard.setBuiltInKeyboard(layout); measure(); events.clear(); holds.clear() }
     private fun measure() {
         keyboard.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY))

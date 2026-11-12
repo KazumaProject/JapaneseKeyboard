@@ -17,7 +17,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
-import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
@@ -57,14 +56,14 @@ class SumireFlickRotationTestActivity : Activity() {
             setLongPressTimeout(2000)
             setFlickSensitivityValue(1)
             setTfbiPopupPresentationMode(popup)
-            setKeyboard(KeyboardDefaultLayouts.createFinalLayout(
+            setBuiltInKeyboard(KeyboardDefaultLayouts.createFinalLayout(
                 mode = KeyboardInputMode.HIRAGANA,
                 dynamicKeyStates = emptyMap(),
                 inputLayoutType = "flick",
                 inputStyle = style,
                 tfbiFlickRotation = rotation,
                 sumireFlickInputMode = mode
-            ), origin = KeyboardLayoutOrigin.BUILT_IN)
+            ))
             setOnKeyboardActionListener(object : FlickKeyboardView.OnKeyboardActionListener {
                 override fun onPress(action: KeyAction) = Unit
                 override fun onAction(action: KeyAction, isFlick: Boolean) { actions += action }

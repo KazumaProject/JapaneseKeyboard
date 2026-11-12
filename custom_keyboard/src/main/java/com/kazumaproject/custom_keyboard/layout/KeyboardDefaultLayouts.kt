@@ -1,5 +1,6 @@
 package com.kazumaproject.custom_keyboard.layout
 
+import com.kazumaproject.custom_keyboard.data.BuiltInTwoStepKey
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.DoubleTapBinding
@@ -161,6 +162,13 @@ object KeyboardDefaultLayouts {
      * @param highlightSelectedMode Retain the built-in mode selection highlight.
      * @return The final, state-applied KeyboardLayout.
      */
+    private fun builtInTwoStepLayout(keys: List<KeyData>, maps: Map<String, List<Map<FlickDirection, FlickAction>>>): KeyboardLayout =
+        KeyboardLayout(keys.map { key ->
+            if (key.keyType == KeyType.BUILT_IN_TWO_STEP) key.copy(
+                builtInTwoStepKey = BuiltInTwoStepKey.forLabel(key.label)
+            ) else key
+        }, maps, 5, 4)
+
     fun createFinalLayout(
         mode: KeyboardInputMode,
         dynamicKeyStates: Map<String, Int>,
@@ -276,7 +284,7 @@ object KeyboardDefaultLayouts {
         }
 
         var finalLayout = if (mode == KeyboardInputMode.HIRAGANA && inputStyle == "second-flick") {
-            baseLayout
+            baseLayout.copy(builtInTwoStepRotation = tfbiFlickRotation)
         } else {
             baseLayout
         }
@@ -5017,7 +5025,7 @@ object KeyboardDefaultLayouts {
                 "あ", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5026,7 +5034,7 @@ object KeyboardDefaultLayouts {
                 "か", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5035,7 +5043,7 @@ object KeyboardDefaultLayouts {
                 "さ", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5044,7 +5052,7 @@ object KeyboardDefaultLayouts {
                 "た", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5053,7 +5061,7 @@ object KeyboardDefaultLayouts {
                 "な", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5062,7 +5070,7 @@ object KeyboardDefaultLayouts {
                 "は", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5071,7 +5079,7 @@ object KeyboardDefaultLayouts {
                 "ま", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5080,7 +5088,7 @@ object KeyboardDefaultLayouts {
                 "や", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5089,7 +5097,7 @@ object KeyboardDefaultLayouts {
                 "ら", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5107,7 +5115,7 @@ object KeyboardDefaultLayouts {
                 "わ", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5116,7 +5124,7 @@ object KeyboardDefaultLayouts {
                 "、。?!", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -5274,263 +5282,8 @@ object KeyboardDefaultLayouts {
                 spaceConvertStates.getOrNull(1)?.label?.let { label ->
                     flickMaps.put(label, listOf(conversionActionMap))
                 }
-                val twoStepFlickMaps = mapOf(
-                    // あ行
-                    "あ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP_RIGHT to "ぁ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.LEFT to "い",
-                            TfbiFlickDirection.DOWN_LEFT to "ぃ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ",
-                            TfbiFlickDirection.UP_RIGHT to "ゔ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.RIGHT to "え",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぇ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.DOWN to "お",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぉ",
-                        )
-                    ),
-                    // か行
-                    "か" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP_RIGHT to "が",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.LEFT to "き",
-                            TfbiFlickDirection.DOWN_LEFT to "ぎ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP to "く",
-                            TfbiFlickDirection.UP_LEFT to "ぐ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.RIGHT to "け",
-                            TfbiFlickDirection.DOWN_RIGHT to "げ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.DOWN to "こ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ご",
-                        )
-                    ),
-                    // さ行
-                    "さ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP_RIGHT to "ざ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.LEFT to "し",
-                            TfbiFlickDirection.DOWN_LEFT to "じ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP to "す",
-                            TfbiFlickDirection.UP_LEFT to "ず"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.RIGHT to "せ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぜ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.DOWN to "そ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぞ",
-                        )
-                    ),
-                    // た行
-                    "た" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP_RIGHT to "だ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.LEFT to "ち",
-                            TfbiFlickDirection.DOWN_LEFT to "ぢ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP to "つ",
-                            TfbiFlickDirection.UP_LEFT to "づ",
-                            TfbiFlickDirection.UP_RIGHT to "っ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.RIGHT to "て",
-                            TfbiFlickDirection.DOWN_RIGHT to "で"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.DOWN to "と",
-                            TfbiFlickDirection.DOWN_RIGHT to "ど",
-                        )
-                    ),
-                    // な行
-                    "な" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.LEFT to "に",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.UP to "ぬ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.RIGHT to "ね",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.DOWN to "の",
-                        )
-                    ),
-                    // は行
-                    "は" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_RIGHT to "ば",
-                        ), TfbiFlickDirection.UP_LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_LEFT to "ぱ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.LEFT to "ひ",
-                            TfbiFlickDirection.DOWN_LEFT to "び",
-                            TfbiFlickDirection.UP_LEFT to "ぴ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP to "ふ",
-                            TfbiFlickDirection.UP_RIGHT to "ぷ",
-                            TfbiFlickDirection.UP_LEFT to "ぶ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.RIGHT to "へ",
-                            TfbiFlickDirection.DOWN_RIGHT to "べ",
-                            TfbiFlickDirection.UP_RIGHT to "ぺ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.DOWN to "ほ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぼ",
-                            TfbiFlickDirection.DOWN_LEFT to "ぽ",
-                        )
-                    ),
-                    // ま行
-                    "ま" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.LEFT to "み",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.UP to "む",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.RIGHT to "め",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.DOWN to "も",
-                        )
-                    ),
-                    // や行
-                    "や" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP_RIGHT to "ゃ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.LEFT to "(",
-                            TfbiFlickDirection.DOWN_LEFT to "「",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP to "ゆ",
-                            TfbiFlickDirection.UP_LEFT to "ゅ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.RIGHT to ")",
-                            TfbiFlickDirection.DOWN_RIGHT to "」",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.DOWN to "よ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ょ",
-                        )
-                    ),
-                    // ら行
-                    "ら" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.LEFT to "り",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.UP to "る",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.RIGHT to "れ",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.DOWN to "ろ",
-                        )
-                    ),
-                    // わ行
-                    "わ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP_RIGHT to "ゎ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.LEFT to "を",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP to "ん",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.RIGHT to "ー",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.DOWN to "〜",
-                        )
-                    ),
-                    // 記号
-                    "、。?!" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.LEFT to "。",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.UP to "？",
-                            TfbiFlickDirection.UP_LEFT to "：",
-                            TfbiFlickDirection.UP_RIGHT to "・",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.RIGHT to "！",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.DOWN to "…",
-                        )
-                    )
-                )
-                KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
+
+                builtInTwoStepLayout(keys, flickMaps)
             }
 
 
@@ -6558,7 +6311,7 @@ object KeyboardDefaultLayouts {
                 "あ", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6567,7 +6320,7 @@ object KeyboardDefaultLayouts {
                 "か", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6576,7 +6329,7 @@ object KeyboardDefaultLayouts {
                 "さ", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6585,7 +6338,7 @@ object KeyboardDefaultLayouts {
                 "た", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6594,7 +6347,7 @@ object KeyboardDefaultLayouts {
                 "な", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6603,7 +6356,7 @@ object KeyboardDefaultLayouts {
                 "は", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6612,7 +6365,7 @@ object KeyboardDefaultLayouts {
                 "ま", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6621,7 +6374,7 @@ object KeyboardDefaultLayouts {
                 "や", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6630,7 +6383,7 @@ object KeyboardDefaultLayouts {
                 "ら", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6648,7 +6401,7 @@ object KeyboardDefaultLayouts {
                 "わ", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6657,7 +6410,7 @@ object KeyboardDefaultLayouts {
                 "、。?!", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -6819,264 +6572,9 @@ object KeyboardDefaultLayouts {
                 }
 
                 // 2段階フリック用の文字マップ (isDefaultKey = true の場合に利用)
-                val twoStepFlickMaps = mapOf(
-                    // あ行
-                    "あ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP_RIGHT to "ぁ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.LEFT to "い",
-                            TfbiFlickDirection.DOWN_LEFT to "ぃ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ",
-                            TfbiFlickDirection.UP_RIGHT to "ゔ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.RIGHT to "え",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぇ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.DOWN to "お",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぉ",
-                        )
-                    ),
-                    // か行
-                    "か" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP_RIGHT to "が",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.LEFT to "き",
-                            TfbiFlickDirection.DOWN_LEFT to "ぎ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP to "く",
-                            TfbiFlickDirection.UP_LEFT to "ぐ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.RIGHT to "け",
-                            TfbiFlickDirection.DOWN_RIGHT to "げ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.DOWN to "こ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ご",
-                        )
-                    ),
-                    // さ行
-                    "さ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP_RIGHT to "ざ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.LEFT to "し",
-                            TfbiFlickDirection.DOWN_LEFT to "じ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP to "す",
-                            TfbiFlickDirection.UP_LEFT to "ず"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.RIGHT to "せ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぜ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.DOWN to "そ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぞ",
-                        )
-                    ),
-                    // た行
-                    "た" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP_RIGHT to "だ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.LEFT to "ち",
-                            TfbiFlickDirection.DOWN_LEFT to "ぢ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP to "つ",
-                            TfbiFlickDirection.UP_LEFT to "づ",
-                            TfbiFlickDirection.UP_RIGHT to "っ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.RIGHT to "て",
-                            TfbiFlickDirection.DOWN_RIGHT to "で"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.DOWN to "と",
-                            TfbiFlickDirection.DOWN_RIGHT to "ど",
-                        )
-                    ),
-                    // な行
-                    "な" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.LEFT to "に",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.UP to "ぬ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.RIGHT to "ね",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.DOWN to "の",
-                        )
-                    ),
-                    // は行
-                    "は" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_RIGHT to "ば",
-                        ), TfbiFlickDirection.UP_LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_LEFT to "ぱ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.LEFT to "ひ",
-                            TfbiFlickDirection.DOWN_LEFT to "び",
-                            TfbiFlickDirection.UP_LEFT to "ぴ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP to "ふ",
-                            TfbiFlickDirection.UP_RIGHT to "ぷ",
-                            TfbiFlickDirection.UP_LEFT to "ぶ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.RIGHT to "へ",
-                            TfbiFlickDirection.DOWN_RIGHT to "べ",
-                            TfbiFlickDirection.UP_RIGHT to "ぺ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.DOWN to "ほ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぼ",
-                            TfbiFlickDirection.DOWN_LEFT to "ぽ",
-                        )
-                    ),
-                    // ま行
-                    "ま" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.LEFT to "み",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.UP to "む",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.RIGHT to "め",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.DOWN to "も",
-                        )
-                    ),
-                    // や行
-                    "や" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP_RIGHT to "ゃ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.LEFT to "(",
-                            TfbiFlickDirection.DOWN_LEFT to "「",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP to "ゆ",
-                            TfbiFlickDirection.UP_LEFT to "ゅ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.RIGHT to ")",
-                            TfbiFlickDirection.DOWN_RIGHT to "」",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.DOWN to "よ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ょ",
-                        )
-                    ),
-                    // ら行
-                    "ら" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.LEFT to "り",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.UP to "る",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.RIGHT to "れ",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.DOWN to "ろ",
-                        )
-                    ),
-                    // わ行
-                    "わ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP_RIGHT to "ゎ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.LEFT to "を",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP to "ん",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.RIGHT to "ー",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.DOWN to "〜",
-                        )
-                    ),
-                    // 記号
-                    "、。?!" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.LEFT to "。",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.UP to "？",
-                            TfbiFlickDirection.UP_LEFT to "：",
-                            TfbiFlickDirection.UP_RIGHT to "・",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.RIGHT to "！",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.DOWN to "…",
-                        )
-                    )
-                )
 
-                return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
+
+                return builtInTwoStepLayout(keys, flickMaps)
             }
 
 
@@ -8452,7 +7950,7 @@ object KeyboardDefaultLayouts {
                 "あ", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8461,7 +7959,7 @@ object KeyboardDefaultLayouts {
                 "か", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8470,7 +7968,7 @@ object KeyboardDefaultLayouts {
                 "さ", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8479,7 +7977,7 @@ object KeyboardDefaultLayouts {
                 "た", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8488,7 +7986,7 @@ object KeyboardDefaultLayouts {
                 "な", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8497,7 +7995,7 @@ object KeyboardDefaultLayouts {
                 "は", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8506,7 +8004,7 @@ object KeyboardDefaultLayouts {
                 "ま", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8515,7 +8013,7 @@ object KeyboardDefaultLayouts {
                 "や", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8524,7 +8022,7 @@ object KeyboardDefaultLayouts {
                 "ら", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8542,7 +8040,7 @@ object KeyboardDefaultLayouts {
                 "わ", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8551,7 +8049,7 @@ object KeyboardDefaultLayouts {
                 "、。?!", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "second-flick" -> KeyType.BUILT_IN_TWO_STEP
                     "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
@@ -8736,264 +8234,9 @@ object KeyboardDefaultLayouts {
                 }
 
                 // 2段階フリック用の文字マップ (isDefaultKey = true の場合に利用)
-                val twoStepFlickMaps = mapOf(
-                    // あ行
-                    "あ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP_RIGHT to "ぁ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.LEFT to "い",
-                            TfbiFlickDirection.DOWN_LEFT to "ぃ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ",
-                            TfbiFlickDirection.UP_RIGHT to "ゔ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.RIGHT to "え",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぇ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.DOWN to "お",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぉ",
-                        )
-                    ),
-                    // か行
-                    "か" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP_RIGHT to "が",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.LEFT to "き",
-                            TfbiFlickDirection.DOWN_LEFT to "ぎ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP to "く",
-                            TfbiFlickDirection.UP_LEFT to "ぐ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.RIGHT to "け",
-                            TfbiFlickDirection.DOWN_RIGHT to "げ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.DOWN to "こ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ご",
-                        )
-                    ),
-                    // さ行
-                    "さ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP_RIGHT to "ざ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.LEFT to "し",
-                            TfbiFlickDirection.DOWN_LEFT to "じ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP to "す",
-                            TfbiFlickDirection.UP_LEFT to "ず"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.RIGHT to "せ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぜ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.DOWN to "そ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぞ",
-                        )
-                    ),
-                    // た行
-                    "た" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP_RIGHT to "だ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.LEFT to "ち",
-                            TfbiFlickDirection.DOWN_LEFT to "ぢ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP to "つ",
-                            TfbiFlickDirection.UP_LEFT to "づ",
-                            TfbiFlickDirection.UP_RIGHT to "っ"
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.RIGHT to "て",
-                            TfbiFlickDirection.DOWN_RIGHT to "で"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.DOWN to "と",
-                            TfbiFlickDirection.DOWN_RIGHT to "ど",
-                        )
-                    ),
-                    // な行
-                    "な" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.LEFT to "に",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.UP to "ぬ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.RIGHT to "ね",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.DOWN to "の",
-                        )
-                    ),
-                    // は行
-                    "は" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_RIGHT to "ば",
-                        ), TfbiFlickDirection.UP_LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_LEFT to "ぱ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.LEFT to "ひ",
-                            TfbiFlickDirection.DOWN_LEFT to "び",
-                            TfbiFlickDirection.UP_LEFT to "ぴ",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP to "ふ",
-                            TfbiFlickDirection.UP_RIGHT to "ぷ",
-                            TfbiFlickDirection.UP_LEFT to "ぶ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.RIGHT to "へ",
-                            TfbiFlickDirection.DOWN_RIGHT to "べ",
-                            TfbiFlickDirection.UP_RIGHT to "ぺ"
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.DOWN to "ほ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぼ",
-                            TfbiFlickDirection.DOWN_LEFT to "ぽ",
-                        )
-                    ),
-                    // ま行
-                    "ま" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.LEFT to "み",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.UP to "む",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.RIGHT to "め",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.DOWN to "も",
-                        )
-                    ),
-                    // や行
-                    "や" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP_RIGHT to "ゃ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.LEFT to "(",
-                            TfbiFlickDirection.DOWN_LEFT to "「",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP to "ゆ",
-                            TfbiFlickDirection.UP_LEFT to "ゅ",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.RIGHT to ")",
-                            TfbiFlickDirection.DOWN_RIGHT to "」",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.DOWN to "よ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ょ",
-                        )
-                    ),
-                    // ら行
-                    "ら" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.LEFT to "り",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.UP to "る",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.RIGHT to "れ",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.DOWN to "ろ",
-                        )
-                    ),
-                    // わ行
-                    "わ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP_RIGHT to "ゎ",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.LEFT to "を",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP to "ん",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.RIGHT to "ー",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.DOWN to "〜",
-                        )
-                    ),
-                    // 記号
-                    "、。?!" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                        ), TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.LEFT to "。",
-                        ), TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.UP to "？",
-                            TfbiFlickDirection.UP_LEFT to "：",
-                            TfbiFlickDirection.UP_RIGHT to "・",
-                        ), TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.RIGHT to "！",
-                        ), TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.DOWN to "…",
-                        )
-                    )
-                )
 
-                return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
+
+                return builtInTwoStepLayout(keys, flickMaps)
             }
 
 

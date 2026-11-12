@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view
 
+import com.kazumaproject.custom_keyboard.data.UnsupportedCustomFlick
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
@@ -693,6 +694,10 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         }
 
+        if (UnsupportedCustomFlick.isUnsupported(keyData.keyType)) {
+            keyView.alpha = 0.4f
+            keyView.contentDescription = "${keyData.label}: ${context.getString(com.kazumaproject.core.R.string.unsupported_custom_flick)}"
+        }
         return keyView
     }
 

@@ -87,14 +87,14 @@ class ThreeStageFlickSuspensionDeviceTest {
                 flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
                     AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
             }
-            val blockedTypes = listOf(KeyType.HIERARCHICAL_FLICK, KeyType.TWO_STEP_FLICK, KeyType.STICKY_TWO_STEP_FLICK)
+            val blockedTypes = listOf(KeyType.HIERARCHICAL_FLICK, KeyType.TWO_STEP_FLICK, KeyType.STICKY_TWO_STEP_FLICK, KeyType.BUILT_IN_TWO_STEP)
             val blocked = blockedTypes.mapIndexed { index, type ->
                 KeyData("PausedKey$index", 0, index, true, action = KeyAction.Text("blocked"),
                     keyType = type, keyId = "paused-key$index")
             }
-            val ordinary = KeyData("WorkingKey", 0, 3, false, action = KeyAction.Text("あ"), keyId = "working-key")
+            val ordinary = KeyData("WorkingKey", 0, 4, false, action = KeyAction.Text("あ"), keyId = "working-key")
             val definition = """{"normal":{"TAP":{"type":"input","output":"preserved"}}}"""
-            createdId = repository.saveLayout(KeyboardLayout(blocked + ordinary, emptyMap(), 4, 1,
+            createdId = repository.saveLayout(KeyboardLayout(blocked + ordinary, emptyMap(), 5, 1,
                 preservedFlickDefinitions = mapOf("paused-key0" to definition)), "Suspension device verification", null)
             val saved = repository.getFullLayout(createdId!!).first()
             val stableId = repository.getLayoutsNotFlow().single { it.layoutId == createdId }.stableId
