@@ -11442,6 +11442,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         surface: FlickGuideSurface = when (qwertyMode.value) {
             TenKeyQWERTYMode.Sumire -> FlickGuideSurface.Sumire
             TenKeyQWERTYMode.Custom -> FlickGuideSurface.Custom
+            TenKeyQWERTYMode.Number -> if (numberUsageCustomKeyboardLayoutOrNull() != null) {
+                FlickGuideSurface.Custom
+            } else {
+                FlickGuideSurface.Other
+            }
             else -> FlickGuideSurface.Other
         }
     ) {
@@ -11483,8 +11488,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
         flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
-        applyCurrentFlickGuidePreference(flickView)
         val numberCustomLayout = numberUsageCustomKeyboardLayoutOrNull()
+        applyCurrentFlickGuidePreference(
+            flickView,
+            surface = if (numberCustomLayout != null) FlickGuideSurface.Custom else FlickGuideSurface.Other
+        )
         if (numberCustomLayout != null) {
             setKeyboardWithDeleteKeyFlickPreferences(
                 flickView,
