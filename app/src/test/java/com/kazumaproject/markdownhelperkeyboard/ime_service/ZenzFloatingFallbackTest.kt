@@ -11,13 +11,19 @@ import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
+import com.kazumaproject.markdownhelperkeyboard.converter.session.CandidateQueryMode
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestToken
+import com.kazumaproject.markdownhelperkeyboard.ime_service.composing_guide.ComposingGuideSettings
+import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiter
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,6 +39,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
+import kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -144,6 +151,78 @@ class ZenzFloatingFallbackTest {
         }
     }
 
+    @Test fun enabledFloatingLiveConversionRequiresLiveConversionAndItsStartLength() {
+        enableFloatingLiveConversion()
+        for (source in listOf("AutoLive", "ManualConvertLongPress")) {
+            val state = state(generated, source)
+            assertTrue(shouldApply(state))
+            ReflectionHelpers.setField(service, "isLiveConversionEnable", false)
+            assertFalse(shouldApply(state))
+            ReflectionHelpers.setField(service, "isLiveConversionEnable", true)
+            ReflectionHelpers.setField(service, "liveConversionStartLength", 3)
+            assertFalse(shouldApply(state))
+            ReflectionHelpers.setField(service, "liveConversionStartLength", 1)
+        }
+    }
+
+    @Test fun enabledFloatingLiveConversionRejectsHiddenLoadingAndStaleResults() {
+        enableFloatingLiveConversion()
+        val state = state(generated)
+        assertTrue(shouldApply(state))
+        assertFalse(shouldApply(state(null)))
+        ReflectionHelpers.setField(service, "zenzLiveLocalCandidatesSnapshot", listOf(generated))
+        assertFalse(shouldApply(state))
+        ReflectionHelpers.setField(service, "zenzLiveLocalCandidatesSnapshot", emptyList<Candidate>())
+        assertFalse(shouldApply(state))
+        ReflectionHelpers.setField(service, "zenzLiveLocalCandidatesSnapshot", listOf(local))
+        ReflectionHelpers.setField(service, "suppressSuggestions", true)
+        assertFalse(shouldApply(state))
+        ReflectionHelpers.setField(service, "suppressSuggestions", false)
+        setInput("あお")
+        assertFalse(shouldApply(state))
+        setInput("あか")
+        ReflectionHelpers.setField(service, "zenzLiveRequestToken", 1L)
+        assertFalse(shouldApply(state))
+    }
+
+    @Test fun enabledFloatingLiveConversionPreservesExplicitCandidateAndKatakanaSelection() {
+        enableFloatingLiveConversion()
+        val state = state(generated)
+        ReflectionHelpers.setField(service, "suggestionClickNum", 1)
+        assertFalse(shouldApply(state))
+        ReflectionHelpers.setField(service, "suggestionClickNum", 0)
+        ReflectionHelpers.setField(service, "hasConvertedKatakana", true)
+        assertFalse(shouldApply(state))
+    }
+
+    @Test fun acceptingFloatingResultUpdatesCompositionOnlyWhenEnabledWithoutCommitting() {
+        val editor = editor(ApplicationProvider.getApplicationContext())
+        val content = requireNotNull(editor.editable)
+        enableFloatingLiveConversion()
+        for (enabled in listOf(false, true)) {
+            preferences.edit().putBoolean(ComposingGuideSettings.ZENZ_LIVE_CONVERSION, enabled).commit()
+            editor.setComposingText(local.string, 1)
+            ReflectionHelpers.setField(service, "lastCandidate", local.string)
+            acceptGeneratedResult()
+            assertEquals(if (enabled) generated.string else local.string, content.toString())
+            assertEquals(0, BaseInputConnection.getComposingSpanStart(content))
+            assertEquals(content.length, BaseInputConnection.getComposingSpanEnd(content))
+            assertEquals("あか", ReflectionHelpers.getField<MutableStateFlow<String>>(service, "_inputString").value)
+        }
+    }
+
+    @Test fun delayedLocalLiveConversionKeepsTheEnabledFloatingResult() = runBlocking {
+        val editor = editor(ApplicationProvider.getApplicationContext())
+        enableFloatingLiveConversion()
+        acceptGeneratedResult()
+        assertEquals(generated.string, editor.editable.toString())
+        applyLocalLiveConversion()
+        assertEquals(generated.string, editor.editable.toString())
+        preferences.edit().putBoolean(ComposingGuideSettings.ZENZ_LIVE_CONVERSION, false).commit()
+        applyLocalLiveConversion()
+        assertEquals(local.string, editor.editable.toString())
+    }
+
     @Test fun tappingGeneratedCandidateReplacesAndCommitsTheLocalComposition() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val editor = editor(context)
@@ -188,6 +267,8 @@ class ZenzFloatingFallbackTest {
         setInput("あか")
         editor.setComposingText("垢", 1)
         assertTrue(visible(state))
+        enableFloatingLiveConversion()
+        assertFalse(shouldApply(state))
         IMEService::class.java.getDeclaredMethod("handleBunsetsuCandidateClick", Candidate::class.java,
             Int::class.javaPrimitiveType, List::class.java).apply { isAccessible = true }
             .invoke(service, generated, 0, listOf(generated))
@@ -203,7 +284,43 @@ class ZenzFloatingFallbackTest {
             override fun getEditable() = content
         }
         doReturn(editor).whenever(service).getCurrentInputConnection()
+        ReflectionHelpers.setField(service, "composingTextArbiter", ComposingTextArbiter(
+            writeComposingText = { text, cursor -> editor.setComposingText(text, cursor) },
+            finishComposingText = { editor.finishComposingText() },
+            copyText = { text -> android.text.SpannableString(text) },
+        ))
         return editor
+    }
+
+    private fun enableFloatingLiveConversion() {
+        preferences.edit().putBoolean(ComposingGuideSettings.ZENZ_LIVE_CONVERSION, true).commit()
+        setInput("あか")
+        ReflectionHelpers.setField(service, "isLiveConversionEnable", true)
+        ReflectionHelpers.setField(service, "liveConversionStartLength", 1)
+        ReflectionHelpers.setField(service, "zenzEnableLongPressConversionPreference", true)
+        ReflectionHelpers.setField(service, "zenzLiveSnapshotDisplayInput", "あか")
+        ReflectionHelpers.setField(service, "zenzLiveLocalCandidatesSnapshot", listOf(local))
+    }
+
+    private fun acceptGeneratedResult() {
+        val state = state(null)
+        ReflectionHelpers.getField<MutableStateFlow<Any?>>(service, "_zenzLiveSlotState").value = state
+        val context = IMEService::class.java.getDeclaredMethod("currentZenzCorrectionContext", CandidateQueryMode::class.java)
+            .apply { isAccessible = true }.invoke(service, CandidateQueryMode.NO_TAB_DEFAULT)
+        val source = state.javaClass.getDeclaredField("source").apply { isAccessible = true }.get(state)
+        val metaClass = IMEService::class.java.declaredClasses.first { it.simpleName == "ZenzLiveResultMeta" }
+        val meta = metaClass.declaredConstructors.first { it.parameterCount == 6 }.apply { isAccessible = true }
+            .newInstance(0L, "あか", "あか", source, context, null)
+        ReflectionHelpers.setField(service, "zenzLiveLatestResultMeta", meta)
+        IMEService::class.java.getDeclaredMethod("acceptZenzLiveResult", List::class.java)
+            .apply { isAccessible = true }.invoke(service,
+                listOf(ZenzCandidate(generated.string, generated.type, generated.length, generated.score, "あか")))
+    }
+
+    private suspend fun applyLocalLiveConversion(): Boolean = suspendCoroutineUninterceptedOrReturn { continuation ->
+        IMEService::class.java.getDeclaredMethod("applyFirstSuggestionOnMainIfCurrent", String::class.java,
+            Candidate::class.java, CandidateRequestToken::class.java, kotlin.coroutines.Continuation::class.java)
+            .apply { isAccessible = true }.invoke(service, "あか", local, null, continuation)
     }
 
     private fun setInput(text: String) {

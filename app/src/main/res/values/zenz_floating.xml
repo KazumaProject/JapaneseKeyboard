@@ -3,7 +3,9 @@
     <item name="zenz_floating_candidate_text" type="id" />
     <string name="zenz_floating_category">Candidate display</string>
     <string name="zenz_floating_title">Show zenz candidates in a floating panel</string>
-    <string name="zenz_floating_summary">Show a generated candidate only when it differs from the regular first candidate. Live conversion uses regular candidates; tap the floating candidate to switch and commit.</string>
+    <string name="zenz_floating_summary">Show a generated candidate only when it differs from the regular first candidate. Tap the floating candidate to commit it.</string>
+    <string name="zenz_floating_live_conversion_title">Use floating zenz candidates for live conversion</string>
+    <string name="zenz_floating_live_conversion_summary">When live conversion is enabled, reflect the floating zenz candidate in the composing text. When off, live conversion uses regular candidates.</string>
     <string name="zenz_floating_loading">Generating…</string>
     <string name="zenz_generation_category">Model and generation</string>
 </resources>

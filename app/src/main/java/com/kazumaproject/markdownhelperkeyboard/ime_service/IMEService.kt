@@ -1756,14 +1756,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         if (!hasConvertedKatakana) {
+            // A completed floating result can arrive before the local live-conversion delay ends.
+            val zenzState = _zenzLiveSlotState.value
+            val composingCandidate = zenzState?.candidate?.takeIf {
+                canUseZenzFloatingPanel() && shouldApplyZenzLiveResultToComposingText(zenzState, it)
+            } ?: candidate
             if (
-                candidate != null &&
-                candidate.type != CANDIDATE_TYPE_TEXT_MACRO &&
-                candidate.type != CANDIDATE_TYPE_FORMULA_UNICODE &&
-                candidate.type != CANDIDATE_TYPE_FORMULA_TEX &&
-                candidate.presentation == null
+                composingCandidate != null &&
+                composingCandidate.type != CANDIDATE_TYPE_TEXT_MACRO &&
+                composingCandidate.type != CANDIDATE_TYPE_FORMULA_UNICODE &&
+                composingCandidate.type != CANDIDATE_TYPE_FORMULA_TEX &&
+                composingCandidate.presentation == null
             ) {
-                applyFirstSuggestion(candidate)
+                applyFirstSuggestion(composingCandidate)
             } else {
                 applyRawComposingFallback(insertString)
             }
@@ -18959,7 +18964,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         state: ZenzLiveSlotState,
         candidate: Candidate
     ): Boolean {
-        if (canUseZenzFloatingPanel()) return false
+        if (canUseZenzFloatingPanel()) {
+            if (!runtimeInputSharedPreferences.getBoolean(ComposingGuideSettings.ZENZ_LIVE_CONVERSION, false)) return false
+            if (!shouldStartLiveConversion(state.displayInput)) return false
+            if (!shouldShowZenzFloatingCandidate(state)) return false
+        }
         if (suppressSuggestions) return false
         if (inputString.value != state.displayInput) return false
         if (state.requestToken != zenzLiveRequestToken) return false
