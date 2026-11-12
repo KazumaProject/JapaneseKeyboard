@@ -162,8 +162,8 @@ class FlickKeyboardViewLifecycleTest {
         touch(MotionEvent.ACTION_UP, field(info, "view"))
     }
 
-    @Test fun customFlickLongPressKeysRecoverAfterHide() {
-        for (type in listOf(KeyType.FLICK_LONG_PRESS)) {
+    @Test fun customStickyAndFlickLongPressKeysRecoverAfterHide() {
+        for (type in listOf(KeyType.STICKY_TWO_STEP_FLICK, KeyType.FLICK_LONG_PRESS)) {
             val key = KeyData("a", 0, 0, true, action = KeyAction.Text("a"), keyId = "a", keyType = type)
             install(KeyboardLayout(listOf(key), emptyMap(), 1, 1,
                 twoStepFlickKeyMaps = mapOf("a" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.TAP to "a")))))

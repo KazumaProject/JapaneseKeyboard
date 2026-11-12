@@ -409,6 +409,9 @@ object AppPreference {
     private val QWERTY_ZENKAKU_SPACE_PREFERENCE =
         Pair("qwerty_romaji_zenkaku_space_preference", false)
 
+    private val QWERTY_ROMAJI_INITIAL_INPUT_MODE =
+        Pair("qwerty_romaji_initial_input_mode_preference", "japanese")
+
     private val QWERTY_ROMAJI_HANKAKU_NUMBER_PREFERENCE =
         Pair("qwerty_romaji_hankaku_number_preference", false)
 
@@ -1716,6 +1719,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_ENABLE_FLICK_DOWN_WINDOW.first, value ?: false)
+        }
+
+    var qwerty_romaji_initial_input_mode_preference: String
+        get() = preferences.getString(
+            QWERTY_ROMAJI_INITIAL_INPUT_MODE.first, QWERTY_ROMAJI_INITIAL_INPUT_MODE.second
+        ) ?: QWERTY_ROMAJI_INITIAL_INPUT_MODE.second
+        set(value) = preferences.edit {
+            it.putString(QWERTY_ROMAJI_INITIAL_INPUT_MODE.first, value)
         }
 
     var qwerty_enable_zenkaku_space_preference: Boolean?

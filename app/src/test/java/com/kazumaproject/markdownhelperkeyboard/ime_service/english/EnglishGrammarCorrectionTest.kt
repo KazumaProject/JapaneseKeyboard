@@ -13,6 +13,17 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class EnglishGrammarCorrectionTest {
+    @Test fun correctsOnlyTheSentenceBeforeTheCaretAcrossEnterAndPeriodBoundaries() {
+        assertCorrection("I [go] home yesterday", "went")
+        assertCorrection("I [go] home yesterday.", "went")
+        assertCorrection("I [go] home yesterday\n", "went")
+        assertCorrection("I go home yesterday. We [play] chess last night", "played")
+        assertCorrection("I go home yesterday\nWe [play] chess last night\n", "played")
+        assertCorrection("An earlier line.\r\nI [see] you yesterday.\r\n", "saw")
+        assertNoCorrection("I go home yesterday. We played chess last night")
+        assertNoCorrection("I go home yesterday\nWe played chess last night\n")
+    }
+
     @Test fun correctsRegularAndIrregularVerbsWithPastTimeCues() {
         val cases = listOf(
             "I [walk] to the station yesterday " to "walked",
