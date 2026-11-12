@@ -67,6 +67,10 @@ import com.kazumaproject.custom_keyboard.controller.DoubleTapActionDispatcher
 import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputController
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TapTaskScheduler
+import com.kazumaproject.custom_keyboard.controller.QwertyKeyInputController
+import com.kazumaproject.custom_keyboard.data.QwertyKeyConfig
+import com.kazumaproject.custom_keyboard.data.QwertyKeyLayer
+import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.custom_keyboard.controller.TapLongPressInputController
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
@@ -130,6 +134,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     interface OnKeyboardActionListener {
         fun onPress(action: KeyAction)
+        fun onResolvedText(text: String) { onAction(KeyAction.Text(text), false) }
         fun onAction(action: KeyAction, isFlick: Boolean)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
@@ -161,6 +166,20 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val centerGuideFlickControllers = mutableListOf<CenterGuideFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val flickLongPressControllers = mutableListOf<FlickLongPressInputController>()
+    private val qwertyControllers = mutableListOf<QwertyKeyInputController>()
+    private var showQwertyPreview = true
+    private var qwertyPopupStyle = QwertyPopupViewStyleSet(PopupViewStyle(100, 28f), PopupViewStyle(100, 28f))
+
+    fun setQwertyPopupSettings(showPreview: Boolean, style: QwertyPopupViewStyleSet) {
+        val normalized = QwertyPopupViewStyleSet(clampPopupStyle(style.keyPreview), clampPopupStyle(style.variation))
+        if (showQwertyPreview == showPreview && qwertyPopupStyle == normalized) return
+        cancelTrackedTouchState()
+        cancelInputControllers()
+        showQwertyPreview = showPreview
+        qwertyPopupStyle = normalized
+        restoreInputControllersIfNeeded()
+    }
+
     private val tapLongPressControllers = mutableListOf<TapLongPressInputController>()
     private val doubleTapActionDispatcher = DoubleTapActionDispatcher(
         timeoutMillis = ViewConfiguration.getDoubleTapTimeout().toLong(),
@@ -1026,6 +1045,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         KeyIconResolver.hasIcon(keyData) && modeSwitchLabelForDisplay(keyData) == null
 
     private fun keyLabelForDisplay(keyData: KeyData): String {
+        if (keyData.keyType == KeyType.QWERTY) {
+            return keyData.qwertyConfig?.layer(keyCharacterCase)?.displayLabel ?: keyData.label
+        }
         modeSwitchLabelForDisplay(keyData)?.let { return it }
         val canonicalLabel = KeyIconResolver.resolvedLabelForRendering(keyData)
         return if (shouldTransformMainLabel(keyData)) {
@@ -1675,6 +1697,29 @@ class FlickKeyboardView @JvmOverloads constructor(
         val layout = currentLayout ?: return null
 
         when (keyData.keyType) {
+            KeyType.QWERTY -> {
+                val config = keyData.qwertyConfig ?: QwertyKeyConfig(QwertyKeyLayer(
+                    output = (keyData.action as? KeyAction.Text)?.text ?: keyData.label,
+                    label = keyData.label
+                ))
+                return QwertyKeyInputController(
+                    gestureSessionConfigSource,
+                    layerProvider = { config.layer(keyCharacterCase) },
+                    styleProvider = { qwertyPopupStyle },
+                    fontProvider = { keyboardFontSnapshot },
+                    showPreview = { showQwertyPreview },
+                    windowAnchorProvider = { popupWindowAnchorProvider?.invoke() },
+                    onPress = {
+                        cancelTextPreview()
+                        listener?.onPress(KeyAction.Text(it))
+                    },
+                    onCommit = {
+                        cancelTextPreview()
+                        doubleTapActionDispatcher.interrupt()
+                        listener?.onResolvedText(it)
+                    }
+                ).also { it.attach(keyView); qwertyControllers.add(it) }
+            }
             KeyType.CIRCULAR_FLICK -> {
                 val circularKeyMapsList =
                     keyData.keyId?.let { layout.circularFlickKeyMaps[it] }
@@ -2780,6 +2825,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
 
 
+            is QwertyKeyInputController -> {
+                controller.cancel()
+                qwertyControllers.remove(controller)
+            }
             is TapLongPressInputController -> {
                 controller.cancel()
                 tapLongPressControllers.remove(controller)
@@ -2845,6 +2894,8 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         flickLongPressControllers.forEach { it.cancel() }
         flickLongPressControllers.clear()
+        qwertyControllers.forEach { it.cancel() }
+        qwertyControllers.clear()
         tapLongPressControllers.forEach { it.cancel() }
         tapLongPressControllers.clear()
         keyInfos.forEach { it.controller = null }

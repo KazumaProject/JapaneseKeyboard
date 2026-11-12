@@ -162,7 +162,8 @@ data class KeyData(
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL,
     val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL,
     val doubleTapBinding: DoubleTapBinding? = null,
-    val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL
+    val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL,
+    val qwertyConfig: QwertyKeyConfig? = null
 )
 
 data class GridPlacement(
@@ -635,7 +636,10 @@ enum class KeyType {
 
     HIERARCHICAL_FLICK,
 
-    FLICK_LONG_PRESS
+    FLICK_LONG_PRESS,
+
+    /** Configurable key preview and a grid of long-press alternatives. */
+    QWERTY
 }
 
 enum class ShapeType {

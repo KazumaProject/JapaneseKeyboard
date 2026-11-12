@@ -1978,4 +1978,28 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="mushroom_unsupported">この入力欄ではマッシュルームを使用できません</string>
     <string name="sumire_mode_key_highlight_title">選択中のモードキーのハイライトを残す</string>
     <string name="sumire_mode_key_highlight_summary">キーの配置がフリック入力の場合、モード切り替え後も、現在のひらがな・英語・数字のモードキーにハイライトを残します。</string>
+
+    <string name="qwerty_input_style">QWERTY</string>
+    <string name="qwerty_layer_normal">通常</string>
+    <string name="qwerty_layer_shift">Shift / Caps Lock</string>
+    <string name="qwerty_custom_shift">Shift 専用の設定を使う</string>
+    <string name="qwerty_key_label">キーの表示（省略時は入力文字列）</string>
+    <string name="qwerty_tap_output">タップで入力する文字列</string>
+    <string name="qwerty_preview_label">押下プレビューの表示（省略時は入力文字列）</string>
+    <string name="qwerty_columns">ポップアップの列数</string>
+    <string name="qwerty_columns_error">列数は 1〜%1$d で指定してください</string>
+    <string name="qwerty_grid_help">マスをタップして表示と入力を編集します。「空白にする」は位置を残します。Shift 専用設定がない場合、英字は大文字になります。</string>
+    <string name="qwerty_candidate_output">候補の入力文字列（空欄なら空白マス）</string>
+    <string name="qwerty_candidate_label">候補の表示（省略時は入力文字列）</string>
+    <string name="qwerty_add_slot">マスを追加</string>
+    <string name="qwerty_move_before">前へ移動</string>
+    <string name="qwerty_move_after">後ろへ移動</string>
+    <string name="qwerty_clear_slot">空白にする</string>
+    <string name="qwerty_remove_slot">マスを削除</string>
+    <string name="qwerty_empty_slot">空白</string>
+    <string name="qwerty_selected_slot">%1$d 行 %2$d 列</string>
+    <string name="custom_keyboard_show_key_preview_title">QWERTY 型キーの押下プレビューを表示</string>
+    <string name="custom_keyboard_show_key_preview_summary">押したキーの文字を拡大表示します。長押し候補は表示設定にかかわらず選択できます。</string>
+    <string name="custom_qwerty_popup_style_title">QWERTY 型ポップアップの表示</string>
+    <string name="custom_qwerty_popup_style_summary">標準 QWERTY とサイズ・文字設定を共用します</string>
 </resources>
