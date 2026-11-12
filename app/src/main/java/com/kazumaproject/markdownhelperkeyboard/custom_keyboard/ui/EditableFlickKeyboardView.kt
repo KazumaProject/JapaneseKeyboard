@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view
 
+import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
@@ -693,6 +694,10 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         }
 
+        if (CustomFlickSuspension.isSuspended(keyData.keyType)) {
+            keyView.alpha = 0.4f
+            keyView.contentDescription = "${keyData.label}: ${context.getString(com.kazumaproject.core.R.string.custom_flick_suspended)}"
+        }
         return keyView
     }
 

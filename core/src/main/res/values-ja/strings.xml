@@ -286,4 +286,5 @@
     <string name="cursor_right">カーソルを右に移動</string>
     <string name="three_stage_flick_suspended">3段フリックは一時停止中です。標準キーボードは通常フリックで入力できます。カスタムのキー定義は保持されますが、3段フリックのキーは入力・編集できません。</string>
     <string name="custom_flick_suspended">カスタム二段・三段フリックのキーは一時停止中です。</string>
+    <string name="custom_flick_paused_label">一時停止中</string>
 </resources>

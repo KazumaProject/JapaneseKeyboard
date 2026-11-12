@@ -286,4 +286,5 @@
     <string name="cursor_right">Move cursor right</string>
     <string name="three_stage_flick_suspended">3-stage flick is temporarily unavailable. The built-in keyboard uses normal flick input. Existing custom key definitions are preserved, but their 3-stage keys cannot be used or edited.</string>
     <string name="custom_flick_suspended">Custom two-step and three-stage flick keys are temporarily suspended.</string>
+    <string name="custom_flick_paused_label">Paused</string>
 </resources>

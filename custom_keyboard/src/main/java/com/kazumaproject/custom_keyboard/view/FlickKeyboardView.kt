@@ -822,6 +822,9 @@ class FlickKeyboardView @JvmOverloads constructor(
             keyView.visibility = if (visibleKeyLabels?.contains(keyData.label) != false) View.VISIBLE else View.INVISIBLE
             keyView.isEnabled = false
             keyView.alpha = 0.4f
+            if (keyView is AutoSizeButton) {
+                keyView.text = "${keyData.label}\n${context.getString(com.kazumaproject.core.R.string.custom_flick_paused_label)}"
+            }
             keyView.contentDescription = "${keyData.label}: ${context.getString(com.kazumaproject.core.R.string.custom_flick_suspended)}"
             return
         }
