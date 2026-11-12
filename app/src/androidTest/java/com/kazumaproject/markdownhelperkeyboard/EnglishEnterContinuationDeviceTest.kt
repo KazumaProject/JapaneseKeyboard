@@ -116,7 +116,8 @@ class EnglishEnterContinuationDeviceTest {
             shell("ime enable $target")
             shell("ime set $target")
             ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
-                await("QWERTY input view") { view(if (floating) R.id.qwerty_view_floating else R.id.qwerty_view) != null && view(QwertyR.id.key_a) != null }
+                scenario.onActivity { it.restartEditorInput(clearText = false) }
+                awaitStableKeyboard(floating)
                 block(scenario)
             }
         } finally {
@@ -124,6 +125,28 @@ class EnglishEnterContinuationDeviceTest {
             if (!wasEnabled) shell("ime disable $target")
             AppPreference.importAllFromJson(backup)
         }
+    }
+
+    private fun awaitStableKeyboard(floating: Boolean) {
+        val deadline = SystemClock.uptimeMillis() + 15_000
+        var previous: List<Int>? = null
+        var stableSamples = 0
+        while (SystemClock.uptimeMillis() < deadline) {
+            val geometry = onMain {
+                val keyboard = view(if (floating) R.id.qwerty_view_floating else R.id.qwerty_view)
+                val key = view(QwertyR.id.key_i)
+                if (keyboard == null || key == null) null else listOf(keyboard, key).flatMap {
+                    val location = IntArray(2).also(it::getLocationOnScreen)
+                    listOf(location[0], location[1], it.width, it.height)
+                }
+            }
+            stableSamples = if (geometry != null && geometry == previous) stableSamples + 1 else 0
+            if (geometry != previous) android.util.Log.i("EnglishEnterSetup", "floating=$floating geometry=$geometry")
+            if (stableSamples >= 6) return
+            previous = geometry
+            SystemClock.sleep(100)
+        }
+        error("QWERTY geometry did not settle: floating=$floating geometry=$previous")
     }
 
     @Suppress("UNCHECKED_CAST")
