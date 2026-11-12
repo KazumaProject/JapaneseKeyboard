@@ -1081,6 +1081,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { preferences, key ->
+            if (key == null || key.startsWith("custom_qwerty_") || key == "custom_keyboard_show_key_preview") {
+                runOnMainThread {
+                    val styles = currentCustomQwertyPopupViewStyleSet()
+                    val showPreview = appPreference.custom_keyboard_show_key_preview
+                    listOfNotNull(mainLayoutBinding?.customLayoutDefault,
+                        floatingKeyboardBinding?.customLayoutFloating).forEach {
+                        it.setQwertyPopupSettings(showPreview, styles)
+                    }
+                    splitInputs.values.forEach {
+                        it.binding.customLayoutFloating.setQwertyPopupSettings(showPreview, styles)
+                    }
+                }
+            }
             if (key == null || key == AppPreference.TENKEY_SPECIAL_KEY_LABEL_SCALE_KEY) {
                 runOnMainThread {
                     val scale = appPreference.tenkey_special_key_label_scale_percent
@@ -15765,11 +15778,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun currentCustomQwertyPopupViewStyleSet(): QwertyPopupViewStyleSet {
-        val styles = currentQwertyPopupViewStyleSet()
-        if (keyboardThemeMode != "custom") return styles
+        val styles = appPreference.custom_qwerty_popup_preferences.styles()
         fun colors(style: PopupViewStyle) = style.copy(
-            backgroundColor = style.backgroundColor ?: customThemeSpecialKeyColor,
-            textColor = style.textColor ?: customThemeSpecialKeyTextColor
+            backgroundColor = popupBackgroundColorOrNull()
+                ?: customThemeSpecialKeyColor.takeIf { keyboardThemeMode == "custom" },
+            textColor = popupTextColorOrNull()
+                ?: customThemeSpecialKeyTextColor.takeIf { keyboardThemeMode == "custom" },
+            skinId = keyboardSkinId
         )
         return styles.copy(keyPreview = colors(styles.keyPreview), variation = colors(styles.variation))
     }

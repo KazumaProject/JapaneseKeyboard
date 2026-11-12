@@ -911,6 +911,7 @@ object SettingDestinations {
             "tenkey_popup_view_style_preference" -> R.id.tenKeyPopupStyleSettingFragment
             "qwerty_button_size_preference" -> R.id.qwertyMarginSettingFragment
             "qwerty_popup_view_style_preference" -> R.id.qwertyPopupStyleSettingFragment
+            "custom_qwerty_popup_style" -> R.id.customQwertyPopupStyleSettingFragment
             "qwerty_number_key_flick_setting_preference" -> R.id.qwertyNumberKeyFlickSettingFragment
             "sumire_keyboard_size_preference" -> R.id.flickKeyboardSizeSettingsFragment
             "custom_keyboard_size_preference" -> R.id.flickKeyboardSizeSettingsFragment
