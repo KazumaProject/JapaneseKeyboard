@@ -3085,6 +3085,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val initialInputMode = when {
                         forcedNumber -> InputMode.ModeNumber
                         selection.type == KeyboardType.QWERTY || forcedPasswordQwerty -> InputMode.ModeEnglish
+                        selection.type == KeyboardType.ROMAJI &&
+                                defaultInputModeFor(currentInputType) == InputMode.ModeJapanese ->
+                            initialRomajiInputMode()
                         else -> defaultInputModeFor(currentInputType)
                     }
                     val initialMode = when {
@@ -11304,6 +11307,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         renderDynamicKeysOnActiveSurface()
     }
 
+    private fun initialRomajiInputMode(): InputMode {
+        return if (appPreference.qwerty_romaji_initial_input_mode_preference == "english") {
+            InputMode.ModeEnglish
+        } else {
+            InputMode.ModeJapanese
+        }
+    }
+
     private fun defaultInputModeFor(inputType: InputTypeForIME): InputMode {
         return when (inputType) {
             InputTypeForIME.TextEmailAddress,
@@ -14372,7 +14383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
 
                             KeyboardType.ROMAJI -> {
-                                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                                setCurrentInputModeForSession(initialRomajiInputMode())
                                 clearQwertySwitchNumberKeyReturnSource()
                             }
 
@@ -14978,12 +14989,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
-                        setCurrentInputModeForSession(InputMode.ModeJapanese)
-                        setCurrentQwertyRomajiModeForSession(true)
-                        val qwertyEnterKeyText = editorEnterLabel(japanese = true)
-                        qwertyView.setRomajiKeyboard(
-                            qwertyEnterKeyText
-                        )
+                        val initialInputMode = initialRomajiInputMode()
+                        val isJapanese = initialInputMode == InputMode.ModeJapanese
+                        setCurrentInputModeForSession(initialInputMode)
+                        setCurrentQwertyRomajiModeForSession(isJapanese)
+                        val qwertyEnterKeyText = editorEnterLabel(japanese = isJapanese)
+                        if (isJapanese) {
+                            qwertyView.setRomajiKeyboard(qwertyEnterKeyText)
+                        } else {
+                            qwertyView.resetQWERTYKeyboard(qwertyEnterKeyText)
+                        }
                         qwertyView.setRomajiEnglishSwitchKeyVisibility(true)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
@@ -31230,7 +31245,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             KeyboardType.ROMAJI -> {
-                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                setCurrentInputModeForSession(initialRomajiInputMode())
             }
 
             KeyboardType.QWERTY -> {
