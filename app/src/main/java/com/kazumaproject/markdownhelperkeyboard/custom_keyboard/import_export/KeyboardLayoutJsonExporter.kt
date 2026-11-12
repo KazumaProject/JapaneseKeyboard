@@ -123,6 +123,7 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
             hierarchicalFlick = this.key.hierarchicalFlickJson?.let {
                 JsonParser.parseString(it)
             },
+            qwerty = this.key.qwertyConfigJson?.let(JsonParser::parseString),
             textInputBehavior = this.key.textInputBehavior
         ),
         flicks = this.flicks.map {

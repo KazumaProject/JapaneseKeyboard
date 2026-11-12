@@ -54,6 +54,13 @@ class ThreeStageFlickPersistenceTest {
             }
             assertFalse(editor.updateKeyAndMappings(oldKey.copy(label = "changed"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
             assertFalse(editor.updateKeyAndMappings(other.copy(keyType = KeyType.HIERARCHICAL_FLICK), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
+            before.keys.filter { it.keyType in listOf(KeyType.TWO_STEP_FLICK, KeyType.STICKY_TWO_STEP_FLICK) }
+                .forEach { key ->
+                    val keyId = requireNotNull(key.keyId)
+                    assertTrue(editor.updateKeyAndMappings(key.copy(label = "edited-${key.label}"),
+                        emptyMap(), before.twoStepFlickKeyMaps.getValue(keyId), emptyMap(),
+                        before.twoStepLongPressKeyMaps.getValue(keyId)))
+                }
             assertTrue(editor.updateKeyAndMappings(other.copy(label = "edited"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
             val edited = editor.uiState.value.layout
             assertEquals(before.preservedFlickDefinitions, edited.preservedFlickDefinitions)

@@ -7,6 +7,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+import com.kazumaproject.custom_keyboard.data.QwertyKeyConfigCodec
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
 import com.kazumaproject.custom_keyboard.data.KeyIconRef
@@ -937,7 +938,7 @@ class KeyboardRepository @Inject constructor(
                     label = dbKey.label,
                     row = dbKey.row,
                     column = dbKey.column,
-                    isFlickable = dbKey.keyType != KeyType.NORMAL,
+                    isFlickable = dbKey.keyType !in setOf(KeyType.NORMAL, KeyType.QWERTY),
                     keyType = dbKey.keyType,
                     rowSpan = dbKey.rowSpan,
                     colSpan = dbKey.colSpan,
@@ -948,6 +949,7 @@ class KeyboardRepository @Inject constructor(
                     action = null,
                     specialKeyColorStyle = specialKeyColorStyle,
                     doubleTapBinding = doubleTapBinding,
+                    qwertyConfig = QwertyKeyConfigCodec.decode(dbKey.qwertyConfigJson),
                     textInputBehavior = KeyTextInputBehavior.fromDbValue(dbKey.textInputBehavior)
                 )
             } else {
@@ -955,7 +957,7 @@ class KeyboardRepository @Inject constructor(
                     label = dbKey.label,
                     row = dbKey.row,
                     column = dbKey.column,
-                    isFlickable = dbKey.keyType != KeyType.NORMAL,
+                    isFlickable = dbKey.keyType !in setOf(KeyType.NORMAL, KeyType.QWERTY),
                     keyType = dbKey.keyType,
                     rowSpan = dbKey.rowSpan,
                     colSpan = dbKey.colSpan,
@@ -966,6 +968,7 @@ class KeyboardRepository @Inject constructor(
                     action = restoredAction,
                     specialKeyColorStyle = specialKeyColorStyle,
                     doubleTapBinding = doubleTapBinding,
+                    qwertyConfig = QwertyKeyConfigCodec.decode(dbKey.qwertyConfigJson),
                     textInputBehavior = KeyTextInputBehavior.fromDbValue(dbKey.textInputBehavior)
                 )
             }
@@ -1249,6 +1252,7 @@ class KeyboardRepository @Inject constructor(
                     hierarchicalFlickJson = if (keyData.keyType == KeyType.HIERARCHICAL_FLICK) {
                         uiLayout.preservedFlickDefinitions[keyIdentifier]
                     } else null,
+                    qwertyConfigJson = keyData.qwertyConfig?.let(QwertyKeyConfigCodec::encode),
                     textInputBehavior = keyData.textInputBehavior.dbValue
                 )
             )
