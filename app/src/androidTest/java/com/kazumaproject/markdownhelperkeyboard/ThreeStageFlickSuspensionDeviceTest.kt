@@ -70,7 +70,7 @@ class ThreeStageFlickSuspensionDeviceTest {
         assertEquals(expected, text)
     }
 
-    @Test fun restoredSelectionAndSavedCustomKeysAreSuspendedOnDockedAndFloatingIme() = runBlocking<Unit> {
+    @Test fun threeStageStaysSuspendedAndTwoStepWorksOnDockedAndFloatingIme() = runBlocking<Unit> {
         assumeTrue(InstrumentationRegistry.getArguments().getString("suspensionIsolatedEmulator") == "true" &&
             shell("getprop ro.kernel.qemu").trim() == "1")
         val context = instrumentation.targetContext
@@ -87,14 +87,21 @@ class ThreeStageFlickSuspensionDeviceTest {
                 flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
                     AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
             }
-            val blockedTypes = listOf(KeyType.HIERARCHICAL_FLICK, KeyType.TWO_STEP_FLICK, KeyType.STICKY_TWO_STEP_FLICK)
+            val blockedTypes = listOf(KeyType.HIERARCHICAL_FLICK)
             val blocked = blockedTypes.mapIndexed { index, type ->
                 KeyData("PausedKey$index", 0, index, true, action = KeyAction.Text("blocked"),
                     keyType = type, keyId = "paused-key$index")
             }
-            val ordinary = KeyData("WorkingKey", 0, 3, false, action = KeyAction.Text("あ"), keyId = "working-key")
+            val ordinary = KeyData("WorkingKey", 0, 1, false, action = KeyAction.Text("あ"), keyId = "working-key")
+            val twoStep = KeyData("TwoStepKey", 0, 2, true, keyType = KeyType.TWO_STEP_FLICK, keyId = "two-step")
+            val sticky = KeyData("StickyKey", 0, 3, true, keyType = KeyType.STICKY_TWO_STEP_FLICK, keyId = "sticky")
+            val twoStepMaps = mapOf(
+                "two-step" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.TAP to "い")),
+                "sticky" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.TAP to "う"))
+            )
             val definition = """{"normal":{"TAP":{"type":"input","output":"preserved"}}}"""
-            createdId = repository.saveLayout(KeyboardLayout(blocked + ordinary, emptyMap(), 4, 1,
+            createdId = repository.saveLayout(KeyboardLayout(blocked + ordinary + twoStep + sticky, emptyMap(), 4, 1,
+                twoStepFlickKeyMaps = twoStepMaps,
                 preservedFlickDefinitions = mapOf("paused-key0" to definition)), "Suspension device verification", null)
             val saved = repository.getFullLayout(createdId!!).first()
             val stableId = repository.getLayoutsNotFlow().single { it.layoutId == createdId }.stableId
@@ -116,6 +123,10 @@ class ThreeStageFlickSuspensionDeviceTest {
                     }
                     tap(key("WorkingKey", floating))
                     awaitText(scenario, "あ")
+                    tap(key("TwoStepKey", floating))
+                    awaitText(scenario, "あい")
+                    tap(key("StickyKey", floating))
+                    awaitText(scenario, "あいう")
                 }
                 assertEquals(saved.preservedFlickDefinitions, repository.getFullLayout(createdId!!).first().preservedFlickDefinitions)
                 check(prefs.edit().putString("keyboard_order_preference", "[\"SUMIRE\"]")

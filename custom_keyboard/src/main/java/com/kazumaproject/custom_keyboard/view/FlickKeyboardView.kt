@@ -68,6 +68,7 @@ import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputControlle
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TapTaskScheduler
 import com.kazumaproject.custom_keyboard.controller.TapLongPressInputController
+import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
@@ -160,7 +161,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val centerGuideFlickControllers = mutableListOf<CenterGuideFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
+    private val tfbiControllers = mutableListOf<TfbiInputController>()
     private val flickLongPressControllers = mutableListOf<FlickLongPressInputController>()
+    private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
     private val tapLongPressControllers = mutableListOf<TapLongPressInputController>()
     private val doubleTapActionDispatcher = DoubleTapActionDispatcher(
         timeoutMillis = ViewConfiguration.getDoubleTapTimeout().toLong(),
@@ -390,18 +393,21 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.setPopupOverlayHostProvider(provider) }
         centerGuideFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
-
+        tfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         flickLongPressControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+        stickyTfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
     }
 
     fun setTfbiPopupPresentationMode(mode: TfbiPopupPresentationMode) {
         tfbiPopupPresentationMode = mode
-
+        tfbiControllers.forEach { it.setPopupPresentationMode(mode) }
+        stickyTfbiControllers.forEach { it.setPopupPresentationMode(mode) }
     }
 
     fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
         tfbiFlickStartPositionMode = mode
-
+        tfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
+        stickyTfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
     }
 
     fun applyPopupViewStyleSet(styleSet: FlickPopupViewStyleSet) {
@@ -425,8 +431,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.directional) }
         centerGuideFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         standardFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.standard) }
-
+        tfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         flickLongPressControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
+        stickyTfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         restoreInputControllersIfNeeded()
     }
 
@@ -997,8 +1004,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.setInputTextTransform(transform) }
         centerGuideFlickControllers.forEach { it.setInputTextTransform(transform) }
         standardFlickControllers.forEach { it.setInputTextTransform(transform) }
-
+        tfbiControllers.forEach { it.setInputTextTransform(transform) }
         flickLongPressControllers.forEach { it.setInputTextTransform(transform) }
+        stickyTfbiControllers.forEach { it.setInputTextTransform(transform) }
     }
 
     private fun transformInputTextForDisplay(text: String): String =
@@ -2528,7 +2536,114 @@ class FlickKeyboardView @JvmOverloads constructor(
                 return null
             }
 
-            KeyType.TWO_STEP_FLICK -> return null
+            KeyType.TWO_STEP_FLICK -> {
+                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.keyId]
+                    ?: layout.twoStepFlickKeyMaps[keyData.label]
+                val twoStepLongPressMap = layout.twoStepLongPressKeyMaps[keyData.keyId]
+                    ?: layout.twoStepLongPressKeyMaps[keyData.label]
+
+                if (twoStepMap != null) {
+                    if (keyView is AutoSizeButton) {
+                        applyTwoStepGuideLabels(keyView, keyData, twoStepMap)
+                    }
+
+                    val controller = TfbiInputController(
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
+                    ).apply {
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
+                        setInputTextTransform(::transformInputTextForDisplay)
+                        applyPopupViewStyle(popupViewStyleSet.tfbi)
+                        this.listener = object : TfbiInputController.TfbiListener {
+                            override fun onPress(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                notifyTextPress(keyData, twoStepMap[first]?.get(second) ?: "")
+                            }
+
+                            override fun onFlick(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                val character = twoStepMap[first]?.get(second) ?: ""
+                                Log.d(
+                                    "FlickKeyboardView KeyType.TWO_STEP_FLICK",
+                                    "$character $first $second"
+                                )
+                                if (character.isNotEmpty()) {
+                                    dispatchCommittedKeyAction(
+                                        keyData,
+                                        KeyAction.Text(character),
+                                        isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
+                                    )
+                                }
+                            }
+
+                            override fun onLongPressFlick(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ): Boolean {
+                                val output = twoStepLongPressMap?.get(first)?.get(second).orEmpty()
+                                if (output.isEmpty()) return false
+
+                                dispatchCommittedKeyAction(
+                                    keyData = keyData,
+                                    action = KeyAction.Text(output),
+                                    isFlick = !(first == TfbiFlickDirection.TAP &&
+                                        second == TfbiFlickDirection.TAP)
+                                )
+                                return true
+                            }
+
+                            override fun onSelectionChanged(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection,
+                                isLongPress: Boolean
+                            ) {
+                                val longPressText = if (isLongPress) {
+                                    twoStepLongPressMap?.get(first)?.get(second)
+                                } else {
+                                    null
+                                }
+                                updateTextPreview(keyData,
+                                    longPressText?.takeIf(String::isNotEmpty)
+                                        ?: twoStepMap[first]?.get(second),
+                                    first != TfbiFlickDirection.TAP ||
+                                        second != TfbiFlickDirection.TAP
+                                )
+                            }
+
+                            override fun onCanceled() = cancelTextPreview(keyData)
+                        }
+
+                        attach(
+                            view = keyView,
+                            provider = { first, second ->
+                                twoStepMap[first]?.get(second) ?: ""
+                            },
+                            longPressProvider = { first, second ->
+                                twoStepLongPressMap?.get(first)?.get(second).orEmpty()
+                            }
+                        )
+                    }
+
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
+                    }
+
+                    tfbiControllers.add(controller)
+                    return controller
+                }
+            }
 
             KeyType.FLICK_LONG_PRESS -> {
                 val flickLongPressMap = layout.twoStepFlickKeyMaps[keyData.keyId]
@@ -2594,7 +2709,72 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            KeyType.STICKY_TWO_STEP_FLICK -> return null
+            KeyType.STICKY_TWO_STEP_FLICK -> {
+                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.keyId]
+                    ?: layout.twoStepFlickKeyMaps[keyData.label]
+                if (twoStepMap != null) {
+                    if (keyView is AutoSizeButton) {
+                        applyTwoStepGuideLabels(keyView, keyData, twoStepMap)
+                    }
+
+                    val controller = TfbiStickyFlickController(
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
+                    ).apply {
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
+                        setInputTextTransform(::transformInputTextForDisplay)
+                        applyPopupViewStyle(popupViewStyleSet.tfbi)
+                        this.listener = object : TfbiStickyFlickController.TfbiListener {
+                            override fun onPress(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                notifyTextPress(keyData, twoStepMap[first]?.get(second) ?: "")
+                            }
+
+                            override fun onFlick(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                val character = twoStepMap[first]?.get(second) ?: ""
+                                Log.d(
+                                    "FlickKeyboardView KeyType.STICKY_TWO_STEP_FLICK",
+                                    "$character $first $second"
+                                )
+                                if (character.isNotEmpty()) {
+                                    dispatchCommittedKeyAction(
+                                        keyData,
+                                        KeyAction.Text(character),
+                                        isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
+                                    )
+                                }
+                            }
+                        }
+
+                        attach(
+                            view = keyView,
+                            provider = { first, second ->
+                                twoStepMap[first]?.get(second) ?: ""
+                            }
+                        )
+                    }
+
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
+                    }
+
+                    stickyTfbiControllers.add(controller)
+                    return controller
+                }
+            }
 
             KeyType.HIERARCHICAL_FLICK -> return null
         }
@@ -2771,12 +2951,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                 standardFlickControllers.remove(controller)
             }
 
+            is TfbiInputController -> {
+                controller.cancel()
+                tfbiControllers.remove(controller)
+            }
 
             is FlickLongPressInputController -> {
                 controller.cancel()
                 flickLongPressControllers.remove(controller)
             }
 
+            is TfbiStickyFlickController -> {
+                controller.cancel()
+                stickyTfbiControllers.remove(controller)
+            }
 
 
 
@@ -2842,9 +3030,12 @@ class FlickKeyboardView @JvmOverloads constructor(
         centerGuideFlickControllers.clear()
         standardFlickControllers.forEach { it.cancel() }
         standardFlickControllers.clear()
-
+        tfbiControllers.forEach { it.cancel() }
+        tfbiControllers.clear()
         flickLongPressControllers.forEach { it.cancel() }
         flickLongPressControllers.clear()
+        stickyTfbiControllers.forEach { it.cancel() }
+        stickyTfbiControllers.clear()
         tapLongPressControllers.forEach { it.cancel() }
         tapLongPressControllers.clear()
         keyInfos.forEach { it.controller = null }

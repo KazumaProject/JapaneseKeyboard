@@ -142,6 +142,13 @@
                     android:layout_height="wrap_content"
                     android:text="@string/donuts_flick" />
 
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_two_step_flick"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/input_style_two_step" />
+
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_flick_long_press"

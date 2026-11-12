@@ -24,6 +24,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.Displ
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickLongPressMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.SpecialFlickMappingItem
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
 
 /**
  * セル選択状態
@@ -31,6 +32,8 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.Speci
 sealed class CellMode {
     data class Petal(val direction: FlickDirection) : CellMode()
     data class SpecialFlick(val direction: FlickDirection) : CellMode()
+    data class TwoStepFirst(val first: TfbiFlickDirection) : CellMode()
+    data class TwoStepSecond(val first: TfbiFlickDirection, val second: TfbiFlickDirection) : CellMode()
     data class FlickLongPress(val direction: TfbiFlickDirection) : CellMode()
 }
 
@@ -39,6 +42,7 @@ sealed class CellMode {
  */
 enum class GridMode {
     PETAL,          // 通常キーの1段フリック
+    TWO_STEP,       // 通常キーの2段フリック
     SPECIAL_FLICK,  // 特殊キーの1段フリック
     FLICK_LONG_PRESS
 }
@@ -53,6 +57,10 @@ class FlickGridEditorView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
+    companion object {
+        val ALLOWED_TWO_STEP_PAIRS: Set<Pair<TfbiFlickDirection, TfbiFlickDirection>> = TwoStepMappingItem.ALLOWED_TWO_STEP_PAIRS
+        val CARDINAL_DIRECTIONS = TwoStepMappingItem.CARDINAL_DIRECTIONS
+    }
 
     // [0,0]=UP_LEFT  [0,1]=UP       [0,2]=UP_RIGHT
     // [1,0]=LEFT     [1,1]=TAP      [1,2]=RIGHT
@@ -106,6 +114,7 @@ class FlickGridEditorView @JvmOverloads constructor(
     // 特殊フリック用: セルに紐付くアイコン
     private val cellIconResId: MutableMap<CellPos, Int?> = mutableMapOf()
     // 2段フリック用: アイテムを保持してセル選択時にラベルを再計算
+    private var storedTwoStepItems: List<TwoStepMappingItem> = emptyList()
 
     var onCellSelected: ((CellMode) -> Unit)? = null
 
@@ -175,6 +184,7 @@ class FlickGridEditorView @JvmOverloads constructor(
 
         val activeArrows = getActiveArrows()
         val activeCellsOnPath = getActiveCellsOnPath()
+        val twoStepDisabledCells = if (gridMode == GridMode.TWO_STEP) getDisabledCellsForTwoStep() else emptySet()
 
         for (row in 0..2) {
             for (col in 0..2) {
@@ -187,10 +197,12 @@ class FlickGridEditorView @JvmOverloads constructor(
 
                 val isSelected = isCellSelected(pos)
                 val isOnPath = activeCellsOnPath.contains(pos)
+                val isTwoStepDisabled = twoStepDisabledCells.contains(pos)  // フリックの2段目としての候補
 
                 // --- 背景色 ---
                 val bgColor = when {
                     !enabled -> colorDisabled
+                    isTwoStepDisabled -> colorDisabled
                     gridMode == GridMode.SPECIAL_FLICK -> colorSpecialKey
                     else -> colorSurface
                 }
@@ -210,15 +222,16 @@ class FlickGridEditorView @JvmOverloads constructor(
                 val iconRes = cellIconResId[pos]
                 if (iconRes != null) {
                     // アイコン描画（グレーアウトでも表示、ただし選択不可セルはアイコン色を薄く）
-                    val effectiveIsSelected = isSelected
+                    val effectiveIsSelected = isSelected && !isTwoStepDisabled
                     drawIconInCell(canvas, iconRes, left, top, right, bottom, effectiveIsSelected, colorOnSelected, colorOnSurface)
                 } else {
                     val label = cellLabels[pos] ?: ""
                     if (label.isNotEmpty()) {
-                        val effectiveIsSelected = isSelected
+                        val effectiveIsSelected = isSelected && !isTwoStepDisabled
                         // グレーアウトセルはテキスト色を薄く
                         textPaint.color = when {
                             effectiveIsSelected -> colorOnSelected
+                            isTwoStepDisabled -> colorOnSurfaceVariant
                             else -> colorOnSurface
                         }
                         val cx = left + cellSizePx / 2f
@@ -229,7 +242,7 @@ class FlickGridEditorView @JvmOverloads constructor(
                             canvas.drawRoundRect(left, top, right, bottom, cornerRadiusPx, cornerRadiusPx, fillPaint)
                         }
                         canvas.drawText(label, cx, cy, textPaint)
-                    } else if (isSelected) {
+                    } else if (isSelected && !isTwoStepDisabled) {
                         // ラベルなし・選択中は青塗り
                         fillPaint.color = colorSelected
                         canvas.drawRoundRect(left, top, right, bottom, cornerRadiusPx, cornerRadiusPx, fillPaint)
@@ -280,6 +293,8 @@ class FlickGridEditorView @JvmOverloads constructor(
         return when (mode) {
             is CellMode.Petal -> petalDirectionGrid[mode.direction] == pos
             is CellMode.SpecialFlick -> specialFlickDirectionGrid[mode.direction] == pos
+            is CellMode.TwoStepFirst -> tfbiDirectionGrid[pos] == mode.first
+            is CellMode.TwoStepSecond -> tfbiDirectionGrid[pos] == mode.second
             is CellMode.FlickLongPress -> tfbiDirectionGrid[pos] == mode.direction
         }
     }
@@ -297,7 +312,22 @@ class FlickGridEditorView @JvmOverloads constructor(
                 // TAPセル（常に経路の起点）はborder対象
                 setOf(tapPos)
             }
-
+            gridMode == GridMode.TWO_STEP -> {
+                when (mode) {
+                    is CellMode.TwoStepFirst -> {
+                        // TAPとfirstの間の経路（TAP自身も含む）
+                        val firstPos = tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
+                            ?: return emptySet()
+                        if (firstPos == tapPos) emptySet() else setOf(tapPos)
+                    }
+                    is CellMode.TwoStepSecond -> {
+                        val firstPos = tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
+                            ?: return emptySet()
+                        if (firstPos == tapPos) emptySet() else setOf(tapPos, firstPos)
+                    }
+                    else -> emptySet()
+                }
+            }
             else -> emptySet()
         }
     }
@@ -321,6 +351,48 @@ class FlickGridEditorView @JvmOverloads constructor(
                 enabledCells.filter { it != tapPos }.map { tapPos to it }.toSet()
             }
 
+            gridMode == GridMode.TWO_STEP -> {
+                when {
+                    mode == null || (mode is CellMode.TwoStepFirst && mode.first == TfbiFlickDirection.TAP) -> {
+                        // 未選択 or TAP選択中: 「1段目を選ぶ状態」なので8方向全て表示
+                        tfbiDirectionGrid.entries
+                            .filter { it.key != tapPos }
+                            .map { tapPos to it.key }
+                            .toSet()
+                    }
+                    mode is CellMode.TwoStepFirst -> {
+                        val firstPos = tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
+                            ?: return emptySet()
+                        val result = mutableSetOf<Pair<CellPos, CellPos>>()
+                        // TAP → 1段目セル
+                        result.add(tapPos to firstPos)
+                        // 1段目セル → 許可された2段目セル
+                        for ((pos, dir) in tfbiDirectionGrid) {
+                            if (pos == firstPos || pos == tapPos) continue
+                            if (ALLOWED_TWO_STEP_PAIRS.contains(Pair(mode.first, dir))) {
+                                result.add(firstPos to pos)
+                            }
+                        }
+                        result
+                    }
+                    mode is CellMode.TwoStepSecond -> {
+                        val firstPos = tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
+                            ?: return emptySet()
+                        val result = mutableSetOf<Pair<CellPos, CellPos>>()
+                        // TAP → 1段目セル
+                        result.add(tapPos to firstPos)
+                        // 1段目セル → 全許可2段目セル
+                        for ((pos, dir) in tfbiDirectionGrid) {
+                            if (pos == firstPos || pos == tapPos) continue
+                            if (ALLOWED_TWO_STEP_PAIRS.contains(Pair(mode.first, dir))) {
+                                result.add(firstPos to pos)
+                            }
+                        }
+                        result
+                    }
+                    else -> emptySet()
+                }
+            }
 
             gridMode == GridMode.FLICK_LONG_PRESS -> {
                 tfbiDirectionGrid.keys
@@ -333,6 +405,49 @@ class FlickGridEditorView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * 2段フリック時に無効（グレーアウト）すべきセルを返す
+     */
+    private fun getDisabledCellsForTwoStep(): Set<CellPos> {
+        if (gridMode != GridMode.TWO_STEP) return emptySet()
+        val tapPos = CellPos(1, 1)
+
+        return when (val mode = currentCellMode) {
+            is CellMode.TwoStepFirst -> {
+                // TAP選択中は「1段目を選ぶ状態」なのでグレーアウトなし
+                if (mode.first == TfbiFlickDirection.TAP) return emptySet()
+
+                val firstPos = tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
+                    ?: return emptySet()
+
+                // firstPos以外で、ALLOWED_TWO_STEP_PAIRSに含まれない2段目はグレーアウト
+                // tapPos（中央）はグレーアウトしない（1段目に戻れる）
+                tfbiDirectionGrid.entries
+                    .filter { (pos, dir) ->
+                        pos != firstPos &&
+                        pos != tapPos &&
+                        !ALLOWED_TWO_STEP_PAIRS.contains(Pair(mode.first, dir))
+                    }
+                    .map { it.key }
+                    .toSet()
+            }
+            is CellMode.TwoStepSecond -> {
+                val firstPos = tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
+                    ?: return emptySet()
+
+                // タップ・1段目・2段目として有効なセル以外はグレーアウト
+                tfbiDirectionGrid.entries
+                    .filter { (pos, dir) ->
+                        pos != firstPos &&
+                        pos != tapPos &&
+                        !ALLOWED_TWO_STEP_PAIRS.contains(Pair(mode.first, dir))
+                    }
+                    .map { it.key }
+                    .toSet()
+            }
+            else -> emptySet()
+        }
+    }
 
     private fun drawArrowBetween(canvas: Canvas, from: CellPos, to: CellPos, paint: Paint) {
         val fromCx = from.col * (cellSizePx + gapPx).toFloat() + cellSizePx / 2f
@@ -388,7 +503,14 @@ class FlickGridEditorView @JvmOverloads constructor(
                 invalidate()
                 onCellSelected?.invoke(newMode)
             }
-
+            GridMode.TWO_STEP -> {
+                val tappedDir = tfbiDirectionGrid[pos] ?: return
+                val newMode = computeNewTwoStepMode(tappedDir)
+                currentCellMode = newMode
+                updateTwoStepLabels(newMode)
+                invalidate()
+                onCellSelected?.invoke(newMode)
+            }
 
             GridMode.FLICK_LONG_PRESS -> {
                 val tappedDir = tfbiDirectionGrid[pos] ?: return
@@ -400,6 +522,41 @@ class FlickGridEditorView @JvmOverloads constructor(
         }
     }
 
+    private fun computeNewTwoStepMode(tapped: TfbiFlickDirection): CellMode {
+        val current = currentCellMode
+        return when {
+            current == null -> CellMode.TwoStepFirst(tapped)
+            current is CellMode.TwoStepFirst -> {
+                val first = current.first
+                when {
+                    tapped == first -> CellMode.TwoStepFirst(first)
+                    !CARDINAL_DIRECTIONS.contains(tapped) -> {
+                        if (ALLOWED_TWO_STEP_PAIRS.contains(Pair(first, tapped))) {
+                            CellMode.TwoStepSecond(first, tapped)
+                        } else {
+                            CellMode.TwoStepFirst(tapped)
+                        }
+                    }
+                    else -> CellMode.TwoStepFirst(tapped)
+                }
+            }
+            current is CellMode.TwoStepSecond -> {
+                val first = current.first
+                when {
+                    tapped == first -> CellMode.TwoStepFirst(first)
+                    !CARDINAL_DIRECTIONS.contains(tapped) -> {
+                        if (ALLOWED_TWO_STEP_PAIRS.contains(Pair(first, tapped))) {
+                            CellMode.TwoStepSecond(first, tapped)
+                        } else {
+                            CellMode.TwoStepFirst(tapped)
+                        }
+                    }
+                    else -> CellMode.TwoStepFirst(tapped)
+                }
+            }
+            else -> CellMode.TwoStepFirst(tapped)
+        }
+    }
 
     private fun columnAtX(x: Float): Int? {
         for (col in 0..2) {
@@ -418,6 +575,7 @@ class FlickGridEditorView @JvmOverloads constructor(
     }
 
     // ---- 公開API ----
+
 
 
     fun setPetalContent(items: List<FlickMappingItem>, displayActions: List<DisplayActionUi>, centerLabel: String = "") {
@@ -439,6 +597,24 @@ class FlickGridEditorView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setTwoStepContent(items: List<TwoStepMappingItem>, displayActions: List<DisplayActionUi>) {
+        gridMode = GridMode.TWO_STEP
+        currentCellMode = null
+        storedTwoStepItems = items
+        cellLabels.clear()
+        cellEnabled.clear()
+        cellIconResId.clear()
+
+        for ((pos, _) in tfbiDirectionGrid) {
+            cellEnabled[pos] = true
+        }
+        // 初期表示は全セル1段目ラベル
+        for ((pos, dir) in tfbiDirectionGrid) {
+            val singleItem = items.firstOrNull { it.first == dir && it.second == dir }
+            cellLabels[pos] = singleItem?.output ?: ""
+        }
+        invalidate()
+    }
 
     fun setSpecialFlickContent(items: List<SpecialFlickMappingItem>, displayActions: List<DisplayActionUi>) {
         gridMode = GridMode.SPECIAL_FLICK
@@ -488,6 +664,8 @@ class FlickGridEditorView @JvmOverloads constructor(
         val pos: CellPos? = when (mode) {
             is CellMode.Petal -> petalDirectionGrid[mode.direction]
             is CellMode.SpecialFlick -> specialFlickDirectionGrid[mode.direction]
+            is CellMode.TwoStepFirst -> tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
+            is CellMode.TwoStepSecond -> tfbiDirectionGrid.entries.firstOrNull { it.value == mode.second }?.key
             is CellMode.FlickLongPress -> tfbiDirectionGrid.entries.firstOrNull { it.value == mode.direction }?.key
         }
         if (pos != null) {
@@ -531,12 +709,60 @@ class FlickGridEditorView @JvmOverloads constructor(
         val initialMode: CellMode = when (gridMode) {
             GridMode.PETAL -> CellMode.Petal(FlickDirection.TAP)
             GridMode.SPECIAL_FLICK -> CellMode.SpecialFlick(FlickDirection.TAP)
+            GridMode.TWO_STEP -> CellMode.TwoStepFirst(TfbiFlickDirection.TAP)
             GridMode.FLICK_LONG_PRESS -> CellMode.FlickLongPress(TfbiFlickDirection.TAP)
         }
         currentCellMode = initialMode
+        if (gridMode == GridMode.TWO_STEP) updateTwoStepLabels(initialMode)
         invalidate()
         onCellSelected?.invoke(initialMode)
     }
 
+    /**
+     * 2段フリックのアイテム更新後に現在のモードでラベルを再計算して再描画する。
+     * KeyEditorFragment から currentTwoStepItems 更新後に呼び出すこと。
+     */
+    fun refreshTwoStepLabels(updatedItems: List<TwoStepMappingItem>) {
+        storedTwoStepItems = updatedItems
+        val mode = currentCellMode ?: return
+        updateTwoStepLabels(mode)
+        invalidate()
+    }
 
+    /**
+     * 2段フリックのセル選択状態に応じてラベルを再計算する。
+     *
+     * - TAP または 斜め方向（1段目）を編集中: 全セルに1段目ラベルを表示
+     * - 上下左右（1段目）または 斜め方向（2段目）を編集中:
+     *     - 編集中の1段目に連結する2段目セル → その2段目ラベルを表示
+     *     - それ以外 → 1段目ラベルを表示
+     */
+    private fun updateTwoStepLabels(mode: CellMode) {
+        val items = storedTwoStepItems
+        // 全セルを1段目ラベルで初期化
+        for ((pos, dir) in tfbiDirectionGrid) {
+            val singleItem = items.firstOrNull { it.first == dir && it.second == dir }
+            cellLabels[pos] = singleItem?.output ?: ""
+        }
+
+        val firstDir: TfbiFlickDirection? = when (mode) {
+            is CellMode.TwoStepFirst -> {
+                // TAP または 斜め方向（1段目）: 2段目ラベルの表示は不要
+                if (!CARDINAL_DIRECTIONS.contains(mode.first) || mode.first == TfbiFlickDirection.TAP) null
+                else mode.first
+            }
+            is CellMode.TwoStepSecond -> mode.first
+            else -> null
+        }
+
+        if (firstDir != null) {
+            // firstDir に連結する2段目（斜め方向）のラベルを上書き
+            for ((pos, dir) in tfbiDirectionGrid) {
+                if (!CARDINAL_DIRECTIONS.contains(dir) && ALLOWED_TWO_STEP_PAIRS.contains(Pair(firstDir, dir))) {
+                    val secondItem = items.firstOrNull { it.first == firstDir && it.second == dir }
+                    cellLabels[pos] = secondItem?.output ?: ""
+                }
+            }
+        }
+    }
 }
