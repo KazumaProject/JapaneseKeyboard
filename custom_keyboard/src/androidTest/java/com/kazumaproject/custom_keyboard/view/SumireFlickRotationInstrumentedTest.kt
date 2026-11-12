@@ -17,6 +17,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
@@ -63,7 +64,7 @@ class SumireFlickRotationTestActivity : Activity() {
                 inputStyle = style,
                 tfbiFlickRotation = rotation,
                 sumireFlickInputMode = mode
-            ))
+            ), origin = KeyboardLayoutOrigin.BUILT_IN)
             setOnKeyboardActionListener(object : FlickKeyboardView.OnKeyboardActionListener {
                 override fun onPress(action: KeyAction) = Unit
                 override fun onAction(action: KeyAction, isFlick: Boolean) { actions += action }
@@ -78,7 +79,11 @@ class SumireFlickRotationTestActivity : Activity() {
     }
 
     fun kaKey(): View = (0 until keyboard.childCount).map(keyboard::getChildAt)
-        .filterIsInstance<AutoSizeButton>().first { it.text.toString() == "か" }
+        .filterIsInstance<AutoSizeButton>().firstOrNull { it.text.toString() == "か" }
+        ?: error("Missing built-in ka key: " + (0 until keyboard.childCount).map { index ->
+            val key = keyboard.getChildAt(index)
+            "${key.javaClass.simpleName}/${(key as? android.widget.TextView)?.text}/${key.isEnabled}"
+        })
 }
 
 @RunWith(AndroidJUnit4::class)

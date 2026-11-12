@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
+import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
@@ -9,7 +10,6 @@ import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
-import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
@@ -785,7 +785,7 @@ class KeyboardEditorViewModel @Inject constructor(
             twoStepFlickKeyMaps = twoStepFlickKeyMaps.filterKeys { it !in removedKeyIds },
             longPressFlickKeyMaps = longPressFlickKeyMaps.filterKeys { it !in removedKeyIds },
             twoStepLongPressKeyMaps = twoStepLongPressKeyMaps.filterKeys { it !in removedKeyIds },
-            hierarchicalFlickMaps = hierarchicalFlickMaps.filterKeys { it !in removedKeyIds }
+            preservedFlickDefinitions = preservedFlickDefinitions.filterKeys { it !in removedKeyIds }
         )
     }
 
@@ -1004,10 +1004,9 @@ class KeyboardEditorViewModel @Inject constructor(
         twoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
         circularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList(),
         flexibleRowSpanUnits: Int? = null,
-        flexibleColumnSpanUnits: Int? = null,
-        hierarchicalFlick: TfbiFlickNode.StatefulKey? = null
+        flexibleColumnSpanUnits: Int? = null
     ): Boolean {
-        if (newKeyData.keyType == KeyType.HIERARCHICAL_FLICK) return false
+        if (CustomFlickSuspension.isSuspended(newKeyData.keyType)) return false
         val keyId = newKeyData.keyId ?: run {
             Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
             return false
@@ -1018,8 +1017,8 @@ class KeyboardEditorViewModel @Inject constructor(
             val layout = currentState.layout
 
             val oldKeyData = layout.keys.find { it.keyId == keyId } ?: return@update currentState
-            val finalHierarchicalMaps = layout.hierarchicalFlickMaps.toMutableMap()
-            if (oldKeyData.keyType == KeyType.HIERARCHICAL_FLICK) return@update currentState
+            val finalHierarchicalMaps = layout.preservedFlickDefinitions.toMutableMap()
+            if (CustomFlickSuspension.isSuspended(oldKeyData.keyType)) return@update currentState
             finalHierarchicalMaps.remove(keyId)
             val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
             val finalCircularFlickMaps = layout.circularFlickKeyMaps.toMutableMap()
@@ -1126,7 +1125,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
 
                 val newLayout = canonicalLayout.copy(
-                    hierarchicalFlickMaps = finalHierarchicalMaps,
+                    preservedFlickDefinitions = finalHierarchicalMaps,
                     flickKeyMaps = finalFlickMaps,
                     circularFlickKeyMaps = finalCircularFlickMaps,
                     twoStepFlickKeyMaps = finalTwoStepMaps,
@@ -1163,7 +1162,7 @@ class KeyboardEditorViewModel @Inject constructor(
             }
 
             val newLayout = layout.copyWithKeys(finalKeys).copy(
-                hierarchicalFlickMaps = finalHierarchicalMaps,
+                preservedFlickDefinitions = finalHierarchicalMaps,
                 flickKeyMaps = finalFlickMaps,
                 circularFlickKeyMaps = finalCircularFlickMaps,
                 twoStepFlickKeyMaps = finalTwoStepMaps,
@@ -1199,7 +1198,6 @@ class KeyboardEditorViewModel @Inject constructor(
                 finalTwoStepLongPressMaps.remove(keyId)
             }
 
-            KeyType.TWO_STEP_FLICK,
             KeyType.FLICK_LONG_PRESS -> {
                 finalFlickMaps.remove(keyId)
                 finalCircularFlickMaps.remove(keyId)
@@ -1645,8 +1643,8 @@ class KeyboardEditorViewModel @Inject constructor(
         }.toMap()
 
         val reKeyedHierarchicalMaps = keysWithEnsuredIds.mapNotNull { key ->
-            val definition = templateLayout.hierarchicalFlickMaps[key.keyId]
-                ?: templateLayout.hierarchicalFlickMaps[key.label]
+            val definition = templateLayout.preservedFlickDefinitions[key.keyId]
+                ?: templateLayout.preservedFlickDefinitions[key.label]
             definition?.let { key.keyId!! to it }
         }.toMap()
 
@@ -1690,7 +1688,7 @@ class KeyboardEditorViewModel @Inject constructor(
         }
 
         val finalLayout = finalLayoutBase.copy(
-            hierarchicalFlickMaps = reKeyedHierarchicalMaps,
+            preservedFlickDefinitions = reKeyedHierarchicalMaps,
             flickKeyMaps = reKeyedFlickMaps,
             circularFlickKeyMaps = reKeyedCircularFlickMaps,
             twoStepFlickKeyMaps = reKeyedTwoStepMaps,

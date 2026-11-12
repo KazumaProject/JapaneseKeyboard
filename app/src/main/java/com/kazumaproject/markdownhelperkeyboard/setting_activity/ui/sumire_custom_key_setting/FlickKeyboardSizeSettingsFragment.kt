@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_custom_key_setting
 
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
@@ -68,7 +69,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment(R.layout.fragment_flick_keybo
                 keyboard.setKeyboard(if (isSumire) KeyboardDefaultLayouts.createFinalLayout(mode,
                     emptyMap(), AppPreference.sumire_input_method, AppPreference.sumire_keyboard_style,
                     highlightSelectedMode = AppPreference.sumire_mode_key_highlight_preference)
-                    else KeyboardDefaultLayouts.defaultLayout())
+                    else KeyboardDefaultLayouts.defaultLayout(), origin = KeyboardLayoutOrigin.BUILT_IN)
             },
             reset = { mode ->
                 if (isSumire) AppPreference.resetModeKeySizes("sumire", mode)

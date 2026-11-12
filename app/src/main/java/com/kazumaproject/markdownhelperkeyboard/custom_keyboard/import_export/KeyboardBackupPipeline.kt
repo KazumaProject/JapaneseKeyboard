@@ -19,7 +19,6 @@ import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.HierarchicalFlickCodec
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
@@ -339,22 +338,9 @@ object KeyboardBackupNormalizer {
                 ).serializedName
             }
 
-            val hierarchicalFlickJson = try {
-                val definition = keyDto.hierarchicalFlick
-                require(keyDto.keyType != KeyType.HIERARCHICAL_FLICK.name || definition != null) {
-                    "Missing hierarchical flick definition"
-                }
-                definition?.let {
-                    val node = HierarchicalFlickCodec.toRuntime(it)
-                    require(HierarchicalFlickCodec.hasOutput(node.normalMap)) { "Missing normal output" }
-                    HierarchicalFlickCodec.encode(node)
-                }
-            } catch (e: Exception) {
-                errors += KeyboardLayoutImportError.ValidationFailed(
-                    layoutIndex, "Invalid hierarchical flick at key $keyIndex: ${e.message}"
-                )
-                return@mapIndexedNotNull null
-            }
+            // Preserve suspended definitions verbatim without interpreting input stages.
+            val hierarchicalFlickJson = keyDto.hierarchicalFlick
+                ?.takeUnless { it.isJsonNull }?.toString()
 
             val normalizedKey = KeyDefinition(
                 keyId = 0,

@@ -770,7 +770,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         if (isLongPressOutputMode()) currentFlickLongPressHoldItems else currentFlickLongPressItems
 
 
-
     private fun updateFlickLongPressOutput(
         items: MutableList<FlickLongPressMappingItem>,
         direction: TfbiFlickDirection,
@@ -1246,7 +1245,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.outputModeChipGroup.check(R.id.chip_normal_output)
                 outputEditMode = OutputEditMode.NORMAL
 
-                // Input style: petal or two-step
+                // Restore the supported editor.
                 if (key.keyType == KeyType.FLICK_LONG_PRESS) {
                     binding.inputStyleChipGroup.check(R.id.chip_flick_long_press)
                 } else if (key.keyType == KeyType.CIRCULAR_FLICK) {
@@ -1328,7 +1327,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
 
-
     private fun createDefaultFlickLongPressItems(
         source: Map<TfbiFlickDirection, String> = emptyMap()
     ): MutableList<FlickLongPressMappingItem> {
@@ -1366,7 +1364,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
 
-
     private fun extractFlickLongPressOutputs(
         outputs: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
     ): Map<TfbiFlickDirection, String> {
@@ -1377,7 +1374,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 ?.let { output -> direction to output }
         }.toMap()
     }
-
 
 
     private fun buildFlickLongPressOutputMap(
@@ -1976,7 +1972,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             findNavController().popBackStack()
         }
     }
-
 
 
     override fun onDestroyView() {

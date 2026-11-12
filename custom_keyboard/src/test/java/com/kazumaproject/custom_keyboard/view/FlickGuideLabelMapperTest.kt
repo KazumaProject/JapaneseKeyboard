@@ -1,6 +1,5 @@
 package com.kazumaproject.custom_keyboard.view
 
-import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

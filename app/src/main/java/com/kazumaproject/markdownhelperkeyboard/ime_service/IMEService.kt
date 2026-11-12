@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateCorrectionOptions
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingSettings
 import com.kazumaproject.markdownhelperkeyboard.gemma.floating.GemmaFloatingInput
@@ -11411,7 +11412,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isUserDefinedCustomLayout) KeyboardDefaultLayouts.applyDeleteKeyFlickSettings(
                 layout, currentDeleteKeyFlickSettings().copy(down = true)
             ) else applyDeleteKeyFlickPreferences(layout),
-            if (isUserDefinedCustomLayout) customKeyboardHitTestMode() else KeyHitTestMode.KEY_BOUNDS
+            if (isUserDefinedCustomLayout) customKeyboardHitTestMode() else KeyHitTestMode.KEY_BOUNDS,
+            if (isUserDefinedCustomLayout) KeyboardLayoutOrigin.CUSTOM else KeyboardLayoutOrigin.BUILT_IN
         )
     }
 
@@ -11476,7 +11478,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             layoutType = layoutType,
             inputMode = mode.name
         )
-        flickView.setKeyboard(createSumireKeyboardLayout(mode), KeyHitTestMode.NEAREST_KEY)
+        flickView.setKeyboard(createSumireKeyboardLayout(mode), KeyHitTestMode.NEAREST_KEY, KeyboardLayoutOrigin.BUILT_IN)
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
