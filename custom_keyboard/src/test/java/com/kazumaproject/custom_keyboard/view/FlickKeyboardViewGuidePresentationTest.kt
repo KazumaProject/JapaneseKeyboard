@@ -1,5 +1,6 @@
 package com.kazumaproject.custom_keyboard.view
 
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -23,7 +24,7 @@ class FlickKeyboardViewGuidePresentationTest {
         val layout = createSumireLayout(KeyboardInputMode.ENGLISH)
 
         view.setFlickGuideEnabled(enabled = false, allowMultiCharacterLabels = true)
-        view.setKeyboard(layout)
+        view.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN)
         assertNotNull(view.findInputButtonWithText("ABC", layout))
         assertNull(view.findInputButtonWithText("a", layout))
 
@@ -38,7 +39,7 @@ class FlickKeyboardViewGuidePresentationTest {
         val layout = createSumireLayout(KeyboardInputMode.SYMBOLS)
 
         view.setFlickGuideEnabled(enabled = false, allowMultiCharacterLabels = true)
-        view.setKeyboard(layout)
+        view.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN)
         assertNotNull(view.findInputButtonWithText("1\n☆♪→", layout))
 
         view.setFlickGuideEnabled(enabled = true, allowMultiCharacterLabels = true)
@@ -52,7 +53,7 @@ class FlickKeyboardViewGuidePresentationTest {
 
         view.setFlickGuideEnabled(enabled = true, allowMultiCharacterLabels = false)
         val layout = createSumireLayout(KeyboardInputMode.ENGLISH)
-        view.setKeyboard(layout)
+        view.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN)
 
         assertNotNull(view.findInputButtonWithText("ABC", layout))
         assertNull(view.findInputButtonWithText("a", layout))

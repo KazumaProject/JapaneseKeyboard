@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting
 
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
@@ -315,7 +316,7 @@ private fun renderNonCustomKeyboardPreviewType(
                     layoutType = layoutType,
                     inputMode = inputMode.name
                 )
-                views.flick.setKeyboard(layout, KeyHitTestMode.NEAREST_KEY)
+                views.flick.setKeyboard(layout, KeyHitTestMode.NEAREST_KEY, KeyboardLayoutOrigin.BUILT_IN)
             }
         }
 

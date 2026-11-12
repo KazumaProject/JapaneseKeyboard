@@ -33,7 +33,6 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFli
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.HierarchicalFlickCodec
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
@@ -1049,9 +1048,9 @@ class KeyboardRepository @Inject constructor(
                     }
                 }
             },
-            hierarchicalFlickMaps = dbLayout.keysWithFlicks.mapNotNull { keyWithFlicks ->
+            preservedFlickDefinitions = dbLayout.keysWithFlicks.mapNotNull { keyWithFlicks ->
                 keyWithFlicks.key.hierarchicalFlickJson?.let { json ->
-                    keyWithFlicks.key.keyIdentifier to HierarchicalFlickCodec.decode(json)
+                    keyWithFlicks.key.keyIdentifier to json
                 }
             }.toMap(),
             twoStepFlickKeyMaps = twoStepMaps,
@@ -1248,7 +1247,7 @@ class KeyboardRepository @Inject constructor(
                     ),
                     doubleTapPolicy = doubleTapBinding?.policy?.serializedName,
                     hierarchicalFlickJson = if (keyData.keyType == KeyType.HIERARCHICAL_FLICK) {
-                        uiLayout.hierarchicalFlickMaps[keyIdentifier]?.let(HierarchicalFlickCodec::encode)
+                        uiLayout.preservedFlickDefinitions[keyIdentifier]
                     } else null,
                     textInputBehavior = keyData.textInputBehavior.dbValue
                 )

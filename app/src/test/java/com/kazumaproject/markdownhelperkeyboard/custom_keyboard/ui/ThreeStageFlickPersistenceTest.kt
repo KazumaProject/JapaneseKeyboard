@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
+import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -9,10 +10,8 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyType
-import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.HierarchicalFlickCodec
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportError
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonExporter
@@ -39,34 +38,45 @@ class ThreeStageFlickPersistenceTest {
             assertFalse(editor.availableTemplates.any { it.nameResId == R.string.template_three_stage_flick })
             val saved = KeyData("saved", 0, 0, true, keyType = KeyType.HIERARCHICAL_FLICK, keyId = "saved")
             val ordinary = KeyData("other", 0, 1, false, keyId = "other")
-            val definition = TfbiFlickNode.StatefulKey(
-                mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("preserved😀")), label = "saved")
-            editor.applyTemplate(KeyboardLayout(listOf(saved, ordinary), emptyMap(), 2, 1,
-                hierarchicalFlickMaps = mapOf("saved" to definition)))
+            val two = KeyData("two", 0, 2, true, keyType = KeyType.TWO_STEP_FLICK, keyId = "two")
+            val sticky = KeyData("sticky", 0, 3, true, keyType = KeyType.STICKY_TWO_STEP_FLICK, keyId = "sticky")
+            val maps = listOf("two", "sticky").associateWith { mapOf(TfbiFlickDirection.LEFT to
+                mapOf(TfbiFlickDirection.UP_LEFT to "きゅ", TfbiFlickDirection.DOWN_LEFT to "きょ")) }
+            val definition = """{"normal":{"TAP":{"type":"input","output":"preserved😀"}},"future":{"unknown":true}}"""
+            editor.applyTemplate(KeyboardLayout(listOf(saved, ordinary, two, sticky), emptyMap(), 4, 1,
+                twoStepFlickKeyMaps = maps, twoStepLongPressKeyMaps = maps,
+                preservedFlickDefinitions = mapOf("saved" to definition)))
             val before = editor.uiState.value.layout
             val oldKey = before.keys.single { it.keyType == KeyType.HIERARCHICAL_FLICK }
-            val other = before.keys.single { it.keyType != KeyType.HIERARCHICAL_FLICK }
+            val other = before.keys.single { it.keyType == KeyType.NORMAL }
+            before.keys.filter { CustomFlickSuspension.isSuspended(it.keyType) }.forEach { key ->
+                assertFalse(editor.updateKeyAndMappings(key.copy(label = "changed"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
+            }
             assertFalse(editor.updateKeyAndMappings(oldKey.copy(label = "changed"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
             assertFalse(editor.updateKeyAndMappings(other.copy(keyType = KeyType.HIERARCHICAL_FLICK), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
             assertTrue(editor.updateKeyAndMappings(other.copy(label = "edited"), emptyMap(), emptyMap(), emptyMap(), emptyMap()))
             val edited = editor.uiState.value.layout
-            assertEquals(before.hierarchicalFlickMaps, edited.hierarchicalFlickMaps)
+            assertEquals(before.preservedFlickDefinitions, edited.preservedFlickDefinitions)
             val id = repository.saveLayout(edited, "Suspended", null)
             val reloaded = repository.getFullLayout(id).first()
-            assertEquals(edited.hierarchicalFlickMaps, reloaded.hierarchicalFlickMaps)
+            assertEquals(edited.preservedFlickDefinitions, reloaded.preservedFlickDefinitions)
+            assertEquals(edited.twoStepFlickKeyMaps, reloaded.twoStepFlickKeyMaps)
+            assertEquals(edited.twoStepLongPressKeyMaps, reloaded.twoStepLongPressKeyMaps)
             repository.duplicateLayout(id)
             val duplicateId = repository.getLayoutsNotFlow().single { it.layoutId != id }.layoutId
-            assertEquals(reloaded.hierarchicalFlickMaps, repository.getFullLayout(duplicateId).first().hierarchicalFlickMaps)
+            assertEquals(reloaded.preservedFlickDefinitions, repository.getFullLayout(duplicateId).first().preservedFlickDefinitions)
             val json = KeyboardLayoutJsonExporter.toJson(repository.getAllFullLayoutsForExport())
             val parsed = KeyboardLayoutJsonImporter.parse(json) as KeyboardLayoutImportResult.Success
             parsed.layouts.forEach { imported ->
-                assertEquals(reloaded.hierarchicalFlickMaps, imported.keysWithFlicks.mapNotNull {
-                    it.key.hierarchicalFlickJson?.let { data -> it.key.keyIdentifier to HierarchicalFlickCodec.decode(data) }
+                assertEquals(reloaded.preservedFlickDefinitions, imported.keysWithFlicks.mapNotNull {
+                    it.key.hierarchicalFlickJson?.let { data -> it.key.keyIdentifier to data }
                 }.toMap())
             }
             assertTrue(repository.importLayouts(parsed.layouts) is KeyboardLayoutImportResult.Success)
             repository.getAllCustomKeyboardLayouts().first().forEach {
-                assertEquals(reloaded.hierarchicalFlickMaps, it.hierarchicalFlickMaps)
+                assertEquals(reloaded.preservedFlickDefinitions, it.preservedFlickDefinitions)
+                assertEquals(reloaded.twoStepFlickKeyMaps, it.twoStepFlickKeyMaps)
+                assertEquals(reloaded.twoStepLongPressKeyMaps, it.twoStepLongPressKeyMaps)
             }
         } finally { db.close() }
     }
@@ -78,16 +88,13 @@ class ThreeStageFlickPersistenceTest {
         assertNull(parsed.layouts.single().keysWithFlicks.single().key.hierarchicalFlickJson)
     }
 
-    @Test fun malformedHierarchyIsReportedInsteadOfImportedAsAnEmptyKey() {
-        val json = """{"schemaVersion":5,"layouts":[{"layout":{"name":"broken","columnCount":1,"rowCount":1},
+    @Test fun suspendedDefinitionsAreOpaqueIncludingUnknownFutureFields() {
+        val json = """{"schemaVersion":5,"layouts":[{"layout":{"name":"saved","columnCount":1,"rowCount":1},
             "keysWithFlicks":[{"key":{"keyType":"HIERARCHICAL_FLICK","row":0,"column":0,
-            "hierarchicalFlick":{"normal":{"RIGHT":{"type":"invalid"}}}}}]}]}"""
-        val result = KeyboardLayoutJsonImporter.parse(json)
-        val errors = when (result) {
-            is KeyboardLayoutImportResult.PartialSuccess -> result.errors
-            is KeyboardLayoutImportResult.Failure -> result.errors
-            is KeyboardLayoutImportResult.Success -> error("Malformed hierarchy was accepted")
-        }
-        assertTrue(errors.toString(), errors.any { it is KeyboardLayoutImportError.ValidationFailed })
+            "hierarchicalFlick":{"normal":{"RIGHT":{"type":"future","payload":[1,2,3]}}}}}]}]}"""
+        val parsed = KeyboardLayoutJsonImporter.parse(json) as KeyboardLayoutImportResult.Success
+        val payload = JsonParser.parseString(parsed.layouts.single().keysWithFlicks.single().key.hierarchicalFlickJson)
+        assertEquals("future", payload.asJsonObject.getAsJsonObject("normal")
+            .getAsJsonObject("RIGHT").get("type").asString)
     }
 }

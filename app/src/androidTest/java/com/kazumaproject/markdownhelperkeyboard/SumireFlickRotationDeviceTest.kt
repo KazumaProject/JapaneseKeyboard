@@ -20,7 +20,6 @@ import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
-import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection.*
@@ -222,23 +221,11 @@ class SumireFlickRotationDeviceTest {
                 } ?: return@runOnMainSync
                 val layout = FlickKeyboardView::class.java.getDeclaredField("currentLayout")
                     .apply { isAccessible = true }.get(keyboard) as? KeyboardLayout ?: return@runOnMainSync
-                val expectedType = if (style == "second-flick") KeyType.TWO_STEP_FLICK else KeyType.HIERARCHICAL_FLICK
-                if (layout.keys.firstOrNull { it.label == "か" }?.keyType != expectedType) return@runOnMainSync
-                fun output(first: TfbiFlickDirection, second: TfbiFlickDirection): String? =
-                    if (style == "second-flick") layout.twoStepFlickKeyMaps["か"]?.get(first)?.get(second)
-                    else ((layout.hierarchicalFlickMaps["か"]?.normalMap?.get(first)
-                        as? TfbiFlickNode.SubMenu)?.nextMap?.get(second) as? TfbiFlickNode.Input)?.char
-                val hasGi = output(LEFT, if (rotation == TfbiFlickRotation.CLOCKWISE) UP_LEFT else DOWN_LEFT) == "ぎ"
-                val hasGe = output(RIGHT, if (rotation == TfbiFlickRotation.COUNTERCLOCKWISE) UP_RIGHT else DOWN_RIGHT) == "げ"
-                val ka = layout.hierarchicalFlickMaps["か"]
-                val iStage = (ka?.normalMap?.get(LEFT) as? TfbiFlickNode.SubMenu)?.nextMap
-                val yoonStage = (iStage?.get(UP) as? TfbiFlickNode.SubMenu)?.nextMap
-                val hasLongYoon = (yoonStage?.get(UP_LEFT) as? TfbiFlickNode.Input)?.char == "きゅう"
-                ready = if (style == "second-flick") hasGi && hasGe else when (mode) {
-                    SumireFlickInputMode.ALL -> hasGi && hasGe && hasLongYoon
-                    SumireFlickInputMode.CONTRACTED -> !hasGi && !hasGe && hasLongYoon && ka?.dakutenMap == null
-                    SumireFlickInputMode.VOICED -> hasGi && hasGe && !hasLongYoon
-                }
+                if (layout.keys.firstOrNull { it.label == "か" }?.keyType != KeyType.TWO_STEP_FLICK) return@runOnMainSync
+                val map = layout.twoStepFlickKeyMaps["か"] ?: return@runOnMainSync
+                val hasGi = map[LEFT]?.get(if (rotation == TfbiFlickRotation.CLOCKWISE) UP_LEFT else DOWN_LEFT) == "ぎ"
+                val hasGe = map[RIGHT]?.get(if (rotation == TfbiFlickRotation.COUNTERCLOCKWISE) UP_RIGHT else DOWN_RIGHT) == "げ"
+                ready = hasGi && hasGe
             }
             if (!ready) SystemClock.sleep(50)
         }

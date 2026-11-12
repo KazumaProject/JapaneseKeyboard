@@ -24,7 +24,7 @@ class CustomThreeStageFlickTest {
             val expected = KeyboardDefaultLayouts.createFinalLayout(mode, emptyMap(), "flick", "default")
             val restored = KeyboardDefaultLayouts.createFinalLayout(mode, emptyMap(), method, "third-flick")
             assertEquals(expected, restored)
-            assertTrue(restored.hierarchicalFlickMaps.isEmpty())
+            assertTrue(restored.preservedFlickDefinitions.isEmpty())
             assertFalse(restored.keys.any { it.keyType == KeyType.HIERARCHICAL_FLICK })
         }
     }
@@ -46,9 +46,9 @@ class CustomThreeStageFlickTest {
         val blocked = KeyData("saved", 0, 0, true, action = KeyAction.Text("blocked"),
             keyType = KeyType.HIERARCHICAL_FLICK, keyId = "saved")
         val ordinary = KeyData("ok", 0, 1, false, action = KeyAction.Text("ok"), keyId = "ordinary")
-        val saved = TfbiFlickNode.StatefulKey(mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("saved")), label = "saved")
+        val saved = """{"normal":{"TAP":{"type":"input","output":"saved"}}}"""
         val layout = KeyboardLayout(listOf(blocked, ordinary), emptyMap(), 2, 1,
-            hierarchicalFlickMaps = mapOf("saved" to saved))
+            preservedFlickDefinitions = mapOf("saved" to saved))
         activity.setContentView(keyboard)
         fun tap(index: Int, hold: Boolean = false) {
             val key = keyboard.getChildAt(index)
@@ -82,7 +82,7 @@ class CustomThreeStageFlickTest {
             tap(1)
             assertEquals(listOf(KeyAction.Text("ok")), actions)
             actions.clear()
-            assertEquals(saved, layout.hierarchicalFlickMaps["saved"])
+            assertEquals(saved, layout.preservedFlickDefinitions["saved"])
         }
         activity.finish()
     }

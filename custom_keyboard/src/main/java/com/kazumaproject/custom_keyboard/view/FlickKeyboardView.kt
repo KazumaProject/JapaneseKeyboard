@@ -1,5 +1,7 @@
 package com.kazumaproject.custom_keyboard.view
 
+import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
@@ -85,7 +87,6 @@ import com.kazumaproject.custom_keyboard.data.PETAL_TOGGLE_DIRECTIONS
 import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
-import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.applyTapOverrideDisplayForDynamicSumireSpecialKey
 import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayActionMap
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
@@ -228,6 +229,10 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val canonicalGuideLabels =
         IdentityHashMap<AutoSizeButton, AutoSizeButton.FlickGuideLabels>()
     private var currentLayout: KeyboardLayout? = null
+    private var layoutOrigin = KeyboardLayoutOrigin.CUSTOM
+
+    private fun isSuspended(key: KeyData): Boolean =
+        CustomFlickSuspension.isSuspended(key.keyType, layoutOrigin)
 
     // Used only for the built-in Sumire layout. User-defined layouts keep the legacy path.
     private var geometry = KeyboardGeometry()
@@ -702,7 +707,17 @@ class FlickKeyboardView @JvmOverloads constructor(
     /** Nearest-key input is opt-in; omitting the mode restores legacy bounds-only behavior. */
     @JvmOverloads
     @SuppressLint("ClickableViewAccessibility")
-    fun setKeyboard(layout: KeyboardLayout, hitTestMode: KeyHitTestMode = KeyHitTestMode.KEY_BOUNDS) {
+    fun setKeyboard(
+        layout: KeyboardLayout,
+        hitTestMode: KeyHitTestMode = KeyHitTestMode.KEY_BOUNDS,
+        origin: KeyboardLayoutOrigin = KeyboardLayoutOrigin.CUSTOM
+    ) {
+        if (layoutOrigin != origin) {
+            cancelTrackedTouchState()
+            doubleTapActionDispatcher.cancel()
+            layoutOrigin = origin
+            keyboardRenderRevision += 1
+        }
         setKeyHitTestMode(hitTestMode)
         setKeyboard(layout, forceRebuild = false)
     }
@@ -803,13 +818,14 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun applyVisibleKeyFilter(keyView: View, keyData: KeyData) {
-        if (keyData.keyType == KeyType.HIERARCHICAL_FLICK) {
+        if (isSuspended(keyData)) {
             keyView.visibility = if (visibleKeyLabels?.contains(keyData.label) != false) View.VISIBLE else View.INVISIBLE
             keyView.isEnabled = false
             keyView.alpha = 0.4f
-            keyView.contentDescription = context.getString(com.kazumaproject.core.R.string.three_stage_flick_suspended)
+            keyView.contentDescription = "${keyData.label}: ${context.getString(com.kazumaproject.core.R.string.custom_flick_suspended)}"
             return
         }
+        keyView.alpha = 1f
         val labels = visibleKeyLabels ?: run {
             keyView.visibility = View.VISIBLE
             keyView.isEnabled = true
@@ -969,6 +985,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val button = info.view as? AutoSizeButton ?: return
         val guideLabels = canonicalGuideLabels[button]
         updateKeyVisuals(button, info.keyData)
+        applyVisibleKeyFilter(button, info.keyData)
         if (guideLabels != null) {
             applyDisplayedGuideLabels(button, info.keyData, guideLabels)
         }
@@ -1470,7 +1487,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val commonCornerRadius = dpToPx(8).toFloat()
         val visualPalette = resolveKeyVisualPalette(keyData)
 
-        val keyView: View = if (shouldRenderKeyAsImage(keyData)) {
+        val keyView: View = if (shouldRenderKeyAsImage(keyData) && !isSuspended(keyData)) {
             AppCompatImageButton(context).apply {
                 isFocusable = false
                 elevation = 0f
@@ -1654,7 +1671,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     private fun attachKeyBehavior(keyView: View, keyData: KeyData): Any? {
-        if (keyData.keyType == KeyType.HIERARCHICAL_FLICK) return null
+        if (isSuspended(keyData)) return null
         val layout = currentLayout ?: return null
 
         when (keyData.keyType) {
@@ -2608,7 +2625,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         isFlick: Boolean,
         isLongPress: Boolean = false,
     ) {
-        if (keyData.keyType == KeyType.HIERARCHICAL_FLICK) return
+        if (isSuspended(keyData)) return
         val dispatch = dispatch@{
             val toggleValues = if (
                 !isFlick &&
@@ -2944,7 +2961,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         if (x < 0f || x >= width || y < 0f || y >= height) return null
         val views = keyInfos.filter {
             it.view.visibility == View.VISIBLE && it.view.width > 0 && it.view.height > 0 &&
-                (it.view.isEnabled || it.keyData.keyType == KeyType.HIERARCHICAL_FLICK)
+                (it.view.isEnabled || isSuspended(it.keyData))
         }.map { it.view }
         val hit = views.firstOrNull { KeyboardViewGeometry.containsParentPoint(it, x, y) }
         val selected = hit ?: if (keyHitTestMode == KeyHitTestMode.NEAREST_KEY) views.minByOrNull { key ->
@@ -2991,7 +3008,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         for (info in keyInfos) {
             val key = info.view
             if (key.visibility != View.VISIBLE || key.width <= 0 || key.height <= 0 ||
-                (!key.isEnabled && info.keyData.keyType != KeyType.HIERARCHICAL_FLICK)
+                (!key.isEnabled && !isSuspended(info.keyData))
             ) {
                 continue
             }

@@ -12,7 +12,6 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
-import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -75,14 +74,8 @@ class IMEServiceSumireFlickRotationTest {
                 notifyPreferenceChanged()
                 val layout = ReflectionHelpers.callInstanceMethod<KeyboardLayout>(
                     service, "createSumireKeyboardLayout")
-                val input = if (style == "second-flick") {
-                    layout.twoStepFlickKeyMaps.getValue("か")
+                val input = layout.twoStepFlickKeyMaps.getValue("か")
                         .getValue(TfbiFlickDirection.LEFT).getValue(direction)
-                } else {
-                    val submenu = layout.hierarchicalFlickMaps.getValue("か")
-                        .normalMap.getValue(TfbiFlickDirection.LEFT) as TfbiFlickNode.SubMenu
-                    (submenu.nextMap.getValue(direction) as TfbiFlickNode.Input).char
-                }
                 assertEquals("$style $rotation", "ぎ", input)
             }
         }
@@ -233,12 +226,7 @@ class IMEServiceSumireFlickRotationTest {
         }
     }
 
-    private fun TfbiFlickNode.outputs(): Set<String> = when (this) {
-        is TfbiFlickNode.Input -> setOf(char)
-        is TfbiFlickNode.SubMenu -> nextMap.values.flatMap { it.outputs() }.toSet()
-        is TfbiFlickNode.StatefulKey -> listOfNotNull(normalMap, dakutenMap, handakutenMap)
-            .flatMap { map -> map.values.flatMap { it.outputs() } }.toSet()
-    }
+
 
     private fun notifyPreferenceChanged(key: String = AppPreference.SUMIRE_FLICK_ROTATION_KEY) {
         val listener = ReflectionHelpers.getField<SharedPreferences.OnSharedPreferenceChangeListener>(

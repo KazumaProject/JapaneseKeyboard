@@ -40,7 +40,7 @@ class ThreeStageFlickSuspensionDeviceTest {
             val nodes = automation.windows.flatMap { it.root?.let(::collect).orEmpty() }
             nodes.filter { it.isVisibleToUser && it.viewIdResourceName?.endsWith("/$surfaceId") == true }
                 .flatMap(::collect).firstOrNull {
-                    it.isVisibleToUser && it.text?.toString()?.trim() == label
+                    it.isVisibleToUser && it.text?.toString()?.lineSequence()?.firstOrNull()?.trim() == label
                 }?.let { return it }
             SystemClock.sleep(100)
         }
@@ -87,13 +87,15 @@ class ThreeStageFlickSuspensionDeviceTest {
                 flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
                     AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
             }
-            val blocked = KeyData("PausedKey", 0, 0, true, action = KeyAction.Text("blocked"),
-                keyType = KeyType.HIERARCHICAL_FLICK, keyId = "paused-key")
-            val ordinary = KeyData("WorkingKey", 0, 1, false, action = KeyAction.Text("あ"), keyId = "working-key")
-            val definition = TfbiFlickNode.StatefulKey(
-                mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("preserved")), label = "PausedKey")
-            createdId = repository.saveLayout(KeyboardLayout(listOf(blocked, ordinary), emptyMap(), 2, 1,
-                hierarchicalFlickMaps = mapOf("paused-key" to definition)), "Suspension device verification", null)
+            val blockedTypes = listOf(KeyType.HIERARCHICAL_FLICK, KeyType.TWO_STEP_FLICK, KeyType.STICKY_TWO_STEP_FLICK)
+            val blocked = blockedTypes.mapIndexed { index, type ->
+                KeyData("PausedKey$index", 0, index, true, action = KeyAction.Text("blocked"),
+                    keyType = type, keyId = "paused-key$index")
+            }
+            val ordinary = KeyData("WorkingKey", 0, 3, false, action = KeyAction.Text("あ"), keyId = "working-key")
+            val definition = """{"normal":{"TAP":{"type":"input","output":"preserved"}}}"""
+            createdId = repository.saveLayout(KeyboardLayout(blocked + ordinary, emptyMap(), 4, 1,
+                preservedFlickDefinitions = mapOf("paused-key0" to definition)), "Suspension device verification", null)
             val saved = repository.getFullLayout(createdId!!).first()
             val stableId = repository.getLayoutsNotFlow().single { it.layoutId == createdId }.stableId
             shell("ime enable $ime"); shell("ime set $ime")
@@ -106,14 +108,16 @@ class ThreeStageFlickSuspensionDeviceTest {
                     .putBoolean("live_conversion_preference", false).commit())
                 ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
                     scenario.onActivity { it.restartEditorInput(clearText = true) }
-                    val stopped = key("PausedKey", floating)
-                    assertFalse(stopped.isEnabled)
-                    tap(stopped); tap(stopped); tap(stopped, hold = true)
-                    awaitText(scenario, "")
+                    blockedTypes.indices.forEach { index ->
+                        val stopped = key("PausedKey$index", floating)
+                        assertFalse(stopped.isEnabled)
+                        tap(stopped); tap(stopped); tap(stopped, hold = true)
+                        awaitText(scenario, "")
+                    }
                     tap(key("WorkingKey", floating))
                     awaitText(scenario, "あ")
                 }
-                assertEquals(saved.hierarchicalFlickMaps, repository.getFullLayout(createdId!!).first().hierarchicalFlickMaps)
+                assertEquals(saved.preservedFlickDefinitions, repository.getFullLayout(createdId!!).first().preservedFlickDefinitions)
                 check(prefs.edit().putString("keyboard_order_preference", "[\"SUMIRE\"]")
                     .putString("sumire_keyboard_style_preference", "third-flick")
                     .putString("sumire_input_method_preference", "toggle").commit())
@@ -123,6 +127,12 @@ class ThreeStageFlickSuspensionDeviceTest {
                     awaitText(scenario, "あ")
                 }
                 assertEquals("third-flick", prefs.getString("sumire_keyboard_style_preference", null))
+                check(prefs.edit().putString("sumire_keyboard_style_preference", "second-flick").commit())
+                ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
+                    scenario.onActivity { it.restartEditorInput(clearText = true) }
+                    tap(key("あ", floating))
+                    awaitText(scenario, "あ")
+                }
             }
         } finally {
             createdId?.let { repository.deleteLayoutConfirmed(it) }

@@ -21,18 +21,18 @@ class ThreeStageFlickSuspensionInstrumentedTest {
     @Test fun savedKeysStayBlockedInBothPopupModesAndEveryHitTestMode() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch(SumireFlickRotationTestActivity::class.java).use { scenario ->
-            for (popup in TfbiPopupPresentationMode.entries) for (hitMode in KeyHitTestMode.entries) {
+            for (type in listOf(KeyType.TWO_STEP_FLICK, KeyType.STICKY_TWO_STEP_FLICK, KeyType.HIERARCHICAL_FLICK))
+                for (popup in TfbiPopupPresentationMode.entries) for (hitMode in KeyHitTestMode.entries) {
                 val laidOut = CountDownLatch(1)
                 scenario.onActivity { activity ->
                     activity.configure("third-flick", TfbiFlickRotation.DEFAULT, popup)
                     val blocked = KeyData("saved", 0, 0, true, action = KeyAction.Text("blocked"),
-                        keyId = "saved", keyType = KeyType.HIERARCHICAL_FLICK)
+                        keyId = "saved", keyType = type)
                     val ordinary = KeyData("ok", 0, 1, false, action = KeyAction.Text("ok"), keyId = "ordinary")
-                    val saved = TfbiFlickNode.StatefulKey(
-                        mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("preserved")), label = "saved")
+                    val saved = """{"normal":{"TAP":{"type":"input","output":"preserved"}}}"""
                     activity.keyboard.setLongPressTimeout(100)
                     activity.keyboard.setKeyboard(KeyboardLayout(listOf(blocked, ordinary), emptyMap(), 2, 1,
-                        hierarchicalFlickMaps = mapOf("saved" to saved)), hitMode)
+                        preservedFlickDefinitions = mapOf("saved" to saved)), hitMode)
                     activity.keyboard.doOnLayout { laidOut.countDown() }
                 }
                 assertTrue("Keyboard layout did not finish", laidOut.await(5, TimeUnit.SECONDS))

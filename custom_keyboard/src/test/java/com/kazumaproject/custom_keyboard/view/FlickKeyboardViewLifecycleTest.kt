@@ -1,5 +1,6 @@
 package com.kazumaproject.custom_keyboard.view
 
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.app.Activity
 import android.os.Looper
 import android.os.SystemClock
@@ -58,7 +59,7 @@ class FlickKeyboardViewLifecycleTest {
                     idle(500)
                     assertTrue("$scenario emitted input while hidden", events.isEmpty())
                     keyboard.visibility = View.VISIBLE
-                    keyboard.setKeyboard(layout)
+                    keyboard.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN)
                     children.forEachIndexed { index, key -> assertSame(scenario, key, keyboard.getChildAt(index)) }
                     tapAllKeys()
                     assertEquals(scenario, expected, events)
@@ -161,8 +162,8 @@ class FlickKeyboardViewLifecycleTest {
         touch(MotionEvent.ACTION_UP, field(info, "view"))
     }
 
-    @Test fun customStickyAndFlickLongPressKeysRecoverAfterHide() {
-        for (type in listOf(KeyType.STICKY_TWO_STEP_FLICK, KeyType.FLICK_LONG_PRESS)) {
+    @Test fun customFlickLongPressKeysRecoverAfterHide() {
+        for (type in listOf(KeyType.FLICK_LONG_PRESS)) {
             val key = KeyData("a", 0, 0, true, action = KeyAction.Text("a"), keyId = "a", keyType = type)
             install(KeyboardLayout(listOf(key), emptyMap(), 1, 1,
                 twoStepFlickKeyMaps = mapOf("a" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.TAP to "a")))))
@@ -191,7 +192,7 @@ class FlickKeyboardViewLifecycleTest {
     private fun actionLayout(type: KeyType) = KeyboardLayout(
         listOf(KeyData("paste", 0, 0, false, KeyAction.Paste, keyId = "paste", keyType = type)),
         mapOf("paste" to listOf(mapOf(FlickDirection.TAP to FlickAction.Action(KeyAction.Paste)))), 1, 1)
-    private fun install(layout: KeyboardLayout) { keyboard.setKeyboard(layout); measure(); events.clear(); holds.clear() }
+    private fun install(layout: KeyboardLayout) { keyboard.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN); measure(); events.clear(); holds.clear() }
     private fun measure() {
         keyboard.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY))

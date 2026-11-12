@@ -54,7 +54,6 @@ class FlickGridEditorView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
 
-
     // [0,0]=UP_LEFT  [0,1]=UP       [0,2]=UP_RIGHT
     // [1,0]=LEFT     [1,1]=TAP      [1,2]=RIGHT
     // [2,0]=DOWN_LEFT [2,1]=DOWN     [2,2]=DOWN_RIGHT
@@ -334,10 +333,6 @@ class FlickGridEditorView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * 2段フリック時に無効（グレーアウト）すべきセルを返す
-     */
-
 
     private fun drawArrowBetween(canvas: Canvas, from: CellPos, to: CellPos, paint: Paint) {
         val fromCx = from.col * (cellSizePx + gapPx).toFloat() + cellSizePx / 2f
@@ -406,7 +401,6 @@ class FlickGridEditorView @JvmOverloads constructor(
     }
 
 
-
     private fun columnAtX(x: Float): Int? {
         for (col in 0..2) {
             val left = col * (cellSizePx + gapPx).toFloat()
@@ -424,7 +418,6 @@ class FlickGridEditorView @JvmOverloads constructor(
     }
 
     // ---- 公開API ----
-
 
 
     fun setPetalContent(items: List<FlickMappingItem>, displayActions: List<DisplayActionUi>, centerLabel: String = "") {
@@ -445,7 +438,6 @@ class FlickGridEditorView @JvmOverloads constructor(
         }
         invalidate()
     }
-
 
 
     fun setSpecialFlickContent(items: List<SpecialFlickMappingItem>, displayActions: List<DisplayActionUi>) {
@@ -546,19 +538,5 @@ class FlickGridEditorView @JvmOverloads constructor(
         onCellSelected?.invoke(initialMode)
     }
 
-    /**
-     * 2段フリックのアイテム更新後に現在のモードでラベルを再計算して再描画する。
-     * KeyEditorFragment から currentTwoStepItems 更新後に呼び出すこと。
-     */
-
-
-    /**
-     * 2段フリックのセル選択状態に応じてラベルを再計算する。
-     *
-     * - TAP または 斜め方向（1段目）を編集中: 全セルに1段目ラベルを表示
-     * - 上下左右（1段目）または 斜め方向（2段目）を編集中:
-     *     - 編集中の1段目に連結する2段目セル → その2段目ラベルを表示
-     *     - それ以外 → 1段目ラベルを表示
-     */
 
 }
