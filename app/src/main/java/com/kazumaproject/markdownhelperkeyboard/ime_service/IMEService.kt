@@ -3085,6 +3085,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val initialInputMode = when {
                         forcedNumber -> InputMode.ModeNumber
                         selection.type == KeyboardType.QWERTY || forcedPasswordQwerty -> InputMode.ModeEnglish
+                        selection.type == KeyboardType.ROMAJI &&
+                                defaultInputModeFor(currentInputType) == InputMode.ModeJapanese ->
+                            initialRomajiInputMode()
                         else -> defaultInputModeFor(currentInputType)
                     }
                     val initialMode = when {
@@ -4001,9 +4004,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun scheduleEnglishCorrection(connection: InputConnection, committed: CharSequence?) {
-        if (!canShowEnglishCorrection() || committed.isNullOrBlank()) return
+        if (!canShowEnglishCorrection() || committed.isNullOrEmpty()) return
         val suffix = committed.takeLast(160).toString()
-        if (suffix.none { it in 'a'..'z' || it in 'A'..'Z' }) return
+        if (suffix.none { it in 'a'..'z' || it in 'A'..'Z' || it in ".!\n" }) return
         if (dictionarySourceResolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return
         val revision = editorMutationRevision.current()
         englishCorrectionJob = scope.launch {
@@ -11304,6 +11307,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         renderDynamicKeysOnActiveSurface()
     }
 
+    private fun initialRomajiInputMode(): InputMode {
+        return if (appPreference.qwerty_romaji_initial_input_mode_preference == "english") {
+            InputMode.ModeEnglish
+        } else {
+            InputMode.ModeJapanese
+        }
+    }
+
     private fun defaultInputModeFor(inputType: InputTypeForIME): InputMode {
         return when (inputType) {
             InputTypeForIME.TextEmailAddress,
@@ -14372,7 +14383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
 
                             KeyboardType.ROMAJI -> {
-                                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                                setCurrentInputModeForSession(initialRomajiInputMode())
                                 clearQwertySwitchNumberKeyReturnSource()
                             }
 
@@ -14978,12 +14989,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
-                        setCurrentInputModeForSession(InputMode.ModeJapanese)
-                        setCurrentQwertyRomajiModeForSession(true)
-                        val qwertyEnterKeyText = editorEnterLabel(japanese = true)
-                        qwertyView.setRomajiKeyboard(
-                            qwertyEnterKeyText
-                        )
+                        val initialInputMode = initialRomajiInputMode()
+                        val isJapanese = initialInputMode == InputMode.ModeJapanese
+                        setCurrentInputModeForSession(initialInputMode)
+                        setCurrentQwertyRomajiModeForSession(isJapanese)
+                        val qwertyEnterKeyText = editorEnterLabel(japanese = isJapanese)
+                        if (isJapanese) {
+                            qwertyView.setRomajiKeyboard(qwertyEnterKeyText)
+                        } else {
+                            qwertyView.resetQWERTYKeyboard(qwertyEnterKeyText)
+                        }
                         qwertyView.setRomajiEnglishSwitchKeyVisibility(true)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
@@ -29567,9 +29582,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         EditorEnterPolicy.dispatch(
             action = EditorEnterPolicy.resolve(currentInputEditorInfo),
             sendKey = {
-                if (currentInputConnection != null) {
+                currentInputConnection?.let { connection ->
                     sendDownUpKeyEvents(it)
                     editorMutationRevision.advance()
+                    clearEnglishCorrection()
+                    scheduleEnglishCorrection(connection, "\n")
                 }
             },
             performAction = { performEditorAction(it) },
@@ -30448,16 +30465,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun finishInputEnterKey() {
         val committedText = inputString.value
-        val showEnglishContinuations = currentInputModeForSession == InputMode.ModeEnglish &&
-            stringInTail.get().isEmpty()
+        val hadTail = stringInTail.get().isNotEmpty()
+        val showEnglishContinuations = currentInputModeForSession == InputMode.ModeEnglish && !hadTail
         clearZeroQueryAllState(refresh = false)
         _inputString.update { "" }
         val finished = finishComposingText()
         clearSuggestionStateAfterCommit()
         resetFlagsEnterKeyNotHenkan()
+        clearEnglishCorrection()
         if (finished && showEnglishContinuations) {
             rememberZeroQueryKeyAfterCommit(committedText)
             consumePendingZeroQueryAfterCommit()
+        }
+        if (finished && !hadTail) {
+            currentInputConnection?.let { scheduleEnglishCorrection(it, committedText) }
         }
     }
 
@@ -31229,7 +31250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             KeyboardType.ROMAJI -> {
-                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                setCurrentInputModeForSession(initialRomajiInputMode())
             }
 
             KeyboardType.QWERTY -> {

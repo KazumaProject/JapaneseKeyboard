@@ -1859,6 +1859,9 @@
     <string name="qwerty_common_category_title">QWERTY (Common)</string>
     <string name="qwerty_english_category_title">QWERTY (English)</string>
     <string name="qwerty_romaji_category_title">QWERTY (Romaji)</string>
+    <string name="qwerty_romaji_initial_input_mode_title">Initial input mode</string>
+    <string name="qwerty_romaji_initial_input_mode_japanese">Japanese</string>
+    <string name="qwerty_romaji_initial_input_mode_english">English</string>
     <string name="space_flick_preference_title">Space key flick</string>
     <string name="tenkey_space_flick_summary">Flick left to insert the opposite space width to your current space setting.</string>
     <string name="qwerty_romaji_space_flick_summary">Flick up to insert the opposite space width to your Romaji space setting. Independent of letter-key up flicks.</string>

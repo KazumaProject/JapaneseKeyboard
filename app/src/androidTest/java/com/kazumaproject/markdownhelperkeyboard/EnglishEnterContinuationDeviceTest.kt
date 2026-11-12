@@ -90,7 +90,7 @@ class EnglishEnterContinuationDeviceTest {
         }
     }
 
-    private fun runCase(floating: Boolean, enabled: Boolean = true, block: (ActivityScenario<FastInputHostActivity>) -> Unit) {
+    private fun runCase(floating: Boolean, enabled: Boolean = true, correctionEnabled: Boolean = false, block: (ActivityScenario<FastInputHostActivity>) -> Unit) {
         assumeTrue(InstrumentationRegistry.getArguments().getString("english_enter_test") == "true")
         check(context.packageName.endsWith(".englishenterqa"))
         AppPreference.init(context)
@@ -108,7 +108,7 @@ class EnglishEnterContinuationDeviceTest {
                 .putBoolean("live_conversion_preference", false)
                 .putBoolean("learn_dictionary_preference", false)
                 .putBoolean("english_prediction_enable_preference", true)
-                .putBoolean("english_floating_grammar_correction_preference", false)
+                .putBoolean("english_floating_grammar_correction_preference", correctionEnabled)
                 .putBoolean("zero_query_suggestion_preference", enabled)
                 .commit())
             shell("input keyevent WAKEUP")
@@ -157,6 +157,24 @@ class EnglishEnterContinuationDeviceTest {
                     .first { it.isClickable }.performClick()
             }
             scenario.onActivity { assertEquals("ariana Grande", it.editText.text.toString()) }
+        }
+    }
+
+    @Test fun grammarAndContinuationsRemainUsableWhenBothEnabled() {
+        for (floating in listOf(false, true)) runCase(floating, correctionEnabled = true) { scenario ->
+            type("i go home yesterday")
+            scenario.onActivity { assertEquals("i go home yesterday", it.editText.text.toString()) }
+            tap(QwertyR.id.key_return)
+            await("sentence correction with continuations enabled") { view(R.id.english_floating_correction_text) != null }
+            tap(R.id.english_floating_correction_text)
+            scenario.onActivity {
+                assertEquals("i went home yesterday", it.editText.text.toString())
+                it.editText.setText("")
+            }
+            type("ariana")
+            scenario.onActivity { assertEquals("ariana", it.editText.text.toString()) }
+            tap(QwertyR.id.key_return)
+            await("Grande with grammar correction enabled") { continuations().any { it.string == "Grande" } }
         }
     }
 
