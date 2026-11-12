@@ -104,7 +104,6 @@ jobs:
           python3 tools/licenses/prepare-libraries.py build/reports/licenses/resolved-release.json --check
 
       - name: Upload signed internal test bundles
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: internal-test-bundles-${{ github.sha }}
@@ -191,6 +190,14 @@ jobs:
       - name: Install APK signing tools
         run: sdkmanager "build-tools;36.0.0"
 
+      - name: Set up Python for F-Droid signature verification
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install F-Droid signature comparison tool
+        run: python -m pip install apksigcopier==1.1.1
+
       - uses: actions/download-artifact@v4
         with:
           name: standard-apks-${{ github.sha }}
@@ -226,8 +233,15 @@ jobs:
             --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD \
             --v1-signing-enabled false --v2-signing-enabled true \
             --v3-signing-enabled false --v4-signing-enabled false \
+            --alignment-preserved true \
             --out release/app-liteFdroid-release.apk "$RUNNER_TEMP/fdroid-aligned.apk"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify release/app-liteFdroid-release.apk
+
+      - name: Verify the signed APK against the independent F-Droid rebuild
+        run: |
+          export PATH="$ANDROID_HOME/build-tools/36.0.0:$PATH"
+          apksigcopier compare --unsigned \
+            release/app-liteFdroid-release.apk fdroid/second/app-liteFdroid-release.apk
 
       - name: Check APK revisions and the public tag for tag builds
         env:
