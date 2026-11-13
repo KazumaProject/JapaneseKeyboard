@@ -1,5 +1,8 @@
 package com.kazumaproject.custom_keyboard.layout
 
+import com.kazumaproject.core.data.qwerty.QWERTYKeys
+import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
+import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.DoubleTapPolicy
 import com.kazumaproject.custom_keyboard.data.FlickAction
@@ -95,7 +98,7 @@ class AlphabetTemplateLayoutsTest {
         )
     }
 
-    private fun assertAllCharacterKeysAreNormalText(layout: KeyboardLayout) {
+    private fun assertAllCharacterKeysAreQwertyText(layout: KeyboardLayout) {
         layout.keys.filter { !it.isSpecialKey }.forEach { key ->
             val action = key.action
             assertTrue(
@@ -103,9 +106,10 @@ class AlphabetTemplateLayoutsTest {
                 action is KeyAction.Text && action.text == key.label
             )
             assertEquals(
-                "Character key '${key.label}' must be NORMAL",
-                KeyType.NORMAL, key.keyType
+                "Character key '${key.label}' must be QWERTY",
+                KeyType.QWERTY, key.keyType
             )
+            assertTrue(key.qwertyConfig?.isValid() == true)
             assertFalse("Character key '${key.label}' must not be flickable", key.isFlickable)
             assertNotNull("Character key '${key.label}' must have a keyId", key.keyId)
         }
@@ -123,9 +127,60 @@ class AlphabetTemplateLayoutsTest {
             row0Labels(layout)
         )
         assertHasSpecialKeys(layout, "QWERTY")
-        assertAllCharacterKeysAreNormalText(layout)
+        assertAllCharacterKeysAreQwertyText(layout)
         assertNotNull(layout.keys.firstOrNull { it.keyId == "qwerty_key_q" })
         assertNotNull(layout.keys.firstOrNull { it.keyId == "qwerty_key_p" })
+    }
+
+    @Test
+    fun qwertyTemplates_matchStandardTapAndLongPressLayers() {
+        val map = QWERTYKeyMap()
+        val modes = listOf(
+            Triple(KeyboardDefaultLayouts.createQwertyTemplateLayout(), QWERTYKeys.DEFAULT_KEYS,
+                map.keysDefault.map(map::getKeyInfoDefault)),
+            Triple(KeyboardDefaultLayouts.createQwertyNumberTemplateLayout(), QWERTYKeys.NUMBER_KEYS,
+                map.keysNumber.map(map::getKeyInfoNumber)),
+            Triple(KeyboardDefaultLayouts.createQwertySymbolTemplateLayout(), QWERTYKeys.SYMBOL_KEYS,
+                map.keysSymbol.map(map::getKeyInfoSymbol))
+        )
+        modes.forEach { (layout, characters, infos) ->
+            assertCommonStructure(layout)
+            assertHasSpecialKeys(layout, "QWERTY")
+            assertAllCharacterKeysAreQwertyText(layout)
+            assertFalse(hasPlacementIssues(layout.items, layout.rowUnitCount, layout.columnUnitCount))
+            assertEquals(layout.keys.size, layout.keys.map { it.keyId }.toSet().size)
+            val characterKeys = layout.items.filterIsInstance<KeyItem>()
+                .filter { !it.keyData.isSpecialKey }
+                .sortedWith(compareBy({ it.placement.rowUnits }, { it.placement.columnUnits }))
+                .map { it.keyData }
+            assertEquals(characters.map(Char::toString), characterKeys.map { it.label })
+            characterKeys.forEach { key ->
+                val info = infos.filterIsInstance<QWERTYKeyInfo.QWERTYVariation>()
+                    .first { it.tap.toString() == key.label }
+                val config = key.qwertyConfig!!
+                val shifted = requireNotNull(config.shifted)
+                assertEquals(info.tap.toString(), config.normal.output)
+                assertEquals(info.variations.orEmpty().map(Char::toString), config.normal.slots.map { it.output })
+                assertEquals((info.capChar ?: info.tap).toString(), shifted.output)
+                assertEquals((info.capVariations ?: info.variations).orEmpty().map(Char::toString),
+                    shifted.slots.map { it.output })
+            }
+        }
+    }
+
+    @Test
+    fun numberAndSymbolTemplates_haveTenTenFiveCharactersAndCenteredBottomRow() {
+        listOf(
+            "qwerty_number" to KeyboardDefaultLayouts.createQwertyNumberTemplateLayout(),
+            "qwerty_symbol" to KeyboardDefaultLayouts.createQwertySymbolTemplateLayout()
+        ).forEach { (prefix, layout) ->
+            assertTrue(layout.keys.all { it.keyId!!.startsWith("${prefix}_") })
+            val characters = layout.items.filterIsInstance<KeyItem>().filter { !it.keyData.isSpecialKey }
+            assertEquals(listOf(10, 10, 5), listOf(0, 2, 4).map { row -> characters.count { it.placement.rowUnits == row } })
+            val bottom = characters.filter { it.placement.rowUnits == 4 }
+            assertEquals(listOf(5, 7, 9, 11, 13), bottom.map { it.placement.columnUnits })
+            assertTrue(bottom.all { it.placement.columnSpanUnits == 2 })
+        }
     }
 
     @Test
