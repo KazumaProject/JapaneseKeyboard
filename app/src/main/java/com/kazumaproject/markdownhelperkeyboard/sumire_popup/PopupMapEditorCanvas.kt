@@ -20,6 +20,8 @@ import kotlin.math.hypot
 
 @SuppressLint("ClickableViewAccessibility")
 class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
+    // The editor paints its own tap selection and editing outline below.
+    override val drawsTapRegion = false
     var inputOptions = PopupMapInputOptions()
         set(value) {
             if(field != value) {trial=null;fingerPosition=null;parent?.requestDisallowInterceptTouchEvent(false)}

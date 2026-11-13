@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.PopupWindow
 import android.widget.TextView
 import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
+import com.kazumaproject.custom_keyboard.data.PopupBounds
 import com.kazumaproject.custom_keyboard.data.PopupMapSession
 import com.kazumaproject.custom_keyboard.data.PopupMapInputOptions
 import com.kazumaproject.custom_keyboard.data.PopupMapPresentation
@@ -118,13 +119,10 @@ class PopupMapInputController(
             return
         }
         guideHost?.dismiss()
-        val regions = active.currentMap.regions
-        if (regions.isEmpty()) { popup?.dismiss(); return }
         val angle = Math.toRadians(rotation.toDouble())
         val cosine = cos(angle).toFloat()
         val sine = sin(angle).toFloat()
-        val corners = regions.flatMap { region ->
-            val b = region.bounds
+        val corners = (listOf(PopupBounds.KEY) + active.currentMap.regions.map { it.bounds }).flatMap { b ->
             listOf(b.left to b.top, b.right to b.top, b.left to b.bottom, b.right to b.bottom).map { (x,y) ->
                 (x * width * cosine - y * height * sine) to (x * width * sine + y * height * cosine)
             }
@@ -134,7 +132,7 @@ class PopupMapInputController(
         val right = ceil(corners.maxOf { it.first }).toInt() + 2
         val bottom = ceil(corners.maxOf { it.second }).toInt() + 2
         val drawing = content ?: PopupMapView(key.context).also { content = it }
-        drawing.map = active.currentMap; drawing.selectedId = active.selectedRegionId
+        drawing.map = active.currentMap; drawing.selectedId = active.selectedRegionId; drawing.tapActive = active.isTap
         drawing.keyWidth = width.toFloat(); drawing.keyHeight = height.toFloat(); drawing.keyRotation = rotation
         drawing.originX = -left.toFloat(); drawing.originY = -top.toFloat(); drawing.textTransform = transform
         val window = popup ?: PopupWindow(drawing, right-left, bottom-top, false).apply {

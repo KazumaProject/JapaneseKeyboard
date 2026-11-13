@@ -17,7 +17,6 @@ import kotlin.math.roundToInt
 class PopupMapGuideView(context: Context) : PopupMapView(context) {
     var config: PopupKeyConfig? = null
     var fingerPosition: Pair<Float, Float>? = null
-    var tapActive = true
     var title = ""
     var sourceKeyWidth = 100f
     var sourceKeyHeight = 64f

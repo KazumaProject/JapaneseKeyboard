@@ -102,4 +102,28 @@ class PopupMapGuideViewTest {
         assertEquals(before,listOf(view.originX,view.originY,view.keyWidth,view.keyHeight))
         assertEquals(1f to -1f,view.fingerPosition)
     }
+
+    @Test fun distantPopupShrinksTheSharedProjectionInsideTheSameGuide() {
+        val theme=ContextThemeWrapper(ApplicationProvider.getApplicationContext(),com.google.android.material.R.style.Theme_Material3_DayNight)
+        val original=SumirePopupDefaults.create("は")
+        val view=PopupMapGuideView(theme).apply {
+            config=original;map=original.maps.first();sourceKeyWidth=200f;sourceKeyHeight=128f
+            measure(View.MeasureSpec.makeMeasureSpec(237,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(211,View.MeasureSpec.EXACTLY))
+            layout(0,0,237,211)
+        }
+        val canvas=Canvas(Bitmap.createBitmap(237,211,Bitmap.Config.ARGB_8888))
+        view.draw(canvas)
+        val nearKeyWidth=view.keyWidth
+        val far=PopupMap("far","遠い配置","ば",listOf(PopupRegion("far-top",PopupBounds(-.45f,-4.4f,.45f,-3.6f),PopupAction(text="ぶ"))))
+        view.config=original.copy(maps=original.maps+far)
+        view.draw(canvas)
+        assertEquals(237,view.width);assertEquals(211,view.height)
+        assertTrue("Distant regions reduce the projection scale, not increase the window",view.keyWidth<nearKeyWidth)
+        val shared=listOf(view.originX,view.originY,view.keyWidth,view.keyHeight)
+        view.map=far;view.draw(canvas)
+        assertEquals("Even an inactive map contributes to the common scale",shared,listOf(view.originX,view.originY,view.keyWidth,view.keyHeight))
+        val bounds=far.regions.single().bounds
+        assertTrue(view.originY+bounds.top*view.keyHeight>0f)
+        assertTrue(view.originY+1.4f*view.keyHeight<view.height)
+    }
 }
