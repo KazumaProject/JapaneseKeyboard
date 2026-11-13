@@ -28,6 +28,11 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
             field=value;invalidate()
         }
     private val guide by lazy { PopupMapGuideView(context) }
+    override fun applyPopupViewStyle(style: com.kazumaproject.core.data.popup.PopupViewStyle, highlightColor: Int?, borderColor: Int?) {
+        super.applyPopupViewStyle(style, highlightColor, borderColor)
+        guide.applyPopupViewStyle(style, highlightColor, borderColor)
+        arrow.setColor(popupHighlightColor)
+    }
     private val arrow by lazy { TfbiGestureArrowView(context).apply {setColor(0xff1976d2.toInt())} }
     private var fingerPosition: Pair<Float,Float>? = null
     var config: PopupKeyConfig? = null
@@ -85,14 +90,14 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
             }
             val saved=canvas.save();canvas.translate((width-panelWidth)/2f,panelTop);guide.draw(canvas);canvas.restoreToCount(saved)
         }
-        val primary=MaterialColors.getColor(this,androidx.appcompat.R.attr.colorPrimary)
-        val foreground=MaterialColors.getColor(this,R.attr.colorOnSurface)
+        val primary=popupHighlightColor
+        val foreground=if(tapSelected) popupSelectedTextColor else popupTextColor
         pen.style=Paint.Style.FILL
-        pen.color=MaterialColors.getColor(this,if(tapSelected) R.attr.colorPrimaryContainer else R.attr.colorSurfaceContainerHigh)
+        pen.color=if(tapSelected) popupHighlightColor else popupBackgroundColor
         val key=rect(PopupBounds.KEY)
         canvas.drawRoundRect(key,10f,10f,pen)
         pen.style=Paint.Style.STROKE;pen.strokeWidth=if(tapSelected) 3*resources.displayMetrics.density else resources.displayMetrics.density
-        pen.color=if(tapSelected) primary else MaterialColors.getColor(this,R.attr.colorOutline)
+        pen.color=if(tapSelected) primary else popupBorderColor
         canvas.drawRoundRect(key,10f,10f,pen)
         pen.style=Paint.Style.FILL;pen.color=foreground;pen.textAlign=Paint.Align.CENTER;pen.textSize=24*resources.displayMetrics.scaledDensity
         val tap=map?.tapText.orEmpty().ifEmpty { "—" }
