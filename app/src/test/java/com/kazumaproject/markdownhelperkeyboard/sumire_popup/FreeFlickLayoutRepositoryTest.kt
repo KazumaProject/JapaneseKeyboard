@@ -156,4 +156,35 @@ class FreeFlickLayoutRepositoryTest {
         assertFalse(active.hasInvalidSavedConfig("は", second.id))
         assertEquals(SumirePopupDefaults.create("は"), active.load("は", second.id))
     }
+    private fun legacyDefaults(key: String): PopupKeyConfig {
+        val config = SumirePopupDefaults.create(key)
+        val old = listOf(PopupBounds(-1.5f,-.4f,-.6f,.4f), PopupBounds(-.45f,-1.4f,.45f,-.6f),
+            PopupBounds(.6f,-.4f,1.5f,.4f), PopupBounds(-.45f,.6f,.45f,1.4f))
+        return config.copy(maps=config.maps.map { map -> map.copy(regions=map.regions.map {
+            it.copy(bounds=old[it.id.substringAfterLast('-').toInt()])
+        }) })
+    }
+    @Test fun untouchedBuiltinRuntimeMovesToTheGaplessTemplateButCopiesStayExact() {
+        repository.selectedId()
+        val copy = repository.create("Saved old template")
+        val oldKeys = SumirePopupDefaults.rows.keys.map(::legacyDefaults)
+        oldKeys.forEach { active.save(it, copy.id) }
+        preferences.edit().also { editor -> oldKeys.forEach { editor.putString(SumirePopupRepository.PREFIX+it.keyId,active.encode(it)) } }.commit()
+        assertEquals(repository.builtin().keys, SumirePopupDefaults.rows.keys.map { active.load(it) })
+        assertEquals(oldKeys, repository.find(copy.id).keys)
+        val after = preferences.all
+        repository.list(); active.load("は")
+        assertEquals(after, preferences.all)
+        repository.select(copy.id)
+        assertEquals(oldKeys, SumirePopupDefaults.rows.keys.map { active.load(it) })
+    }
+    @Test fun editedRuntimeWhileBuiltinSelectedIsNeverMigrated() {
+        repository.selectedId()
+        val old = legacyDefaults("は")
+        val edited = old.withMap(old.maps.single().copy(tapText="CUSTOM"))
+        preferences.edit().putString(SumirePopupRepository.PREFIX+"は",active.encode(edited)).commit()
+        val before = preferences.all
+        assertEquals(edited, active.load("は")); assertEquals(before,preferences.all)
+    }
+
 }
