@@ -60,9 +60,11 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
         }
         val tapRect = rect(PopupBounds.KEY)
         val tapPath = Path().apply { addRect(tapRect, Path.Direction.CW) }
-        appearance.drawGuideOutline(canvas, tapPath, tapActive)
-        label(map?.tapText.orEmpty(),tapRect,tapActive,false)
-        map?.regions?.forEach { region ->
+        if(tapPopupVisible) {
+            appearance.drawGuideOutline(canvas, tapPath, tapActive)
+            label(map?.tapText.orEmpty(),tapRect,tapActive,false)
+        }
+        map?.regions?.filter { visibleRegionIds == null || it.id in visibleRegionIds!! }?.forEach { region ->
             val path = region.outlinePath(originX, originY, keyWidth, keyHeight)
             val active = region.id == selectedId
             appearance.drawGuideOutline(canvas, path, active)

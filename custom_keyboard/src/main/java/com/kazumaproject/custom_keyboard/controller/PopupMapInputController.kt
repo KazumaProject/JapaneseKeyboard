@@ -1,6 +1,12 @@
 package com.kazumaproject.custom_keyboard.controller
 
 import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.Looper
+import android.view.ViewConfiguration
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
+import com.kazumaproject.custom_keyboard.data.PopupMapVisibility
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
@@ -27,8 +33,19 @@ class PopupMapInputController(
     private val onSelection: (String?, Boolean) -> Unit,
     private val onCommit: (String, Boolean) -> Unit,
     private val onCancel: () -> Unit,
-    options: PopupMapInputOptions = PopupMapInputOptions()
+    options: PopupMapInputOptions = PopupMapInputOptions(),
+    private val gestureConfigSource: GestureSessionConfigSource? = null
 ) {
+    private val handler = Handler(Looper.getMainLooper())
+    private var visibility: PopupMapVisibility? = null
+    private val longPress = Runnable {
+        val key=anchor
+        if(key!=null && session!=null && !sameGeometry(key)) {end(true);return@Runnable}
+        val active=session
+        if(active!=null && visibility?.longPress(active.isTap)==true) render()
+    }
+    private var lastDrawing: List<Any?>? = null
+    private var lastPlacement: List<Int>? = null
     private var inputOptions = options
     private var guideHost: PopupMapGuideHost? = null
     private var fingerPosition: Pair<Float,Float>? = null
@@ -58,16 +75,25 @@ class PopupMapInputController(
     @SuppressLint("ClickableViewAccessibility")
     fun attach(view: View) {
         anchor = view
+        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) = Unit
+            override fun onViewDetachedFromWindow(v: View) { cancel() }
+        })
         view.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     if (event.x !in 0f..view.width.toFloat() || event.y !in 0f..view.height.toFloat()) return@setOnTouchListener false
+                    end(true)
                     width = view.width.coerceAtLeast(1); height = view.height.coerceAtLeast(1)
                     rotation = view.rotation
                     view.getLocationOnScreen(locationScratch)
                     initialLeft = locationScratch[0]; initialTop = locationScratch[1]
                     session = PopupMapSession(config, width.toFloat(), height.toFloat(), inputOptions)
                     sample(event.x,event.y)
+                    val settings=gestureConfigSource?.snapshot() ?: GestureSessionConfig(0L,100,
+                        ViewConfiguration.get(view.context).scaledTouchSlop*3.5f,300L)
+                    visibility=PopupMapVisibility(settings,event.x,event.y)
+                    handler.postDelayed(longPress,settings.longPressTimeoutMillis)
                     originalLabel = (view as? TextView)?.text
                     view.isPressed = true
                     onPress(session!!.currentMap.tapText)
@@ -77,7 +103,12 @@ class PopupMapInputController(
                 MotionEvent.ACTION_MOVE -> {
                     val active = session ?: return@setOnTouchListener true
                     if (!sameGeometry(view)) { end(true); return@setOnTouchListener true }
-                    for (i in 0 until event.historySize) { active.move(event.getHistoricalX(i) / width - .5f, event.getHistoricalY(i) / height - .5f) }
+                    for (i in 0 until event.historySize) {
+                        visibility?.move(event.getHistoricalX(i),event.getHistoricalY(i))
+                        active.move(event.getHistoricalX(i) / width - .5f, event.getHistoricalY(i) / height - .5f)
+                    }
+                    visibility?.move(event.x,event.y)
+                    if(visibility?.longPressEligible==false) handler.removeCallbacks(longPress)
                     sample(event.x,event.y)
                     active.move(event.x / width - .5f, event.y / height - .5f)
                     onSelection(active.selectedText, !active.isTap)
@@ -102,9 +133,17 @@ class PopupMapInputController(
     private fun render() {
         val key = anchor ?: return
         val active = session ?: return
+        val policy = visibility ?: return
+        if(!policy.visible) {popup?.dismiss();guideHost?.dismiss();lastDrawing=null;lastPlacement=null;return}
+        val drawingState=listOf(active.currentMap.id,active.selectedRegionId,active.isTap,policy.expanded,inputOptions.presentation)
+        if(lastDrawing==drawingState && inputOptions.presentation==PopupMapPresentation.AROUND_KEY) return
+        lastDrawing=drawingState
         val host = windowAnchor() ?: key
         if (!key.isAttachedToWindow || !host.isAttachedToWindow || host.windowToken == null) return
-        (key as? TextView)?.text = transform(active.currentMap.tapText)
+        (key as? TextView)?.let { label ->
+            val text=transform(active.currentMap.tapText)
+            if(label.text.toString()!=text) label.text=text
+        }
         if (inputOptions.presentation == PopupMapPresentation.GUIDE_ABOVE_KEY) {
             popup?.dismiss()
             val guide = guideHost ?: PopupMapGuideHost(key.context,windowAnchor) { end(true) }.also { guideHost=it }
@@ -113,6 +152,7 @@ class PopupMapInputController(
                 config=this@PopupMapInputController.config;map=active.currentMap;selectedId=active.selectedRegionId
                 sourceKeyWidth=this@PopupMapInputController.width.toFloat();sourceKeyHeight=this@PopupMapInputController.height.toFloat()
                 fingerPosition=this@PopupMapInputController.fingerPosition;tapActive=active.isTap;textTransform=transform
+                visibleRegionIds=policy.regions(active);tapPopupVisible=policy.showsTap(active)
                 title=active.mapPath.joinToString(" → ") { id -> config?.map(id)?.name.orEmpty() } + "  " + transform(active.selectedText.orEmpty())
             }
             guide.updatePointer()
@@ -122,7 +162,7 @@ class PopupMapInputController(
         val angle = Math.toRadians(rotation.toDouble())
         val cosine = cos(angle).toFloat()
         val sine = sin(angle).toFloat()
-        val corners = (listOf(PopupBounds.KEY) + active.currentMap.regions.map { it.bounds }).flatMap { b ->
+        val corners = (listOf(PopupBounds.KEY) + config.maps.flatMap { it.regions.map { region -> region.bounds } }).flatMap { b ->
             listOf(b.left to b.top, b.right to b.top, b.left to b.bottom, b.right to b.bottom).map { (x,y) ->
                 (x * width * cosine - y * height * sine) to (x * width * sine + y * height * cosine)
             }
@@ -133,6 +173,7 @@ class PopupMapInputController(
         val bottom = ceil(corners.maxOf { it.second }).toInt() + 2
         val drawing = content ?: PopupMapView(key.context).also { content = it }
         drawing.map = active.currentMap; drawing.selectedId = active.selectedRegionId; drawing.tapActive = active.isTap
+        drawing.visibleRegionIds=policy.regions(active);drawing.tapPopupVisible=policy.showsTap(active)
         drawing.keyWidth = width.toFloat(); drawing.keyHeight = height.toFloat(); drawing.keyRotation = rotation
         drawing.originX = -left.toFloat(); drawing.originY = -top.toFloat(); drawing.textTransform = transform
         val window = popup ?: PopupWindow(drawing, right-left, bottom-top, false).apply {
@@ -142,13 +183,19 @@ class PopupMapInputController(
         val location = getLocationRelativeToWindowAnchor(key, host)
         val x = location[0] + width / 2 + left
         val y = location[1] + height / 2 + top
-        if (window.isShowing) window.update(x,y,right-left,bottom-top) else {
+        val placement=listOf(x,y,right-left,bottom-top)
+        if (window.isShowing) {
+            if(lastPlacement!=placement) window.update(x,y,right-left,bottom-top)
+        } else {
             window.width = right-left; window.height = bottom-top
             window.showAtLocation(host, Gravity.TOP or Gravity.LEFT, x, y)
         }
+        lastPlacement=placement
         drawing.invalidate()
     }
     private fun end(canceled: Boolean) {
+        handler.removeCallbacks(longPress)
+        visibility=null;lastDrawing=null;lastPlacement=null
         popup?.dismiss()
         guideHost?.dismiss();fingerPosition=null
         anchor?.isPressed = false
