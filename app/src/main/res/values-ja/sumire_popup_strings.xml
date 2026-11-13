@@ -37,7 +37,7 @@
     <string name="popup_cancel">キャンセル</string>
     <string name="popup_unset">未設定</string>
     <string name="popup_empty">popupを追加して、動作と文字を設定してください。</string>
-    <string name="popup_hint">キーやpopupを選択。枠をドラッグして移動、角をドラッグしてサイズ変更。</string>
+    <string name="popup_hint">枠の中をドラッグして移動、辺や角をドラッグしてサイズ変更。近づけると辺が揃います。</string>
     <string name="popup_collision">ここには配置できません。枠・キーとの重なり、または切替直後の操作枠が競合しています。</string>
     <string name="popup_transition_hint">点線の範囲：切替直後に指が入る場所です。文字popupのみ配置できます。</string>
     <string name="popup_no_space">空き領域がありません。既存のpopupを移動・縮小してください。</string>
@@ -47,7 +47,7 @@
     <string name="popup_discard">破棄</string>
     <string name="popup_result">入力結果</string>
     <string name="popup_selection">選択中</string>
-    <string name="popup_try_hint">キー内から試してください。切替枠に入るとマップ切替、文字の枠で離すと入力します。</string>
+    <string name="popup_try_hint">元キーから動かし、文字で離すと入力。切替枠でマップ切替。長押し表示が有効なら、長押しで全体を表示します。</string>
     <string name="popup_invalid_saved">保存された設定を読み込めないため初期配置を表示しています。保存済みデータは上書きしていません。</string>
     <string name="popup_delete_confirm">このマップを削除しますか？</string>
     <string name="popup_name_required">重複しないマップ名を入力してください。</string>
@@ -68,12 +68,12 @@
     <string name="free_flick_presentation">popupの表示位置</string>
     <string name="free_flick_around">キー周辺</string>
     <string name="free_flick_above">キー上部のガイド</string>
-    <string name="free_flick_preview_hint">表示と入力のプレビュー。「は」から動かして試せます。上部ガイドでも操作の基準は元のキーです。</string>
+    <string name="free_flick_preview_hint">「は」から動かして試せます。上部表示でも基準は元キーです。長押し表示が有効なら、長押しで全体を表示します。</string>
     <string name="free_flick_template">テンプレートを適用</string>
     <string name="free_flick_template_12">12キーフリック</string>
     <string name="free_flick_template_confirm">「%1$s」キーのすべてのマップを、通常の12キーフリックに置き換えます。保存するまで実入力には反映されません。取り消すこともできます。</string>
     <string name="free_flick_template_hint">12キーと同じ通常マップです。枠を追加して文字やマップ切替を設定できます。</string>
-    <string name="free_flick_try_nearest">枠外では、有効な種類の最寄りpopupを選びます。設定はフリーフリック設定で変更できます。</string>
+    <string name="free_flick_try_nearest">枠外では有効な最寄りのポップアップを選択。長押し表示が有効なら全体を表示します。変更はフリーフリック設定で行えます。</string>
     <string name="two_step_popup_title">2段フリック入力</string>
     <string name="two_step_popup_summary">2段フリック入力のpopupの大きさ、文字サイズ、表示位置を設定します</string>
     <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>

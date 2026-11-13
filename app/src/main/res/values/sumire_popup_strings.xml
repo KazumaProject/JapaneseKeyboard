@@ -37,7 +37,7 @@
     <string name="popup_cancel">Cancel</string>
     <string name="popup_unset">Not assigned</string>
     <string name="popup_empty">Add a popup, then choose its action and text.</string>
-    <string name="popup_hint">Select a key or popup. Drag a popup to move it; drag a corner to resize.</string>
+    <string name="popup_hint">Drag popup bodies to move; drag edges or corners to resize. Edges snap into alignment.</string>
     <string name="popup_collision">Cannot place here: overlaps a popup, the key, or a control after a transition.</string>
     <string name="popup_transition_hint">Dashed areas: only text popups can appear here after a transition.</string>
     <string name="popup_no_space">No free space. Move or resize an existing popup first.</string>
@@ -47,7 +47,7 @@
     <string name="popup_discard">Discard</string>
     <string name="popup_result">Output</string>
     <string name="popup_selection">Selection</string>
-    <string name="popup_try_hint">Start inside the key. Enter a control to switch maps; release in a text region to enter text.</string>
+    <string name="popup_try_hint">Start on the key and release on a character to type. Enter a control to switch maps. Hold to show all popups when long-press popups are enabled.</string>
     <string name="popup_invalid_saved">Saved maps could not be loaded. Showing defaults; the stored data has not been replaced.</string>
     <string name="popup_delete_confirm">Delete this map?</string>
     <string name="popup_name_required">Enter a unique map name.</string>
@@ -68,12 +68,12 @@
     <string name="free_flick_presentation">Popup position</string>
     <string name="free_flick_around">Around the key</string>
     <string name="free_flick_above">Guide above the key</string>
-    <string name="free_flick_preview_hint">Display and input preview. Start on は to try. The guide above still uses the original key as the input origin.</string>
+    <string name="free_flick_preview_hint">Start on は to try. The input origin is the original key in either display mode. Hold to show all popups when long-press popups are enabled.</string>
     <string name="free_flick_template">Apply template</string>
     <string name="free_flick_template_12">12-key flick</string>
     <string name="free_flick_template_confirm">Replace all maps for key “%1$s” with standard 12-key flick. This affects input only after saving and can be undone.</string>
     <string name="free_flick_template_hint">Standard 12-key map. Add popup regions for text or map transitions.</string>
-    <string name="free_flick_try_nearest">Outside regions, the nearest eligible popup is selected. Change this in Free Flick settings.</string>
+    <string name="free_flick_try_nearest">Outside the regions, the nearest enabled popup is selected. Hold to show all popups when long-press popups are enabled. Options are in Free Flick settings.</string>
     <string name="two_step_popup_title">Two-step flick input</string>
     <string name="two_step_popup_summary">Set two-step popup size, text size, and position</string>
     <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>
