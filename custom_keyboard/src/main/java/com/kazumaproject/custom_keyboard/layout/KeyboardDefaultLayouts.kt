@@ -1,5 +1,8 @@
 package com.kazumaproject.custom_keyboard.layout
 
+import com.kazumaproject.core.data.qwerty.QWERTYKeys
+import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
+import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.DoubleTapBinding
@@ -12,6 +15,9 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.QwertyKeyConfig
+import com.kazumaproject.custom_keyboard.data.QwertyKeyLayer
+import com.kazumaproject.custom_keyboard.data.QwertyPopupSlot
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
@@ -4760,9 +4766,10 @@ object KeyboardDefaultLayouts {
         val columnSpanUnits: Int
     }
 
-    /** Plain character key (label is also the typed text). */
+    /** Character key with the standard QWERTY tap and long-press layers. */
     private data class CharKeySpec(
         val label: String,
+        val qwertyConfig: QwertyKeyConfig,
         override val columnSpanUnits: Int = 2
     ) : TemplateItemSpec
 
@@ -4825,9 +4832,10 @@ object KeyboardDefaultLayouts {
                             action = KeyAction.Text(itemSpec.label),
                             rowSpan = approxRowSpan,
                             colSpan = approxColSpan,
-                            keyType = KeyType.NORMAL,
+                            keyType = KeyType.QWERTY,
                             isSpecialKey = false,
-                            keyId = keyId
+                            keyId = keyId,
+                            qwertyConfig = itemSpec.qwertyConfig
                         )
                         items += KeyItem(id = keyId, keyData = keyData, placement = placement)
                         keys += keyData
@@ -4878,7 +4886,18 @@ object KeyboardDefaultLayouts {
         )
     }
 
-    private fun chars(vararg s: String): List<CharKeySpec> = s.map { CharKeySpec(it) }
+    private fun QWERTYKeyInfo.QWERTYVariation.toTemplateConfig(): QwertyKeyConfig {
+        fun layer(output: Char, candidates: List<Char>?) = QwertyKeyLayer(
+            output = output.toString(),
+            columns = candidates.orEmpty().size.coerceIn(1, 3),
+            slots = candidates.orEmpty().map { QwertyPopupSlot(output = it.toString()) }
+        )
+        val tap = requireNotNull(tap)
+        return QwertyKeyConfig(
+            normal = layer(tap, variations),
+            shifted = layer(capChar ?: tap, capVariations ?: variations)
+        )
+    }
 
     private val shiftSpec
         get() = SpecialKeySpec(
@@ -4929,33 +4948,66 @@ object KeyboardDefaultLayouts {
      *   Row 2: Shift | spacer | z x c v b n m | spacer | Delete
      *   Row 3: SwitchIme | Space | Enter
      */
-    fun createQwertyTemplateLayout(): KeyboardLayout {
+    fun createQwertyTemplateLayout(): KeyboardLayout = QWERTYKeyMap().let { keyMap ->
+        createQwertyTemplate(
+            "qwerty", "QWERTY", QWERTYKeys.DEFAULT_KEYS, middleRowSize = 9,
+            keyMap.keysDefault.map(keyMap::getKeyInfoDefault)
+        )
+    }
+
+    fun createQwertyNumberTemplateLayout(): KeyboardLayout = QWERTYKeyMap().let { keyMap ->
+        createQwertyTemplate(
+            "qwerty_number", "QWERTY (Numbers)", QWERTYKeys.NUMBER_KEYS, middleRowSize = 10,
+            keyMap.keysNumber.map(keyMap::getKeyInfoNumber)
+        )
+    }
+
+    fun createQwertySymbolTemplateLayout(): KeyboardLayout = QWERTYKeyMap().let { keyMap ->
+        createQwertyTemplate(
+            "qwerty_symbol", "QWERTY (Symbols)", QWERTYKeys.SYMBOL_KEYS, middleRowSize = 10,
+            keyMap.keysSymbol.map(keyMap::getKeyInfoSymbol)
+        )
+    }
+
+    private fun createQwertyTemplate(
+        idPrefix: String,
+        name: String,
+        characters: List<Char>,
+        middleRowSize: Int,
+        keyInfos: List<QWERTYKeyInfo>
+    ): KeyboardLayout {
+        val configs = keyInfos.filterIsInstance<QWERTYKeyInfo.QWERTYVariation>()
+            .filter { it.tap != null }
+            .associate { it.tap!! to it.toTemplateConfig() }
+        fun chars(characters: List<Char>) = characters.map { char ->
+            CharKeySpec(char.toString(), configs.getValue(char))
+        }
+        val bottomRow = characters.drop(10 + middleRowSize)
+        val bottomGap = (16 - bottomRow.size * 2) / 2
         val spec = TemplateLayoutSpec(
-            idPrefix = "qwerty",
-            name = "QWERTY",
+            idPrefix = idPrefix,
+            name = name,
             rowUnitCount = 8,
             columnUnitCount = 20,
             rows = listOf(
                 TemplateRowSpec(
                     rowUnits = 0,
-                    items = listOf(
-                        *chars("q", "w", "e", "r", "t", "y", "u", "i", "o", "p").toTypedArray()
-                    )
+                    items = chars(characters.take(10))
                 ),
                 TemplateRowSpec(
                     rowUnits = 2,
-                    items = listOf(
-                        SpacerSpec("row1_gap", columnSpanUnits = 1),
-                        *chars("a", "s", "d", "f", "g", "h", "j", "k", "l").toTypedArray()
-                    )
+                    items = buildList {
+                        if (middleRowSize == 9) add(SpacerSpec("row1_gap", columnSpanUnits = 1))
+                        addAll(chars(characters.drop(10).take(middleRowSize)))
+                    }
                 ),
                 TemplateRowSpec(
                     rowUnits = 4,
                     items = listOf(
                         shiftSpec,
-                        SpacerSpec("shift_gap", columnSpanUnits = 1),
-                        *chars("z", "x", "c", "v", "b", "n", "m").toTypedArray(),
-                        SpacerSpec("delete_gap", columnSpanUnits = 1),
+                        SpacerSpec("shift_gap", columnSpanUnits = bottomGap),
+                        *chars(bottomRow).toTypedArray(),
+                        SpacerSpec("delete_gap", columnSpanUnits = bottomGap),
                         deleteSpec
                     )
                 ),

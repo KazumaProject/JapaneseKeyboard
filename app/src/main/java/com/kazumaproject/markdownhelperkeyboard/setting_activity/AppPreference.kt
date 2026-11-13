@@ -1073,6 +1073,7 @@ object AppPreference {
                 appContext.codeCacheDir.setReadOnly()
                 isTabletDevice = context.resources.getBoolean(CoreR.bool.isTablet)
                 loadedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                CustomQwertyPopupPreferences.migrate(preferences)
                 com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences.migrate(preferences)
                 migrateCandidateHeightDefaultsIfNeeded()
                 removeUnsafeLegacyGemmaHandwritingPrompt()
@@ -3730,6 +3731,9 @@ object AppPreference {
             it.putFloat(TENKEY_POPUP_TEXT_SIZE_SP.first, value ?: TENKEY_POPUP_TEXT_SIZE_SP.second)
         }
 
+    val custom_qwerty_popup_preferences: CustomQwertyPopupPreferences
+        get() = CustomQwertyPopupPreferences(preferences)
+
     var qwerty_key_preview_popup_size_scale_percent: Int?
         get() = preferences.getInt(
             QWERTY_KEY_PREVIEW_POPUP_SIZE_SCALE_PERCENT.first,
@@ -5409,6 +5413,7 @@ object AppPreference {
         }
         migrateSumireKeymapGuideModesIfNeeded()
         migrateGojuonKeyboardTypeIfNeeded()
+        CustomQwertyPopupPreferences.migrate(preferences)
         com.kazumaproject.markdownhelperkeyboard.setting_activity.keyboard_size.IndependentKeyboardSizePreferences.migrate(preferences)
         return backup.shortcutIds
     }
