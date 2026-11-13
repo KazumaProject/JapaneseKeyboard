@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.util.TypedValue
@@ -153,7 +154,7 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
     }
 
     /** Shared appearance for two-step flick and Free Flick guides. */
-    internal fun drawGuidePanel(canvas: Canvas, panel: RectF) {
+    internal fun drawGuidePanel(canvas: Canvas, panel: RectF, drawGrid: Boolean = true) {
         val skin = KeyboardSkinRegistry.find(popupStyle.skinId)
         if (skin != null) {
             activeColor = skin.palette.selection
@@ -179,13 +180,33 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
 
         val cellWidth = panel.width() / 3f
         val cellHeight = panel.height() / 3f
-        for (index in 1..2) {
+        for (index in if (drawGrid) 1..2 else IntRange.EMPTY) {
             val x = panel.left + cellWidth * index
             val y = panel.top + cellHeight * index
             canvas.drawLine(x, panel.top, x, panel.bottom, gridPaint)
             canvas.drawLine(panel.left, y, panel.right, y, gridPaint)
         }
 
+    }
+
+    internal fun drawGuideOutline(canvas: Canvas, path: Path, active: Boolean) {
+        if (active) {
+            activePaint.color = ColorUtils.setAlphaComponent(activeColor, 55)
+            canvas.drawPath(path, activePaint)
+        }
+        borderPaint.color = if (active) activeColor else ColorUtils.setAlphaComponent(popupTextColor, 150)
+        canvas.drawPath(path, borderPaint)
+    }
+
+    /** A contour already carries the selection fill; its label needs no rectangular pill. */
+    internal fun drawGuideContourLabel(canvas: Canvas, text: String, rect: RectF) {
+        if (text.isEmpty() || rect.width() <= 0 || rect.height() <= 0) return
+        textPaint.color = popupTextColor
+        textPaint.textSize = sp(popupStyle.textSizeSp * OPTION_TEXT_SCALE)
+        val scale = minOf(1f, rect.width() / textPaint.measureText(text).coerceAtLeast(1f),
+            rect.height() / (textPaint.descent() - textPaint.ascent()).coerceAtLeast(1f))
+        textPaint.textSize *= scale
+        canvas.drawText(text, rect.centerX(), rect.centerY() - (textPaint.ascent() + textPaint.descent()) / 2, textPaint)
     }
 
     internal fun drawGuideLabel(canvas: Canvas, text: String, rect: RectF, active: Boolean, compact: Boolean = true) {

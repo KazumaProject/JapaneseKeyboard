@@ -78,4 +78,15 @@
     <string name="two_step_popup_summary">2段フリック入力のpopupの大きさ、文字サイズ、表示位置を設定します</string>
     <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>
     <string-array name="free_flick_presentation_values"><item>around_key</item><item>guide_above_key</item></string-array>
+    <string name="free_flick_shape_customize">詳細なカスタマイズ</string>
+    <string name="free_flick_shape_hint">点をドラッグして形を変更します。辺の＋でも頂点を追加できます。三角形から頂点を減らすと円、円に頂点を追加すると三角形になります。</string>
+    <string name="free_flick_shape_rectangle">角丸四角形（4つの編集点）</string>
+    <string name="free_flick_shape_circle">円（頂点なし）</string>
+    <string name="free_flick_shape_polygon">%1$d頂点の多角形</string>
+    <string name="free_flick_shape_canvas">popupの形を編集</string>
+    <string name="free_flick_shape_add">＋ 頂点</string>
+    <string name="free_flick_shape_remove">− 頂点</string>
+    <string name="free_flick_shape_reset">四角形に戻す</string>
+    <string name="free_flick_shape_bounds_hint">点線は配置枠です。頂点はこの枠内で動かせます。位置と大きさは通常の編集画面で調整します。配置枠同士は重ねられません。「適用」後も、保存するまでは実入力に反映されません。</string>
+    <string name="free_flick_shape_invalid">辺が交差・重複する形にはできません。頂点の位置を調整してください。</string>
 </resources>

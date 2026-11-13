@@ -39,6 +39,55 @@ class SumirePopupInputDeviceTest {
     private val automation get()=ins.uiAutomation
     private val context get()=ins.targetContext
     private fun shell(command: String)=ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).bufferedReader().use {it.readText()}
+    @Test fun aroundKeyWindowIncludesTheTapAreaAndKeepsTapOnlyDestinationVisible() {
+        assumeTrue(context.packageName.endsWith(".popuptest"))
+        val host=ins.startActivitySync(Intent(context,FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as FastInputHostActivity
+        lateinit var key: TextView
+        var controller: PopupMapInputController?=null
+        var committed: String?=null
+        try {
+            ins.runOnMainSync {
+                val themed=ContextThemeWrapper(host,R.style.Theme_MarkdownKeyboard)
+                val frame=FrameLayout(themed)
+                key=TextView(themed).apply {text="は"}
+                frame.addView(key,FrameLayout.LayoutParams(200,100).apply {leftMargin=200;topMargin=500})
+                host.setContentView(frame)
+                val config=PopupKeyConfig("は","normal",listOf(
+                    PopupMap("normal","通常","は",listOf(PopupRegion("switch",PopupBounds(1.5f,-.4f,2.5f,.4f),PopupAction(PopupActionType.SWITCH,targetMapId="voiced")))),
+                    PopupMap("voiced","ば行","ば")
+                ))
+                controller=PopupMapInputController(config,{null},{it},{},{_,_->},{text,_->committed=text},{})
+                controller!!.attach(key)
+            }
+            await {key.width==200 && key.isAttachedToWindow}
+            fun touch(action: Int,x: Float,y: Float) = ins.runOnMainSync {
+                val event=MotionEvent.obtain(0,SystemClock.uptimeMillis(),action,x,y,0)
+                key.dispatchTouchEvent(event);event.recycle()
+            }
+            touch(MotionEvent.ACTION_DOWN,100f,50f)
+            await {popup()?.width?.let {it>0}==true}
+            ins.runOnMainSync {
+                val view=popup()!!
+                assertTrue(view.tapActive)
+                assertTrue("Window includes the full original key even with popups only on one side",view.originX-view.keyWidth/2>=0f)
+                assertTrue(view.originX+view.keyWidth/2<=view.width)
+                assertTrue(view.originY-view.keyHeight/2>=0f)
+                assertTrue(view.originY+view.keyHeight/2<=view.height)
+            }
+            touch(MotionEvent.ACTION_MOVE,500f,50f)
+            await {popup()?.map?.id=="voiced"}
+            ins.runOnMainSync {
+                assertTrue(popup()!!.map!!.regions.isEmpty())
+                assertEquals("ば",popup()!!.map!!.tapText)
+                assertFalse(popup()!!.tapActive)
+            }
+            touch(MotionEvent.ACTION_MOVE,100f,50f)
+            ins.runOnMainSync {assertTrue(popup()!!.tapActive)}
+            touch(MotionEvent.ACTION_UP,100f,50f)
+            assertEquals("ば",committed)
+            ins.runOnMainSync {assertEquals("は",key.text.toString())}
+        } finally {ins.runOnMainSync {controller?.cancel();host.finish()}}
+    }
     @Test fun rotatedKeyUsesItsPhysicalCentreAndCancelKeepsItsLabel() {
         assumeTrue(context.packageName.endsWith(".popuptest"))
         val host=ins.startActivitySync(Intent(context,FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as FastInputHostActivity

@@ -101,6 +101,12 @@ class PopupMapEditorFragment : Fragment() {
         return scroll
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        childFragmentManager.setFragmentResultListener(PopupShapeEditorDialog.RESULT, viewLifecycleOwner) { _, result ->
+            val target = config.map(result.getString("map").orEmpty()) ?: return@setFragmentResultListener
+            val regionId = result.getString("region")
+            val outline = com.google.gson.Gson().fromJson(result.getString("outline"), PopupOutline::class.java)
+            change(config.withMap(target.copy(regions = target.regions.map { if (it.id == regionId) it.copy(outline = outline) else it })), true)
+        }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner,object:OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { leaveEditor() }
         })
@@ -205,6 +211,13 @@ class PopupMapEditorFragment : Fragment() {
         }
         properties.addView(selectedHeading)
         updateHeading()
+        properties.addView(button(label(R.string.free_flick_shape_customize)) {
+            if (childFragmentManager.findFragmentByTag(PopupShapeEditorDialog.TAG) == null) {
+                val current = page.regions.firstOrNull { it.id == selected.id } ?: return@button
+                PopupShapeEditorDialog.create(page.id, current, current.bounds.width * canvas.keyWidth / (current.bounds.height * canvas.keyHeight))
+                    .show(childFragmentManager, PopupShapeEditorDialog.TAG)
+            }
+        })
         field(label(R.string.popup_label),selected.label) { value -> updateRegion(selected.id) {it.copy(label=value)};updateHeading() }
         properties.addView(text(label(R.string.popup_action)))
         val actions=listOf(label(R.string.popup_text),label(R.string.popup_switch),label(R.string.popup_back))
