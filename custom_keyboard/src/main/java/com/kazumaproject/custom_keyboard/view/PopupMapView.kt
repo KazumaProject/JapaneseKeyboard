@@ -77,7 +77,7 @@ open class PopupMapView(context: Context) : View(context) {
         fun rect(b: PopupBounds) = RectF(originX + b.left * keyWidth, originY + b.top * keyHeight, originX + b.right * keyWidth, originY + b.bottom * keyHeight)
         if (drawsTapRegion && map != null) {
             val tapRect = rect(PopupBounds.KEY)
-            drawArea(Path().apply { addRect(tapRect, Path.Direction.CW) }, tapRect, map!!.tapText, tapActive)
+            drawArea(tapRect.popupRoundedPath(), tapRect, map!!.tapText, tapActive)
         }
         map?.regions?.forEach { region ->
             drawArea(region.outlinePath(originX, originY, keyWidth, keyHeight),
