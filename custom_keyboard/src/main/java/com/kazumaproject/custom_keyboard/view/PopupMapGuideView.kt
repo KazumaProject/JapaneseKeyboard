@@ -3,7 +3,6 @@ package com.kazumaproject.custom_keyboard.view
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.RectF
-import android.graphics.Path
 import android.text.TextPaint
 import android.text.TextUtils
 import com.kazumaproject.custom_keyboard.data.PopupBounds
@@ -59,7 +58,7 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
             else appearance.drawGuideLabel(canvas,display,target,active,compact)
         }
         val tapRect = rect(PopupBounds.KEY)
-        val tapPath = Path().apply { addRect(tapRect, Path.Direction.CW) }
+        val tapPath = tapRect.popupRoundedPath()
         appearance.drawGuideOutline(canvas, tapPath, tapActive)
         label(map?.tapText.orEmpty(),tapRect,tapActive,false)
         map?.regions?.forEach { region ->

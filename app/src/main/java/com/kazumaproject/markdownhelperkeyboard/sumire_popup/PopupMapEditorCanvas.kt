@@ -11,6 +11,7 @@ import android.view.ViewConfiguration
 import com.google.android.material.R
 import com.google.android.material.color.MaterialColors
 import com.kazumaproject.custom_keyboard.data.*
+import com.kazumaproject.custom_keyboard.view.popupRoundedPath
 import com.kazumaproject.custom_keyboard.view.PopupMapView
 import com.kazumaproject.custom_keyboard.view.PopupMapGuideView
 import com.kazumaproject.custom_keyboard.view.TfbiGestureArrowView
@@ -90,10 +91,10 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
         pen.style=Paint.Style.FILL
         pen.color=MaterialColors.getColor(this,if(tapSelected) R.attr.colorPrimaryContainer else R.attr.colorSurfaceContainerHigh)
         val key=rect(PopupBounds.KEY)
-        canvas.drawRoundRect(key,10f,10f,pen)
+        canvas.drawPath(key.popupRoundedPath(),pen)
         pen.style=Paint.Style.STROKE;pen.strokeWidth=if(tapSelected) 3*resources.displayMetrics.density else resources.displayMetrics.density
         pen.color=if(tapSelected) primary else MaterialColors.getColor(this,R.attr.colorOutline)
-        canvas.drawRoundRect(key,10f,10f,pen)
+        canvas.drawPath(key.popupRoundedPath(),pen)
         pen.style=Paint.Style.FILL;pen.color=foreground;pen.textAlign=Paint.Align.CENTER;pen.textSize=24*resources.displayMetrics.scaledDensity
         val tap=map?.tapText.orEmpty().ifEmpty { "—" }
         val text=android.text.TextUtils.ellipsize(tap,android.text.TextPaint(pen),key.width()-12,android.text.TextUtils.TruncateAt.END).toString()
