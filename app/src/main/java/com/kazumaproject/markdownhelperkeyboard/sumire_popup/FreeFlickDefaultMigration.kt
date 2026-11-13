@@ -19,8 +19,12 @@ internal object FreeFlickDefaultMigration {
         val state=library(preferences) ?: return@synchronized null
         state.layouts.firstOrNull {it.id==state.selectedId}?.keys?.firstOrNull {it.keyId==key}
     }
-    private val oldBounds = listOf(PopupBounds(-1.5f,-.4f,-.6f,.4f), PopupBounds(-.45f,-1.4f,.45f,-.6f),
-        PopupBounds(.6f,-.4f,1.5f,.4f), PopupBounds(-.45f,.6f,.45f,1.4f))
+    private val previousBounds = listOf(
+        listOf(PopupBounds(-1.5f,-.4f,-.6f,.4f), PopupBounds(-.45f,-1.4f,.45f,-.6f),
+            PopupBounds(.6f,-.4f,1.5f,.4f), PopupBounds(-.45f,.6f,.45f,1.4f)),
+        listOf(PopupBounds(-1.4f,-.4f,-.5f,.4f), PopupBounds(-.45f,-1.3f,.45f,-.5f),
+            PopupBounds(.5f,-.4f,1.4f,.4f), PopupBounds(-.45f,.5f,.45f,1.3f))
+    )
     fun update(preferences: SharedPreferences) = synchronized(lock) {
         val state = library(preferences) ?: return@synchronized
         if (state.selectedId != FreeFlickLayoutRepository.BUILTIN_ID) return@synchronized
@@ -30,12 +34,13 @@ internal object FreeFlickDefaultMigration {
             val raw = preferences.getString(SumirePopupRepository.PREFIX + key, null) ?: continue
             val saved = runCatching { gson.fromJson(raw, PopupKeyConfig::class.java) }.getOrNull() ?: return@synchronized
             val current = SumirePopupDefaults.create(key)
-            val legacy = current.copy(maps = current.maps.map { map -> map.copy(regions = map.regions.map { region ->
-                region.copy(bounds = oldBounds[region.id.substringAfterLast('-').toInt()])
-            }) })
-            when (saved) {
-                legacy -> updates += current
-                current -> Unit
+            when {
+                saved == current -> Unit
+                previousBounds.any { bounds -> saved == current.copy(maps = current.maps.map { map ->
+                    map.copy(regions = map.regions.map { region ->
+                        region.copy(bounds = bounds[region.id.substringAfterLast('-').toInt()])
+                    })
+                }) } -> updates += current
                 else -> return@synchronized // A user change must not be treated as an untouched template.
             }
         }

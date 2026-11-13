@@ -282,7 +282,7 @@ class PopupMapEditorFragment : Fragment() {
         if(model.trying) {model.trying=false;refresh()}
         val regionId=id()
         for(y in listOf(-3.6f,-2.6f,-1.6f,-.6f,.6f)) for(x in listOf(-1.5f,-.4f,.7f)) {
-            val region=PopupRegion(regionId,PopupBounds(x,y,x+.8f,y+.8f))
+            val region=PopupRegion(regionId,PopupBounds.KEY.offset(x+.5f,y+.5f))
             val updated=config.withMap(page.copy(regions=page.regions+region))
             if(canvas.canPlace(updated,region.bounds)) {model.change(updated);model.selectedId=regionId;refresh();return}
         }

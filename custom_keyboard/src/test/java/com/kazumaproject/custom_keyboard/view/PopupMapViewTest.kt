@@ -55,6 +55,31 @@ class PopupMapViewTest {
         }
     }
 
+    @Test fun defaultFlickPopupFillsReachTheTapSizedEdgesAroundTheKey() {
+        val config = com.kazumaproject.custom_keyboard.data.SumirePopupDefaults.create("は")
+        val centers = listOf(-1f to 0f, 0f to -1f, 1f to 0f, 0f to 1f)
+        val edges = listOf(-.45f to 0f, .45f to 0f, 0f to -.45f, 0f to .45f)
+        val background = 0xff243648.toInt()
+        for (above in listOf(false)) {
+            val drawing = view().apply { keyWidth = 200f; keyHeight = 100f; originX = 300f; originY = 200f }
+            drawing.map = config.maps.single()
+            drawing.tapActive = false
+            drawing.applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100, 20f,
+                backgroundColor = background, textColor = 0xffffdd88.toInt()))
+            drawing.measure(View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY))
+            drawing.layout(0, 0, 600, 400)
+            val bitmap = Bitmap.createBitmap(600, 400, Bitmap.Config.ARGB_8888).also { drawing.draw(Canvas(it)) }
+            for ((cx, cy) in centers + (0f to 0f)) {
+                for ((dx, dy) in edges) {
+                    val x = (drawing.originX + (cx + dx) * drawing.keyWidth).toInt()
+                    val y = (drawing.originY + (cy + dy) * drawing.keyHeight).toInt()
+                    assertEquals("above=$above popup=($cx,$cy) edge=($dx,$dy)", background, bitmap.getPixel(x, y))
+                }
+            }
+        }
+    }
+
     @Test fun skinsAndOverridesReachAroundAndAboveKeyPopups() {
         for (skinId in com.kazumaproject.core.domain.skin.KeyboardSkinId.entries) {
             for (above in listOf(false, true)) {
@@ -76,17 +101,47 @@ class PopupMapViewTest {
                 val skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(skinId)
                 val x = (drawing.originX - drawing.keyWidth * .25f).toInt()
                 val y = (drawing.originY - drawing.keyHeight * .25f).toInt()
-                assertEquals("$skinId above=$above background", skin?.palette?.key ?: 0xff243648.toInt(), bitmap.getPixel(x, y))
+                fun guidePanel(background: Int, text: Int): Bitmap {
+                    val reference = TfbiGuidePopupView(theme).apply {
+                        applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100,20f,
+                            backgroundColor=background,textColor=text,skinId=skinId))
+                        setColors(background,0xff965432.toInt(),text)
+                        setState(com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState("",TfbiFlickDirection.TAP))
+                        measure(View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(300,View.MeasureSpec.EXACTLY))
+                        layout(0,0,400,300)
+                    }
+                    return render(reference)
+                }
+                val expectedBackground = if (above) guidePanel(0xff243648.toInt(),0xffffdd88.toInt()).getPixel(x,y)
+                    else skin?.palette?.key ?: 0xff243648.toInt()
+                assertEquals("$skinId above=$above background", expectedBackground, bitmap.getPixel(x, y))
                 val expectedText = skin?.palette?.text ?: 0xffffdd88.toInt()
                 val pixels = IntArray(bitmap.width * bitmap.height)
                 bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
                 assertTrue("$skinId above=$above text color", pixels.any { it == expectedText })
                 drawing.tapActive = true
-                assertEquals("$skinId above=$above selection", skin?.palette?.selection ?: 0xff965432.toInt(), render(drawing).getPixel(x, y))
+                val selected = render(drawing)
+                val selection = skin?.palette?.selection ?: 0xff965432.toInt()
+                if (above) {
+                    val selectedPixels = IntArray(selected.width*selected.height)
+                    selected.getPixels(selectedPixels,0,selected.width,0,0,selected.width,selected.height)
+                    val count = selectedPixels.count { it == selection }
+                    assertTrue("The native guide selection pill must be visible",count>0)
+                    assertTrue("The guide must not fill a whole key with the selection color",count<drawing.keyWidth*drawing.keyHeight/2)
+                } else assertEquals("$skinId above=$above selection",selection,selected.getPixel(x,y))
                 drawing.applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100, 20f,
                     backgroundColor = 0xff765432.toInt(), textColor = 0xffaabbcc.toInt()))
                 drawing.tapActive = false
-                assertEquals("Changing themes must update an existing view", 0xff765432.toInt(), render(drawing).getPixel(x, y))
+                val updated = if (above) {
+                    val reference = TfbiGuidePopupView(theme).apply {
+                        applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100,20f,
+                            backgroundColor=0xff765432.toInt(),textColor=0xffaabbcc.toInt()))
+                        setState(com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState("",TfbiFlickDirection.TAP))
+                        measure(View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(300,View.MeasureSpec.EXACTLY));layout(0,0,400,300)
+                    }
+                    render(reference).getPixel(x,y)
+                } else 0xff765432.toInt()
+                assertEquals("Changing themes must update an existing view",updated,render(drawing).getPixel(x,y))
             }
         }
     }

@@ -16,7 +16,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28,35])
 class FlickKeyboardKeySelectionTest {
-    @Test fun allTenKanaAreSelectableWithoutInputOrSpecialKeySideEffects() {
+    @Test fun kanaAndPunctuationAreSelectableWithoutInputOrSpecialKeySideEffects() {
         val activity=Robolectric.buildActivity(Activity::class.java).setup().get()
         val view=FlickKeyboardView(ContextThemeWrapper(activity,com.google.android.material.R.style.Theme_Material3_DayNight))
         val selected=mutableListOf<String>()
@@ -38,7 +38,8 @@ class FlickKeyboardKeySelectionTest {
         view.measure(View.MeasureSpec.makeMeasureSpec(600,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY))
         view.layout(0,0,600,400)
         val kana=layout.items.mapIndexedNotNull { index,item -> (item as? KeyItem)?.keyData?.takeIf {it.label in SumirePopupDefaults.rows}?.let {view.getChildAt(index) to it.label} }
-        assertEquals(10,kana.size)
+        assertEquals(11,kana.size)
+        assertTrue(kana.any { it.second == SumirePopupDefaults.PUNCTUATION_KEY })
         for((child,label) in kana) {
             val x=(child.left+child.right)/2f;val y=(child.top+child.bottom)/2f
             for(action in listOf(MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP)) {
@@ -54,7 +55,7 @@ class FlickKeyboardKeySelectionTest {
         val special=layout.items.mapIndexedNotNull { index,item -> (item as? KeyItem)?.keyData?.takeIf {it.isSpecialKey}?.let {view.getChildAt(index)} }
         assertTrue(special.isNotEmpty())
         special.forEach { assertFalse(it.isEnabled);it.performClick() }
-        assertEquals(10,selected.size)
+        assertEquals(11,selected.size)
         assertTrue("Selection must never emit input or function actions",actions.isEmpty())
     }
 }

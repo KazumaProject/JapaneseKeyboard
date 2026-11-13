@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PopupMapTest {
-    @Test fun onlyKanaKeysUseTheNewStyleAndTapDoesNotToggle() {
+    @Test fun onlyEditableJapaneseTextKeysUseTheNewStyleAndTapDoesNotToggle() {
         val builder=com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
         for(method in listOf("toggle","flick")) {
             val layout=builder.createFinalLayout(KeyboardInputMode.HIRAGANA,emptyMap(),method,SumirePopupDefaults.STYLE)
@@ -18,6 +18,17 @@ class PopupMapTest {
     }
     @Test fun allInitialMapsAreValid() {
         SumirePopupDefaults.rows.keys.forEach { assertEquals(it, emptyList<PopupConflict>(), PopupMapValidator.conflicts(SumirePopupDefaults.create(it))) }
+    }
+    @Test fun defaultFlickPopupsMatchTapSizeAndTouchTheOriginalKey() {
+        for (key in SumirePopupDefaults.rows.keys) {
+            val config = SumirePopupDefaults.create(key)
+            assertTrue(PopupMapValidator.conflicts(config).isEmpty())
+            for (region in config.maps.single().regions) {
+                val b = region.bounds
+                assertEquals(PopupBounds.KEY.width,b.width,.0001f); assertEquals(PopupBounds.KEY.height,b.height,.0001f)
+                assertTrue(b.right == -.5f || b.left == .5f || b.bottom == -.5f || b.top == .5f)
+            }
+        }
     }
     @Test fun tapBelongsToActiveMapAndBackRestoresPreviousTap() {
         val session = PopupMapSession(LegacyPopupFixture.create("は"))
@@ -103,16 +114,6 @@ private object LegacyPopupFixture {
         }
         return PopupKeyConfig(keyId, "normal", listOf(normal.copy(regions = normal.regions + controls)) + maps.drop(1))
     }
-    @Test fun defaultsTouchTheOriginalKeyWithoutChangingPopupSizes() {
-        for (key in SumirePopupDefaults.rows.keys) {
-            val config = SumirePopupDefaults.create(key)
-            assertTrue(PopupMapValidator.conflicts(config).isEmpty())
-            for (region in config.maps.single().regions) {
-                val b = region.bounds
-                assertEquals(.9f,b.width,.0001f); assertEquals(.8f,b.height,.0001f)
-                assertTrue(b.right == -.5f || b.left == .5f || b.bottom == -.5f || b.top == .5f)
-            }
-        }
-    }
+
 
 }

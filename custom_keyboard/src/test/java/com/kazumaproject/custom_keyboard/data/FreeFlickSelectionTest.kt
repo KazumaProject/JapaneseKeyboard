@@ -24,6 +24,29 @@ class FreeFlickSelectionTest {
             }
         }
     }
+    @Test fun defaultFlickPopupEdgesAcceptDirectInputAcrossTheFullTapSize() {
+        val centers=listOf(-1f to 0f,0f to -1f,1f to 0f,0f to 1f)
+        val edges=listOf(-.47f to 0f,.47f to 0f,0f to -.47f,0f to .47f)
+        for(key in SumirePopupDefaults.rows.keys) {
+            val config=SumirePopupDefaults.create(key)
+            val session=PopupMapSession(config,options=PopupMapInputOptions(nearestEnabled=false))
+            for(region in config.maps.single().regions) {
+                val (cx,cy)=centers[region.id.substringAfterLast('-').toInt()]
+                for((dx,dy) in edges) {
+                    assertEquals("$key ${region.id} edge=($dx,$dy)",region.action.text,session.release(cx+dx,cy+dy))
+                    assertFalse(session.isTap)
+                }
+            }
+        }
+    }
+    @Test fun punctuationHasEditableMapsAndPreservesStandardTextDirections() {
+        val config = SumirePopupDefaults.create(SumirePopupDefaults.PUNCTUATION_KEY)
+        val session = PopupMapSession(config, options = PopupMapInputOptions(nearestEnabled = false))
+        for ((point, expected) in listOf((0f to 0f) to "、", (-1f to 0f) to "。",
+            (0f to -1f) to "？", (1f to 0f) to "！", (0f to 1f) to "…")) {
+            assertEquals(expected, session.release(point.first, point.second))
+        }
+    }
     @Test fun nearestTextDefaultsOnAndOffRestoresOutsideNoOutput() {
         val value=SumirePopupDefaults.create("あ")
         assertEquals("え",PopupMapSession(value).release(4f,0f))
