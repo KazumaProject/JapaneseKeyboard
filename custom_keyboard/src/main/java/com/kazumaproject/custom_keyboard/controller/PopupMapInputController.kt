@@ -55,6 +55,14 @@ class PopupMapInputController(
     private fun sample(x: Float, y: Float) {
         fingerPosition = x/width-.5f to y/height-.5f
     }
+    private var observingAttachment = false
+    private val attachmentListener = object : View.OnAttachStateChangeListener {
+        override fun onViewAttachedToWindow(v: View) = Unit
+        override fun onViewDetachedFromWindow(v: View) { cancel() }
+    }
+    private fun observeAttachment(view: View) {
+        if(!observingAttachment) {view.addOnAttachStateChangeListener(attachmentListener);observingAttachment=true}
+    }
     private var anchor: View? = null
     private var session: PopupMapSession? = null
     private var popup: PopupWindow? = null
@@ -75,15 +83,13 @@ class PopupMapInputController(
     @SuppressLint("ClickableViewAccessibility")
     fun attach(view: View) {
         anchor = view
-        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: View) = Unit
-            override fun onViewDetachedFromWindow(v: View) { cancel() }
-        })
+        observeAttachment(view)
         view.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     if (event.x !in 0f..view.width.toFloat() || event.y !in 0f..view.height.toFloat()) return@setOnTouchListener false
                     end(true)
+                    observeAttachment(view)
                     width = view.width.coerceAtLeast(1); height = view.height.coerceAtLeast(1)
                     rotation = view.rotation
                     view.getLocationOnScreen(locationScratch)
@@ -203,5 +209,9 @@ class PopupMapInputController(
         if (canceled && session != null) onCancel()
         session = null
     }
-    fun cancel() { end(true) }
+    fun cancel() {
+        end(true)
+        anchor?.removeOnAttachStateChangeListener(attachmentListener)
+        observingAttachment=false
+    }
 }
