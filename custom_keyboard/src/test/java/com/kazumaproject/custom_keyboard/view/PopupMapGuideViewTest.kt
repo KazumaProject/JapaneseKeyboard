@@ -124,7 +124,7 @@ class PopupMapGuideViewTest {
         assertEquals("Even an inactive map contributes to the common scale",shared,listOf(view.originX,view.originY,view.keyWidth,view.keyHeight))
         val bounds=far.regions.single().bounds
         assertTrue(view.originY+bounds.top*view.keyHeight>0f)
-        assertTrue(view.originY+1.4f*view.keyHeight<view.height)
+        assertTrue(view.originY+original.maps.flatMap { it.regions }.maxOf { it.bounds.bottom }*view.keyHeight<view.height)
     }
     @Test fun revealingAllPopupsDoesNotMoveOrRescaleTheGuide() {
         val theme=ContextThemeWrapper(ApplicationProvider.getApplicationContext(),com.google.android.material.R.style.Theme_Material3_DayNight)

@@ -86,8 +86,9 @@ class FreeFlickLayoutsDeviceTest {
             action("Device layout", R.string.free_flick_layout_show)
             await { global().filterIsInstance<PopupMapGuideView>().isNotEmpty() }
             ins.runOnMainSync {
-                val key = global().filterIsInstance<Spinner>().first { it.contentDescription == context.getString(R.string.popup_key) }
-                key.setSelection(SumirePopupDefaults.rows.keys.indexOf("は"))
+                val keyboard = global().filterIsInstance<FreeFlickKeyPicker>().last().keyboard
+                (0 until keyboard.childCount).map(keyboard::getChildAt).filterIsInstance<TextView>()
+                    .single { it.text.toString() == "は" }.performClick()
             }
             await { global().filterIsInstance<PopupMapGuideView>().lastOrNull()?.map?.tapText == "★" }
             dismiss()

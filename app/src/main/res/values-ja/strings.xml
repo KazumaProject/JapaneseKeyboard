@@ -2035,4 +2035,5 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="qwerty_fewer_columns_description">横に並べる候補を減らす</string>
     <string name="qwerty_more_columns_description">横に並べる候補を増やす</string>
     <string name="qwerty_display_fallback">空欄なら入力する文字を表示します。</string>
+    <string name="free_flick_choose_key">キーボードのキーをタップして、ポップアップを編集します。</string>
 </resources>

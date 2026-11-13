@@ -29,7 +29,7 @@ class PopupMapEditorFragment : Fragment() {
     private lateinit var status: TextView
     private lateinit var output: TextView
     private lateinit var mapSpinner: Spinner
-    private lateinit var keySpinner: Spinner
+    private lateinit var keyPicker: FreeFlickKeyPicker
     private lateinit var breadcrumb: TextView
     private lateinit var sourceButton: MaterialButton
     private lateinit var editButton: MaterialButton
@@ -71,10 +71,11 @@ class PopupMapEditorFragment : Fragment() {
             item(sourceButton)
             item(button(label(R.string.popup_save)) { save() })
         })
-        keySpinner=Spinner(requireContext())
-        mapSpinner=Spinner(requireContext())
+        content.addView(text(label(R.string.free_flick_choose_key)))
+        keyPicker=FreeFlickKeyPicker(requireContext())
+        content.addView(keyPicker,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT))
+        mapSpinner=Spinner(requireContext()).apply {contentDescription=label(R.string.popup_map)}
         content.addView(row().apply {
-            item(text(label(R.string.popup_key)));item(keySpinner,1f)
             item(text(label(R.string.popup_map)));item(mapSpinner,1f)
         })
         editButton=button(label(R.string.popup_edit)) {model.trying=false;refresh()}.apply {isCheckable=true}
@@ -84,7 +85,7 @@ class PopupMapEditorFragment : Fragment() {
             item(button(label(R.string.popup_add_map)) {newMap()},1.25f)
             item(button("⋮") {showMapMenu(null)}.apply {minWidth=dp(40);minimumWidth=dp(40);setPadding(dp(8),0,dp(8),0)},.45f)
         })
-        canvas=PopupMapEditorCanvas(requireContext()).apply {
+        canvas=PopupMapEditorCanvas(requireContext()).apply { applyFreeFlickTheme();
             inputOptions=FreeFlickPreferences.read(requireContext())
             onSelect={ selected -> model.selectedId=selected; showProperties() }
             onChange={ changed -> model.change(changed);refreshCanvas();showProperties() }
@@ -127,6 +128,7 @@ class PopupMapEditorFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         if (editorReady) {
+            canvas.applyFreeFlickTheme()
             canvas.inputOptions=FreeFlickPreferences.read(requireContext())
             runCatching {
                 val saved = repository.load(config.keyId, model.layoutId)
@@ -148,16 +150,8 @@ class PopupMapEditorFragment : Fragment() {
     }
     private fun adapter(items: List<String>) = ArrayAdapter(requireContext(),android.R.layout.simple_spinner_dropdown_item,items)
     private fun installSelectors() {
-        keySpinner.adapter=adapter(SumirePopupDefaults.rows.keys.toList())
-        keySpinner.setSelection(SumirePopupDefaults.rows.keys.indexOf(config.keyId))
-        keySpinner.onItemSelectedListener=object:AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, rowId: Long) {
-                val key=SumirePopupDefaults.rows.keys.elementAt(position)
-                if(bindingSelectors || key==config.keyId) return
-                guardUnsaved({model.load(repository.load(key, model.layoutId));refresh()})
-                keySpinner.setSelection(SumirePopupDefaults.rows.keys.indexOf(config.keyId))
-            }
+        keyPicker.onKeySelected={ key ->
+            if(key!=config.keyId) guardUnsaved {model.load(repository.load(key, model.layoutId));refresh()}
         }
         mapSpinner.onItemSelectedListener=object:AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -171,7 +165,7 @@ class PopupMapEditorFragment : Fragment() {
         layoutHeading.text = getString(R.string.free_flick_layout_editing, FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!).name)
         bindingSelectors=true
         if(config.map(model.mapId)==null) model.mapId=config.startMapId
-        keySpinner.setSelection(SumirePopupDefaults.rows.keys.indexOf(config.keyId))
+        keyPicker.showSelection(FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!).keys.map { if(it.keyId==config.keyId) config else it },config.keyId)
         mapSpinner.adapter=adapter(config.maps.map { it.name });mapSpinner.setSelection(config.maps.indexOfFirst { it.id==model.mapId })
         bindingSelectors=false
         sourceButton.visibility=if(model.path.isEmpty()) View.GONE else View.VISIBLE

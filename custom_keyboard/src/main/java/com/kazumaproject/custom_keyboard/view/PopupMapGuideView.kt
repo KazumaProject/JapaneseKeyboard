@@ -3,13 +3,9 @@ package com.kazumaproject.custom_keyboard.view
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.RectF
-import android.graphics.Path
-import android.text.TextPaint
-import android.text.TextUtils
 import com.kazumaproject.custom_keyboard.data.PopupBounds
 import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
 import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
-import com.kazumaproject.custom_keyboard.data.labelBounds
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 
@@ -21,6 +17,11 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
     var sourceKeyWidth = 100f
     var sourceKeyHeight = 64f
     private val appearance=TfbiGuidePopupView(context)
+    override fun applyPopupViewStyle(style: com.kazumaproject.core.data.popup.PopupViewStyle, highlightColor: Int?, borderColor: Int?) {
+        super.applyPopupViewStyle(style, highlightColor, borderColor)
+        appearance.applyPopupViewStyle(style)
+        appearance.setColors(popupBackgroundColor, popupHighlightColor, popupTextColor)
+    }
     private fun dp(value: Float) = value * resources.displayMetrics.density
 
     fun pointerDirection(): TfbiFlickDirection? {
@@ -51,28 +52,7 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
         keyWidth=sourceKeyWidth*scale;keyHeight=sourceKeyHeight*scale;keyRotation=0f
         originX=area.centerX()-(left+right)*keyWidth/2
         originY=area.centerY()-(top+bottom)*keyHeight/2
-        fun rect(b: PopupBounds)=RectF(originX+b.left*keyWidth,originY+b.top*keyHeight,originX+b.right*keyWidth,originY+b.bottom*keyHeight)
-        fun label(text: String, target: RectF, active: Boolean, compact: Boolean=true, contour: Boolean=false) {
-            val minimum=TextPaint().apply {textSize=if(contour) minOf(8*resources.displayMetrics.scaledDensity,target.height()*.75f,target.width()*.8f).coerceAtLeast(1f) else 8*resources.displayMetrics.scaledDensity}
-            val display=TextUtils.ellipsize(textTransform(text),minimum,(target.width()-if(contour) 0f else dp(6f)).coerceAtLeast(1f),TextUtils.TruncateAt.END).toString()
-            if(contour) appearance.drawGuideContourLabel(canvas,display,target)
-            else appearance.drawGuideLabel(canvas,display,target,active,compact)
-        }
-        val tapRect = rect(PopupBounds.KEY)
-        val tapPath = Path().apply { addRect(tapRect, Path.Direction.CW) }
-        if(tapPopupVisible) {
-            appearance.drawGuideOutline(canvas, tapPath, tapActive)
-            label(map?.tapText.orEmpty(),tapRect,tapActive,false)
-        }
-        map?.regions?.filter { visibleRegionIds == null || it.id in visibleRegionIds!! }?.forEach { region ->
-            val path = region.outlinePath(originX, originY, keyWidth, keyHeight)
-            val active = region.id == selectedId
-            appearance.drawGuideOutline(canvas, path, active)
-            val clipped = canvas.save()
-            canvas.clipPath(path)
-            label(region.displayLabel(),rect(region.labelBounds(keyWidth,keyHeight)),active,contour=true)
-            canvas.restoreToCount(clipped)
-        }
+        super.onDraw(canvas)
         fingerPosition?.let { (x,y) ->
             appearance.drawGuidePointer(canvas,panel,TfbiGuideFingerPosition(
                 (originX+x*keyWidth-panel.left)/panel.width(),(originY+y*keyHeight-panel.top)/panel.height()

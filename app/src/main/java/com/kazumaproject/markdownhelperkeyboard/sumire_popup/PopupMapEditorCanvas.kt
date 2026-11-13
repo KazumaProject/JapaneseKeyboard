@@ -11,11 +11,11 @@ import android.view.ViewConfiguration
 import com.google.android.material.R
 import com.google.android.material.color.MaterialColors
 import com.kazumaproject.custom_keyboard.data.*
+import com.kazumaproject.custom_keyboard.view.popupRoundedPath
 import com.kazumaproject.custom_keyboard.view.PopupMapView
 import com.kazumaproject.custom_keyboard.view.PopupMapGuideView
 import com.kazumaproject.custom_keyboard.view.TfbiGestureArrowView
 import com.kazumaproject.custom_keyboard.view.compactFlickGuideSize
-import kotlin.math.ceil
 import kotlin.math.hypot
 
 @SuppressLint("ClickableViewAccessibility")
@@ -28,6 +28,11 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
             field=value;invalidate()
         }
     private val guide by lazy { PopupMapGuideView(context) }
+    override fun applyPopupViewStyle(style: com.kazumaproject.core.data.popup.PopupViewStyle, highlightColor: Int?, borderColor: Int?) {
+        super.applyPopupViewStyle(style, highlightColor, borderColor)
+        guide.applyPopupViewStyle(style, highlightColor, borderColor)
+        arrow.setColor(popupHighlightColor)
+    }
     private val arrow by lazy { TfbiGestureArrowView(context).apply {setColor(0xff1976d2.toInt())} }
     private var fingerPosition: Pair<Float,Float>? = null
     var config: PopupKeyConfig? = null
@@ -42,7 +47,8 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
     private var startX = 0f
     private var startY = 0f
     private var original: PopupRegion? = null
-    private var resizeCorner = -1
+    private var resizeHandle = PopupBoundsSnapper.MOVE
+    private var snapper: PopupBoundsSnapper? = null
     private var dragging = false
     private var ghost: PopupBounds? = null
     private var trial: PopupMapSession? = null
@@ -104,15 +110,15 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
             }
             val saved=canvas.save();canvas.translate((width-panelWidth)/2f,panelTop);guide.draw(canvas);canvas.restoreToCount(saved)
         }
-        val primary=MaterialColors.getColor(this,androidx.appcompat.R.attr.colorPrimary)
-        val foreground=MaterialColors.getColor(this,R.attr.colorOnSurface)
+        val primary=popupHighlightColor
+        val foreground=if(tapSelected) popupSelectedTextColor else popupTextColor
         pen.style=Paint.Style.FILL
-        pen.color=MaterialColors.getColor(this,if(tapSelected) R.attr.colorPrimaryContainer else R.attr.colorSurfaceContainerHigh)
+        pen.color=if(tapSelected) popupHighlightColor else popupBackgroundColor
         val key=rect(PopupBounds.KEY)
-        canvas.drawRoundRect(key,10f,10f,pen)
+        canvas.drawPath(key.popupRoundedPath(),pen)
         pen.style=Paint.Style.STROKE;pen.strokeWidth=if(tapSelected) 3*resources.displayMetrics.density else resources.displayMetrics.density
-        pen.color=if(tapSelected) primary else MaterialColors.getColor(this,R.attr.colorOutline)
-        canvas.drawRoundRect(key,10f,10f,pen)
+        pen.color=if(tapSelected) primary else popupBorderColor
+        canvas.drawPath(key.popupRoundedPath(),pen)
         pen.style=Paint.Style.FILL;pen.color=foreground;pen.textAlign=Paint.Align.CENTER;pen.textSize=24*resources.displayMetrics.scaledDensity
         val tap=map?.tapText.orEmpty().ifEmpty { "—" }
         val text=android.text.TextUtils.ellipsize(tap,android.text.TextPaint(pen),key.width()-12,android.text.TextUtils.TruncateAt.END).toString()
@@ -131,7 +137,7 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
             } }
             selectedBounds?.let { b ->
                 val r=rect(b);pen.style=Paint.Style.FILL;pen.color=primary
-                listOf(r.left to r.top,r.right to r.top,r.left to r.bottom,r.right to r.bottom).forEach { canvas.drawCircle(it.first,it.second,5*resources.displayMetrics.density,pen) }
+                listOf(r.left to r.top,r.right to r.top,r.left to r.bottom,r.right to r.bottom, r.centerX() to r.top, r.centerX() to r.bottom, r.left to r.centerY(), r.right to r.centerY()).forEach { canvas.drawCircle(it.first,it.second,5*resources.displayMetrics.density,pen) }
             }
             ghost?.let { pen.style=Paint.Style.STROKE;pen.color=MaterialColors.getColor(this,androidx.appcompat.R.attr.colorError);pen.strokeWidth=2*resources.displayMetrics.density;pen.pathEffect=DashPathEffect(floatArrayOf(10f,6f),0f);canvas.drawRect(rect(it),pen);pen.pathEffect=null }
         }
@@ -178,13 +184,26 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
         when(event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 startX=event.x;startY=event.y;dragging=false;ghost=null
-                val corner=selectedBounds?.let { b ->
+                val handles=listOf(PopupBoundsSnapper.LEFT or PopupBoundsSnapper.TOP,
+                    PopupBoundsSnapper.RIGHT or PopupBoundsSnapper.TOP, PopupBoundsSnapper.LEFT or PopupBoundsSnapper.BOTTOM,
+                    PopupBoundsSnapper.RIGHT or PopupBoundsSnapper.BOTTOM, PopupBoundsSnapper.TOP, PopupBoundsSnapper.BOTTOM,
+                    PopupBoundsSnapper.LEFT, PopupBoundsSnapper.RIGHT)
+                val handleIndex=selectedBounds?.let { b ->
                     val r=rect(b)
-                    val corners=listOf(r.left to r.top,r.right to r.top,r.left to r.bottom,r.right to r.bottom)
-                    corners.indices.minByOrNull { i -> hypot(event.x-corners[i].first,event.y-corners[i].second) }?.takeIf { i -> hypot(event.x-corners[i].first,event.y-corners[i].second)<24*resources.displayMetrics.density }
+                    val points=listOf(r.left to r.top,r.right to r.top,r.left to r.bottom,r.right to r.bottom,
+                        r.centerX() to r.top,r.centerX() to r.bottom,r.left to r.centerY(),r.right to r.centerY())
+                    points.indices.minByOrNull { i -> hypot(event.x-points[i].first,event.y-points[i].second) }
+                        ?.takeIf { i -> hypot(event.x-points[i].first,event.y-points[i].second)<18*resources.displayMetrics.density }
                 } ?: -1
-                val hit=if(corner>=0) map?.regions?.firstOrNull { it.id==selectedId } else map?.regions?.firstOrNull { it.contains(x,y,keyWidth,keyHeight) }
-                original=hit;beforeDrag=value;resizeCorner=corner
+                val hit=if(handleIndex>=0) map?.regions?.firstOrNull { it.id==selectedId }
+                    else map?.regions?.firstOrNull { it.contains(x,y,keyWidth,keyHeight) }
+                original=hit;beforeDrag=value
+                resizeHandle=if(handleIndex>=0) handles[handleIndex] else PopupBoundsSnapper.MOVE
+                val margin=4*resources.displayMetrics.density
+                snapper=hit?.let { PopupBoundsSnapper(value,mapId,it.id,
+                    PopupBounds((margin-originX)/keyWidth,(margin-originY)/keyHeight,
+                        (width-margin-originX)/keyWidth,(height-margin-originY)/keyHeight),
+                    keyWidth,keyHeight,resources.displayMetrics.density,resizeHandle) }
                 selectedId=hit?.id;tapSelected=hit==null;onSelect(selectedId)
                 parent.requestDisallowInterceptTouchEvent(true);invalidate();return true
             }
@@ -194,41 +213,26 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                 dragging=true
                 val dx=(event.x-startX)/keyWidth;val dy=(event.y-startY)/keyHeight
                 val b=source.bounds
-                val desired=when(resizeCorner) {
-                    0 -> b.copy(left=(b.left+dx).coerceAtMost(b.right-.35f),top=(b.top+dy).coerceAtMost(b.bottom-.35f))
-                    1 -> b.copy(right=(b.right+dx).coerceAtLeast(b.left+.35f),top=(b.top+dy).coerceAtMost(b.bottom-.35f))
-                    2 -> b.copy(left=(b.left+dx).coerceAtMost(b.right-.35f),bottom=(b.bottom+dy).coerceAtLeast(b.top+.35f))
-                    3 -> b.copy(right=(b.right+dx).coerceAtLeast(b.left+.35f),bottom=(b.bottom+dy).coerceAtLeast(b.top+.35f))
-                    else -> b.offset(dx,dy)
-                }
-                val current=selectedBounds ?: source.bounds
-                val distance=maxOf(kotlin.math.abs(desired.left-current.left),kotlin.math.abs(desired.top-current.top),kotlin.math.abs(desired.right-current.right),kotlin.math.abs(desired.bottom-current.bottom))
-                val steps=ceil(distance*keyWidth/2).toInt().coerceIn(1,512)
-                var accepted=current
-                var blocked=false
-                var collision: PopupConflict?=null
-                for(i in 1..steps) {
-                    val t=i.toFloat()/steps
-                    val b=PopupBounds(current.left+(desired.left-current.left)*t,current.top+(desired.top-current.top)*t,current.right+(desired.right-current.right)*t,current.bottom+(desired.bottom-current.bottom)*t)
-                    val page=config!!.map(mapId)!!
-                    val candidate=config!!.withMap(page.copy(regions=page.regions.map { if(it.id==source.id) it.copy(bounds=b) else it }))
-                    collision=PopupMapValidator.conflicts(candidate).firstOrNull()
-                    if(!inViewport(b) || collision!=null) {blocked=true;break}
-                    accepted=b
-                }
+                val desired=if(resizeHandle==PopupBoundsSnapper.MOVE) b.offset(dx,dy) else b.copy(
+                    left=if(resizeHandle and PopupBoundsSnapper.LEFT!=0) minOf(b.left+dx,b.right-.35f) else b.left,
+                    right=if(resizeHandle and PopupBoundsSnapper.RIGHT!=0) maxOf(b.right+dx,b.left+.35f) else b.right,
+                    top=if(resizeHandle and PopupBoundsSnapper.TOP!=0) minOf(b.top+dy,b.bottom-.35f) else b.top,
+                    bottom=if(resizeHandle and PopupBoundsSnapper.BOTTOM!=0) maxOf(b.bottom+dy,b.top+.35f) else b.bottom)
+                val accepted=snapper?.constrain(selectedBounds ?: b,desired) ?: b
                 val page=config!!.map(mapId)!!
-                config=config!!.withMap(page.copy(regions=page.regions.map { if(it.id==source.id) it.copy(bounds=accepted) else it }))
-                map=config!!.map(mapId);ghost=if(blocked) desired else null
-                if(blocked) onBlocked(collision)
+                val candidate=config!!.withMap(page.copy(regions=page.regions.map { if(it.id==source.id) it.copy(bounds=accepted) else it }))
+                val conflict=PopupMapValidator.conflicts(candidate).firstOrNull()
+                if(conflict==null && inViewport(accepted)) {config=candidate;map=candidate.map(mapId);ghost=null}
+                else {ghost=desired;onBlocked(conflict)}
                 invalidate();return true
             }
             MotionEvent.ACTION_UP -> {
                 performClick();parent.requestDisallowInterceptTouchEvent(false)
                 if(dragging && config!=beforeDrag) onChange(config!!)
-                original=null;ghost=null;invalidate();return true
+                original=null;snapper=null;ghost=null;invalidate();return true
             }
             MotionEvent.ACTION_CANCEL -> {
-                beforeDrag?.let { config=it;map=it.map(mapId) };original=null;ghost=null
+                beforeDrag?.let { config=it;map=it.map(mapId) };original=null;snapper=null;ghost=null
                 parent.requestDisallowInterceptTouchEvent(false);invalidate();return true
             }
         }
