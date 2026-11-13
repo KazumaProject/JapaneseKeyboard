@@ -2037,4 +2037,5 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="qwerty_fewer_columns_description">Fewer popup columns</string>
     <string name="qwerty_more_columns_description">More popup columns</string>
     <string name="qwerty_display_fallback">Leave empty to show the text to enter.</string>
+    <string name="free_flick_choose_key">Tap a keyboard key to edit its popups.</string>
 </resources>

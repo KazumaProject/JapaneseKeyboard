@@ -850,6 +850,12 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun applyVisibleKeyFilter(keyView: View, keyData: KeyData) {
+        if(keySelection!=null) {
+            keyView.visibility=View.VISIBLE
+            keyView.isEnabled=keyData.label in selectableLabels
+            keyView.alpha=if(keyView.isEnabled) 1f else .4f
+            return
+        }
         if (isSuspended(keyData)) {
             keyView.visibility = if (visibleKeyLabels?.contains(keyData.label) != false) View.VISIBLE else View.INVISIBLE
             keyView.isEnabled = false
@@ -1706,7 +1712,47 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    private var keySelection: ((String) -> Unit)? = null
+    private var selectableLabels: Set<String> = emptySet()
+    private var selectedLabel: String? = null
+    private var selectionTarget: View? = null
+
+    /** An editor surface: keys can be selected but no input controller is attached. */
+    fun setKeySelectionMode(labels: Set<String>, onSelect: (String) -> Unit) {
+        cancelTrackedTouchState()
+        cancelInputControllers()
+        selectableLabels = labels; keySelection = onSelect
+        keyInfos.forEach { attachKeyBehavior(it.view,it.keyData); applyVisibleKeyFilter(it.view,it.keyData) }
+    }
+    fun selectPreviewKey(label: String) {
+        selectedLabel = label
+        keyInfos.forEach { info ->
+            info.view.isSelected = info.keyData.label == label
+            info.view.isPressed = info.view.isSelected
+        }
+    }
+    private fun handleSelectionTouch(event: MotionEvent): Boolean {
+        when(event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> selectionTarget=findTargetView(event.rawX,event.rawY)?.view
+            MotionEvent.ACTION_UP -> {
+                val target=selectionTarget
+                selectionTarget=null
+                if(target!=null && findTargetView(event.rawX,event.rawY)?.view===target) target.performClick()
+                selectedLabel?.let(::selectPreviewKey)
+            }
+            MotionEvent.ACTION_CANCEL -> {selectionTarget=null;selectedLabel?.let(::selectPreviewKey)}
+        }
+        return true
+    }
+
     private fun attachKeyBehavior(keyView: View, keyData: KeyData): Any? {
+        keySelection?.let { select ->
+            keyView.setOnTouchListener(null)
+            keyView.setOnClickListener { if(keyData.label in selectableLabels) select(keyData.label) }
+            keyView.isSelected=keyData.label==selectedLabel
+            keyView.isPressed=keyView.isSelected
+            return null
+        }
         if (isSuspended(keyData)) return null
         val layout = currentLayout ?: return null
 
@@ -3393,6 +3439,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if(keySelection!=null) return handleSelectionTouch(event)
         return try {
             handleKeyboardTouchEvent(event)
         } finally {
