@@ -192,8 +192,11 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                     val r=rect(b)
                     val points=listOf(r.left to r.top,r.right to r.top,r.left to r.bottom,r.right to r.bottom,
                         r.centerX() to r.top,r.centerX() to r.bottom,r.left to r.centerY(),r.right to r.centerY())
+                    // Keep the popup's body available for movement, including at the minimum size.
+                    val hitRadius=if(r.contains(event.x,event.y)) minOf(18*resources.displayMetrics.density,minOf(r.width(),r.height())*.25f)
+                        else 18*resources.displayMetrics.density
                     points.indices.minByOrNull { i -> hypot(event.x-points[i].first,event.y-points[i].second) }
-                        ?.takeIf { i -> hypot(event.x-points[i].first,event.y-points[i].second)<18*resources.displayMetrics.density }
+                        ?.takeIf { i -> hypot(event.x-points[i].first,event.y-points[i].second)<hitRadius }
                 } ?: -1
                 val hit=if(handleIndex>=0) map?.regions?.firstOrNull { it.id==selectedId }
                     else map?.regions?.firstOrNull { it.contains(x,y,keyWidth,keyHeight) }
