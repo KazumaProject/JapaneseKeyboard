@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="free_flick_layouts">Manage Free Flick layouts</string>
+    <string name="free_flick_layout_current">My layout</string>
+    <string name="free_flick_layout_selected">Selected: %1$s</string>
+    <string name="free_flick_layout_editing">Editing: %1$s</string>
+    <string name="free_flick_layout_scope">A layout contains all 10 kana keys and their maps and popup shapes. The selected layout is used by Free Flick. Popup position and nearest-selection settings are shared.</string>
+    <string name="free_flick_layout_new">+ New layout</string>
+    <string name="free_flick_layout_snapshot">Save current layout as…</string>
+    <string name="free_flick_layout_import">Import layout</string>
+    <string name="free_flick_layout_export">Export layout</string>
+    <string name="free_flick_layout_in_use">Selected for input</string>
+    <string name="free_flick_layout_saved">Saved layout</string>
+    <string name="free_flick_layout_counts">%1$d keys · %2$d maps · %3$d popups</string>
+    <string name="free_flick_layout_show">Preview</string>
+    <string name="free_flick_layout_select">Select</string>
+    <string name="free_flick_layout_actions">Actions for %1$s</string>
+    <string name="free_flick_layout_name">Layout name</string>
+    <string name="free_flick_layout_name_error">Use a unique name (1–64 characters). Up to 32 layouts can be saved.</string>
+    <string name="free_flick_layout_delete">Delete “%1$s”?</string>
+    <string name="free_flick_layout_delete_selected">Delete “%1$s”? Input will switch to the standard 12-key flick layout.</string>
+    <string name="free_flick_layout_import_confirm">Add “%1$s” as a saved layout? Existing layouts will be kept. If its name is already used, a number will be added. Select it afterwards to use it for input.</string>
+    <string name="free_flick_layout_add">Add layout</string>
+    <string name="free_flick_layout_imported">Layout added. Select it to use it for input.</string>
+    <string name="free_flick_layout_exported">Layout exported</string>
+    <string name="free_flick_layout_import_error">Cannot import this file. Choose a supported Free Flick layout JSON file (up to 1 MB) with valid maps and popup shapes.</string>
+    <string name="free_flick_layout_transfer_error">Could not write the layout file. Check the destination and try again.</string>
+    <string name="free_flick_layout_operation_error">Could not update this layout. It may have been removed or the saved-layout limit may have been reached.</string>
+    <string name="free_flick_layout_storage_error">Saved layouts could not be read. The stored data has been kept.</string>
+    <string name="free_flick_layout_retry">Retry</string>
+    <string name="free_flick_layout_preview_hint">Choose a key and map to inspect. Try starts from the starting map. Previewing does not select or edit the layout.</string>
+</resources>

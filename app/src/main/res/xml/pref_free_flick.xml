@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference app:singleLineTitle="false" android:key="sumire_free_flick_layouts" android:title="@string/free_flick_layouts" android:summary="@string/free_flick_layout_scope" />
     <Preference app:singleLineTitle="false" android:key="sumire_popup_map_editor_preference" android:title="@string/popup_editor_entry" android:summary="@string/popup_editor_summary" />
     <PreferenceCategory android:title="@string/free_flick_detection">
         <SwitchPreferenceCompat app:singleLineTitle="false" android:key="sumire_free_flick_nearest" android:defaultValue="true" android:title="@string/free_flick_nearest" android:summary="@string/free_flick_nearest_summary" />

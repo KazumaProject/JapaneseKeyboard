@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="free_flick_layouts">フリーフリックのレイアウト管理</string>
+    <string name="free_flick_layout_current">現在のレイアウト</string>
+    <string name="free_flick_layout_selected">選択中：%1$s</string>
+    <string name="free_flick_layout_editing">編集中：%1$s</string>
+    <string name="free_flick_layout_scope">全10個のかなキーのマップ・popup形状をまとめて保存します。選択したレイアウトをフリーフリックで使用します。表示位置と最寄り判定の設定は共通です。</string>
+    <string name="free_flick_layout_new">＋ 新規レイアウト</string>
+    <string name="free_flick_layout_snapshot">現在の配置を名前を付けて保存</string>
+    <string name="free_flick_layout_import">レイアウトをインポート</string>
+    <string name="free_flick_layout_export">レイアウトをエクスポート</string>
+    <string name="free_flick_layout_in_use">使用中</string>
+    <string name="free_flick_layout_saved">保存済み</string>
+    <string name="free_flick_layout_counts">%1$dキー・%2$dマップ・%3$d個のpopup</string>
+    <string name="free_flick_layout_show">表示</string>
+    <string name="free_flick_layout_select">選択</string>
+    <string name="free_flick_layout_actions">%1$sの操作</string>
+    <string name="free_flick_layout_name">レイアウト名</string>
+    <string name="free_flick_layout_name_error">重複しない1〜64文字の名前を入力してください。保存できるレイアウトは32個までです。</string>
+    <string name="free_flick_layout_delete">「%1$s」を削除しますか？</string>
+    <string name="free_flick_layout_delete_selected">使用中の「%1$s」を削除しますか？入力は標準の12キーフリック配置に切り替わります。</string>
+    <string name="free_flick_layout_import_confirm">「%1$s」を保存済みレイアウトとして追加しますか？既存の配置は上書きしません。同じ名前がある場合は末尾に番号を付けます。入力に使うには、追加後に「選択」を押してください。</string>
+    <string name="free_flick_layout_add">追加</string>
+    <string name="free_flick_layout_imported">レイアウトを追加しました。入力に使うには「選択」を押してください。</string>
+    <string name="free_flick_layout_exported">レイアウトを書き出しました</string>
+    <string name="free_flick_layout_import_error">このファイルは読み込めません。対応するフリーフリックのJSONファイル（1MB以内）で、マップやpopup形状が有効か確認してください。</string>
+    <string name="free_flick_layout_transfer_error">レイアウトを書き出せませんでした。保存先を確認して、もう一度試してください。</string>
+    <string name="free_flick_layout_operation_error">レイアウトを更新できませんでした。削除されていないか、保存数の上限に達していないか確認してください。</string>
+    <string name="free_flick_layout_storage_error">保存済みレイアウトを読み込めません。保存データは変更していません。</string>
+    <string name="free_flick_layout_retry">再読み込み</string>
+    <string name="free_flick_layout_preview_hint">キーとマップを選んで表示できます。「試す」は開始マップから操作します。表示・試行だけではレイアウトの選択や保存内容は変わりません。</string>
+</resources>

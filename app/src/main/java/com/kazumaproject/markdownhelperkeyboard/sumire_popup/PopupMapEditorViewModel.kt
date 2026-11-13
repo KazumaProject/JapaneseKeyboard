@@ -6,6 +6,9 @@ import com.google.gson.Gson
 import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
 
 class PopupMapEditorViewModel(private val state: SavedStateHandle) : ViewModel() {
+    var layoutId: String?
+        get() = state["layoutId"]
+        set(value) { state["layoutId"] = value }
     private val gson = Gson()
     var config: PopupKeyConfig? = state.get<String>("draft")?.let { gson.fromJson(it, PopupKeyConfig::class.java) }
         private set

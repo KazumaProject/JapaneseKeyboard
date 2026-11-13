@@ -34,6 +34,8 @@ class PopupMapEditorFragment : Fragment() {
     private lateinit var sourceButton: MaterialButton
     private lateinit var editButton: MaterialButton
     private lateinit var tryButton: MaterialButton
+    private lateinit var layoutHeading: TextView
+    private var editorReady = false
     private var bindingSelectors = false
     private var result = ""
     private val config get() = requireNotNull(model.config)
@@ -48,10 +50,19 @@ class PopupMapEditorFragment : Fragment() {
     private fun LinearLayout.item(view: View, weight: Float=0f) { addView(view,LinearLayout.LayoutParams(if(weight>0) 0 else ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT,weight)) }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        editorReady = false
         repository=SumirePopupRepository(requireContext())
-        if(model.config==null) model.load(repository.load("は"))
+        if (model.layoutId == null) model.layoutId = arguments?.getString(FreeFlickLayoutRepository.ARG_LAYOUT_ID)
+            ?: runCatching { FreeFlickLayoutRepository(requireContext()).selectedId() }.getOrNull()
+        if (model.layoutId == null || runCatching { FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!) }.isFailure) {
+            return text(label(R.string.free_flick_layout_operation_error))
+        }
+        if(model.config==null) model.load(repository.load("は", model.layoutId))
         content=column().apply {setPadding(dp(16),dp(8),dp(16),dp(24))}
         val scroll=NestedScrollView(requireContext()).apply {isFillViewport=true;addView(content)}
+        layoutHeading = text("")
+        content.addView(layoutHeading)
+        content.addView(button(label(R.string.free_flick_layouts)) { guardUnsaved { findNavController().navigate(R.id.freeFlickLayoutsFragment) } })
         if(AppPreference.sumire_keyboard_style!=SumirePopupDefaults.STYLE) content.addView(text(label(R.string.popup_inactive)))
         breadcrumb=text("")
         sourceButton=button(label(R.string.popup_back_editor)) { goSource() }
@@ -98,9 +109,11 @@ class PopupMapEditorFragment : Fragment() {
         })
         installSelectors()
         refresh()
+        editorReady = true
         return scroll
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        if (!editorReady) return
         childFragmentManager.setFragmentResultListener(PopupShapeEditorDialog.RESULT, viewLifecycleOwner) { _, result ->
             val target = config.map(result.getString("map").orEmpty()) ?: return@setFragmentResultListener
             val regionId = result.getString("region")
@@ -113,7 +126,14 @@ class PopupMapEditorFragment : Fragment() {
     }
     override fun onResume() {
         super.onResume()
-        if (::canvas.isInitialized) canvas.inputOptions=FreeFlickPreferences.read(requireContext())
+        if (editorReady) {
+            canvas.inputOptions=FreeFlickPreferences.read(requireContext())
+            runCatching {
+                val saved = repository.load(config.keyId, model.layoutId)
+                if (!model.dirty && saved != config) model.load(saved)
+                refresh()
+            }.onFailure { status.text=label(R.string.free_flick_layout_operation_error) }
+        }
     }
     private fun applyTemplate() {
         MaterialAlertDialogBuilder(requireContext())
@@ -135,7 +155,7 @@ class PopupMapEditorFragment : Fragment() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, rowId: Long) {
                 val key=SumirePopupDefaults.rows.keys.elementAt(position)
                 if(bindingSelectors || key==config.keyId) return
-                guardUnsaved({model.load(repository.load(key));refresh()})
+                guardUnsaved({model.load(repository.load(key, model.layoutId));refresh()})
                 keySpinner.setSelection(SumirePopupDefaults.rows.keys.indexOf(config.keyId))
             }
         }
@@ -148,6 +168,7 @@ class PopupMapEditorFragment : Fragment() {
         }
     }
     private fun refresh() {
+        layoutHeading.text = getString(R.string.free_flick_layout_editing, FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!).name)
         bindingSelectors=true
         if(config.map(model.mapId)==null) model.mapId=config.startMapId
         keySpinner.setSelection(SumirePopupDefaults.rows.keys.indexOf(config.keyId))
@@ -158,7 +179,7 @@ class PopupMapEditorFragment : Fragment() {
         tryButton.isChecked=model.trying
         breadcrumb.text=(listOf(config.keyId)+model.path.mapNotNull { config.map(it)?.name }+page.name).joinToString(" ／ ")
         status.text=when {
-            repository.hasInvalidSavedConfig(config.keyId) -> label(R.string.popup_invalid_saved)
+            repository.hasInvalidSavedConfig(config.keyId, model.layoutId) -> label(R.string.popup_invalid_saved)
             model.trying -> label(if(canvas.inputOptions.nearestEnabled) R.string.free_flick_try_nearest else R.string.popup_try_hint)
             config.maps.any { source -> source.regions.any { it.action.type==PopupActionType.SWITCH && it.action.targetMapId==model.mapId } } -> label(R.string.popup_transition_hint)
             else -> label(R.string.popup_hint)
@@ -329,7 +350,8 @@ class PopupMapEditorFragment : Fragment() {
         }.show()
     }
     private fun save(): Boolean {
-        return runCatching {repository.save(config);model.markSaved();status.text=label(R.string.popup_saved);true}.getOrElse {status.text=label(R.string.popup_collision);false}
+        return runCatching {model.layoutId=repository.save(config, model.layoutId);model.markSaved();refresh();status.text=label(R.string.popup_saved);true}
+            .getOrElse {status.text=label(R.string.free_flick_layout_operation_error);false}
     }
     fun leaveEditor() {guardUnsaved {findNavController().popBackStack()} }
     private fun guardUnsaved(next: ()->Unit) {
