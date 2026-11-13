@@ -6,7 +6,6 @@ import android.app.KeyguardManager
 import android.app.UiAutomation
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.PointF
@@ -32,7 +31,6 @@ import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceManager
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.custom_keyboard.data.KeyType
@@ -404,7 +402,7 @@ class FastInputMatrixInstrumentedTest {
     @Test
     fun flickEditorPreviewFunctionalAndPerformanceOnPhysicalDevice() {
         runPhysicalDeviceSession("flick-editor-preview") { session ->
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -835,7 +833,7 @@ class FastInputMatrixInstrumentedTest {
                 toolbarIntegrated = false,
                 orientation = TestOrientation.PORTRAIT
             )
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -967,7 +965,7 @@ class FastInputMatrixInstrumentedTest {
                 toolbarIntegrated = false,
                 orientation = TestOrientation.PORTRAIT
             )
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -1025,7 +1023,7 @@ class FastInputMatrixInstrumentedTest {
                 toolbarIntegrated = false,
                 orientation = TestOrientation.PORTRAIT
             )
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -1094,7 +1092,7 @@ class FastInputMatrixInstrumentedTest {
     @Test
     fun liquidGlassRepeatedDeleteDoesNotRestoreEarlierInputOnPhysicalDevice() {
         runPhysicalDeviceSession("liquid-glass-repeated-delete") { session ->
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -1183,7 +1181,7 @@ class FastInputMatrixInstrumentedTest {
                 toolbarIntegrated = false,
                 orientation = TestOrientation.PORTRAIT
             )
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -1257,7 +1255,7 @@ class FastInputMatrixInstrumentedTest {
                 toolbarIntegrated = false,
                 orientation = TestOrientation.LANDSCAPE
             )
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -1338,7 +1336,7 @@ class FastInputMatrixInstrumentedTest {
                 toolbarIntegrated = false,
                 orientation = TestOrientation.LANDSCAPE
             )
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
@@ -1430,7 +1428,7 @@ class FastInputMatrixInstrumentedTest {
                 toolbarIntegrated = false,
                 orientation = TestOrientation.LANDSCAPE
             )
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.LANDSCAPE)
@@ -1544,7 +1542,7 @@ class FastInputMatrixInstrumentedTest {
             val customFixture = installKeyboardSizeCustomFixture(keyboardLayoutDao)
             val failures = mutableListOf<String>()
             var completedCases = 0
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
 
             try {
                 applyKeyboardSizeBasePreferences(
@@ -1776,7 +1774,7 @@ class FastInputMatrixInstrumentedTest {
                 KanaKanjiEngineEntryPoint::class.java,
             ).keyboardLayoutDao()
             val customFixture = installKeyboardSizeCustomFixture(keyboardLayoutDao)
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
 
             try {
                 applyKeyboardSizeBasePreferences(
@@ -1847,7 +1845,7 @@ class FastInputMatrixInstrumentedTest {
             var completedConfigurations = 0
             var completedMeasurements = 0
             var caseIndex = 0
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
 
             try {
                 matrix@ for (orientation in TestOrientation.entries) {
@@ -2028,7 +2026,7 @@ class FastInputMatrixInstrumentedTest {
     @Test
     fun emptyCandidatePresentationStaysHiddenAfterImeReopenOnCustomKeyboard() {
         runPhysicalDeviceSession("custom-empty-candidate-reopen") { session ->
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 check(
                     session.preferences.edit()
@@ -2117,7 +2115,7 @@ class FastInputMatrixInstrumentedTest {
                     twoStepLongPressFlicksMap = emptyMap(),
                 )
             }
-            var host: ActivityScenario<FastInputHostActivity>? = null
+            var host: FastInputHostSession? = null
             try {
                 check(session.preferences.edit()
                     .putString("keyboard_order_preference", """["CUSTOM","TENKEY","SUMIRE","QWERTY","ROMAJI"]""")
@@ -2221,7 +2219,7 @@ class FastInputMatrixInstrumentedTest {
                 session.context.applicationContext, KanaKanjiEngineEntryPoint::class.java,
             ).keyboardLayoutDao()
             val fixtureIds = mutableListOf<Long>()
-            var host: ActivityScenario<FastInputHostActivity>? = null
+            var host: FastInputHostSession? = null
             try {
                 for (direct in listOf(false, true)) {
                     val stableId = "toggle-timeout-qa-$direct-${System.currentTimeMillis()}"
@@ -2301,7 +2299,7 @@ class FastInputMatrixInstrumentedTest {
     @Test
     fun customKeyboardAcceptsInputOnPhysicalDevice() {
         runPhysicalDeviceSession("custom-input") { session ->
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
             try {
                 check(
                     session.preferences.edit()
@@ -2367,7 +2365,7 @@ class FastInputMatrixInstrumentedTest {
             var configurations = 0
             var configurationIndex = 0
             var trials = 0
-            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            var scenario: FastInputHostSession? = null
 
             try {
                 for (orientation in TestOrientation.entries) {
@@ -2511,7 +2509,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun runColdCandidateTransitionPhase(
-        scenario: ActivityScenario<FastInputHostActivity>,
+        scenario: FastInputHostSession,
         keyboard: TestKeyboard
     ): PhaseResult {
         prepareEmptyEditor(scenario)
@@ -2538,7 +2536,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun runWarmCandidatePhase(
-        scenario: ActivityScenario<FastInputHostActivity>,
+        scenario: FastInputHostSession,
         keyboard: TestKeyboard
     ): PhaseResult {
         prepareEmptyEditor(scenario)
@@ -2577,7 +2575,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun runSumireRateTrial(
-        scenario: ActivityScenario<FastInputHostActivity>,
+        scenario: FastInputHostSession,
         intervalMs: Long
     ): RateTrialResult {
         prepareEmptyEditor(scenario)
@@ -2861,7 +2859,7 @@ class FastInputMatrixInstrumentedTest {
         )
     }
 
-    private fun assertGojuonInput(scenario: ActivityScenario<FastInputHostActivity>) {
+    private fun assertGojuonInput(scenario: FastInputHostSession) {
         val key = awaitVisibleNodeBounds("key_51")
         check(injectTap(key.center)) { "Unable to tap representative Gojūon key" }
         val actual = awaitEditorText(scenario) { it == "あ" }
@@ -3020,7 +3018,7 @@ class FastInputMatrixInstrumentedTest {
             "column${case.columns}=${preferences.getInt(columnKey, columnDefault)})"
     }
 
-    private fun restartInput(scenario: ActivityScenario<FastInputHostActivity>) {
+    private fun restartInput(scenario: FastInputHostSession) {
         awaitHostWindowFocus(scenario)
         scenario.onActivity { activity ->
             activity.restartEditorInput(clearText = true)
@@ -3075,7 +3073,7 @@ class FastInputMatrixInstrumentedTest {
         )
     }
 
-    private fun prepareEmptyEditor(scenario: ActivityScenario<FastInputHostActivity>) {
+    private fun prepareEmptyEditor(scenario: FastInputHostSession) {
         restartInput(scenario)
         val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < deadline) {
@@ -3091,7 +3089,7 @@ class FastInputMatrixInstrumentedTest {
         throw SetupException("Host editor did not become focused and empty")
     }
 
-    private fun readText(scenario: ActivityScenario<FastInputHostActivity>): String {
+    private fun readText(scenario: FastInputHostSession): String {
         var text = ""
         scenario.onActivity { activity ->
             text = activity.editText.text?.toString().orEmpty()
@@ -3100,7 +3098,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun assertEditorPreviewDecoration(
-        scenario: ActivityScenario<FastInputHostActivity>,
+        scenario: FastInputHostSession,
         expectedText: String,
         expectedBackgroundColor: Int,
         caseName: String,
@@ -3129,7 +3127,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun readEditorDecoration(
-        scenario: ActivityScenario<FastInputHostActivity>
+        scenario: FastInputHostSession
     ): EditorDecorationSnapshot {
         var snapshot = EditorDecorationSnapshot.Empty
         scenario.onActivity { activity ->
@@ -3165,7 +3163,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun awaitEditorText(
-        scenario: ActivityScenario<FastInputHostActivity>,
+        scenario: FastInputHostSession,
         predicate: (String) -> Boolean,
     ): String {
         val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
@@ -3190,7 +3188,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun awaitTextSettled(
-        scenario: ActivityScenario<FastInputHostActivity>
+        scenario: FastInputHostSession
     ): String {
         var previous: String? = null
         var stableSamples = 0
@@ -3956,17 +3954,14 @@ class FastInputMatrixInstrumentedTest {
         )
     }
 
-    private fun launchHost(context: Context): ActivityScenario<FastInputHostActivity> {
-        val scenario = ActivityScenario.launch<FastInputHostActivity>(
-            Intent(context, FastInputHostActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+    private fun launchHost(context: Context): FastInputHostSession {
+        val scenario = FastInputHostSession.launch(context)
         awaitHostWindowFocus(scenario)
         return scenario
     }
 
     private fun awaitHostWindowFocus(
-        scenario: ActivityScenario<FastInputHostActivity>
+        scenario: FastInputHostSession
     ) {
         val startedAt = SystemClock.uptimeMillis()
         val deadline = startedAt + HOST_WINDOW_FOCUS_TIMEOUT_MS
@@ -4031,7 +4026,7 @@ class FastInputMatrixInstrumentedTest {
     private fun assertDeviceReady(
         context: Context,
         expectedIme: String,
-        scenario: ActivityScenario<FastInputHostActivity>? = null
+        scenario: FastInputHostSession? = null
     ) {
         val powerManager = context.getSystemService(PowerManager::class.java)
         val keyguardManager = context.getSystemService(KeyguardManager::class.java)
