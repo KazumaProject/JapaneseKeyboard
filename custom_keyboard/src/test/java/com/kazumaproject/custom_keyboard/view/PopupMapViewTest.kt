@@ -55,4 +55,43 @@ class PopupMapViewTest {
         }
     }
 
+    @Test fun skinsAndOverridesReachAroundAndAboveKeyPopups() {
+        for (skinId in com.kazumaproject.core.domain.skin.KeyboardSkinId.entries) {
+            for (above in listOf(false, true)) {
+                val theme = view().context
+                val config = com.kazumaproject.custom_keyboard.data.SumirePopupDefaults.create("は")
+                val drawing = if (above) PopupMapGuideView(theme).apply {
+                    this.config = config; sourceKeyWidth = 200f; sourceKeyHeight = 100f
+                } else view()
+                drawing.map = config.maps.single()
+                drawing.applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100, 20f,
+                    backgroundColor = 0xff243648.toInt(), textColor = 0xffffdd88.toInt(), skinId = skinId),
+                    0xff965432.toInt())
+                drawing.tapActive = false
+                val bitmap = render(drawing.apply {
+                    measure(View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.EXACTLY))
+                    layout(0, 0, 400, 300)
+                })
+                val skin = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry.find(skinId)
+                val x = (drawing.originX - drawing.keyWidth * .25f).toInt()
+                val y = (drawing.originY - drawing.keyHeight * .25f).toInt()
+                assertEquals("$skinId above=$above background", skin?.palette?.key ?: 0xff243648.toInt(), bitmap.getPixel(x, y))
+                val expectedText = skin?.palette?.text ?: 0xffffdd88.toInt()
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                assertTrue("$skinId above=$above text color", pixels.any { it == expectedText })
+                drawing.tapActive = true
+                assertEquals("$skinId above=$above selection", skin?.palette?.selection ?: 0xff965432.toInt(), render(drawing).getPixel(x, y))
+                drawing.applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100, 20f,
+                    backgroundColor = 0xff765432.toInt(), textColor = 0xffaabbcc.toInt()))
+                drawing.tapActive = false
+                assertEquals("Changing themes must update an existing view", 0xff765432.toInt(), render(drawing).getPixel(x, y))
+            }
+        }
+    }
+
+    @Test @Config(sdk = [35], qualifiers = "night")
+    fun themesAlsoReachBothPopupModesInDarkContext() = skinsAndOverridesReachAroundAndAboveKeyPopups()
+
 }
