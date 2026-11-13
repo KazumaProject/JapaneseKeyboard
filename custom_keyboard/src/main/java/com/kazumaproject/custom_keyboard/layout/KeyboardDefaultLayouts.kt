@@ -171,6 +171,17 @@ object KeyboardDefaultLayouts {
         sumireFlickInputMode: SumireFlickInputMode = SumireFlickInputMode.ALL,
         highlightSelectedMode: Boolean = true
     ): KeyboardLayout {
+        if (inputStyle == com.kazumaproject.custom_keyboard.data.SumirePopupDefaults.STYLE) {
+            val base = createFinalLayout(mode, dynamicKeyStates, inputLayoutType, "default", deleteKeyFlickSettings, tfbiFlickRotation, sumireFlickInputMode, highlightSelectedMode)
+            if (mode != KeyboardInputMode.HIRAGANA) return base
+            return base.copyWithKeys(base.keys.map { key ->
+                if (!key.isSpecialKey && key.label in com.kazumaproject.custom_keyboard.data.SumirePopupDefaults.rows) {
+                    key.copy(keyId = "popup-kana-${key.label}", keyType = KeyType.PETAL_FLICK,
+                        textInputBehavior = com.kazumaproject.custom_keyboard.data.KeyTextInputBehavior.NORMAL,
+                        popupMapConfig = com.kazumaproject.custom_keyboard.data.SumirePopupDefaults.create(key.label))
+                } else key
+            })
+        }
         if (inputStyle == "third-flick") {
             return createFinalLayout(
                 mode, dynamicKeyStates, "flick", "default", deleteKeyFlickSettings,

@@ -69,6 +69,11 @@
             android:summary="%s"
             android:title="@string/sumire_keyboard_style_title" />
 
+        <Preference
+            android:key="sumire_popup_map_editor_preference"
+            android:title="@string/popup_editor_entry"
+            android:summary="@string/popup_editor_summary" />
+
         <ListPreference
             android:defaultValue="default"
             android:dialogTitle="@string/sumire_flick_rotation_title"

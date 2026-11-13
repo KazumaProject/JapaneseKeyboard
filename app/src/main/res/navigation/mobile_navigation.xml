@@ -253,6 +253,11 @@
         android:label="@string/qwerty_romaji_category_title" />
 
     <fragment
+        android:id="@+id/popupMapEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment"
+        android:label="@string/popup_editor_title" />
+
+    <fragment
         android:id="@+id/sumirePreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SumirePreferenceFragment"
         android:label="@string/category_sumire_input_keyboard_title" />

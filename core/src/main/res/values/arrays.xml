@@ -32,6 +32,7 @@
         <item>Two-step flick input</item>
         <item>Center-start pointer flick input</item>
         <item>Donuts input</item>
+        <item>Custom popup input</item>
     </string-array>
 
     <string-array name="sumire_keyboard_style_values">
@@ -40,6 +41,7 @@
         <item>second-flick</item>
         <item>center-guide-flick</item>
         <item>sumire</item>
+        <item>free-popup</item>
     </string-array>
 
     <string-array name="tfbi_flick_start_position_options">
