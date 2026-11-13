@@ -7,11 +7,22 @@ import com.kazumaproject.custom_keyboard.data.*
 /** Only the built-in selection may update. Named layouts, copies and edited runtime data stay exact. */
 internal object FreeFlickDefaultMigration {
     private val lock = Any()
+    private var libraryCache: Pair<String, FreeFlickLayoutLibrary?>? = null
+    private fun library(preferences: SharedPreferences): FreeFlickLayoutLibrary? {
+        val json=preferences.getString(FreeFlickLayoutRepository.STORAGE_KEY,null) ?: return null
+        libraryCache?.takeIf {it.first==json}?.let {return it.second}
+        val decoded=runCatching {FreeFlickLayoutCodec.decodeLibrary(json)}.getOrNull()
+        libraryCache=json to decoded
+        return decoded
+    }
+    fun savedConfig(preferences: SharedPreferences, key: String): PopupKeyConfig? = synchronized(lock) {
+        val state=library(preferences) ?: return@synchronized null
+        state.layouts.firstOrNull {it.id==state.selectedId}?.keys?.firstOrNull {it.keyId==key}
+    }
     private val oldBounds = listOf(PopupBounds(-1.5f,-.4f,-.6f,.4f), PopupBounds(-.45f,-1.4f,.45f,-.6f),
         PopupBounds(.6f,-.4f,1.5f,.4f), PopupBounds(-.45f,.6f,.45f,1.4f))
     fun update(preferences: SharedPreferences) = synchronized(lock) {
-        val library = preferences.getString(FreeFlickLayoutRepository.STORAGE_KEY, null) ?: return@synchronized
-        val state = runCatching { FreeFlickLayoutCodec.decodeLibrary(library) }.getOrNull() ?: return@synchronized
+        val state = library(preferences) ?: return@synchronized
         if (state.selectedId != FreeFlickLayoutRepository.BUILTIN_ID) return@synchronized
         val gson = Gson()
         val updates = mutableListOf<PopupKeyConfig>()
