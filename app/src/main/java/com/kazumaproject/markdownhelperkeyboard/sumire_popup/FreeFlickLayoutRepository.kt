@@ -66,6 +66,7 @@ class FreeFlickLayoutRepository(private val context: Context) {
         saved.id
     }
     private fun read(): FreeFlickLayoutLibrary {
+        FreeFlickDefaultMigration.update(preferences)
         preferences.getString(STORAGE_KEY, null)?.let { return FreeFlickLayoutCodec.decodeLibrary(it) }
         val legacy = SumirePopupDefaults.rows.keys.any { preferences.contains(SumirePopupRepository.PREFIX + it) }
         val saved = if (legacy) FreeFlickLayout(UUID.randomUUID().toString(), context.getString(R.string.free_flick_layout_current),

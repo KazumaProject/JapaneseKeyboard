@@ -103,4 +103,16 @@ private object LegacyPopupFixture {
         }
         return PopupKeyConfig(keyId, "normal", listOf(normal.copy(regions = normal.regions + controls)) + maps.drop(1))
     }
+    @Test fun defaultsTouchTheOriginalKeyWithoutChangingPopupSizes() {
+        for (key in SumirePopupDefaults.rows.keys) {
+            val config = SumirePopupDefaults.create(key)
+            assertTrue(PopupMapValidator.conflicts(config).isEmpty())
+            for (region in config.maps.single().regions) {
+                val b = region.bounds
+                assertEquals(.9f,b.width,.0001f); assertEquals(.8f,b.height,.0001f)
+                assertTrue(b.right == -.5f || b.left == .5f || b.bottom == -.5f || b.top == .5f)
+            }
+        }
+    }
+
 }
