@@ -13,8 +13,11 @@ class SumirePopupRepository(private val context: Context) {
     private val gson = Gson()
     fun load(key: String, layoutId: String? = null): PopupKeyConfig {
         FreeFlickDefaultMigration.update(preferences)
-        return if (layoutId == null) decode(preferences.getString(PREFIX + key, null), key)
-            else FreeFlickLayoutRepository(context).find(layoutId).keys.first { it.keyId == key }
+        if (layoutId != null) return FreeFlickLayoutRepository(context).find(layoutId).keys.first { it.keyId == key }
+        val raw=preferences.getString(PREFIX+key,null)
+        // Older saves mirrored only the edited key. Other keys still belong to that saved layout.
+        return if(raw==null) FreeFlickDefaultMigration.savedConfig(preferences,key) ?: decode(null,key)
+            else decode(raw,key)
     }
     fun hasInvalidSavedConfig(key: String, layoutId: String? = null): Boolean {
         if (layoutId != null && layoutId != FreeFlickLayoutRepository(context).selectedId()) return false

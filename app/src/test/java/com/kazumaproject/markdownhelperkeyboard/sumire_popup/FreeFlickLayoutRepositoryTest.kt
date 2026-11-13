@@ -187,4 +187,18 @@ class FreeFlickLayoutRepositoryTest {
         assertEquals(edited, active.load("は")); assertEquals(before,preferences.all)
     }
 
+    @Test fun savedLayoutsKeepTheirDefaultsWhenOlderVersionsOnlyMirroredTheEditedKey() {
+        val keys=SumirePopupDefaults.rows.keys.map(::legacyDefaults)
+        val saved=FreeFlickLayout("saved-legacy","Saved",keys)
+        val state=FreeFlickLayoutLibrary(saved.id,listOf(saved))
+        preferences.edit().putString(FreeFlickLayoutRepository.STORAGE_KEY,FreeFlickLayoutCodec.encodeLibrary(state))
+            .putString(SumirePopupRepository.PREFIX+"は",active.encode(keys.first {it.keyId=="は"})).commit()
+        val before=preferences.all
+        assertEquals("Missing mirrors must use the saved layout, including its old default positions",keys,SumirePopupDefaults.rows.keys.map {active.load(it)})
+        assertEquals(before,preferences.all)
+        val changed=saved.copy(keys=saved.keys.map {if(it.keyId=="か") it.withMap(it.maps.single().copy(tapText="保存")) else it})
+        preferences.edit().putString(FreeFlickLayoutRepository.STORAGE_KEY,FreeFlickLayoutCodec.encodeLibrary(state.copy(layouts=listOf(changed)))).commit()
+        assertEquals("A restored library must invalidate any cached fallback",changed.keys.first {it.keyId=="か"},active.load("か"))
+    }
+
 }
