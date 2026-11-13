@@ -5,6 +5,8 @@ import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inspector.WindowInspector
+import android.widget.Button
 import android.widget.Spinner
 import android.widget.EditText
 import android.widget.TextView
@@ -133,14 +135,16 @@ class SumirePopupEditorDeviceTest {
         choose("は");await {canvas()?.config?.keyId=="は"}
         ins.runOnMainSync {views().filterIsInstance<TextInputEditText>().single {it.contentDescription==context.getString(R.string.popup_input)}.setText("編集中")}
         choose("か")
-        val device=androidx.test.uiautomator.UiDevice.getInstance(ins)
-        assertTrue(device.findObject(androidx.test.uiautomator.UiSelector().text(context.getString(R.string.popup_cancel))).waitForExists(5000))
-        device.findObject(androidx.test.uiautomator.UiSelector().text(context.getString(R.string.popup_cancel))).click()
+        fun dialogButton(id: Int) {
+            await {WindowInspector.getGlobalWindowViews().flatMap(::descendants).filterIsInstance<Button>().any {it.id==id && it.isShown}}
+            ins.runOnMainSync {WindowInspector.getGlobalWindowViews().flatMap(::descendants).filterIsInstance<Button>().last {it.id==id && it.isShown}.performClick()}
+        }
+        dialogButton(android.R.id.button3)
         await {canvas()?.config?.keyId=="は" && canvas()?.config?.map("normal")?.tapText=="編集中"}
         ins.runOnMainSync {activity()!!.recreate()}
         await {canvas()?.config?.keyId=="は" && canvas()?.config?.map("normal")?.tapText=="編集中"}
         choose("か")
-        device.findObject(androidx.test.uiautomator.UiSelector().text(context.getString(R.string.popup_discard))).click()
+        dialogButton(android.R.id.button2)
         await {canvas()?.config?.keyId=="か"}
         ins.runOnMainSync {activity()!!.finish()}
     }
