@@ -1777,7 +1777,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                 onSelection = { text, flick -> updateTextPreview(keyData, text, flick) },
                 onCommit = { text, flick -> dispatchCommittedKeyAction(keyData, KeyAction.Text(text), flick) },
                 onCancel = { cancelTextPreview(keyData) },
-                options = popupMapOptions
+                options = popupMapOptions,
+                gestureConfigSource = gestureSessionConfigSource
             ).also { applyFreeFlickPopupStyle(it); it.attach(keyView); popupMapControllers.add(it) }
         }
         when (keyData.keyType) {

@@ -124,6 +124,23 @@ class PopupMapGuideViewTest {
         assertEquals("Even an inactive map contributes to the common scale",shared,listOf(view.originX,view.originY,view.keyWidth,view.keyHeight))
         val bounds=far.regions.single().bounds
         assertTrue(view.originY+bounds.top*view.keyHeight>0f)
-        assertTrue(view.originY+1.4f*view.keyHeight<view.height)
+        assertTrue(view.originY+original.maps.flatMap { it.regions }.maxOf { it.bounds.bottom }*view.keyHeight<view.height)
     }
+    @Test fun revealingAllPopupsDoesNotMoveOrRescaleTheGuide() {
+        val theme=ContextThemeWrapper(ApplicationProvider.getApplicationContext(),com.google.android.material.R.style.Theme_Material3_DayNight)
+        val view=PopupMapGuideView(theme).apply {
+            config=SumirePopupDefaults.create("は");map=config!!.maps.single()
+            visibleRegionIds=emptySet();tapPopupVisible=true
+            measure(View.MeasureSpec.makeMeasureSpec(237,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(211,View.MeasureSpec.EXACTLY))
+            layout(0,0,237,211)
+        }
+        fun render()=android.graphics.Bitmap.createBitmap(237,211,android.graphics.Bitmap.Config.ARGB_8888).also {view.draw(Canvas(it))}
+        val single=render()
+        val before=listOf(view.originX,view.originY,view.keyWidth,view.keyHeight)
+        view.visibleRegionIds=null
+        val expanded=render()
+        assertEquals(before,listOf(view.originX,view.originY,view.keyWidth,view.keyHeight))
+        assertFalse("Long press must reveal additional contours",single.sameAs(expanded))
+    }
+
 }

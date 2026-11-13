@@ -24,6 +24,8 @@ open class PopupMapView(context: Context) : View(context) {
     var originY = 0f
     var selectedId: String? = null
     var tapActive = true
+    var visibleRegionIds: Set<String>? = null
+    var tapPopupVisible = true
     protected open val drawsTapRegion = true
     var keyRotation = 0f
     var textTransform: (String) -> String = { it }
@@ -75,11 +77,11 @@ open class PopupMapView(context: Context) : View(context) {
             canvas.restoreToCount(clipped)
         }
         fun rect(b: PopupBounds) = RectF(originX + b.left * keyWidth, originY + b.top * keyHeight, originX + b.right * keyWidth, originY + b.bottom * keyHeight)
-        if (drawsTapRegion && map != null) {
+        if (drawsTapRegion && tapPopupVisible && map != null) {
             val tapRect = rect(PopupBounds.KEY)
             drawArea(tapRect.popupRoundedPath(), tapRect, map!!.tapText, tapActive)
         }
-        map?.regions?.forEach { region ->
+        map?.regions?.filter { visibleRegionIds == null || it.id in visibleRegionIds!! }?.forEach { region ->
             drawArea(region.outlinePath(originX, originY, keyWidth, keyHeight),
                 rect(region.labelBounds(keyWidth, keyHeight)), region.displayLabel(), region.id == selectedId, region.outline != null)
         }
