@@ -58,6 +58,34 @@ class SumirePopupRepositoryTest {
         assertEquals("ば",restored.config!!.map("voiced")!!.tapText)
         assertFalse(restored.dirty)
     }
+    @Test fun literalV1MapsStillLoadAndV2ShapesSurviveSaveBackupAndDraftRestore() {
+        val legacy="""{"keyId":"は","startMapId":"normal","version":1,"maps":[{"id":"normal","name":"通常","tapText":"は","regions":[{"id":"left","bounds":{"left":-1.5,"top":-0.4,"right":-0.6,"bottom":0.4},"action":{"type":"TEXT","text":"ひ"},"label":""}]}]}"""
+        val original=repository.decode(legacy,"は")
+        assertEquals(1,original.version)
+        assertNull(original.maps.single().regions.single().outline)
+        val map=original.maps.single()
+        val shape=original.withMap(map.copy(regions=listOf(map.regions.single().copy(outline=PopupOutline(PopupOutline.TRIANGLE)))))
+        assertEquals(2,shape.version)
+        repository.save(shape)
+        val backup=AppPreference.exportAllToJson()
+        preferences.edit().clear().commit();AppPreference.importAllFromJson(backup)
+        assertEquals(shape,repository.load("は"))
+        val handle=SavedStateHandle();val model=PopupMapEditorViewModel(handle)
+        model.load(original);model.change(shape)
+        val restored=PopupMapEditorViewModel(handle)
+        assertEquals(shape,restored.config);assertTrue(restored.undo());assertEquals(original,restored.config)
+    }
+    @Test fun malformedOrUnsupportedShapeDataFallsBackWithoutOverwritingTheSavedValue() {
+        val base=SumirePopupDefaults.create("は")
+        val map=base.maps.single()
+        val shape=base.withMap(map.copy(regions=map.regions.map {it.copy(outline=PopupOutline())}))
+        for(invalid in listOf(shape.copy(version=3),shape.withMap(shape.maps.single().copy(regions=listOf(map.regions.first().copy(outline=PopupOutline(listOf(PopupVertex(0f,0f))))))))) {
+            val json=repository.encode(invalid)
+            preferences.edit().putString(SumirePopupRepository.PREFIX+"は",json).commit()
+            assertTrue(repository.hasInvalidSavedConfig("は"));assertEquals(base,repository.load("は"))
+            assertEquals(json,preferences.getString(SumirePopupRepository.PREFIX+"は",null))
+        }
+    }
 }
 
 private object LegacyPopupFixture {

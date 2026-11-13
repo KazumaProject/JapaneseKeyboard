@@ -78,4 +78,15 @@
     <string name="two_step_popup_summary">Set two-step popup size, text size, and position</string>
     <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>
     <string-array name="free_flick_presentation_values"><item>around_key</item><item>guide_above_key</item></string-array>
+    <string name="free_flick_shape_customize">Detailed customization</string>
+    <string name="free_flick_shape_hint">Drag points to reshape the popup. Tap an edge + to add a vertex. Removing a vertex from a triangle makes a circle; adding to a circle makes a triangle.</string>
+    <string name="free_flick_shape_rectangle">Rounded rectangle (4 edit points)</string>
+    <string name="free_flick_shape_circle">Circle (no vertices)</string>
+    <string name="free_flick_shape_polygon">Polygon with %1$d vertices</string>
+    <string name="free_flick_shape_canvas">Edit popup shape</string>
+    <string name="free_flick_shape_add">＋ Vertex</string>
+    <string name="free_flick_shape_remove">− Vertex</string>
+    <string name="free_flick_shape_reset">Reset rectangle</string>
+    <string name="free_flick_shape_bounds_hint">The dashed line is the placement box. Move vertices within it; move and resize the box in the main editor. Placement boxes cannot overlap. Apply changes the draft; Save updates actual input.</string>
+    <string name="free_flick_shape_invalid">Edges cannot cross or overlap. Adjust the selected vertex.</string>
 </resources>

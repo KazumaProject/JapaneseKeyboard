@@ -154,7 +154,7 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                     val corners=listOf(r.left to r.top,r.right to r.top,r.left to r.bottom,r.right to r.bottom)
                     corners.indices.minByOrNull { i -> hypot(event.x-corners[i].first,event.y-corners[i].second) }?.takeIf { i -> hypot(event.x-corners[i].first,event.y-corners[i].second)<24*resources.displayMetrics.density }
                 } ?: -1
-                val hit=if(corner>=0) map?.regions?.firstOrNull { it.id==selectedId } else map?.regions?.firstOrNull { it.bounds.contains(x,y,keyWidth,keyHeight) }
+                val hit=if(corner>=0) map?.regions?.firstOrNull { it.id==selectedId } else map?.regions?.firstOrNull { it.contains(x,y,keyWidth,keyHeight) }
                 original=hit;beforeDrag=value;resizeCorner=corner
                 selectedId=hit?.id;tapSelected=hit==null;onSelect(selectedId)
                 parent.requestDisallowInterceptTouchEvent(true);invalidate();return true

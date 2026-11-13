@@ -37,7 +37,13 @@ enum class PopupActionType { TEXT, SWITCH, BACK }
 @Keep
 data class PopupAction(val type: PopupActionType = PopupActionType.TEXT, val text: String = "", val targetMapId: String? = null)
 @Keep
-data class PopupRegion(val id: String, val bounds: PopupBounds, val action: PopupAction = PopupAction(), val label: String = "") {
+data class PopupRegion(
+    val id: String,
+    val bounds: PopupBounds,
+    val action: PopupAction = PopupAction(),
+    val label: String = "",
+    val outline: PopupOutline? = null
+) {
     val isControl get() = action.type != PopupActionType.TEXT
     fun displayLabel() = label.ifEmpty {
         when (action.type) { PopupActionType.TEXT -> action.text; PopupActionType.SWITCH -> "↗"; PopupActionType.BACK -> "↶" }
@@ -48,7 +54,10 @@ data class PopupMap(val id: String, val name: String, val tapText: String, val r
 @Keep
 data class PopupKeyConfig(val keyId: String, val startMapId: String, val maps: List<PopupMap>, val version: Int = 1) {
     fun map(id: String) = maps.firstOrNull { it.id == id }
-    fun withMap(map: PopupMap) = copy(maps = maps.map { if (it.id == map.id) map else it })
+    fun withMap(map: PopupMap): PopupKeyConfig {
+        val updated = maps.map { if (it.id == map.id) map else it }
+        return copy(maps = updated, version = if (updated.any { page -> page.regions.any { it.outline != null } }) maxOf(version, 2) else version)
+    }
 }
 
 enum class PopupConflictType { INVALID, KEY, OVERLAP, TARGET, TRANSITION }
@@ -58,7 +67,7 @@ data class PopupConflict(val type: PopupConflictType, val mapId: String, val reg
 object PopupMapValidator {
     fun conflicts(config: PopupKeyConfig): List<PopupConflict> {
         val result = mutableListOf<PopupConflict>()
-        if (config.version != 1 || config.maps.isEmpty() || config.map(config.startMapId) == null || config.maps.map { it.id }.distinct().size != config.maps.size) {
+        if (config.version !in 1..2 || config.maps.isEmpty() || config.map(config.startMapId) == null || config.maps.map { it.id }.distinct().size != config.maps.size) {
             return listOf(PopupConflict(PopupConflictType.INVALID, config.startMapId))
         }
         val parents = config.maps.associate { target -> target.id to config.maps.filter { source -> source.regions.any { it.action.type == PopupActionType.SWITCH && it.action.targetMapId == target.id } } }
@@ -67,6 +76,7 @@ object PopupMapValidator {
             map.regions.forEachIndexed { index, region ->
                 val b = region.bounds
                 if (listOf(b.left, b.top, b.right, b.bottom).any { !it.isFinite() } || b.width <= 0 || b.height <= 0) result += PopupConflict(PopupConflictType.INVALID, map.id, region.id)
+                if (region.outline != null && (config.version < 2 || !region.outline.isValid())) result += PopupConflict(PopupConflictType.INVALID, map.id, region.id)
                 if (b.intersects(PopupBounds.KEY)) result += PopupConflict(PopupConflictType.KEY, map.id, region.id)
                 map.regions.drop(index + 1).filter { b.intersects(it.bounds) }.forEach { result += PopupConflict(PopupConflictType.OVERLAP, map.id, region.id, map.id, it.id) }
                 if (!region.isControl) return@forEachIndexed
@@ -145,9 +155,9 @@ class PopupMapSession(
     private fun insideKey(x: Float, y: Float) = x >= -.5f && x < .5f && y >= -.5f && y < .5f
     private fun resolve(x: Float, y: Float): PopupRegion? {
         if (!x.isFinite() || !y.isFinite() || insideKey(x,y)) return null
-        currentMap.regions.firstOrNull { it.bounds.contains(x, y, keyWidth, keyHeight) }?.let { return it }
+        currentMap.regions.firstOrNull { it.contains(x, y, keyWidth, keyHeight) }?.let { return it }
         val candidates = currentMap.regions.filter { options.includes(it, history.size > 1) }
-        val distances = candidates.map { it to it.bounds.distanceTo(x,y,keyWidth,keyHeight) }
+        val distances = candidates.map { it to it.distanceTo(x,y,keyWidth,keyHeight) }
         val minimum = distances.minOfOrNull { it.second } ?: return null
         val tied = distances.filter { abs(it.second - minimum) < .001f }.map { it.first }
         return tied.firstOrNull { it.id == selectedRegionId } ?: tied.firstOrNull()
@@ -161,7 +171,7 @@ class PopupMapSession(
 }
 
 object SumirePopupDefaults {
-    // Keep the persisted style ID and v1 map format for existing installations/backups.
+    // Keep the persisted style ID. Default maps remain v1; custom outlines opt into v2.
     const val STYLE = "free-popup"
     private val keys = listOf(Key.KeyA, Key.KeyKA, Key.KeySA, Key.KeyTA, Key.KeyNA, Key.KeyHA, Key.KeyMA, Key.KeyYA, Key.KeyRA, Key.KeyWA)
     private val keyMap = KeyMap()
