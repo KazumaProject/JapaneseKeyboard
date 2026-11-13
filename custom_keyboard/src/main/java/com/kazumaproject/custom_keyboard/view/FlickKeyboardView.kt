@@ -459,6 +459,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         tfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         flickLongPressControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         stickyTfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
+        popupMapControllers.forEach(::applyFreeFlickPopupStyle)
         restoreInputControllersIfNeeded()
     }
 
@@ -671,9 +672,20 @@ class FlickKeyboardView @JvmOverloads constructor(
             keyboardRenderRevision += 1
         }
 
+        popupMapControllers.forEach(::applyFreeFlickPopupStyle)
         if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
         }
+    }
+
+    private fun applyFreeFlickPopupStyle(controller: com.kazumaproject.custom_keyboard.controller.PopupMapInputController) {
+        val style = popupViewStyleSet.tfbi
+        controller.applyPopupViewStyle(
+            style.copy(skinId = keyboardSkinId,
+                backgroundColor = style.backgroundColor ?: customKeyColor.takeIf { themeMode == "custom" },
+                textColor = style.textColor ?: customKeyTextColor.takeIf { themeMode == "custom" }),
+            customSpecialKeyColor.takeIf { themeMode == "custom" },
+            customBorderColor.takeIf { themeMode == "custom" && customBorderEnable })
     }
 
     private fun manipulateColor(color: Int, factor: Float): Int {
@@ -1766,7 +1778,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 onCommit = { text, flick -> dispatchCommittedKeyAction(keyData, KeyAction.Text(text), flick) },
                 onCancel = { cancelTextPreview(keyData) },
                 options = popupMapOptions
-            ).also { it.attach(keyView); popupMapControllers.add(it) }
+            ).also { applyFreeFlickPopupStyle(it); it.attach(keyView); popupMapControllers.add(it) }
         }
         when (keyData.keyType) {
             KeyType.QWERTY -> {

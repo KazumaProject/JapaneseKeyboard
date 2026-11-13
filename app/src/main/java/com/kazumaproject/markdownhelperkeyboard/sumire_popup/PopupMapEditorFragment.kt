@@ -85,7 +85,7 @@ class PopupMapEditorFragment : Fragment() {
             item(button(label(R.string.popup_add_map)) {newMap()},1.25f)
             item(button("⋮") {showMapMenu(null)}.apply {minWidth=dp(40);minimumWidth=dp(40);setPadding(dp(8),0,dp(8),0)},.45f)
         })
-        canvas=PopupMapEditorCanvas(requireContext()).apply {
+        canvas=PopupMapEditorCanvas(requireContext()).apply { applyFreeFlickTheme();
             inputOptions=FreeFlickPreferences.read(requireContext())
             onSelect={ selected -> model.selectedId=selected; showProperties() }
             onChange={ changed -> model.change(changed);refreshCanvas();showProperties() }
@@ -128,6 +128,7 @@ class PopupMapEditorFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         if (editorReady) {
+            canvas.applyFreeFlickTheme()
             canvas.inputOptions=FreeFlickPreferences.read(requireContext())
             runCatching {
                 val saved = repository.load(config.keyId, model.layoutId)

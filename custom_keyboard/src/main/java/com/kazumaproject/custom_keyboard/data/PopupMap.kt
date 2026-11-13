@@ -180,8 +180,8 @@ object SumirePopupDefaults {
         info.tap.toString() to listOfNotNull(info.tap,info.flickLeft,info.flickTop,info.flickRight,info.flickBottom).joinToString("")
     }
     private val slots = listOf(
-        PopupBounds(-1.5f,-.4f,-.6f,.4f), PopupBounds(-.45f,-1.4f,.45f,-.6f),
-        PopupBounds(.6f,-.4f,1.5f,.4f), PopupBounds(-.45f,.6f,.45f,1.4f)
+        PopupBounds(-1.4f,-.4f,-.5f,.4f), PopupBounds(-.45f,-1.3f,.45f,-.5f),
+        PopupBounds(.5f,-.4f,1.4f,.4f), PopupBounds(-.45f,.5f,.45f,1.3f)
     )
     /** Standard 12-key text assignments, with no preconfigured map transitions. */
     fun create(keyId: String): PopupKeyConfig {
