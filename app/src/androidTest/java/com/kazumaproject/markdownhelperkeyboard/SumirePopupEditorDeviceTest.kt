@@ -84,7 +84,7 @@ class SumirePopupEditorDeviceTest {
         await {canvas()!=null && canvas()!!.width>0}
         ins.runOnMainSync {
             val c=canvas()!!
-            val mapSpinner=views().filterIsInstance<Spinner>()[1]
+            val mapSpinner=views().filterIsInstance<Spinner>().single {it.contentDescription==context.getString(R.string.popup_map)}
             mapSpinner.setSelection(c.config!!.maps.indexOfFirst {it.id=="voiced"})
         }
         await {canvas()?.map?.id=="voiced"}
@@ -105,4 +105,44 @@ class SumirePopupEditorDeviceTest {
         }
         assertTrue(SumirePopupRepository(context).load("は").map("voiced")!!.regions.any {it.action.text=="ありがとう"})
     }
+    @Test fun keyboardSelectionKeepsDraftOnCancelAndRecreation() {
+        assumeTrue(context.packageName.endsWith(".popuptest"))
+        SumirePopupRepository(context).save(LegacyPopupFixture.create("は"))
+        ins.startActivitySync(Intent(context,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        await {nav()?.navController?.currentDestination!=null}
+        ins.runOnMainSync {nav()!!.navController.navigate(R.id.popupMapEditorFragment)}
+        await {canvas()?.config!=null && views().any {it is FreeFlickKeyPicker}}
+        fun choose(key: String) {
+            ins.runOnMainSync {
+                val picker=views().filterIsInstance<FreeFlickKeyPicker>().single()
+                val keyboard=picker.keyboard
+                val button=(0 until keyboard.childCount).map(keyboard::getChildAt)
+                    .filterIsInstance<TextView>().single {it.text.toString()==key}
+                assertTrue(button.isEnabled)
+                button.performClick()
+            }
+        }
+        for(key in SumirePopupDefaults.rows.keys) {
+            choose(key)
+            await {canvas()?.config?.keyId==key}
+            ins.runOnMainSync {
+                val keyboard=views().filterIsInstance<FreeFlickKeyPicker>().single().keyboard
+                assertEquals(1,(0 until keyboard.childCount).count {keyboard.getChildAt(it).isSelected})
+            }
+        }
+        choose("は");await {canvas()?.config?.keyId=="は"}
+        ins.runOnMainSync {views().filterIsInstance<TextInputEditText>().single {it.contentDescription==context.getString(R.string.popup_input)}.setText("編集中")}
+        choose("か")
+        val device=androidx.test.uiautomator.UiDevice.getInstance(ins)
+        assertTrue(device.findObject(androidx.test.uiautomator.UiSelector().text(context.getString(R.string.popup_cancel))).waitForExists(5000))
+        device.findObject(androidx.test.uiautomator.UiSelector().text(context.getString(R.string.popup_cancel))).click()
+        await {canvas()?.config?.keyId=="は" && canvas()?.config?.map("normal")?.tapText=="編集中"}
+        ins.runOnMainSync {activity()!!.recreate()}
+        await {canvas()?.config?.keyId=="は" && canvas()?.config?.map("normal")?.tapText=="編集中"}
+        choose("か")
+        device.findObject(androidx.test.uiautomator.UiSelector().text(context.getString(R.string.popup_discard))).click()
+        await {canvas()?.config?.keyId=="か"}
+        ins.runOnMainSync {activity()!!.finish()}
+    }
+
 }

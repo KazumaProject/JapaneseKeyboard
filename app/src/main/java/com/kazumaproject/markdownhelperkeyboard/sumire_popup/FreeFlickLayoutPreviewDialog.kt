@@ -19,7 +19,7 @@ class FreeFlickLayoutPreviewDialog : DialogFragment() {
         val density = resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
         val body = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, dp(12), dp(8)) }
-        val keyPicker = Spinner(requireContext()).apply { contentDescription = getString(R.string.popup_key) }
+        val keyPicker = FreeFlickKeyPicker(requireContext())
         val mapPicker = Spinner(requireContext()).apply { contentDescription = getString(R.string.popup_map) }
         val result = TextView(requireContext()).apply { textSize = 15f; setPadding(0, dp(6), 0, dp(6)) }
         val guide = PopupMapGuideView(requireContext()).apply { applyFreeFlickTheme(); sourceKeyWidth = 100f; sourceKeyHeight = 64f; tapActive = false }
@@ -35,6 +35,7 @@ class FreeFlickLayoutPreviewDialog : DialogFragment() {
         var binding = false
         fun show() {
             val config = layout.keys[keyIndex]
+            keyPicker.showSelection(layout.keys,config.keyId)
             mapIndex = mapIndex.coerceIn(config.maps.indices)
             guide.config = config; guide.map = config.maps[mapIndex]; guide.invalidate()
             trial.showConfig(config, config.startMapId, null, true)
@@ -51,14 +52,9 @@ class FreeFlickLayoutPreviewDialog : DialogFragment() {
             mapPicker.setSelection(mapIndex.coerceIn(layout.keys[keyIndex].maps.indices))
             binding = false; show()
         }
-        keyPicker.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, layout.keys.map { it.keyId })
-        keyPicker.setSelection(keyIndex)
-        keyPicker.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position == keyIndex) return
-                keyIndex = position; mapIndex = 0; entered = ""; maps()
-            }
+        keyPicker.onKeySelected = { key ->
+            val position=layout.keys.indexOfFirst {it.keyId==key}
+            if(position>=0 && position!=keyIndex) {keyIndex=position;mapIndex=0;entered="";maps()}
         }
         mapPicker.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -72,11 +68,12 @@ class FreeFlickLayoutPreviewDialog : DialogFragment() {
             if (text != null) entered += text
             result.text = "${getString(R.string.popup_result)}：$entered\n" + session.mapPath.joinToString(" → ") { id -> layout.keys[keyIndex].map(id)?.name.orEmpty() }
         }
+        body.addView(TextView(requireContext()).apply {setText(R.string.free_flick_choose_key)})
         body.addView(keyPicker); body.addView(mapPicker)
         body.addView(stage, LinearLayout.LayoutParams(-1, dp(240)))
         body.addView(result); body.addView(toggle)
         maps()
-        return MaterialAlertDialogBuilder(requireContext()).setTitle(layout.name).setView(body).setPositiveButton(android.R.string.ok, null).create()
+        return MaterialAlertDialogBuilder(requireContext()).setTitle(layout.name).setView(androidx.core.widget.NestedScrollView(requireContext()).apply {addView(body)}).setPositiveButton(android.R.string.ok, null).create()
     }
     override fun onSaveInstanceState(outState: Bundle) {
         for (key in listOf("key", "map")) outState.putInt(key, requireArguments().getInt(key))
