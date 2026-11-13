@@ -443,6 +443,7 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_qwerty, R.id.qwertyPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty_english, R.id.qwertyEnglishPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty_romaji, R.id.qwertyRomajiPreferenceFragment, SettingCategory.INPUT_METHOD))
+        add(PreferenceXmlSource(R.xml.pref_free_flick, R.id.freeFlickSettingsFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_sumire, R.id.sumirePreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_custom, R.id.customKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_tablet, R.id.tabletPreferenceFragment, SettingCategory.INPUT_METHOD))
@@ -490,6 +491,7 @@ object SettingSearchIndex {
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
                             key != "candidate_display_preview" &&
+                            key != "sumire_free_flick_preview" &&
                             !key.startsWith("setting_route_canonical_") &&
                             !key.startsWith("settings_theme_enable_") &&
                             !key.startsWith("settings_theme_unavailable_") &&
@@ -518,7 +520,7 @@ object SettingSearchIndex {
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = highlightKey,
-                                    destinationType = if (isOfficial) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
+                                    destinationType = if (isOfficial || source.xmlRes == R.xml.pref_free_flick) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
                                         context = context,
                                         parser = parser,
                                         key = key,

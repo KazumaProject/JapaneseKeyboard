@@ -43,7 +43,7 @@ class SumirePopupEditorDeviceTest {
     @Test fun newAndLegacySettingsOpenTheSameEditorAndEditsPersist() {
         assumeTrue(context.packageName.endsWith(".popuptest"))
         val repository=SumirePopupRepository(context)
-        repository.save(SumirePopupDefaults.create("は"))
+        repository.save(LegacyPopupFixture.create("は"))
         for(modern in listOf(true,false)) {
             PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean("setting_use_new_home_screen_preference",modern).commit()
             ins.startActivitySync(Intent(context,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -62,7 +62,7 @@ class SumirePopupEditorDeviceTest {
                     assertTrue("Search result must open the editor",target?.performClick()==true)
                 }
             } else {
-                await {nav()?.childFragmentManager?.primaryNavigationFragment is SumirePreferenceFragment}
+                await {(nav()?.childFragmentManager?.primaryNavigationFragment as? SumirePreferenceFragment)?.findPreference<Preference>("sumire_popup_map_editor_preference")!=null}
                 ins.runOnMainSync {(nav()!!.childFragmentManager.primaryNavigationFragment as SumirePreferenceFragment).findPreference<Preference>("sumire_popup_map_editor_preference")!!.performClick()}
             }
             await {canvas()!=null && canvas()!!.config!=null}
@@ -77,7 +77,7 @@ class SumirePopupEditorDeviceTest {
     }
     @Test fun popupTextDragConstraintsAndDraftSurviveRecreation() {
         assumeTrue(context.packageName.endsWith(".popuptest"))
-        SumirePopupRepository(context).save(SumirePopupDefaults.create("は"))
+        SumirePopupRepository(context).save(LegacyPopupFixture.create("は"))
         ins.startActivitySync(Intent(context,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         await {nav()?.navController?.currentDestination!=null}
         ins.runOnMainSync {nav()!!.navController.navigate(R.id.popupMapEditorFragment)}

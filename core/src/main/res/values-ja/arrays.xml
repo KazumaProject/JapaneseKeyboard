@@ -30,7 +30,7 @@
         <item>２段フリック入力</item>
         <item>中央開始ポインターフリック入力</item>
         <item>ドーナツ入力</item>
-        <item>自由配置popup入力</item>
+        <item>フリーフリック</item>
     </string-array>
 
     <string-array name="sumire_keyboard_style_values">

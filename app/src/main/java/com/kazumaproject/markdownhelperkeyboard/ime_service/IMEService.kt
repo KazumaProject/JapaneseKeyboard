@@ -1142,6 +1142,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     refreshSumireLayouts(hiraganaOnly = false)
                 }
             }
+            if (key == null || key.startsWith(com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.PREFIX)) {
+                runOnMainThread {
+                    val options=com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.read(this)
+                    mainLayoutBinding?.customLayoutDefault?.setPopupMapOptions(options)
+                    floatingKeyboardBinding?.customLayoutFloating?.setPopupMapOptions(options)
+                }
+            }
             if (key == null || key.startsWith(com.kazumaproject.markdownhelperkeyboard.sumire_popup.SumirePopupRepository.PREFIX)) {
                 runOnMainThread { refreshSumireLayouts(hiraganaOnly = true) }
             }
@@ -15837,6 +15844,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.bindRuntimeGestureSettings(runtimeGestureSettingsSource)
         val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
         val tfbiFlickStartPositionMode = appPreference.flick_tfbi_flick_start_position
+        flickView.setPopupMapOptions(com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.read(this))
         flickView.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
         flickView.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         if (isFloatingView) {

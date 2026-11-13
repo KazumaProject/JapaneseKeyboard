@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="popup_editor_title">popupマップ編集</string>
-    <string name="popup_style">自由配置popup入力</string>
-    <string name="popup_editor_entry">popupマップを編集</string>
+    <string name="popup_editor_title">フリーフリックのマップ編集</string>
+    <string name="popup_style">フリーフリック</string>
+    <string name="popup_editor_entry">フリーフリックのマップを編集</string>
     <string name="popup_editor_summary">日本語かなキーのタップ・文字popup・マップ切替を編集します</string>
-    <string name="popup_inactive">この設定は「自由配置popup入力」で使用します。編集だけでは入力スタイルは変わりません。</string>
+    <string name="popup_inactive">この設定は「フリーフリック」で使用します。編集だけでは入力スタイルは変わりません。</string>
     <string name="popup_key">対象キー</string>
     <string name="popup_map">マップ</string>
     <string name="popup_edit">編集</string>
@@ -56,4 +56,26 @@
     <string name="popup_collision_detail">%1$s ／ %2$s と競合するため、ここには配置できません。</string>
     <string name="popup_created_unlinked">マップを作成しました。切替元と操作枠が競合するため、配置を調整してから切替先に指定してください。</string>
     <string name="popup_method_scope">%1$s（英字・数字用）。日本語かなキーは枠を選び、指を離すと入力します。</string>
+    <string name="free_flick_settings">フリーフリック設定</string>
+    <string name="free_flick_settings_summary">文字や切替先、popupの範囲を自由に編集できます</string>
+    <string name="free_flick_detection">枠外での判定</string>
+    <string name="free_flick_nearest">枠外では最寄りを選ぶ</string>
+    <string name="free_flick_nearest_summary">オン：下で選んだ種類のうち、枠までの距離が最短のpopupを選びます。オフ：枠内だけ反応します。キー内のタップ範囲は変わりません。</string>
+    <string name="free_flick_nearest_text">文字入力の最寄り判定</string>
+    <string name="free_flick_nearest_switch">マップ切替の最寄り判定</string>
+    <string name="free_flick_nearest_back">戻るの最寄り判定</string>
+    <string name="free_flick_display">popupの表示</string>
+    <string name="free_flick_presentation">popupの表示位置</string>
+    <string name="free_flick_around">キー周辺</string>
+    <string name="free_flick_above">キー上部のガイド</string>
+    <string name="free_flick_preview_hint">表示と入力のプレビュー。「は」から動かして試せます。上部ガイドでも操作の基準は元のキーです。</string>
+    <string name="free_flick_template">テンプレートを適用</string>
+    <string name="free_flick_template_12">12キーフリック</string>
+    <string name="free_flick_template_confirm">「%1$s」キーのすべてのマップを、通常の12キーフリックに置き換えます。保存するまで実入力には反映されません。取り消すこともできます。</string>
+    <string name="free_flick_template_hint">12キーと同じ通常マップです。枠を追加して文字やマップ切替を設定できます。</string>
+    <string name="free_flick_try_nearest">枠外では、有効な種類の最寄りpopupを選びます。設定はフリーフリック設定で変更できます。</string>
+    <string name="two_step_popup_title">2段フリック入力</string>
+    <string name="two_step_popup_summary">2段フリック入力のpopupの大きさ、文字サイズ、表示位置を設定します</string>
+    <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>
+    <string-array name="free_flick_presentation_values"><item>around_key</item><item>guide_above_key</item></string-array>
 </resources>

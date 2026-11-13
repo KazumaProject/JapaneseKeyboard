@@ -63,6 +63,10 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
                 method.summary = if (free) getString(R.string.popup_method_scope, method.entry) else method.entry
             }
         }
+        findPreference<Preference>("sumire_free_flick_settings")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.freeFlickSettingsFragment)
+            true
+        }
         findPreference<Preference>("sumire_popup_map_editor_preference")?.setOnPreferenceClickListener {
             navigateSafely(R.id.popupMapEditorFragment)
             true

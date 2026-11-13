@@ -162,6 +162,11 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val independentTextPreviews = linkedMapOf<KeyData, FlickTextSelection>()
     private val independentLastCoordinates = mutableMapOf<Int, Pair<Float, Float>>()
 
+    private var popupMapOptions = com.kazumaproject.custom_keyboard.data.PopupMapInputOptions()
+    fun setPopupMapOptions(value: com.kazumaproject.custom_keyboard.data.PopupMapInputOptions) {
+        popupMapOptions=value
+        popupMapControllers.forEach { it.setOptions(value) }
+    }
     private val popupMapControllers = mutableListOf<com.kazumaproject.custom_keyboard.controller.PopupMapInputController>()
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
@@ -1713,7 +1718,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                 onPress = { notifyTextPress(keyData, it) },
                 onSelection = { text, flick -> updateTextPreview(keyData, text, flick) },
                 onCommit = { text, flick -> dispatchCommittedKeyAction(keyData, KeyAction.Text(text), flick) },
-                onCancel = { cancelTextPreview(keyData) }
+                onCancel = { cancelTextPreview(keyData) },
+                options = popupMapOptions
             ).also { it.attach(keyView); popupMapControllers.add(it) }
         }
         when (keyData.keyType) {

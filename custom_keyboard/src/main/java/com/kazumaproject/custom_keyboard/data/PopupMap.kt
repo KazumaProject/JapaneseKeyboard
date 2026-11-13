@@ -3,6 +3,10 @@ package com.kazumaproject.custom_keyboard.data
 import androidx.annotation.Keep
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.hypot
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyInfo
+import com.kazumaproject.core.domain.key.KeyMap
 
 /** Coordinates are key-width/key-height units relative to the original key's centre. */
 @Keep
@@ -17,6 +21,13 @@ data class PopupBounds(val left: Float, val top: Float, val right: Float, val bo
         val dx = ((abs(x - (left + right) / 2) - width / 2) * keyWidth + radius).coerceAtLeast(0f)
         val dy = ((abs(y - (top + bottom) / 2) - height / 2) * keyHeight + radius).coerceAtLeast(0f)
         return dx * dx + dy * dy <= radius * radius
+    }
+    /** Euclidean distance to the drawn rounded rectangle, in physical pixels. */
+    fun distanceTo(x: Float, y: Float, keyWidth: Float, keyHeight: Float): Float {
+        val radius = min(width * keyWidth, height * keyHeight) * .16f
+        val dx = abs((x - (left + right) / 2) * keyWidth) - width * keyWidth / 2 + radius
+        val dy = abs((y - (top + bottom) / 2) * keyHeight) - height * keyHeight / 2 + radius
+        return (hypot(dx.coerceAtLeast(0f), dy.coerceAtLeast(0f)) + min(maxOf(dx, dy), 0f) - radius).coerceAtLeast(0f)
     }
     companion object { val KEY = PopupBounds(-.5f, -.5f, .5f, .5f) }
 }
@@ -74,56 +85,101 @@ object PopupMapValidator {
     }
 }
 
+/** Runtime preferences are independent of the per-key saved maps. */
+data class PopupMapInputOptions(
+    val nearestEnabled: Boolean = true,
+    val nearestText: Boolean = true,
+    val nearestSwitch: Boolean = false,
+    val nearestBack: Boolean = false,
+    val presentation: PopupMapPresentation = PopupMapPresentation.AROUND_KEY
+) {
+    fun includes(region: PopupRegion, canGoBack: Boolean): Boolean = nearestEnabled && when (region.action.type) {
+        PopupActionType.TEXT -> nearestText && region.action.text.isNotEmpty()
+        PopupActionType.SWITCH -> nearestSwitch
+        PopupActionType.BACK -> nearestBack && canGoBack
+    }
+}
+
+enum class PopupMapPresentation(val preferenceValue: String) {
+    AROUND_KEY("around_key"), GUIDE_ABOVE_KEY("guide_above_key");
+    companion object {
+        fun fromPreference(value: String?) = entries.firstOrNull { it.preferenceValue == value } ?: AROUND_KEY
+    }
+}
+
 /** Stateful selection engine shared by the real IME and the editor's Try tab. */
-class PopupMapSession(val config: PopupKeyConfig, private val keyWidth: Float = 1f, private val keyHeight: Float = 1f) {
+class PopupMapSession(
+    val config: PopupKeyConfig,
+    private val keyWidth: Float = 1f,
+    private val keyHeight: Float = 1f,
+    val options: PopupMapInputOptions = PopupMapInputOptions()
+) {
     private val history = mutableListOf(config.startMapId)
     val currentMap get() = requireNotNull(config.map(history.last()))
     val mapPath get() = history.toList()
     var selectedRegionId: String? = null; private set
     var selectedText: String? = null; private set
     var isTap = true; private set
+    private var arrivalControl: String? = null
     init { require(PopupMapValidator.conflicts(config).isEmpty()); select(0f, 0f) }
     fun move(x: Float, y: Float) {
-        val region = currentMap.regions.firstOrNull { it.bounds.contains(x, y, keyWidth, keyHeight) }
-        if (region?.isControl == true) {
+        if (!x.isFinite() || !y.isFinite()) return
+        val region = resolve(x, y)
+        if (arrivalControl != null && region?.id != arrivalControl) arrivalControl = null
+        if (region?.isControl == true && region.id != arrivalControl) {
+            val before = history.toList()
             when (region.action.type) {
                 PopupActionType.SWITCH -> history += requireNotNull(region.action.targetMapId)
                 PopupActionType.BACK -> if (history.size > 1) history.removeAt(history.lastIndex)
                 else -> Unit
             }
+            if (history != before) {
+                selectedRegionId = null
+                // A newly displayed control must be exited and entered again. Text needs no reentry.
+                arrivalControl = resolve(x, y)?.takeIf { it.isControl }?.id
+            }
         }
-        // One transition per position. Text immediately under the finger is selectable.
         select(x, y)
     }
     fun release(x: Float, y: Float): String? { select(x, y); return selectedText?.takeIf { it.isNotEmpty() } }
+    private fun insideKey(x: Float, y: Float) = x >= -.5f && x < .5f && y >= -.5f && y < .5f
+    private fun resolve(x: Float, y: Float): PopupRegion? {
+        if (!x.isFinite() || !y.isFinite() || insideKey(x,y)) return null
+        currentMap.regions.firstOrNull { it.bounds.contains(x, y, keyWidth, keyHeight) }?.let { return it }
+        val candidates = currentMap.regions.filter { options.includes(it, history.size > 1) }
+        val distances = candidates.map { it to it.bounds.distanceTo(x,y,keyWidth,keyHeight) }
+        val minimum = distances.minOfOrNull { it.second } ?: return null
+        val tied = distances.filter { abs(it.second - minimum) < .001f }.map { it.first }
+        return tied.firstOrNull { it.id == selectedRegionId } ?: tied.firstOrNull()
+    }
     private fun select(x: Float, y: Float) {
-        val region = currentMap.regions.firstOrNull { it.bounds.contains(x, y, keyWidth, keyHeight) }
+        val region = resolve(x, y)
         selectedRegionId = region?.id
-        isTap = x >= -.5f && x < .5f && y >= -.5f && y < .5f
+        isTap = insideKey(x,y)
         selectedText = if (isTap) currentMap.tapText else region?.takeIf { !it.isControl }?.action?.text
     }
 }
 
 object SumirePopupDefaults {
+    // Keep the persisted style ID and v1 map format for existing installations/backups.
     const val STYLE = "free-popup"
-    val rows = linkedMapOf("あ" to "あいうえお", "か" to "かきくけこ", "さ" to "さしすせそ", "た" to "たちつてと", "な" to "なにぬねの", "は" to "はひふへほ", "ま" to "まみむめも", "や" to "やゆよ", "ら" to "らりるれろ", "わ" to "わをんー")
-    private val voiced = mapOf("か" to "がぎぐげご", "さ" to "ざじずぜぞ", "た" to "だぢづでど", "は" to "ばびぶべぼ")
-    private val slots = listOf(PopupBounds(-1.4f,-1.1f,-.6f,-.3f), PopupBounds(-.4f,-1.4f,.4f,-.6f), PopupBounds(.6f,-1.1f,1.4f,-.3f), PopupBounds(-.4f,-2.4f,.4f,-1.6f))
+    private val keys = listOf(Key.KeyA, Key.KeyKA, Key.KeySA, Key.KeyTA, Key.KeyNA, Key.KeyHA, Key.KeyMA, Key.KeyYA, Key.KeyRA, Key.KeyWA)
+    private val keyMap = KeyMap()
+    private val definitions = keys.map { keyMap.getKeyInfoJapanese(it, false) as KeyInfo.KeyTapFlickInfo }
+    val rows = definitions.associateTo(linkedMapOf()) { info ->
+        info.tap.toString() to listOfNotNull(info.tap,info.flickLeft,info.flickTop,info.flickRight,info.flickBottom).joinToString("")
+    }
+    private val slots = listOf(
+        PopupBounds(-1.5f,-.4f,-.6f,.4f), PopupBounds(-.45f,-1.4f,.45f,-.6f),
+        PopupBounds(.6f,-.4f,1.5f,.4f), PopupBounds(-.45f,.6f,.45f,1.4f)
+    )
+    /** Standard 12-key text assignments, with no preconfigured map transitions. */
     fun create(keyId: String): PopupKeyConfig {
-        val row = rows.getValue(keyId)
-        fun page(id: String, chars: String): PopupMap {
-            val regions = chars.drop(1).mapIndexed { index, char -> PopupRegion("$id-$index", slots[index], PopupAction(text = char.toString())) }.toMutableList()
-            if (id != "normal") regions += PopupRegion("$id-back", PopupBounds(-.4f,-3.4f,.4f,-2.6f), PopupAction(PopupActionType.BACK), "戻る")
-            return PopupMap(id, chars.first().toString() + "行", chars.first().toString(), regions)
+        val info = definitions.first { it.tap.toString() == keyId }
+        val characters = listOf(info.flickLeft, info.flickTop, info.flickRight, info.flickBottom)
+        val regions = characters.mapIndexedNotNull { index, character ->
+            character?.let { PopupRegion("normal-$index", slots[index], PopupAction(text=it.toString())) }
         }
-        val normal = page("normal", row).copy(name = "通常")
-        val maps = mutableListOf(normal)
-        voiced[keyId]?.let { maps += page("voiced", it) }
-        if (keyId == "は") maps += page("semi", "ぱぴぷぺぽ")
-        val controls = maps.drop(1).mapIndexed { index, target ->
-            val x = if (index == 0) -1.4f else .6f
-            PopupRegion("open-${target.id}", PopupBounds(x,-2.4f,x+.8f,-1.6f), PopupAction(PopupActionType.SWITCH, targetMapId = target.id), target.name)
-        }
-        return PopupKeyConfig(keyId, "normal", listOf(normal.copy(regions = normal.regions + controls)) + maps.drop(1))
+        return PopupKeyConfig(keyId,"normal",listOf(PopupMap("normal","通常",info.tap.toString(),regions)))
     }
 }

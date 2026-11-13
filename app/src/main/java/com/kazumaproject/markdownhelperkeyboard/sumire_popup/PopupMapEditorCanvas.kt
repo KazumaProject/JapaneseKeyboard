@@ -12,11 +12,22 @@ import com.google.android.material.R
 import com.google.android.material.color.MaterialColors
 import com.kazumaproject.custom_keyboard.data.*
 import com.kazumaproject.custom_keyboard.view.PopupMapView
+import com.kazumaproject.custom_keyboard.view.PopupMapGuideView
+import com.kazumaproject.custom_keyboard.view.TfbiGestureArrowView
+import com.kazumaproject.custom_keyboard.view.compactFlickGuideSize
 import kotlin.math.ceil
 import kotlin.math.hypot
 
 @SuppressLint("ClickableViewAccessibility")
 class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
+    var inputOptions = PopupMapInputOptions()
+        set(value) {
+            if(field != value) {trial=null;fingerPosition=null;parent?.requestDisallowInterceptTouchEvent(false)}
+            field=value;invalidate()
+        }
+    private val guide by lazy { PopupMapGuideView(context) }
+    private val arrow by lazy { TfbiGestureArrowView(context).apply {setColor(0xff1976d2.toInt())} }
+    private var fingerPosition: Pair<Float,Float>? = null
     var config: PopupKeyConfig? = null
     var mapId = "normal"
     var tapSelected = true
@@ -39,7 +50,7 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
     fun showConfig(value: PopupKeyConfig, pageId: String, selection: String?, test: Boolean) {
         config = value; mapId = pageId; map = value.map(pageId)
         selectedId = selection; tapSelected = selection == null; trying = test
-        if (!test) trial = null
+        if (!test) {trial = null;fingerPosition=null}
         invalidate()
     }
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -54,7 +65,24 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
     }
     fun canPlace(value: PopupKeyConfig, bounds: PopupBounds): Boolean = inViewport(bounds) && PopupMapValidator.conflicts(value).isEmpty()
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
+        if (!trying || inputOptions.presentation == PopupMapPresentation.AROUND_KEY) {
+            super.onDraw(canvas)
+        } else {
+            val size=compactFlickGuideSize(keyWidth.toInt(),keyHeight.toInt(),resources.displayMetrics.density)
+            val panelWidth=minOf(width-8*resources.displayMetrics.density,size.width.toFloat()).toInt().coerceAtLeast(1)
+            val panelHeight=minOf(size.height,(originY-keyHeight/2-4*resources.displayMetrics.density).toInt().coerceAtLeast(1))
+            val panelTop=(originY-keyHeight/2-4*resources.displayMetrics.density-panelHeight).coerceAtLeast(0f)
+            guide.apply {
+                config=this@PopupMapEditorCanvas.config;map=this@PopupMapEditorCanvas.map
+                selectedId=this@PopupMapEditorCanvas.selectedId;tapActive=this@PopupMapEditorCanvas.tapSelected
+                sourceKeyWidth=this@PopupMapEditorCanvas.keyWidth;sourceKeyHeight=this@PopupMapEditorCanvas.keyHeight
+                fingerPosition=this@PopupMapEditorCanvas.fingerPosition
+                title=trial?.mapPath?.joinToString(" → ") { id -> config?.map(id)?.name.orEmpty() } ?: map?.name.orEmpty()
+                measure(MeasureSpec.makeMeasureSpec(panelWidth,MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(panelHeight,MeasureSpec.EXACTLY))
+                layout(0,0,panelWidth,panelHeight)
+            }
+            val saved=canvas.save();canvas.translate((width-panelWidth)/2f,panelTop);guide.draw(canvas);canvas.restoreToCount(saved)
+        }
         val primary=MaterialColors.getColor(this,androidx.appcompat.R.attr.colorPrimary)
         val foreground=MaterialColors.getColor(this,R.attr.colorOnSurface)
         pen.style=Paint.Style.FILL
@@ -68,6 +96,12 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
         val tap=map?.tapText.orEmpty().ifEmpty { "—" }
         val text=android.text.TextUtils.ellipsize(tap,android.text.TextPaint(pen),key.width()-12,android.text.TextUtils.TruncateAt.END).toString()
         canvas.drawText(text,key.centerX(),key.centerY()-(pen.ascent()+pen.descent())/2,pen)
+        if (trying && inputOptions.presentation==PopupMapPresentation.GUIDE_ABOVE_KEY) {
+            arrow.setDirection(guide.pointerDirection())
+            arrow.measure(MeasureSpec.makeMeasureSpec(keyWidth.toInt(),MeasureSpec.EXACTLY),MeasureSpec.makeMeasureSpec(keyHeight.toInt(),MeasureSpec.EXACTLY))
+            arrow.layout(0,0,keyWidth.toInt(),keyHeight.toInt())
+            val saved=canvas.save();canvas.translate(key.left,key.top);arrow.draw(canvas);canvas.restoreToCount(saved)
+        }
         if (!trying) {
             config?.maps?.forEach { source -> source.regions.filter { it.action.type==PopupActionType.SWITCH && it.action.targetMapId==mapId }.forEach {
                 pen.style=Paint.Style.STROKE;pen.strokeWidth=resources.displayMetrics.density
@@ -91,17 +125,22 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                 MotionEvent.ACTION_DOWN -> {
                     if (x !in -.5f.. .5f || y !in -.5f.. .5f) return true
                     parent.requestDisallowInterceptTouchEvent(true)
-                    trial=PopupMapSession(value,keyWidth,keyHeight)
+                    trial=PopupMapSession(value,keyWidth,keyHeight,inputOptions)
+                    fingerPosition=x to y
                 }
                 MotionEvent.ACTION_MOVE -> trial?.let { active ->
-                    for(i in 0 until event.historySize) active.move((event.getHistoricalX(i)-originX)/keyWidth,(event.getHistoricalY(i)-originY)/keyHeight)
+                    for(i in 0 until event.historySize) {
+                        val hx=(event.getHistoricalX(i)-originX)/keyWidth;val hy=(event.getHistoricalY(i)-originY)/keyHeight
+                        active.move(hx,hy)
+                    }
+                    fingerPosition=x to y
                     active.move(x,y)
                 }
                 MotionEvent.ACTION_UP -> trial?.let { active ->
                     val output=active.release(x,y);onTrial(output,active)
-                    trial=null;parent.requestDisallowInterceptTouchEvent(false)
+                    trial=null;fingerPosition=null;parent.requestDisallowInterceptTouchEvent(false)
                 }
-                MotionEvent.ACTION_CANCEL -> {trial=null;parent.requestDisallowInterceptTouchEvent(false)}
+                MotionEvent.ACTION_CANCEL -> {trial=null;fingerPosition=null;parent.requestDisallowInterceptTouchEvent(false)}
             }
             trial?.let { map=it.currentMap;selectedId=it.selectedRegionId;tapSelected=it.isTap;onTrial(null,it) }
             if(trial==null) {map=value.map(mapId);selectedId=null;tapSelected=true}
