@@ -258,6 +258,11 @@
         android:label="@string/free_flick_settings" />
 
     <fragment
+        android:id="@+id/freeFlickLayoutsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickLayoutsFragment"
+        android:label="@string/free_flick_layouts" />
+
+    <fragment
         android:id="@+id/popupMapEditorFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment"
         android:label="@string/popup_editor_title" />
