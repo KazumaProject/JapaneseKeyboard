@@ -95,7 +95,7 @@ internal class PopupMapGuideHost(
         }
         lastPlacement=next
     }
-    fun updatePointer() {arrow.setDirection(view.pointerDirection());view.invalidate()}
+    fun updatePointer() {arrow.setColor(view.popupHighlightColor);arrow.setDirection(view.pointerDirection());view.invalidate()}
     private fun positionArrow() {
         val key=anchor ?: return
         val host=arrowOverlay.currentHost ?: return
