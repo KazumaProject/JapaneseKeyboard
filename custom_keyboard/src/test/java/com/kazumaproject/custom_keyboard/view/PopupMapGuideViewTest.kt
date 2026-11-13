@@ -143,4 +143,27 @@ class PopupMapGuideViewTest {
         assertFalse("Long press must reveal additional contours",single.sameAs(expanded))
     }
 
+    @Test fun pointerNeverCoversASelectedPopupLabel() {
+        val theme=ContextThemeWrapper(ApplicationProvider.getApplicationContext(),com.google.android.material.R.style.Theme_Material3_DayNight)
+        val original=SumirePopupDefaults.create("は")
+        val region=original.maps.single().regions.first().copy(action=PopupAction(text="い"),outline=PopupOutline())
+        val page=original.maps.single().copy(regions=listOf(region))
+        val view=PopupMapGuideView(theme).apply {
+            config=original.withMap(page);map=page;selectedId=region.id;tapActive=false
+            visibleRegionIds=setOf(region.id);tapPopupVisible=false
+            applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100,20f,
+                backgroundColor=0xff243648.toInt(),textColor=0xffffdd88.toInt()),0xff965432.toInt())
+            measure(View.MeasureSpec.makeMeasureSpec(248,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(221,View.MeasureSpec.EXACTLY))
+            layout(0,0,248,221)
+        }
+        fun render()=Bitmap.createBitmap(248,221,Bitmap.Config.ARGB_8888).also {view.draw(Canvas(it))}
+        val clear=render()
+        view.fingerPosition=(region.bounds.left+region.bounds.right)/2 to (region.bounds.top+region.bounds.bottom)/2
+        val pointing=render()
+        val b=region.labelBounds(view.keyWidth,view.keyHeight)
+        for(y in (view.originY+b.top*view.keyHeight).toInt()+3 until (view.originY+b.bottom*view.keyHeight).toInt()-3)
+            for(x in (view.originX+b.left*view.keyWidth).toInt()+3 until (view.originX+b.right*view.keyWidth).toInt()-3)
+                assertEquals("The position marker must leave the popup label readable at $x,$y",clear.getPixel(x,y),pointing.getPixel(x,y))
+    }
+
 }
