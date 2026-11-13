@@ -790,6 +790,8 @@
     <string name="template_toggle_kana">Kana input (toggle)</string>
     <string name="template_flick_english_cursor">English input (cursor)</string>
     <string name="template_qwerty">QWERTY</string>
+    <string name="template_qwerty_number">QWERTY (Numbers)</string>
+    <string name="template_qwerty_symbol">QWERTY (Symbols)</string>
     <string name="template_empty_5x4_flexible">Empty 5x4 Flexible Layout</string>
     <string name="template_number">Number input</string>
     <string name="editor_place_half_key">Half key</string>
