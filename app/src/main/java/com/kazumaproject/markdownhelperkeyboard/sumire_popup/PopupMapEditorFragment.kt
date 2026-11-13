@@ -74,6 +74,7 @@ class PopupMapEditorFragment : Fragment() {
             item(button("⋮") {showMapMenu(null)}.apply {minWidth=dp(40);minimumWidth=dp(40);setPadding(dp(8),0,dp(8),0)},.45f)
         })
         canvas=PopupMapEditorCanvas(requireContext()).apply {
+            inputOptions=FreeFlickPreferences.read(requireContext())
             onSelect={ selected -> model.selectedId=selected; showProperties() }
             onChange={ changed -> model.change(changed);refreshCanvas();showProperties() }
             onBlocked={ conflict -> status.text=conflictMessage(conflict) }
@@ -91,6 +92,10 @@ class PopupMapEditorFragment : Fragment() {
             item(button(label(R.string.popup_add)) { addPopup() },1f)
             item(button(label(R.string.popup_undo)) { model.undo();refresh() },1f)
         })
+        content.addView(button(label(R.string.free_flick_template)) { applyTemplate() })
+        content.addView(button(label(R.string.free_flick_settings)) {
+            findNavController().navigate(R.id.freeFlickSettingsFragment)
+        })
         installSelectors()
         refresh()
         return scroll
@@ -99,6 +104,21 @@ class PopupMapEditorFragment : Fragment() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner,object:OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { leaveEditor() }
         })
+    }
+    override fun onResume() {
+        super.onResume()
+        if (::canvas.isInitialized) canvas.inputOptions=FreeFlickPreferences.read(requireContext())
+    }
+    private fun applyTemplate() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.free_flick_template_12)
+            .setMessage(getString(R.string.free_flick_template_confirm,config.keyId))
+            .setNegativeButton(R.string.popup_cancel,null)
+            .setPositiveButton(R.string.popup_apply) {_,_->
+                model.change(SumirePopupDefaults.create(config.keyId))
+                model.mapId=config.startMapId;model.path=arrayListOf();model.selectedId=null;model.trying=false
+                refresh();status.text=label(R.string.free_flick_template_hint)
+            }.show()
     }
     private fun adapter(items: List<String>) = ArrayAdapter(requireContext(),android.R.layout.simple_spinner_dropdown_item,items)
     private fun installSelectors() {
@@ -133,7 +153,7 @@ class PopupMapEditorFragment : Fragment() {
         breadcrumb.text=(listOf(config.keyId)+model.path.mapNotNull { config.map(it)?.name }+page.name).joinToString(" ／ ")
         status.text=when {
             repository.hasInvalidSavedConfig(config.keyId) -> label(R.string.popup_invalid_saved)
-            model.trying -> label(R.string.popup_try_hint)
+            model.trying -> label(if(canvas.inputOptions.nearestEnabled) R.string.free_flick_try_nearest else R.string.popup_try_hint)
             config.maps.any { source -> source.regions.any { it.action.type==PopupActionType.SWITCH && it.action.targetMapId==model.mapId } } -> label(R.string.popup_transition_hint)
             else -> label(R.string.popup_hint)
         }

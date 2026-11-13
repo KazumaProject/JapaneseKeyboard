@@ -253,6 +253,11 @@
         android:label="@string/qwerty_romaji_category_title" />
 
     <fragment
+        android:id="@+id/freeFlickSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickSettingsFragment"
+        android:label="@string/free_flick_settings" />
+
+    <fragment
         android:id="@+id/popupMapEditorFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment"
         android:label="@string/popup_editor_title" />

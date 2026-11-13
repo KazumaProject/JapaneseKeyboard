@@ -10,6 +10,7 @@ import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiGestureArrowView
 import com.kazumaproject.custom_keyboard.view.TfbiGuidePopupView
+import com.kazumaproject.custom_keyboard.view.compactFlickGuideSize
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -59,10 +60,9 @@ internal class TfbiGuidePopupHost(
         arrow.setDirection(direction)
 
         anchorView = anchor
-        val scale = style.sizeScalePercent.coerceIn(50, 200) / 100f
-        val baseSize = min(anchor.width, anchor.height).coerceAtLeast(1)
-        guideWidth = (baseSize * 1.85f * scale).roundToInt().coerceAtLeast(dp(72f))
-        guideHeight = (baseSize * 1.65f * scale).roundToInt().coerceAtLeast(dp(68f))
+        val size=compactFlickGuideSize(anchor.width,anchor.height,context.resources.displayMetrics.density,style.sizeScalePercent)
+        guideWidth=size.width
+        guideHeight=size.height
         currentGapPx = dp(4f)
 
         val host = preferredHostProvider()

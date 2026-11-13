@@ -180,7 +180,7 @@ class FlickKeyboardPopupStyleListFragment : Fragment() {
             FlickTarget.DIRECTIONAL to ("通常入力" to "通常入力の方向別ポップアップ"),
             FlickTarget.CROSS to ("長押し、特殊キー" to "キーを長押し、特殊なキーをフリックしたときに表示されるポップアップ"),
             FlickTarget.STANDARD to ("サークル入力" to "サークル入力のポップアップ"),
-            FlickTarget.TFBI to ("２段 / ３段フリック入力" to "２段フリック入力・３段フリック入力のポップアップ"),
+            FlickTarget.TFBI to (getString(R.string.two_step_popup_title) to getString(R.string.two_step_popup_summary)),
         ).forEach { (target, texts) ->
             root.addView(listRow(texts.first, texts.second) {
                 findNavController().navigate(
@@ -189,6 +189,9 @@ class FlickKeyboardPopupStyleListFragment : Fragment() {
                 )
             })
         }
+        root.addView(listRow(getString(R.string.popup_style),getString(R.string.free_flick_settings_summary)) {
+            findNavController().navigate(R.id.freeFlickSettingsFragment)
+        })
         return scroll(root)
     }
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference app:singleLineTitle="false" android:key="sumire_popup_map_editor_preference" android:title="@string/popup_editor_entry" android:summary="@string/popup_editor_summary" />
+    <PreferenceCategory android:title="@string/free_flick_detection">
+        <SwitchPreferenceCompat app:singleLineTitle="false" android:key="sumire_free_flick_nearest" android:defaultValue="true" android:title="@string/free_flick_nearest" android:summary="@string/free_flick_nearest_summary" />
+        <SwitchPreferenceCompat app:singleLineTitle="false" android:key="sumire_free_flick_nearest_text" android:defaultValue="true" android:dependency="sumire_free_flick_nearest" android:title="@string/free_flick_nearest_text" />
+        <SwitchPreferenceCompat app:singleLineTitle="false" android:key="sumire_free_flick_nearest_switch" android:defaultValue="false" android:dependency="sumire_free_flick_nearest" android:title="@string/free_flick_nearest_switch" />
+        <SwitchPreferenceCompat app:singleLineTitle="false" android:key="sumire_free_flick_nearest_back" android:defaultValue="false" android:dependency="sumire_free_flick_nearest" android:title="@string/free_flick_nearest_back" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/free_flick_display">
+        <ListPreference android:key="sumire_free_flick_presentation" android:defaultValue="around_key" android:title="@string/free_flick_presentation" android:entries="@array/free_flick_presentation_entries" android:entryValues="@array/free_flick_presentation_values" app:useSimpleSummaryProvider="true" />
+        <com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreviewPreference android:key="sumire_free_flick_preview" android:selectable="false" />
+    </PreferenceCategory>
+</PreferenceScreen>

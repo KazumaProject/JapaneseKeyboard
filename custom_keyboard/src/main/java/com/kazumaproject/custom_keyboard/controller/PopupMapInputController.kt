@@ -10,6 +10,8 @@ import android.widget.PopupWindow
 import android.widget.TextView
 import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
 import com.kazumaproject.custom_keyboard.data.PopupMapSession
+import com.kazumaproject.custom_keyboard.data.PopupMapInputOptions
+import com.kazumaproject.custom_keyboard.data.PopupMapPresentation
 import com.kazumaproject.custom_keyboard.view.PopupMapView
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -23,8 +25,18 @@ class PopupMapInputController(
     private val onPress: (String) -> Unit,
     private val onSelection: (String?, Boolean) -> Unit,
     private val onCommit: (String, Boolean) -> Unit,
-    private val onCancel: () -> Unit
+    private val onCancel: () -> Unit,
+    options: PopupMapInputOptions = PopupMapInputOptions()
 ) {
+    private var inputOptions = options
+    private var guideHost: PopupMapGuideHost? = null
+    private var fingerPosition: Pair<Float,Float>? = null
+    fun setOptions(value: PopupMapInputOptions) {
+        if (inputOptions != value) { cancel(); inputOptions = value }
+    }
+    private fun sample(x: Float, y: Float) {
+        fingerPosition = x/width-.5f to y/height-.5f
+    }
     private var anchor: View? = null
     private var session: PopupMapSession? = null
     private var popup: PopupWindow? = null
@@ -53,7 +65,8 @@ class PopupMapInputController(
                     rotation = view.rotation
                     view.getLocationOnScreen(locationScratch)
                     initialLeft = locationScratch[0]; initialTop = locationScratch[1]
-                    session = PopupMapSession(config, width.toFloat(), height.toFloat())
+                    session = PopupMapSession(config, width.toFloat(), height.toFloat(), inputOptions)
+                    sample(event.x,event.y)
                     originalLabel = (view as? TextView)?.text
                     view.isPressed = true
                     onPress(session!!.currentMap.tapText)
@@ -63,7 +76,8 @@ class PopupMapInputController(
                 MotionEvent.ACTION_MOVE -> {
                     val active = session ?: return@setOnTouchListener true
                     if (!sameGeometry(view)) { end(true); return@setOnTouchListener true }
-                    for (i in 0 until event.historySize) active.move(event.getHistoricalX(i) / width - .5f, event.getHistoricalY(i) / height - .5f)
+                    for (i in 0 until event.historySize) { active.move(event.getHistoricalX(i) / width - .5f, event.getHistoricalY(i) / height - .5f) }
+                    sample(event.x,event.y)
                     active.move(event.x / width - .5f, event.y / height - .5f)
                     onSelection(active.selectedText, !active.isTap)
                     render()
@@ -90,6 +104,20 @@ class PopupMapInputController(
         val host = windowAnchor() ?: key
         if (!key.isAttachedToWindow || !host.isAttachedToWindow || host.windowToken == null) return
         (key as? TextView)?.text = transform(active.currentMap.tapText)
+        if (inputOptions.presentation == PopupMapPresentation.GUIDE_ABOVE_KEY) {
+            popup?.dismiss()
+            val guide = guideHost ?: PopupMapGuideHost(key.context,windowAnchor) { end(true) }.also { guideHost=it }
+            guide.show(key)
+            guide.view.apply {
+                config=this@PopupMapInputController.config;map=active.currentMap;selectedId=active.selectedRegionId
+                sourceKeyWidth=this@PopupMapInputController.width.toFloat();sourceKeyHeight=this@PopupMapInputController.height.toFloat()
+                fingerPosition=this@PopupMapInputController.fingerPosition;tapActive=active.isTap;textTransform=transform
+                title=active.mapPath.joinToString(" → ") { id -> config?.map(id)?.name.orEmpty() } + "  " + transform(active.selectedText.orEmpty())
+            }
+            guide.updatePointer()
+            return
+        }
+        guideHost?.dismiss()
         val regions = active.currentMap.regions
         if (regions.isEmpty()) { popup?.dismiss(); return }
         val angle = Math.toRadians(rotation.toDouble())
@@ -124,6 +152,7 @@ class PopupMapInputController(
     }
     private fun end(canceled: Boolean) {
         popup?.dismiss()
+        guideHost?.dismiss();fingerPosition=null
         anchor?.isPressed = false
         if (session != null) (anchor as? TextView)?.text = originalLabel
         if (canceled && session != null) onCancel()

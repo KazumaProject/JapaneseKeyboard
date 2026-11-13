@@ -23,7 +23,10 @@ import androidx.test.runner.lifecycle.Stage
 import com.kazumaproject.custom_keyboard.data.*
 import com.kazumaproject.custom_keyboard.controller.PopupMapInputController
 import com.kazumaproject.custom_keyboard.view.PopupMapView
+import com.kazumaproject.custom_keyboard.view.PopupMapGuideView
+import com.kazumaproject.custom_keyboard.view.compactFlickGuideSize
 import com.kazumaproject.markdownhelperkeyboard.sumire_popup.SumirePopupRepository
+import com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -49,7 +52,7 @@ class SumirePopupInputDeviceTest {
                 key=TextView(themed).apply {text="は";rotation=30f}
                 frame.addView(key,FrameLayout.LayoutParams(200,100).apply {leftMargin=200;topMargin=500})
                 host.setContentView(frame)
-                controller=PopupMapInputController(SumirePopupDefaults.create("は"),{null},{it},{},{_,_->},{text,_->committed=text},{})
+                controller=PopupMapInputController(LegacyPopupFixture.create("は"),{null},{it},{},{_,_->},{text,_->committed=text},{})
                 controller.attach(key)
             }
             await {key.width==200 && key.isAttachedToWindow}
@@ -96,6 +99,7 @@ class SumirePopupInputDeviceTest {
         val target="${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val oldIme=shell("settings get secure default_input_method").trim()
         val enabled=shell("ime list -s").lineSequence().any {it.trim()==target}
+        val guide=InstrumentationRegistry.getArguments().getString("presentation")=="guide"
         val floating=InstrumentationRegistry.getArguments().getString("surface","normal")=="floating"
         val preferences=PreferenceManager.getDefaultSharedPreferences(context)
         preferences.edit().clear()
@@ -105,13 +109,15 @@ class SumirePopupInputDeviceTest {
             .putString("sumire_input_method_preference",InstrumentationRegistry.getArguments().getString("inputStyle","flick"))
             .putString("sumire_keyboard_style_preference",SumirePopupDefaults.STYLE)
             .putBoolean("keyboard_floating_preference",floating)
+            .putBoolean(FreeFlickPreferences.NEAREST,false)
+            .putString(FreeFlickPreferences.PRESENTATION,if(guide) "guide_above_key" else "around_key")
             .putBoolean("sumire_restore_input_mode_on_restart_preference",false)
             .putBoolean("landscape_force_qwerty_preference",false)
             .putBoolean("live_conversion_preference",false)
             .putBoolean("learn_dictionary_preference",false)
             .putBoolean("flick_editor_preview_preference",false)
             .putBoolean("key_sound_preference",false).commit()
-        val original=SumirePopupDefaults.create("は")
+        val original=LegacyPopupFixture.create("は")
         val entry=original.map("normal")!!.regions.first {it.action.type==PopupActionType.SWITCH}
         SumirePopupRepository(context).save(original.withMap(original.map("voiced")!!.let { page ->
             page.copy(regions=page.regions.map { if (it.action.text=="び") it.copy(action=PopupAction(text="ありがとう")) else it }+PopupRegion("immediate",entry.bounds,PopupAction(text="★")))
@@ -137,6 +143,20 @@ class SumirePopupInputDeviceTest {
                 reset();key=findKey("は")
                 val down=SystemClock.uptimeMillis()
                 inject(down,MotionEvent.ACTION_DOWN,key.left+key.width()*fraction,key.centerY().toFloat())
+                if(guide) {
+                    await {popup() is PopupMapGuideView}
+                    ins.runOnMainSync {
+                        val drawing=popup() as PopupMapGuideView
+                        val xy=IntArray(2).also(drawing::getLocationOnScreen)
+                        assertTrue("Guide must end above the physical key",xy[1]+drawing.height<=key.top+3)
+                        val expected=compactFlickGuideSize(key.width(),key.height(),context.resources.displayMetrics.density)
+                        assertEquals("Same width as the two-step guide",expected.width,drawing.width)
+                        assertEquals("Same height as the two-step guide",expected.height,drawing.height)
+                        assertEquals(key.width().toFloat(),drawing.sourceKeyWidth,1f)
+                        assertNotNull(drawing.fingerPosition)
+                        origins+=(xy[0]+drawing.originX).toInt() to (xy[1]+drawing.originY).toInt()
+                    }
+                } else {
                 await {popup()!=null}
                 ins.runOnMainSync {
                     val view=popup()!!
@@ -145,6 +165,7 @@ class SumirePopupInputDeviceTest {
                     origins+=origin
                     assertEquals("Popup x must use the original key",key.centerX().toFloat(),origin.first.toFloat(),3f)
                     assertEquals("Popup y must use the original key",key.centerY().toFloat(),origin.second.toFloat(),3f)
+                }
                 }
                 inject(down,MotionEvent.ACTION_UP,key.left+key.width()*fraction,key.centerY().toFloat())
                 awaitText("は")
@@ -162,7 +183,29 @@ class SumirePopupInputDeviceTest {
             gesture(key,listOf(-1f to -2f,0f to -3f,-1f to -.7f));awaitText("ひ")
             reset();key=findKey("は")
             gesture(key,listOf(1.6f to .6f));awaitText("")
+            // Apply nearest options on a retained IME, without restarting it.
+            preferences.edit().putBoolean(FreeFlickPreferences.NEAREST,true).commit();SystemClock.sleep(150)
+            reset();key=findKey("は");gesture(key,listOf(3f to 0f));awaitText("へ")
+            preferences.edit().putBoolean(FreeFlickPreferences.TEXT,false).commit();SystemClock.sleep(150)
+            reset();key=findKey("は");gesture(key,listOf(3f to 0f));awaitText("")
+            preferences.edit().putBoolean(FreeFlickPreferences.SWITCH,true).commit();SystemClock.sleep(150)
+            reset();key=findKey("は");gesture(key,listOf(-2f to -3f,0f to 0f));awaitText("ば")
+            preferences.edit().putBoolean(FreeFlickPreferences.BACK,true).commit();SystemClock.sleep(150)
+            reset();key=findKey("は")
+            gesture(key,listOf(-2f to -3f,-2f to -3f,-2f to -3f,0f to 0f));awaitText("ば")
+            reset();key=findKey("は")
+            gesture(key,listOf(-2f to -3f,0f to 0f,-2f to -3f,0f to 0f));awaitText("は")
+            // A live preference change cancels an active gesture instead of committing stale text.
+            reset();key=findKey("は")
+            val activeDown=SystemClock.uptimeMillis()
+            inject(activeDown,MotionEvent.ACTION_DOWN,key.centerX().toFloat(),key.centerY().toFloat())
+            preferences.edit().putString(FreeFlickPreferences.PRESENTATION,if(guide) "around_key" else "guide_above_key").commit()
+            SystemClock.sleep(150)
+            inject(activeDown,MotionEvent.ACTION_UP,key.centerX().toFloat(),key.centerY().toFloat());awaitText("")
         } finally {
+            val now=SystemClock.uptimeMillis()
+            val cancel=MotionEvent.obtain(now,now,MotionEvent.ACTION_CANCEL,0f,0f,0).apply {source=InputDevice.SOURCE_TOUCHSCREEN}
+            automation.injectInputEvent(cancel,true);cancel.recycle()
             ins.runOnMainSync {host()?.let {it.requestedOrientation=android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;it.finish()}}
             if(oldIme.isNotBlank() && oldIme!="null") shell("ime set $oldIme")
             if(!enabled) shell("ime disable $target")

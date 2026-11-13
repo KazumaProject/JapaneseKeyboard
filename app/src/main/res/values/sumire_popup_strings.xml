@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="popup_editor_title">Popup map editor</string>
-    <string name="popup_style">Custom popup input</string>
-    <string name="popup_editor_entry">Edit popup maps</string>
+    <string name="popup_editor_title">Free Flick map editor</string>
+    <string name="popup_style">Free Flick</string>
+    <string name="popup_editor_entry">Edit Free Flick maps</string>
     <string name="popup_editor_summary">Edit tap text, popup regions and map transitions for Japanese kana keys</string>
-    <string name="popup_inactive">These maps are used when Custom popup input is selected. Editing does not change the input style.</string>
+    <string name="popup_inactive">These maps are used when Free Flick is selected. Editing does not change the input style.</string>
     <string name="popup_key">Starting key</string>
     <string name="popup_map">Map</string>
     <string name="popup_edit">Edit</string>
@@ -56,4 +56,26 @@
     <string name="popup_collision_detail">Cannot place here: conflicts with %1$s / %2$s.</string>
     <string name="popup_created_unlinked">Map created. Its controls conflict with the source popup; adjust them, then select this map as the destination.</string>
     <string name="popup_method_scope">%1$s for English and numbers. Japanese kana uses popup regions and release to enter text.</string>
+    <string name="free_flick_settings">Free Flick settings</string>
+    <string name="free_flick_settings_summary">Freely edit text, destinations, and popup regions</string>
+    <string name="free_flick_detection">Selection outside regions</string>
+    <string name="free_flick_nearest">Select the nearest popup outside regions</string>
+    <string name="free_flick_nearest_summary">On: select the eligible popup with the shortest distance to its rounded edge. Off: only the actual regions respond. The tap area stays inside the key.</string>
+    <string name="free_flick_nearest_text">Nearest text selection</string>
+    <string name="free_flick_nearest_switch">Nearest map switches</string>
+    <string name="free_flick_nearest_back">Nearest Back</string>
+    <string name="free_flick_display">Popup display</string>
+    <string name="free_flick_presentation">Popup position</string>
+    <string name="free_flick_around">Around the key</string>
+    <string name="free_flick_above">Guide above the key</string>
+    <string name="free_flick_preview_hint">Display and input preview. Start on は to try. The guide above still uses the original key as the input origin.</string>
+    <string name="free_flick_template">Apply template</string>
+    <string name="free_flick_template_12">12-key flick</string>
+    <string name="free_flick_template_confirm">Replace all maps for key “%1$s” with standard 12-key flick. This affects input only after saving and can be undone.</string>
+    <string name="free_flick_template_hint">Standard 12-key map. Add popup regions for text or map transitions.</string>
+    <string name="free_flick_try_nearest">Outside regions, the nearest eligible popup is selected. Change this in Free Flick settings.</string>
+    <string name="two_step_popup_title">Two-step flick input</string>
+    <string name="two_step_popup_summary">Set two-step popup size, text size, and position</string>
+    <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>
+    <string-array name="free_flick_presentation_values"><item>around_key</item><item>guide_above_key</item></string-array>
 </resources>
