@@ -790,6 +790,8 @@
     <string name="template_toggle_kana">Kana input (toggle)</string>
     <string name="template_flick_english_cursor">English input (cursor)</string>
     <string name="template_qwerty">QWERTY</string>
+    <string name="template_qwerty_number">QWERTY (Numbers)</string>
+    <string name="template_qwerty_symbol">QWERTY (Symbols)</string>
     <string name="template_empty_5x4_flexible">Empty 5x4 Flexible Layout</string>
     <string name="template_number">Number input</string>
     <string name="editor_place_half_key">Half key</string>
@@ -2005,8 +2007,13 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="qwerty_selected_slot">Row %1$d, column %2$d</string>
     <string name="custom_keyboard_show_key_preview_title">Show QWERTY key previews</string>
     <string name="custom_keyboard_show_key_preview_summary">Enlarge the pressed key text. Long-press alternatives remain available.</string>
-    <string name="custom_qwerty_popup_style_title">QWERTY popup appearance</string>
-    <string name="custom_qwerty_popup_style_summary">Share size and text settings with the standard QWERTY keyboard</string>
+    <string name="custom_qwerty_popup_style_title">QWERTY key and popup sizes</string>
+    <string name="custom_qwerty_popup_style_summary">Set custom QWERTY tap and long-press popup sizes and text sizes independently of standard QWERTY</string>
+    <string name="custom_qwerty_normal_key_size">Normal key size</string>
+    <string name="custom_qwerty_normal_key_size_summary">Normal key and text sizes use the custom keyboard key size settings.</string>
+    <string name="custom_qwerty_popup_scope">Applies to QWERTY-type keys in custom keyboards. Popup size and text size can be adjusted separately for taps and long presses, with any skin.</string>
+    <string name="qwerty_tap_popup_section">Tap preview popup</string>
+    <string name="qwerty_long_press_popup_section">Long-press alternatives popup</string>
     <string name="qwerty_key_preview_title">Key preview</string>
     <string name="qwerty_popup_preview_title">Long-press candidate preview</string>
     <string name="qwerty_key_appearance">On the keyboard</string>
