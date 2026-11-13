@@ -2005,8 +2005,13 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="qwerty_selected_slot">%1$d 行 %2$d 列</string>
     <string name="custom_keyboard_show_key_preview_title">QWERTY 型キーの押下プレビューを表示</string>
     <string name="custom_keyboard_show_key_preview_summary">押したキーの文字を拡大表示します。長押し候補は表示設定にかかわらず選択できます。</string>
-    <string name="custom_qwerty_popup_style_title">QWERTY 型ポップアップの表示</string>
-    <string name="custom_qwerty_popup_style_summary">標準 QWERTY とサイズ・文字設定を共用します</string>
+    <string name="custom_qwerty_popup_style_title">QWERTY 型キー・ポップアップのサイズ</string>
+    <string name="custom_qwerty_popup_style_summary">標準 QWERTY とは別に、カスタム QWERTY のタップ・長押しポップアップの大きさと文字サイズを設定します</string>
+    <string name="custom_qwerty_normal_key_size">通常のキーサイズ</string>
+    <string name="custom_qwerty_normal_key_size_summary">通常のキーと文字の大きさは、カスタムキーボードのキーサイズ設定を使用します。</string>
+    <string name="custom_qwerty_popup_scope">カスタムキーボードの QWERTY 型キーに適用します。すべてのスキンで、タップ時と長押し時の大きさ・文字サイズを個別に変更できます。</string>
+    <string name="qwerty_tap_popup_section">タップ時の拡大ポップアップ</string>
+    <string name="qwerty_long_press_popup_section">長押し候補のポップアップ</string>
     <string name="qwerty_key_preview_title">キーのプレビュー</string>
     <string name="qwerty_popup_preview_title">長押し候補のプレビュー</string>
     <string name="qwerty_key_appearance">キーボードの表示</string>

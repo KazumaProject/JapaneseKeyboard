@@ -503,6 +503,10 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.QwertyPopupStyleSettingFragment"
         android:label="@string/qwerty_popup_view_style_preference_title" />
     <fragment
+        android:id="@+id/customQwertyPopupStyleSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.CustomQwertyPopupStyleSettingFragment"
+        android:label="@string/custom_qwerty_popup_style_title" />
+    <fragment
         android:id="@+id/flickKeyboardPopupStyleListFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.FlickKeyboardPopupStyleListFragment"
         android:label="@string/flick_keyboard_popup_view_style_preference_title">
