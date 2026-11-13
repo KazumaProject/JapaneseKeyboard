@@ -22,8 +22,8 @@ class FreeFlickLayoutPreviewDialog : DialogFragment() {
         val keyPicker = Spinner(requireContext()).apply { contentDescription = getString(R.string.popup_key) }
         val mapPicker = Spinner(requireContext()).apply { contentDescription = getString(R.string.popup_map) }
         val result = TextView(requireContext()).apply { textSize = 15f; setPadding(0, dp(6), 0, dp(6)) }
-        val guide = PopupMapGuideView(requireContext()).apply { sourceKeyWidth = 100f; sourceKeyHeight = 64f; tapActive = false }
-        val trial = PopupMapEditorCanvas(requireContext()).apply { inputOptions = FreeFlickPreferences.read(requireContext()); visibility = View.GONE }
+        val guide = PopupMapGuideView(requireContext()).apply { applyFreeFlickTheme(); sourceKeyWidth = 100f; sourceKeyHeight = 64f; tapActive = false }
+        val trial = PopupMapEditorCanvas(requireContext()).apply { applyFreeFlickTheme(); inputOptions = FreeFlickPreferences.read(requireContext()); visibility = View.GONE }
         val stage = FrameLayout(requireContext()).apply {
             addView(guide, FrameLayout.LayoutParams(-1, -1)); addView(trial, FrameLayout.LayoutParams(-1, -1))
         }

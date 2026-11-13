@@ -54,7 +54,7 @@ class FreeFlickPreviewPreference @JvmOverloads constructor(context: Context, att
         frame.removeAllViews()
         val result=holder.findViewById(R.id.free_flick_preview_result) as TextView
         result.text=context.getString(R.string.popup_result)+"："
-        canvas=PopupMapEditorCanvas(context).apply {
+        canvas=PopupMapEditorCanvas(context).apply { applyFreeFlickTheme();
             inputOptions=FreeFlickPreferences.read(context)
             val config = SumirePopupRepository(context).load("は")
             showConfig(config,config.startMapId,null,true)
@@ -62,6 +62,7 @@ class FreeFlickPreviewPreference @JvmOverloads constructor(context: Context, att
         }.also {frame.addView(it,FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT))}
     }
     fun updateOptions() {canvas?.let { view ->
+        view.applyFreeFlickTheme()
         view.inputOptions=FreeFlickPreferences.read(context)
         val config=SumirePopupRepository(context).load("は")
         view.showConfig(config,config.startMapId,null,true)
