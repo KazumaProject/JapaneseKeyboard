@@ -1,6 +1,7 @@
 package com.kazumaproject.custom_keyboard.controller
 
 import android.annotation.SuppressLint
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
@@ -29,6 +30,15 @@ class PopupMapInputController(
     private val onCancel: () -> Unit,
     options: PopupMapInputOptions = PopupMapInputOptions()
 ) {
+    private var popupStyle = PopupViewStyle(100, 20f)
+    private var highlightColor: Int? = null
+    private var borderColor: Int? = null
+    fun applyPopupViewStyle(style: PopupViewStyle, highlightColor: Int? = null, borderColor: Int? = null) {
+        popupStyle = style; this.highlightColor = highlightColor; this.borderColor = borderColor
+        content?.applyPopupViewStyle(style, highlightColor, borderColor)
+        guideHost?.view?.applyPopupViewStyle(style, highlightColor, borderColor)
+        guideHost?.updatePointer()
+    }
     private var inputOptions = options
     private var guideHost: PopupMapGuideHost? = null
     private var fingerPosition: Pair<Float,Float>? = null
@@ -107,7 +117,9 @@ class PopupMapInputController(
         (key as? TextView)?.text = transform(active.currentMap.tapText)
         if (inputOptions.presentation == PopupMapPresentation.GUIDE_ABOVE_KEY) {
             popup?.dismiss()
-            val guide = guideHost ?: PopupMapGuideHost(key.context,windowAnchor) { end(true) }.also { guideHost=it }
+            val guide = guideHost ?: PopupMapGuideHost(key.context,windowAnchor) { end(true) }.also {
+                it.view.applyPopupViewStyle(popupStyle, highlightColor, borderColor); guideHost=it
+            }
             guide.show(key)
             guide.view.apply {
                 config=this@PopupMapInputController.config;map=active.currentMap;selectedId=active.selectedRegionId
@@ -131,7 +143,7 @@ class PopupMapInputController(
         val top = floor(corners.minOf { it.second }).toInt() - 2
         val right = ceil(corners.maxOf { it.first }).toInt() + 2
         val bottom = ceil(corners.maxOf { it.second }).toInt() + 2
-        val drawing = content ?: PopupMapView(key.context).also { content = it }
+        val drawing = content ?: PopupMapView(key.context).also { it.applyPopupViewStyle(popupStyle, highlightColor, borderColor); content = it }
         drawing.map = active.currentMap; drawing.selectedId = active.selectedRegionId; drawing.tapActive = active.isTap
         drawing.keyWidth = width.toFloat(); drawing.keyHeight = height.toFloat(); drawing.keyRotation = rotation
         drawing.originX = -left.toFloat(); drawing.originY = -top.toFloat(); drawing.textTransform = transform
