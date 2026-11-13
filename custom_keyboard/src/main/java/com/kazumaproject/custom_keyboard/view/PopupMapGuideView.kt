@@ -52,12 +52,13 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
         keyWidth=sourceKeyWidth*scale;keyHeight=sourceKeyHeight*scale;keyRotation=0f
         originX=area.centerX()-(left+right)*keyWidth/2
         originY=area.centerY()-(top+bottom)*keyHeight/2
-        super.onDraw(canvas)
         fingerPosition?.let { (x,y) ->
             appearance.drawGuidePointer(canvas,panel,TfbiGuideFingerPosition(
                 (originX+x*keyWidth-panel.left)/panel.width(),(originY+y*keyHeight-panel.top)/panel.height()
             ))
         }
+        // The selection fill and labels stay above the finger marker.
+        super.onDraw(canvas)
         contentDescription=title
     }
 }
