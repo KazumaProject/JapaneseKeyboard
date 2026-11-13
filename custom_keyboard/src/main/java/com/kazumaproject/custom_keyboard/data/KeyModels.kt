@@ -163,7 +163,8 @@ data class KeyData(
     val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL,
     val doubleTapBinding: DoubleTapBinding? = null,
     val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL,
-    val qwertyConfig: QwertyKeyConfig? = null
+    val qwertyConfig: QwertyKeyConfig? = null,
+    val popupMapConfig: PopupKeyConfig? = null
 )
 
 data class GridPlacement(

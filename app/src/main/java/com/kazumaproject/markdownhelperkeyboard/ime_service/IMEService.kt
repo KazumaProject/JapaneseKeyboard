@@ -31,6 +31,7 @@ import com.kazumaproject.core.domain.flick.FlickTextPreviewEvent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_dictionary.FloatingDictionaryStore
 import com.kazumaproject.morse_keyboard.*
 import com.kazumaproject.markdownhelperkeyboard.morse.MorsePreferences
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import android.annotation.SuppressLint
 import android.Manifest
 import android.content.ClipDescription
@@ -1146,6 +1147,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 runOnMainThread {
                     applyZenzaiDraftPreference(AppVariantConfig.hasZenz && appPreference.enable_zenzai_preference)
                 }
+            }
+            if (key == "sumire_keyboard_style_preference" || key == "sumire_input_method_preference") {
+                runOnMainThread {
+                    sumireInputStyle = appPreference.sumire_keyboard_style
+                    sumireInputKeyLayoutType = appPreference.sumire_input_method
+                    refreshSumireLayouts(hiraganaOnly = false)
+                }
+            }
+            if (key == null || key.startsWith(com.kazumaproject.markdownhelperkeyboard.sumire_popup.SumirePopupRepository.PREFIX)) {
+                runOnMainThread { refreshSumireLayouts(hiraganaOnly = true) }
             }
             if (key != null && key in runtimeInputPreferenceKeys) {
                 runOnMainThread {
@@ -11356,6 +11367,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private val sumirePopupRepository by lazy {
+        com.kazumaproject.markdownhelperkeyboard.sumire_popup.SumirePopupRepository(this)
+    }
+
     private fun createSumireKeyboardLayout(): KeyboardLayout =
         createSumireKeyboardLayout(customKeyboardMode)
 
@@ -11379,7 +11394,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 highlightSelectedMode = sumireModeKeyHighlight
             ),
             mode
-        ).let { baseLayout ->
+        ).let { popupLayout ->
+            if (popupLayout.keys.none { it.popupMapConfig != null }) popupLayout else {
+                popupLayout.copyWithKeys(popupLayout.keys.map { key ->
+                    key.popupMapConfig?.let { key.copy(popupMapConfig = sumirePopupRepository.load(it.keyId)) } ?: key
+                })
+            }
+        }.let { baseLayout ->
             SumireSpecialKeyActionDisplayOverrideApplier.apply(
                 layout = baseLayout,
                 layoutType = layoutType,

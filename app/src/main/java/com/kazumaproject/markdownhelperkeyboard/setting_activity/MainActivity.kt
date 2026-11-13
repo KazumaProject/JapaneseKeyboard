@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val destinationsWithoutBottomNavigation = setOf(
+        R.id.popupMapEditorFragment,
         R.id.candidateViewHeightSettingFragment,
         R.id.candidateHeightLandscapeSettingFragment,
         R.id.candidateHeightDefaultsFragment,
@@ -305,6 +306,11 @@ class MainActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         if (!isSettingsContentReady) return super.onSupportNavigateUp()
         val navController = currentNavController()
+        val current = (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as? androidx.navigation.fragment.NavHostFragment)?.childFragmentManager?.primaryNavigationFragment
+        if (current is com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment) {
+            current.leaveEditor()
+            return true
+        }
         return navController.navigateUp() || super.onSupportNavigateUp()
     }
 

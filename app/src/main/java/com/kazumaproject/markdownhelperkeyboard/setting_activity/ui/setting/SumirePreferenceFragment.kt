@@ -51,6 +51,23 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
             return value == "second-flick"
         }
 
+        fun updatePopupSettings(style: String?) {
+            val free = style == com.kazumaproject.custom_keyboard.data.SumirePopupDefaults.STYLE
+            listOf("sumire_show_flick_popup_preference", "sumire_show_long_press_popup_preference").forEach { key ->
+                findPreference<Preference>(key)?.apply {
+                    isEnabled = !free
+                    summary = if (free) getString(R.string.popup_only_kana) else null
+                }
+            }
+            findPreference<ListPreference>("sumire_input_method_preference")?.let { method ->
+                method.summary = if (free) getString(R.string.popup_method_scope, method.entry) else method.entry
+            }
+        }
+        findPreference<Preference>("sumire_popup_map_editor_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.popupMapEditorFragment)
+            true
+        }
+
         sumireStylePreference?.apply {
             if (value == "third-flick") {
                 summary = getString(com.kazumaproject.core.R.string.three_stage_flick_suspended)
@@ -69,6 +86,7 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
 
             setOnPreferenceChangeListener { preference, newValue ->
                 val stringValue = newValue as String
+                updatePopupSettings(stringValue)
                 val listPreference = preference as ListPreference
                 val index = listPreference.findIndexOfValue(stringValue)
 
@@ -98,11 +116,15 @@ class SumirePreferenceFragment : AsyncPreferenceFragment() {
                 val listPreference = preference as ListPreference
                 val index = listPreference.findIndexOfValue(newValue as String)
                 if (index >= 0) {
-                    preference.summary = listPreference.entries[index].toString()
+                    preference.summary = if (sumireStylePreference?.value == com.kazumaproject.custom_keyboard.data.SumirePopupDefaults.STYLE) {
+                        getString(R.string.popup_method_scope, listPreference.entries[index])
+                    } else listPreference.entries[index].toString()
                 }
                 true
             }
         }
+
+        updatePopupSettings(sumireStylePreference?.value)
 
         sumireKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {

@@ -162,6 +162,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val independentTextPreviews = linkedMapOf<KeyData, FlickTextSelection>()
     private val independentLastCoordinates = mutableMapOf<Int, Pair<Float, Float>>()
 
+    private val popupMapControllers = mutableListOf<com.kazumaproject.custom_keyboard.controller.PopupMapInputController>()
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val centerGuideFlickControllers = mutableListOf<CenterGuideFlickInputController>()
@@ -1704,6 +1705,17 @@ class FlickKeyboardView @JvmOverloads constructor(
         if (isSuspended(keyData)) return null
         val layout = currentLayout ?: return null
 
+        keyData.popupMapConfig?.let { config ->
+            return com.kazumaproject.custom_keyboard.controller.PopupMapInputController(
+                config = config,
+                windowAnchor = { popupWindowAnchorProvider?.invoke() },
+                transform = ::transformInputTextForDisplay,
+                onPress = { notifyTextPress(keyData, it) },
+                onSelection = { text, flick -> updateTextPreview(keyData, text, flick) },
+                onCommit = { text, flick -> dispatchCommittedKeyAction(keyData, KeyAction.Text(text), flick) },
+                onCancel = { cancelTextPreview(keyData) }
+            ).also { it.attach(keyView); popupMapControllers.add(it) }
+        }
         when (keyData.keyType) {
             KeyType.QWERTY -> {
                 val config = keyData.qwertyConfig ?: QwertyKeyConfig(QwertyKeyLayer(
@@ -2976,6 +2988,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun detachKeyBehavior(controller: Any?) {
         when (controller) {
+            is com.kazumaproject.custom_keyboard.controller.PopupMapInputController -> {
+                controller.cancel()
+                popupMapControllers.remove(controller)
+            }
             is CustomAngleFlickController -> {
                 controller.cancel()
                 flickControllers.remove(controller)
@@ -3071,6 +3087,8 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun cancelInputControllers() {
         controllerRebindPending = true
+        popupMapControllers.forEach { it.cancel() }
+        popupMapControllers.clear()
         flickControllers.forEach { it.cancel() }
         flickControllers.clear()
         crossFlickControllers.forEach { it.cancel() }

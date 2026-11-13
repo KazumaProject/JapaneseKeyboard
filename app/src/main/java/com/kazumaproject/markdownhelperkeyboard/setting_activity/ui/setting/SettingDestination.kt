@@ -126,6 +126,7 @@ object SettingDestinations {
         "ng_word_preference",
         "physical_keyboard_shortcut_setting_preference",
         "sumire_special_key_editor_preference",
+        "sumire_popup_map_editor_preference",
         "morse_maps",
         "morse_key_layout",
         "gemma_prompt_template_management_preference",
@@ -919,6 +920,7 @@ object SettingDestinations {
             "sumire_custom_angle_preference" -> R.id.circularFlickSettingsFragment
             "circular_slot_action_setting_preference" -> R.id.circularSlotActionSettingFragment
             "sumire_special_key_editor_preference" -> R.id.sumireSpecialKeyEditorFragment
+            "sumire_popup_map_editor_preference" -> R.id.popupMapEditorFragment
             "physical_keyboard_shortcut_setting_preference" -> R.id.physicalKeyboardShortcutListFragment
             else -> null
         }

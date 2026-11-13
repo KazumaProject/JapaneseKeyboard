@@ -1,0 +1,82 @@
+package com.kazumaproject.custom_keyboard.data
+
+import org.junit.Assert.*
+import org.junit.Test
+
+class PopupMapTest {
+    @Test fun onlyKanaKeysUseTheNewStyleAndTapDoesNotToggle() {
+        val builder=com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+        for(method in listOf("toggle","flick")) {
+            val layout=builder.createFinalLayout(KeyboardInputMode.HIRAGANA,emptyMap(),method,SumirePopupDefaults.STYLE)
+            assertEquals(SumirePopupDefaults.rows.size,layout.keys.count {it.popupMapConfig!=null})
+            assertTrue(layout.keys.filter {it.popupMapConfig!=null}.all {it.textInputBehavior==KeyTextInputBehavior.NORMAL && !it.isSpecialKey})
+        }
+        for(mode in listOf(KeyboardInputMode.ENGLISH,KeyboardInputMode.SYMBOLS)) {
+            assertTrue(builder.createFinalLayout(mode,emptyMap(),"flick",SumirePopupDefaults.STYLE).keys.none {it.popupMapConfig!=null})
+        }
+        assertTrue(builder.createFinalLayout(KeyboardInputMode.HIRAGANA,emptyMap(),"flick","default").keys.none {it.popupMapConfig!=null})
+    }
+    @Test fun allInitialMapsAreValid() {
+        SumirePopupDefaults.rows.keys.forEach { assertEquals(it, emptyList<PopupConflict>(), PopupMapValidator.conflicts(SumirePopupDefaults.create(it))) }
+    }
+    @Test fun tapBelongsToActiveMapAndBackRestoresPreviousTap() {
+        val session = PopupMapSession(SumirePopupDefaults.create("は"))
+        assertEquals("は", session.release(.45f,.45f))
+        session.move(-1f,-2f)
+        assertEquals("voiced", session.currentMap.id)
+        assertEquals("ば",session.release(-.4f,.4f))
+        session.move(0f,-3f)
+        assertEquals("normal",session.currentMap.id)
+        assertEquals("は",session.release(0f,0f))
+    }
+    @Test fun textUnderFingerAfterSwitchCommitsWithoutReentry() {
+        val initial = SumirePopupDefaults.create("は")
+        val target = initial.map("voiced")!!
+        val config = initial.withMap(target.copy(regions = target.regions + PopupRegion("immediate", initial.map("normal")!!.regions.first { it.isControl }.bounds, PopupAction(text="ありがとう"))))
+        val session = PopupMapSession(config)
+        session.move(-1f,-2f)
+        assertEquals("ありがとう", session.release(-1f,-2f))
+    }
+    @Test fun controlsCannotAppearUnderFingerOnEitherForwardOrBackTransition() {
+        val initial = SumirePopupDefaults.create("は")
+        val target = initial.map("voiced")!!
+        val source = initial.map("normal")!!
+        val bounds = source.regions.first { it.isControl }.bounds
+        val invalid = initial.withMap(target.copy(regions=target.regions + PopupRegion("loop", bounds, PopupAction(PopupActionType.BACK))))
+        assertTrue(PopupMapValidator.conflicts(invalid).any { it.type==PopupConflictType.TRANSITION })
+        // A different control in the parent also matters when Back returns to it.
+        val back = target.regions.first { it.action.type==PopupActionType.BACK }
+        val invalidBack = initial.withMap(source.copy(regions=source.regions + PopupRegion("other", back.bounds, PopupAction(PopupActionType.SWITCH,targetMapId="semi"))))
+        assertTrue(PopupMapValidator.conflicts(invalidBack).any { it.mapId=="voiced" && it.otherMapId=="normal" })
+    }
+    @Test fun overlapAndKeyIntrusionAreRejected() {
+        val initial=SumirePopupDefaults.create("か"); val map=initial.map("normal")!!
+        assertTrue(PopupMapValidator.conflicts(initial.withMap(map.copy(regions=map.regions + map.regions.first().copy(id="duplicate")))).any { it.type==PopupConflictType.OVERLAP })
+        assertTrue(PopupMapValidator.conflicts(initial.withMap(map.copy(regions=map.regions + PopupRegion("key",PopupBounds.KEY)))).any { it.type==PopupConflictType.KEY })
+    }
+    @Test fun releaseUsesCurrentPositionNotPreviouslyVisitedText() {
+        val session=PopupMapSession(SumirePopupDefaults.create("か"))
+        session.move(-1f,-.7f)
+        assertEquals("き",session.selectedText)
+        assertNull(session.release(3f,3f))
+        assertEquals("か",session.release(.49f,-.49f))
+    }
+    @Test fun missingAndSelfTargetsCannotRun() {
+        val initial=SumirePopupDefaults.create("か"); val map=initial.map("normal")!!
+        listOf("missing","normal").forEach { target ->
+            val bad=initial.withMap(map.copy(regions=map.regions.map { if(it.isControl) it.copy(action=it.action.copy(targetMapId=target)) else it }))
+            assertTrue(PopupMapValidator.conflicts(bad).any { it.type==PopupConflictType.TARGET })
+        }
+    }
+    @Test fun roundedCornerIsNotAnInvisibleHitTarget() {
+        val bounds=PopupBounds(-1f,-2f,0f,-1f)
+        assertFalse(bounds.contains(-1f,-2f))
+        assertTrue(bounds.contains(-.5f,-1.5f))
+    }
+    @Test fun nonSquareKeysUseTheSamePixelRadiusForDrawingAndHitTesting() {
+        val bounds=PopupBounds(0f,0f,1f,1f)
+        assertTrue(bounds.contains(.05f,.03f,200f,100f))
+        assertFalse(bounds.contains(.02f,.02f,200f,100f))
+        assertFalse(bounds.contains(1f,.5f,200f,100f))
+    }
+}
