@@ -43,6 +43,43 @@ class PopupTapAreaTest {
         assertFalse(session.isTap)
         assertEquals("ふ",session.release(0f,-.21f))
     }
+    @Test fun offCenterSensitivityTapsAndShortFlicksUseTheInitialTouch() {
+        val area=PopupTapArea.resolve(PopupTapSizeMode.FLICK_SENSITIVITY,200f,100f,20f)
+        for((x,y) in listOf(-.49f to -.49f,.49f to .49f,0f to 0f)) {
+            val session=PopupMapSession(SumirePopupDefaults.create("は"),200f,100f,tapArea=area,tapOriginX=x,tapOriginY=y)
+            assertTrue(session.isTap)
+            assertEquals("は",session.release(x,y))
+            assertEquals("は",session.release(x+.09f,y))
+            assertEquals("へ",session.release(x+.11f,y))
+            assertFalse(session.isTap)
+        }
+    }
+    @Test fun horizontalMovementAcrossTheReservedKeyKeepsItsDirectionAfterAnEdgePress() {
+        val area=PopupTapArea.resolve(PopupTapSizeMode.FLICK_SENSITIVITY,200f,100f,20f)
+        for(originX in listOf(-.49f,.49f)) for(y in listOf(-.49f,.49f)) {
+            val session=PopupMapSession(SumirePopupDefaults.create("は"),200f,100f,tapArea=area,tapOriginX=originX,tapOriginY=y)
+            val direction=if(originX<0f) 1f else -1f
+            val expected=if(direction>0f) "へ" else "ひ"
+            for(distance in listOf(.11f,.5f,.98f)) {
+                assertEquals("Movement from ($originX,$y) by $distance is horizontal",expected,session.release(originX+direction*distance,y))
+            }
+        }
+    }
+    @Test fun offCenterPressDoesNotShiftDirectShapeHitsOrMapTransitions() {
+        val area=PopupTapArea.resolve(PopupTapSizeMode.FLICK_SENSITIVITY,200f,100f,20f)
+        val bounds=PopupBounds(.7f,-.2f,1.1f,.2f)
+        val config=PopupKeyConfig("は","normal",listOf(
+            PopupMap("normal","通常","は",listOf(PopupRegion("switch",bounds,PopupAction(PopupActionType.SWITCH,targetMapId="next")))),
+            PopupMap("next","次","ば",listOf(PopupRegion("text",bounds,PopupAction(text="○"),outline=PopupOutline())))),version=2)
+        val session=PopupMapSession(config,200f,100f,PopupMapInputOptions(nearestEnabled=false),area,-.375f,.25f)
+        // A point outside the actual contour must not switch the map.
+        session.move(.71f,.19f)
+        assertEquals("normal",session.currentMap.id)
+        session.move(.9f,0f)
+        assertEquals("next",session.currentMap.id)
+        assertEquals("○",session.release(.9f,0f))
+        assertEquals("ば",session.release(-.375f,.25f))
+    }
     @Test fun aGestureKeepsItsFrozenTapAreaWhenSettingsChange() {
         val first=PopupTapArea.resolve(PopupTapSizeMode.FLICK_SENSITIVITY,200f,100f,12f)
         val session=PopupMapSession(SumirePopupDefaults.create("は"),200f,100f,tapArea=first)
