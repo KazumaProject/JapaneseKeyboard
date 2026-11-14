@@ -1,80 +1,96 @@
-# F-Droid Release Notes
+# F-Droid releases
 
-This repository now includes the upstream metadata and build behavior needed to package the `liteFdroid` variant for F-Droid.
+The F-Droid package is `com.kazumaproject.markdownhelperkeyboard.lite.fdroid`
+(`liteFdroid`). It excludes the optional Zenz and local AI runtimes and models.
+Its version is taken from `app/build.gradle`, with the `-lite-fdroid` suffix.
 
-## What ships on F-Droid
+## Publication and official availability
 
-- Package name: `com.kazumaproject.markdownhelperkeyboard.lite.fdroid`
-- Version name: `1.7.27`
-- Version code: `721`
-- Gradle flavor: `liteFdroid`
+The [GitHub release workflow](../.github/workflows/android.yml) publishes
+`app-liteFdroid-release.apk` for a new `v*` tag only after it:
 
-The F-Droid flavor is the lightweight edition. It does not include the optional `zenz` or `gemma` model features.
+1. Builds the exact workflow commit twice, on separate runners with empty Gradle
+   user homes and no restored build or configuration caches.
+2. Checks each APK's embedded source revision and dictionary packaging.
+3. Requires the unsigned APKs to be byte-for-byte identical.
+4. Signs the verified APK, preserving alignment, and verifies signature copying
+   against the independent unsigned rebuild with `apksigcopier`.
+5. Checks that the public tag still resolves to the workflow commit.
 
-## Upstream metadata
+Relevant pull requests also run the unsigned F-Droid builds, dictionary decoder
+tests, and byte comparison. Signing and publication run on tag pushes or manual
+workflow dispatches; manual dispatch does not create a GitHub Release.
 
-F-Droid can read app-store metadata directly from this repository.
+A successful GitHub workflow does not establish that the official F-Droid
+repository has accepted or distributed that version. Check these separately:
 
-- Text metadata: `fastlane/metadata/android/`
-- English locale: `fastlane/metadata/android/en-US/`
-- Japanese locale: `fastlane/metadata/android/ja-JP/`
+- [Official package listing](https://f-droid.org/packages/com.kazumaproject.markdownhelperkeyboard.lite.fdroid/)
+- [Official package version API](https://f-droid.org/api/v1/packages/com.kazumaproject.markdownhelperkeyboard.lite.fdroid)
+- [Current fdroiddata metadata](https://gitlab.com/fdroid/fdroiddata/-/blob/master/metadata/com.kazumaproject.markdownhelperkeyboard.lite.fdroid.yml)
+- [Upstream reproducibility issue](https://github.com/KazumaProject/JapaneseKeyboard/issues/1293)
 
-The screenshots and icon used for the listing are stored under the `en-US/images/` subtree, which is supported by F-Droid's fastlane-compatible metadata import.
+The file under this repository's `fdroid/metadata/` is the historical submission
+draft. The app is already in fdroiddata; use its current metadata when validating
+an update, rather than replacing it with the old draft.
 
-## Local build command
+Never move an existing release tag or replace published APK assets to deliver
+a fix. Publish a new version and tag so F-Droid rebuilds the same source as the
+reference binary.
 
-Build the exact release APK that matches the F-Droid submission draft with:
+## Rebuild a release
 
-```bash
-./gradlew assembleLiteFdroidRelease
-```
-
-If your shell points `JAVA_HOME` to a stale JDK path, run:
-
-```bash
-JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew assembleLiteFdroidRelease
-```
-
-The APK is generated at:
-
-```text
-app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
-```
-
-## fdroiddata draft
-
-A starter metadata file for submitting this app to the main F-Droid repository is included at:
-
-```text
-fdroid/metadata/com.kazumaproject.markdownhelperkeyboard.lite.fdroid.yml
-```
-
-Copy that file into your `fdroiddata/metadata/` checkout, then run the standard validation flow:
+Use a fresh clone of the exact public tag. Install the SDK platform, build tools,
+and NDK listed in the release workflow. The Gradle wrapper and
+`gradle/gradle-daemon-jvm.properties` select the Gradle and daemon JDK versions.
+Keep signing properties out of this checkout when building the unsigned APK.
 
 ```bash
-fdroid readmeta
-fdroid lint com.kazumaproject.markdownhelperkeyboard.lite.fdroid
-fdroid checkupdates --allow-dirty com.kazumaproject.markdownhelperkeyboard.lite.fdroid
-fdroid build com.kazumaproject.markdownhelperkeyboard.lite.fdroid
+git clone https://github.com/KazumaProject/JapaneseKeyboard.git
+cd JapaneseKeyboard
+git checkout --detach v<VERSION>
+export GRADLE_USER_HOME="$(mktemp -d)"
+./gradlew clean :app:assembleLiteFdroidRelease \
+  --no-build-cache --no-configuration-cache --no-daemon --max-workers=1
+python3 tools/release/verify-release-source.py \
+  --revision "$(git rev-parse HEAD)" --tag v<VERSION> \
+  app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
+python3 tools/release/verify-lite-apk.py \
+  app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
 ```
 
-## Submission checklist
-
-1. Push the upstream metadata changes to GitHub.
-2. Ensure the release commit is tagged with the normal release tag, for example `v1.7.27`.
-3. Let the GitHub Release workflow upload `app-liteFdroid-release.apk` for that tag.
-4. Copy the draft YAML into a fork of `fdroiddata`.
-5. Run the `fdroid` validation commands locally or in the official Docker environment.
-6. Open a merge request against `F-Droid/fdroiddata`.
-The draft points fdroidserver at the universal F-Droid APK and keeps `Binaries` on the versioned GitHub Release asset.
-
-## Tagging command
-
-Create the release tag:
+Compare the release APK with this unsigned rebuild using the pinned
+`apksigcopier` version and signing tools from the workflow:
 
 ```bash
-git tag v1.7.27
-git push origin v1.7.27
+apksigcopier compare --unsigned /path/to/published/app-liteFdroid-release.apk \
+  app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
 ```
 
-The repository's GitHub release workflow triggers on tags that start with `v`, so this tag is also where the `Binaries` URL resolves.
+The [F-Droid reproducible-build documentation](https://f-droid.org/docs/Reproducible_Builds/)
+describes environment differences that can affect this comparison. Run
+`fdroid readmeta`, `fdroid lint`, and `fdroid build` against the current fdroiddata
+checkout to validate the official build recipe as well.
+
+## Lite APK size
+
+Lite still bundles the Japanese and English dictionaries, classified dictionaries,
+English grammar data, and precomputed search indexes. Excluding AI features does
+not remove those assets.
+
+The system dictionary, English arrays, English lookup index, and grammar index
+are stored uncompressed because runtime readers use `AssetManager.openFd()` and
+memory mapping. English trie labels use a small alphabet and one-byte indices in
+the APK; the reader restores the original UTF-16 `CharArray`, including non-ASCII
+characters. Alphabets larger than 256 characters use the raw UTF-16 format.
+No extracted dictionary cache is needed.
+
+Release variants package the generated dictionaries instead of also shipping the
+old English and Japanese system dictionary files. Connection matrix assets are
+read through streams and can use APK compression. `verify-lite-apk.py` checks
+these packaging rules and rejects native libraries or AI model files in Lite.
+
+## Store metadata
+
+F-Droid imports the listing text from `fastlane/metadata/android/en-US/` and
+`fastlane/metadata/android/ja-JP/`, and the listing images from the existing
+`en-US/images/` subtree.

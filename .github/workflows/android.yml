@@ -2,6 +2,20 @@ name: Android Release CI
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/android.yml'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'app/build.gradle'
+      - 'app/src/main/assets/**'
+      - 'app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/compact/**'
+      - 'app/src/main/java/com/kazumaproject/markdownhelperkeyboard/dictionary_override/**'
+      - 'app/src/test/java/com/kazumaproject/markdownhelperkeyboard/converter/compact/**'
+      - 'tools/release/**'
+      - 'tools/classified-dictionaries/**'
   push:
     tags:
       - 'v*'
@@ -15,6 +29,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     env:
       ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
@@ -92,6 +107,7 @@ jobs:
             --stacktrace \
             --no-daemon \
             --max-workers=1
+          python3 tools/release/verify-lite-apk.py app/build/outputs/apk/liteStandard/release/*.apk
 
       - name: Build and verify Play bundle native symbols
         env:
@@ -147,7 +163,7 @@ jobs:
         run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;29.0.14206865"
 
       - name: Verify release source guard
-        run: python3 -m unittest discover -s tools/release -p 'test_verify_release_source.py'
+        run: python3 -m unittest discover -s tools/release
 
       - name: Build unsigned F-Droid APK without restored caches
         env:
@@ -161,6 +177,16 @@ jobs:
             --stacktrace --no-daemon --max-workers=1
           python3 tools/release/verify-release-source.py --revision "$GITHUB_SHA" \
             app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
+          python3 tools/release/verify-lite-apk.py \
+            app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
+
+      - name: Test English dictionary decoding
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/fdroid-gradle-${{ matrix.build }}
+        run: |
+          ./gradlew :app:testLiteFdroidDebugUnitTest \
+            --tests '*BundledEnglishDictionaryReaderTest' \
+            --no-daemon --max-workers=1
 
       - name: Upload unsigned F-Droid APK for comparison
         uses: actions/upload-artifact@v4
@@ -169,8 +195,24 @@ jobs:
           if-no-files-found: error
           path: app/build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
 
+  verify-fdroid:
+    needs: fdroid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fdroid-unsigned-first-${{ github.sha }}
+          path: fdroid/first
+      - uses: actions/download-artifact@v4
+        with:
+          name: fdroid-unsigned-second-${{ github.sha }}
+          path: fdroid/second
+      - name: Require identical clean F-Droid builds
+        run: cmp fdroid/first/app-liteFdroid-release.apk fdroid/second/app-liteFdroid-release.apk
+
   publish:
-    needs: [build, fdroid]
+    if: github.event_name != 'pull_request'
+    needs: [build, fdroid, verify-fdroid]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout verification tools from the workflow commit
