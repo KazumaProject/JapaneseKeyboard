@@ -430,6 +430,17 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
             }
         }
         screen.addPreference(skinPreference)
+        val feverSettingsPreference = Preference(context).apply {
+            key = "fever_settings"
+            isVisible = appPreference.keyboardSkin == KeyboardSkinId.FEVER
+            setTitle(R.string.fever_settings_title)
+            setSummary(R.string.fever_settings_summary)
+            order = -1
+            configureClickListener {
+                navigateSafely(R.id.feverSettingsFragment)
+                true
+            }
+        }
         val localFontPreference = Preference(context).apply {
             key = PREF_KEY_LOCAL_FONT
             title = context.getString(R.string.local_font_title)
@@ -460,6 +471,9 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
             }
             transfer(skinPreference)
             transfer(localFontPreference)
+            canonical.findPreference<CollapsiblePreferenceCategory>("settings_theme_skin")
+                ?.addPreference(feverSettingsPreference)
+            feverSettingsPreference.conditionVisible = appPreference.keyboardSkin == KeyboardSkinId.FEVER
         }
         return canonical
     }
@@ -487,6 +501,7 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
     override fun onPreferencesResumed() {
         super.onPreferencesResumed()
         val selected = appPreference.keyboardSkin
+        findPreference<Preference>("fever_settings")?.conditionVisible = selected == KeyboardSkinId.FEVER
         findPreference<Preference>(KeyboardSkinId.PREFERENCE_KEY)?.summary =
             getString(KeyboardThemeCatalog.find(selected).titleRes)
         val compatible = selected == KeyboardSkinId.DEFAULT
@@ -510,6 +525,9 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
     }
 
     private val dependencyListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == KeyboardSkinId.PREFERENCE_KEY) {
+            findPreference<Preference>("fever_settings")?.conditionVisible = appPreference.keyboardSkin == KeyboardSkinId.FEVER
+        }
         if (key == "composing_guide_text_enabled") syncCrossScreenDependencies()
         if (key != null && (key.startsWith("keyboard_touch_effect_") || key.startsWith("theme_") || key.startsWith("liquid_glass_") || key.startsWith("key_popup_"))) syncSearchAvailability()
     }

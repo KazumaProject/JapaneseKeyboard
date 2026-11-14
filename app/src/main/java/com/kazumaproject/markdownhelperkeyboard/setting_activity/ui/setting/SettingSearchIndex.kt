@@ -243,13 +243,28 @@ object SettingSearchIndex {
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
+        val feverItem = if (SettingDestinations.isFeverSelected(context)) SettingDestinations.destination(
+            key = "fever_settings",
+            title = context.getString(R.string.fever_settings_title),
+            summary = context.getString(R.string.fever_settings_summary),
+            category = SettingCategory.KEYBOARD_DISPLAY,
+            keywords = listOf("fever", "pachinko", "combo", "jackpot", "パチンコ", "コンボ", "演出", "抽選", "反応語", "フィーバー"),
+            destinationId = com.kazumaproject.markdownhelperkeyboard.R.id.feverSettingsFragment,
+            iconRes = SettingDestinations.defaultIconForCategory(SettingCategory.KEYBOARD_DISPLAY),
+            legacyTarget = LegacySettingTarget(
+                tabKey = SettingTabRegistry.TAB_THEME, xmlRes = null,
+                destinationId = com.kazumaproject.markdownhelperkeyboard.R.id.feverSettingsFragment,
+                preferenceKey = "fever_settings", filterResultMode = false,
+            ),
+            searchScope = SettingSearchScope.LEGACY_TABS,
+        ) else null
         val candidateItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_display, R.id.candidateDisplayPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
         val indicatorItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
-        return (candidateItems + listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { it.key }
+        return (candidateItems + listOfNotNull(themeItem, textMacroItem, feverItem) + xmlItems + indicatorItems).distinctBy { it.key }
     }
 
     fun search(

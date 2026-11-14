@@ -48,7 +48,7 @@ class KeyboardSkinAppearanceTest {
             "liquidGlassThemePreference", "liquidGlassKeyBlurRadiousPreference",
             "keyboardTouchEffectTypePreference", "customKeyBorderEnablePreference")
         for (id in listOf(KeyboardSkinId.CUPERTINO_LIGHT, KeyboardSkinId.CUPERTINO_DARK,
-                KeyboardSkinId.CUPERTINO_CLASSIC)) {
+                KeyboardSkinId.CUPERTINO_CLASSIC, KeyboardSkinId.FEVER)) {
             AppPreference.keyboardSkin = id
             val saved = ImePreferencesSnapshot.from(AppPreference)
             val effective = saved.withKeyboardSkinAppearance()
