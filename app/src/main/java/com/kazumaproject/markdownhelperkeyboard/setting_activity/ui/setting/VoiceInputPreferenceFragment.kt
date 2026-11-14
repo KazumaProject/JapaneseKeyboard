@@ -6,6 +6,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.SwitchPreferenceCompat
 import androidx.preference.Preference
+import androidx.preference.PreferenceCategory
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Lifecycle
@@ -125,10 +126,43 @@ class VoiceInputPreferenceFragment : AsyncPreferenceFragment() {
         }
         applyLegacySearchResultFilterIfNeeded()
         updateCustomTextState()
+        childFragmentManager.setFragmentResultListener(VoiceInputRuleDialogFragment.RESULT_KEY, this) { _, _ ->
+            renderReplacementRules()
+        }
+        renderReplacementRules()
     }
 
     override fun onPreferencesResumed() {
         updateCustomTextState()
+        renderReplacementRules()
+    }
+
+    private fun renderReplacementRules() {
+        val category = findPreference<PreferenceCategory>(AppPreference.VOICE_INPUT_TEXT_REPLACEMENT_RULES_KEY) ?: return
+        category.removeAll()
+        AppPreference.voice_input_text_replacement_rules.forEachIndexed { index, rule ->
+            category.addPreference(Preference(requireContext()).apply {
+                key = "voice_input_text_replacement_rule_$index"
+                isPersistent = false
+                title = rule.source
+                summary = if (rule.replacement.isEmpty()) getString(R.string.voice_input_text_replacement_delete_text)
+                    else getString(R.string.voice_input_custom_text_value_summary, rule.replacement)
+                setOnPreferenceClickListener { showReplacementRuleEditor(rule.source); true }
+            })
+        }
+        category.addPreference(Preference(requireContext()).apply {
+            key = AppPreference.VOICE_INPUT_TEXT_REPLACEMENT_ADD_KEY
+            isPersistent = false
+            setTitle(R.string.voice_input_text_replacement_add_title)
+            setSummary(R.string.voice_input_text_replacement_rules_summary)
+            setOnPreferenceClickListener { showReplacementRuleEditor(null); true }
+        })
+    }
+
+    private fun showReplacementRuleEditor(source: String?) {
+        if (childFragmentManager.findFragmentByTag(VoiceInputRuleDialogFragment.TAG) == null) {
+            VoiceInputRuleDialogFragment.newInstance(source).show(childFragmentManager, VoiceInputRuleDialogFragment.TAG)
+        }
     }
 
     private fun renderModels() {

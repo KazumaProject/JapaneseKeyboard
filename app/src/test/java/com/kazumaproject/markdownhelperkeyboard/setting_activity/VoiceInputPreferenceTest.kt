@@ -13,6 +13,7 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaRuntimeClient
 import com.kazumaproject.markdownhelperkeyboard.ime_service.ImePreferencesSnapshot
 import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSpaceReplacement
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputReplacementRule
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.*
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -36,6 +37,7 @@ class VoiceInputPreferenceTest {
         AppPreference.VOICE_INPUT_ENGINE_KEY,
         AppPreference.VOICE_INPUT_MODEL_KEY,
         AppPreference.VOICE_INPUT_BACKEND_KEY,
+        AppPreference.VOICE_INPUT_TEXT_REPLACEMENT_ENABLED_KEY,
     )
 
     @Before
@@ -57,6 +59,10 @@ class VoiceInputPreferenceTest {
         AppPreference.voice_input_space_replacement_enabled = true
         AppPreference.voice_input_space_replacement = "custom"
         AppPreference.voice_input_space_custom_text = " ・ "
+        assertFalse(AppPreference.voice_input_text_replacement_enabled)
+        assertTrue(AppPreference.voice_input_text_replacement_rules.isEmpty())
+        AppPreference.voice_input_text_replacement_enabled = true
+        AppPreference.voice_input_text_replacement_rules = listOf(VoiceInputReplacementRule("僕", "ぼく"))
         val expected = AppPreference.voice_input_settings
         assertEquals(expected, ImePreferencesSnapshot.from(AppPreference).voiceInputSettings)
         val backup = AppPreference.exportAllToJson()
@@ -64,6 +70,7 @@ class VoiceInputPreferenceTest {
         AppPreference.importAllFromJson(backup)
         AppPreference.init(context)
         assertEquals(expected, AppPreference.voice_input_settings)
+        assertEquals("ぼく ・ です", AppPreference.voice_input_settings.transform("僕 です", "ja-JP"))
         AppPreference.voice_input_space_replacement_enabled = false
         assertEquals(expected.copy(enabled = false), AppPreference.voice_input_settings)
         AppPreference.voice_input_space_replacement = "unknown"
@@ -125,6 +132,9 @@ class VoiceInputPreferenceTest {
                 }
             }
             assertTrue(SettingSearchIndex.search(context, results, "voice").any { it.key in keys })
+            assertEquals(SettingCategory.VOICE_INPUT, results.single {
+                it.key == AppPreference.VOICE_INPUT_TEXT_REPLACEMENT_ADD_KEY
+            }.category)
         }
         val candidates = SettingDestinations.frequentCandidates(context)
         assertTrue(candidates.map { it.key }.containsAll(keys))
@@ -173,5 +183,46 @@ class VoiceInputPreferenceTest {
         replacement.value = "comma"
         assertFalse(custom.isEnabled)
         controller.destroy()
+    }
+
+    @Test
+    fun ruleEditorValidatesAddsEditsAndDeletesPersistedRules() {
+        val controller = Robolectric.buildActivity(AppCompatActivity::class.java)
+        controller.get().setTheme(R.style.Theme_MarkdownKeyboard)
+        val activity = controller.create().start().resume().get()
+        fun open(source: String?): androidx.appcompat.app.AlertDialog {
+            VoiceInputRuleDialogFragment.newInstance(source).showNow(activity.supportFragmentManager, VoiceInputRuleDialogFragment.TAG)
+            return (activity.supportFragmentManager.findFragmentByTag(VoiceInputRuleDialogFragment.TAG) as VoiceInputRuleDialogFragment)
+                .requireDialog() as androidx.appcompat.app.AlertDialog
+        }
+        fun save(dialog: androidx.appcompat.app.AlertDialog, source: String, target: String) {
+            dialog.findViewById<android.widget.EditText>(R.id.source)!!.setText(source)
+            dialog.findViewById<android.widget.EditText>(R.id.replacement)!!.setText(target)
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).performClick()
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            activity.supportFragmentManager.executePendingTransactions()
+        }
+        val dialog = open(null)
+        save(dialog, "", "ぼく")
+        assertTrue(dialog.isShowing)
+        assertTrue(AppPreference.voice_input_text_replacement_rules.isEmpty())
+        save(dialog, "僕", "ぼく")
+        assertEquals(listOf(VoiceInputReplacementRule("僕", "ぼく")), AppPreference.voice_input_text_replacement_rules)
+
+        val duplicate = open(null)
+        save(duplicate, "僕", "私")
+        assertTrue(duplicate.isShowing)
+        assertEquals("ぼく", AppPreference.voice_input_text_replacement_rules.single().replacement)
+        duplicate.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        activity.supportFragmentManager.executePendingTransactions()
+
+        save(open("僕"), "僕たち", "")
+        assertEquals(listOf(VoiceInputReplacementRule("僕たち", "")), AppPreference.voice_input_text_replacement_rules)
+        open("僕たち").getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        activity.supportFragmentManager.executePendingTransactions()
+        assertTrue(AppPreference.voice_input_text_replacement_rules.isEmpty())
+        controller.pause().stop().destroy()
     }
 }

@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="setting_category_voice_input_title">Voice input</string>
-    <string name="setting_category_voice_input_summary">Choose a speech recognizer or a local AI model, and replace spaces</string>
+    <string name="setting_category_voice_input_summary">Choose a speech recognizer or a local AI model, and replace text and spaces</string>
     <string name="voice_input_space_replacement_enabled_title">Automatically replace spaces</string>
-    <string name="voice_input_space_replacement_enabled_summary">Replace each half-width space in Japanese voice input, including spaces between English words. English voice input is kept unchanged.</string>
+    <string name="voice_input_space_replacement_enabled_summary">Replace each half-width space in Japanese voice input, including spaces between English words. Spaces in English voice input are not replaced.</string>
+    <string name="voice_input_text_replacement_enabled_title">Automatically replace voice input text</string>
+    <string name="voice_input_text_replacement_enabled_summary">Apply saved rules, such as 僕 → ぼく, to Japanese and English voice input. Text replacements are case-sensitive, include matches within words, and run after space replacement.</string>
+    <string name="voice_input_text_replacement_rules_title">Text replacement rules</string>
+    <string name="voice_input_text_replacement_add_title">Add replacement rule</string>
+    <string name="voice_input_text_replacement_rules_summary">Example: 僕 → ぼく. Tap a saved rule to edit or delete it. At each position, longer matches take priority. Replacement text is not replaced again.</string>
+    <string name="voice_input_text_replacement_edit_title">Edit replacement rule</string>
+    <string name="voice_input_text_replacement_source">Text to replace (e.g. 僕)</string>
+    <string name="voice_input_text_replacement_target">Replacement (e.g. ぼく, empty to delete)</string>
+    <string name="voice_input_text_replacement_delete_text">Delete matched text</string>
+    <string name="voice_input_text_replacement_source_required">Enter the text to replace</string>
+    <string name="voice_input_text_replacement_source_duplicate">A rule for this text already exists</string>
     <string name="voice_input_space_replacement_title">Replace spaces with</string>
     <string name="voice_input_custom_text_title">Custom replacement text</string>
     <string name="voice_input_custom_text_empty_summary">Empty: remove spaces</string>

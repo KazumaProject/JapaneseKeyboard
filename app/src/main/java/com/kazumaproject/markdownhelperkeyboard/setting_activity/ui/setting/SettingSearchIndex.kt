@@ -659,6 +659,9 @@ object SettingSearchIndex {
                 add(AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_ENABLED_KEY)
                 add(AppPreference.VOICE_INPUT_SPACE_REPLACEMENT_KEY)
                 add(AppPreference.VOICE_INPUT_SPACE_CUSTOM_TEXT_KEY)
+                add(AppPreference.VOICE_INPUT_TEXT_REPLACEMENT_ENABLED_KEY)
+                add(AppPreference.VOICE_INPUT_TEXT_REPLACEMENT_RULES_KEY)
+                add(AppPreference.VOICE_INPUT_TEXT_REPLACEMENT_ADD_KEY)
             }
             if (!dependencyKey.isNullOrBlank()) {
                 add(dependencyKey)

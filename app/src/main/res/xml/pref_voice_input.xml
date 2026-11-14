@@ -41,4 +41,18 @@
         android:summary="@string/voice_input_custom_text_empty_summary"
         android:dependency="voice_input_space_replacement_enabled"
         android:defaultValue="" />
+    <SwitchPreferenceCompat
+        android:key="voice_input_text_replacement_enabled"
+        android:title="@string/voice_input_text_replacement_enabled_title"
+        android:summary="@string/voice_input_text_replacement_enabled_summary"
+        android:defaultValue="false" />
+    <PreferenceCategory
+        android:key="voice_input_text_replacement_rules"
+        android:title="@string/voice_input_text_replacement_rules_title">
+        <Preference
+            android:key="voice_input_text_replacement_add"
+            android:title="@string/voice_input_text_replacement_add_title"
+            android:summary="@string/voice_input_text_replacement_rules_summary"
+            android:persistent="false" />
+    </PreferenceCategory>
 </PreferenceScreen>

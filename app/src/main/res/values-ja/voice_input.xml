@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="setting_category_voice_input_title">音声入力</string>
-    <string name="setting_category_voice_input_summary">音声認識方式・端末内AIモデルの選択と半角スペースの置換</string>
+    <string name="setting_category_voice_input_summary">音声認識方式・端末内AIモデルの選択と文字列・半角スペースの置換</string>
     <string name="voice_input_space_replacement_enabled_title">日本語の音声入力の半角スペースを置換</string>
-    <string name="voice_input_space_replacement_enabled_summary">日本語の音声入力に含まれる半角スペースを置換します。英単語間のスペースも対象です。英語の音声入力はそのまま保持します。</string>
+    <string name="voice_input_space_replacement_enabled_summary">日本語の音声入力に含まれる半角スペースを置換します。英単語間のスペースも対象です。英語の音声入力のスペースは置換しません。</string>
+    <string name="voice_input_text_replacement_enabled_title">音声入力の文字列を自動置換</string>
+    <string name="voice_input_text_replacement_enabled_summary">「僕 → ぼく」など、登録したルールを日本語・英語の音声入力に適用します。半角スペースの置換後に、大文字・小文字を区別して文字列を置換します。単語の一部も対象です。</string>
+    <string name="voice_input_text_replacement_rules_title">文字列の置換ルール</string>
+    <string name="voice_input_text_replacement_add_title">置換ルールを追加</string>
+    <string name="voice_input_text_replacement_rules_summary">例：僕 → ぼく。登録済みのルールをタップして編集・削除できます。同じ位置では長い文字列を優先し、置換先の文字列は再置換しません。</string>
+    <string name="voice_input_text_replacement_edit_title">置換ルールを編集</string>
+    <string name="voice_input_text_replacement_source">置換する文字列（例：僕）</string>
+    <string name="voice_input_text_replacement_target">置換先（例：ぼく、空欄で削除）</string>
+    <string name="voice_input_text_replacement_delete_text">一致した文字列を削除</string>
+    <string name="voice_input_text_replacement_source_required">置換する文字列を入力してください</string>
+    <string name="voice_input_text_replacement_source_duplicate">この文字列の置換ルールは登録済みです</string>
     <string name="voice_input_space_replacement_title">置換先</string>
     <string name="voice_input_custom_text_title">指定する文字列</string>
     <string name="voice_input_custom_text_empty_summary">空欄：半角スペースを削除</string>

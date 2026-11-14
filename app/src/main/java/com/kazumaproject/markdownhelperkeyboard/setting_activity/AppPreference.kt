@@ -34,6 +34,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPa
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSettings
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputReplacementRule
+import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputReplacementRuleCodec
 import com.kazumaproject.markdownhelperkeyboard.ime_service.voice_input.VoiceInputSpaceReplacement
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingLanguage
 import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
@@ -65,6 +67,21 @@ object AppPreference {
     const val VOICE_INPUT_ENGINE_KEY = "voice_input_engine"
     const val VOICE_INPUT_MODEL_KEY = "voice_input_model"
     const val VOICE_INPUT_BACKEND_KEY = "voice_input_backend"
+    const val VOICE_INPUT_TEXT_REPLACEMENT_ENABLED_KEY = "voice_input_text_replacement_enabled"
+    const val VOICE_INPUT_TEXT_REPLACEMENT_RULES_KEY = "voice_input_text_replacement_rules"
+    const val VOICE_INPUT_TEXT_REPLACEMENT_ADD_KEY = "voice_input_text_replacement_add"
+
+    var voice_input_text_replacement_enabled: Boolean
+        get() = preferences.getBoolean(VOICE_INPUT_TEXT_REPLACEMENT_ENABLED_KEY, false)
+        set(value) = preferences.edit { it.putBoolean(VOICE_INPUT_TEXT_REPLACEMENT_ENABLED_KEY, value) }
+
+    var voice_input_text_replacement_rules: List<VoiceInputReplacementRule>
+        get() = VoiceInputReplacementRuleCodec.decode(
+            preferences.getString(VOICE_INPUT_TEXT_REPLACEMENT_RULES_KEY, "[]") ?: "[]"
+        )
+        set(value) = preferences.edit {
+            it.putString(VOICE_INPUT_TEXT_REPLACEMENT_RULES_KEY, VoiceInputReplacementRuleCodec.encode(value))
+        }
 
     var voice_input_engine: String
         get() = preferences.getString(VOICE_INPUT_ENGINE_KEY, "system") ?: "system"
@@ -102,6 +119,8 @@ object AppPreference {
             engine = voice_input_engine,
             modelPath = voice_input_model,
             backend = voice_input_backend,
+            textReplacementEnabled = voice_input_text_replacement_enabled,
+            textReplacementRules = voice_input_text_replacement_rules,
         )
 
     const val PRESERVE_DICTIONARY_WORD_WHITESPACE_KEY =

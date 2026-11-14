@@ -578,6 +578,7 @@ object SettingDestinations {
         "voice_input_space_replacement_enabled",
         "voice_input_space_replacement",
         "voice_input_space_custom_text",
+        "voice_input_text_replacement_enabled",
         "clipboard_history_preference_fragment",
         "clipboard_preview_enable_preference",
         "shortcut_toolbar_visibility_preference",

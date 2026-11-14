@@ -16,6 +16,23 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class VoiceInputRecognitionTest {
     @Test
+    fun partialAndFinalCallbacksReplaceTextUsingTheSessionRules() {
+        val service = IMEService()
+        val settings = VoiceInputSettings(
+            textReplacementEnabled = true,
+            textReplacementRules = listOf(VoiceInputReplacementRule("僕", "ぼく")),
+        )
+        setField(service, "activeVoiceInputLanguage", "ja-JP")
+        setField(service, "activeVoiceInputSettings", settings)
+        val listener = listener(service)
+        listener.onPartialResults(results("僕は"))
+        assertEquals("ぼくは", input(service))
+        setField(service, "voiceInputSettings", settings.copy(textReplacementEnabled = false))
+        listener.onResults(results("僕は僕です"))
+        assertEquals("ぼくはぼくです", input(service))
+    }
+
+    @Test
     fun partialAndFinalCallbacksUseTheSameRecognitionSessionSettings() {
         val service = IMEService()
         setField(service, "activeVoiceInputLanguage", "ja-JP")
