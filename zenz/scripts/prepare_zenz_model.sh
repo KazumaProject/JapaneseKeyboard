@@ -133,13 +133,17 @@ fi
 cmake -S "${LLAMA_CPP_DIR}" -B "${HOST_BUILD_DIR}" \
   -DCMAKE_BUILD_TYPE=Release \
   -DLLAMA_BUILD_COMMON=ON \
-  -DLLAMA_BUILD_EXAMPLES=ON \
+  -DLLAMA_BUILD_EXAMPLES=OFF \
+  -DLLAMA_BUILD_TOOLS=ON \
+  -DLLAMA_BUILD_MTMD=OFF \
   -DLLAMA_BUILD_SERVER=OFF \
+  -DLLAMA_OPENSSL=OFF \
+  -DLLAMA_SUBPROCESS=OFF \
   -DLLAMA_BUILD_TESTS=OFF >/dev/null
 
 cmake --build "${HOST_BUILD_DIR}" --config Release --target llama-quantize -j >/dev/null
 
-"${PYTHON_BIN}" "${LLAMA_CPP_DIR}/convert_hf_to_gguf.py" \
+"${PYTHON_BIN}" "$(dirname "$0")/convert_zenz_model.py" "${LLAMA_CPP_DIR}" \
   "${MODEL_DIR}" \
   --outfile "${F16_FILE}" \
   --outtype f16 >/dev/null

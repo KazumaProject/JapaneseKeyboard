@@ -8,7 +8,8 @@
 #include <cstdint>
 #include <cmath>
 #include <android/log.h>
-#include "llama.h"
+#include <llama.h>
+#include "zenz_model_compat.h"
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "zenz-bridge", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "zenz-bridge", __VA_ARGS__)
@@ -621,7 +622,7 @@ static bool never_abort(void * /*data*/) {
 
 static void clear_session_kv_locked(llama_context *ctx) {
     g_session.draft_review = {};
-    llama_kv_cache_clear(ctx);
+    llama_memory_clear(llama_get_memory(ctx), true);
 }
 
 static void destroy_session_context_locked() {
@@ -942,7 +943,7 @@ static CandidateEvaluationResult candidate_evaluate(
         if (is_request_stale(request_seq)) return fail();
         auto result = draft_mismatch(all_tokens, start, start + j, token);
         if (scoped && result.type == CandidateEvaluationResultType::FIX_REQUIRED &&
-            llama_kv_cache_seq_rm(ctx, 0, static_cast<llama_pos>(start + j), -1)) {
+            llama_memory_seq_rm(llama_get_memory(ctx), 0, static_cast<llama_pos>(start + j), -1)) {
             // Keep the verified KV prefix and the prediction that produced the repair.
             cache.predictions.resize(j + 1);
             cache.prompt = prompt_tokens;
@@ -1060,7 +1061,7 @@ static bool extend_candidate_logprobs_locked(
     // The first unscored token is predicted by the last shared token, or by the
     // last prompt token when the candidates have no common prefix.
     const auto suffix_start = static_cast<llama_pos>(prompt_tokens.size() + shared_tokens - 1);
-    if (!llama_kv_cache_seq_rm(ctx, 0, suffix_start, -1)) {
+    if (!llama_memory_seq_rm(llama_get_memory(ctx), 0, suffix_start, -1)) {
         return false;
     }
 
@@ -1157,7 +1158,21 @@ Java_com_kazumaproject_zenz_ZenzEngine_initModel(
 
     llama_model_params mparams = llama_model_default_params();
     mparams.n_gpu_layers = 0;
-    mparams.use_mmap = true;
+    mparams.load_mode = LLAMA_LOAD_MODE_MMAP;
+
+    gguf_context *metadata = gguf_init_from_file(c_model_path, {true, nullptr});
+    std::vector<llama_model_kv_override> overrides;
+    const bool compatible = metadata && zenz_model_overrides(metadata, overrides);
+    if (metadata) gguf_free(metadata);
+    if (!compatible) {
+        LOGE("Failed to read Zenz model metadata or special-token vocabulary");
+        env->ReleaseStringUTFChars(jModelPath, c_model_path);
+        return JNI_FALSE;
+    }
+    if (!overrides.empty()) {
+        LOGI("Applying legacy Zenz tokenizer compatibility overrides");
+        mparams.kv_overrides = overrides.data();
+    }
 
     g_model = llama_model_load_from_file(c_model_path, mparams);
     if (!g_model) {

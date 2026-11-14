@@ -108,10 +108,10 @@ internal class OpenSourceLicenses(private val context: Context) {
                         original("software-licenses/zenz-model-card.txt") + paragraph(text(R.string.license_copyright_unknown)) +
                             original("licenses/sources/apache-2.txt"))
                 },
-                LicenseItem("llama.cpp", "azooKey/llama.cpp", "MIT License") {
-                    document("azooKey/llama.cpp", text(R.string.license_llama_overview),
-                        link("https://github.com/azooKey/llama.cpp/tree/88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c"),
-                        "88b97a47dc7f5892e2d5a6856fbe9cfe237f9e5c",
+                LicenseItem("llama.cpp", "ggml-org/llama.cpp", "MIT License") {
+                    document("ggml-org/llama.cpp", text(R.string.license_llama_overview),
+                        link("https://github.com/ggml-org/llama.cpp/tree/61dbf49228c8a96b72e40c89d93cb7c003411f8c"),
+                        "61dbf49228c8a96b72e40c89d93cb7c003411f8c",
                         text(R.string.license_llama_changes), "MIT License", original("software-licenses/llama-mit.txt"))
                 },
                 LicenseItem("ai-runtime", "ggml-org/llama.cpp / libmtmd / Vulkan headers", "MIT, Apache-2.0 and bundled third-party notices") {

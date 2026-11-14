@@ -325,6 +325,19 @@ zenzModelAssetName=ggml-model-Q5_K_M.gguf
 
 このモードではモデルを `zenz/build/generated/assets/zenzModel/main/ggml-model-Q5_K_M.gguf` に出力して APK/AAB に同梱します。Python 3 が必要で、初回は `huggingface_hub` を自動で入れます。
 
+Zenz の推論ライブラリは公式の `ggml-org/llama.cpp` を使用し、サブモジュールのコミットで固定しています。
+旧 GGUF の `gpt2-small-japanese-char` は、読み込み時に GPT-2 BPE と語彙に基づく特殊トークン ID へ補正します。モデルファイル自体は変更しません。
+Hugging Face 形式からの変換には `zenz/scripts/convert_zenz_model.py` を使用し、既知の Zenz トークナイザーだけに同じ補正を適用します。
+上流更新により推論の数値や候補順位が変わる可能性があるため、更新時は同梱モデルで変換・評価を検証してください。
+
+互換メタデータのホストテストは、ビルド先をリポジトリ外に指定して実行できます。
+
+```bash
+cmake -S zenz/src/test/cpp -B /tmp/zenz-model-compat -DCMAKE_BUILD_TYPE=Release
+cmake --build /tmp/zenz-model-compat --target zenz_model_compat_test -j 4
+ctest --test-dir /tmp/zenz-model-compat --output-on-failure
+```
+
 #### 配布バリアント
 
 このプロジェクトでは `edition` と `channel` の 2 軸で APK を出し分けます。
