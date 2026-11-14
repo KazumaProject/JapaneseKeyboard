@@ -173,23 +173,25 @@ class PopupMapSession(
 object SumirePopupDefaults {
     // Keep the persisted style ID. Default maps remain v1; custom outlines opt into v2.
     const val STYLE = "free-popup"
+    const val PUNCTUATION_KEY = "、。?!"
     private val keys = listOf(Key.KeyA, Key.KeyKA, Key.KeySA, Key.KeyTA, Key.KeyNA, Key.KeyHA, Key.KeyMA, Key.KeyYA, Key.KeyRA, Key.KeyWA)
     private val keyMap = KeyMap()
-    private val definitions = keys.map { keyMap.getKeyInfoJapanese(it, false) as KeyInfo.KeyTapFlickInfo }
-    val rows = definitions.associateTo(linkedMapOf()) { info ->
-        info.tap.toString() to listOfNotNull(info.tap,info.flickLeft,info.flickTop,info.flickRight,info.flickBottom).joinToString("")
-    }
+    private val definitions = keys.associateTo(linkedMapOf()) { key ->
+        val info = keyMap.getKeyInfoJapanese(key, false) as KeyInfo.KeyTapFlickInfo
+        info.tap.toString() to listOf(info.tap, info.flickLeft, info.flickTop, info.flickRight, info.flickBottom)
+    }.apply { put(PUNCTUATION_KEY, listOf('、', '。', '？', '！', '…')) }
+    val rows = definitions.mapValues { (_, characters) -> characters.filterNotNull().joinToString("") }
     private val slots = listOf(
-        PopupBounds(-1.4f,-.4f,-.5f,.4f), PopupBounds(-.45f,-1.3f,.45f,-.5f),
-        PopupBounds(.5f,-.4f,1.4f,.4f), PopupBounds(-.45f,.5f,.45f,1.3f)
+        PopupBounds.KEY.offset(-1f, 0f), PopupBounds.KEY.offset(0f, -1f),
+        PopupBounds.KEY.offset(1f, 0f), PopupBounds.KEY.offset(0f, 1f)
     )
     /** Standard 12-key text assignments, with no preconfigured map transitions. */
     fun create(keyId: String): PopupKeyConfig {
-        val info = definitions.first { it.tap.toString() == keyId }
-        val characters = listOf(info.flickLeft, info.flickTop, info.flickRight, info.flickBottom)
+        val definition = definitions.getValue(keyId)
+        val characters = definition.drop(1)
         val regions = characters.mapIndexedNotNull { index, character ->
             character?.let { PopupRegion("normal-$index", slots[index], PopupAction(text=it.toString())) }
         }
-        return PopupKeyConfig(keyId,"normal",listOf(PopupMap("normal","通常",info.tap.toString(),regions)))
+        return PopupKeyConfig(keyId,"normal",listOf(PopupMap("normal","通常",definition.first().toString(),regions)))
     }
 }

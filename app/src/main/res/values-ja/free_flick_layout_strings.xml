@@ -4,7 +4,7 @@
     <string name="free_flick_layout_current">現在のレイアウト</string>
     <string name="free_flick_layout_selected">選択中：%1$s</string>
     <string name="free_flick_layout_editing">編集中：%1$s</string>
-    <string name="free_flick_layout_scope">全10個のかなキーのマップ・popup形状をまとめて保存します。選択したレイアウトをフリーフリックで使用します。表示位置と最寄り判定の設定は共通です。</string>
+    <string name="free_flick_layout_scope">かな10キーと句読点キーのマップ・popup形状をまとめて保存します。選択したレイアウトをフリーフリックで使用します。表示位置と最寄り判定の設定は共通です。</string>
     <string name="free_flick_layout_new">＋ 新規レイアウト</string>
     <string name="free_flick_layout_snapshot">現在の配置を名前を付けて保存</string>
     <string name="free_flick_layout_import">レイアウトをインポート</string>

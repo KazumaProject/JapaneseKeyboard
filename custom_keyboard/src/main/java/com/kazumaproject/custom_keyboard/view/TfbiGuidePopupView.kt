@@ -211,7 +211,7 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
 
     internal fun drawGuideLabel(canvas: Canvas, text: String, rect: RectF, active: Boolean, compact: Boolean = true) {
         if (active) drawActiveLabel(canvas, text, rect, compact, fitHeight = true)
-        else drawPlainLabel(canvas, text, rect, fitHeight = true)
+        else drawGuideContourLabel(canvas, text, rect)
     }
 
     internal fun drawGuidePointer(canvas: Canvas, panel: RectF, position: TfbiGuideFingerPosition) {
@@ -257,9 +257,15 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
         fitHeight: Boolean = false
     ) {
         if (text.isEmpty()) return
-        val horizontalPadding = if (compact) dp(4f) else dp(8f)
-        val verticalPadding = if (compact) dp(3f) else dp(5f)
-        val maxWidth = rect.width() - dp(4f)
+        // Free Flick contour labels may be smaller than a two-step grid cell.
+        // Keep the existing grid presentation unchanged while fitting its pill to the saved range.
+        val horizontalPadding = (if (compact) dp(4f) else dp(8f)).let {
+            if (fitHeight) minOf(it, rect.width() * .08f) else it
+        }
+        val verticalPadding = (if (compact) dp(3f) else dp(5f)).let {
+            if (fitHeight) minOf(it, rect.height() * .08f) else it
+        }
+        val maxWidth = rect.width() - if (fitHeight) minOf(dp(4f), rect.width() * .05f) else dp(4f)
         val fittedTextSize = fitTextSize(
             text = text,
             maxWidth = maxWidth - horizontalPadding * 2,
