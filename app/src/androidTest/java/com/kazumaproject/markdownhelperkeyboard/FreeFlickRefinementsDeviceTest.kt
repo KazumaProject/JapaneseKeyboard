@@ -10,6 +10,9 @@ import android.os.SystemClock
 import android.view.*
 import android.view.inspector.WindowInspector
 import android.widget.TextView
+import android.widget.Button
+import android.widget.RadioButton
+import com.google.android.material.card.MaterialCardView
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
@@ -52,7 +55,7 @@ class FreeFlickRefinementsDeviceTest {
     }
     private fun screenshot(name: String) {
         if (InstrumentationRegistry.getArguments().getString("captureScreenshots") != "true") return
-        SystemClock.sleep(150)
+        SystemClock.sleep(350)
         val file = File(context.getExternalFilesDir("free-flick-review"), "$name.png")
         file.parentFile!!.mkdirs()
         requireNotNull(automation.takeScreenshot()).let { bitmap ->
@@ -242,6 +245,151 @@ class FreeFlickRefinementsDeviceTest {
                 source.image.recycle();input.image.recycle()
             }
             screenshot("06-ime-keyboard-idle")
+        } finally {host?.close();shell("ime set $originalIme")}
+    }
+
+    @Test fun directAssignmentCreationUndoAndSensitivitySizedAdditionKeepSavedMaps() {
+        AppPreference.flick_sensitivity_preference=1
+        start(R.id.popupMapEditorFragment)
+        fun canvas()=views().filterIsInstance<PopupMapEditorCanvas>().single()
+        fun click(resource: Int)=main {views().filterIsInstance<MaterialButton>().single {it.text==context.getString(resource)}.performClick()}
+        fun select(regionId: String?)=main {
+            val c=canvas();val region=c.map!!.regions.firstOrNull {it.id==regionId}
+            val x=c.originX+(region?.bounds?.let {(it.left+it.right)/2} ?: 0f)*c.keyWidth
+            val y=c.originY+(region?.bounds?.let {(it.top+it.bottom)/2} ?: 0f)*c.keyHeight
+            for(action in listOf(MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP)) {
+                val e=MotionEvent.obtain(0,SystemClock.uptimeMillis(),action,x,y,0)
+                try {c.dispatchTouchEvent(e)} finally {e.recycle()}
+            }
+        }
+        await {canvas().width>0 && canvas().keyWidth>1f}
+        val original=main {canvas().config!!}
+        val right=original.maps.single().regions[2].id
+        select(right);click(R.string.free_flick_open_map)
+        assertEquals("Selecting the map action must not assign an arbitrary first destination",original,main {canvas().config})
+        click(R.string.free_flick_create_and_assign)
+        await {windows().filterIsInstance<TextInputEditText>().any {it.hint==context.getString(R.string.popup_name)}}
+        main {
+            windows().filterIsInstance<TextInputEditText>().single {it.hint==context.getString(R.string.popup_name)}.setText("濁音")
+            windows().filterIsInstance<RadioButton>().single {it.text==context.getString(R.string.popup_copy) && it.isShown}.performClick()
+            windows().filterIsInstance<Button>().single {it.id==android.R.id.button1 && it.isShown}.performClick()
+        }
+        await {canvas().config!!.maps.size==2 && canvas().map!!.name=="濁音"}
+        main {views().filterIsInstance<TextInputEditText>().single {it.contentDescription==context.getString(R.string.popup_input)}.setText("ば")}
+        val targetRegions=main {canvas().map!!.regions}
+        for((region,text) in targetRegions.zip(listOf("び","ぶ","べ","ぼ"))) {
+            select(region.id)
+            main {views().filterIsInstance<TextInputEditText>().single {it.contentDescription==context.getString(R.string.popup_input)}.setText(text)}
+        }
+        val draft=main {canvas().config!!}
+        assertEquals(draft.maps.single {it.name=="濁音"}.id,draft.maps.single {it.id==original.startMapId}.regions.single {it.id==right}.action.targetMapId)
+        assertEquals("Creation/assignment stays in the draft until Save",original,SumirePopupRepository(context).load("は"))
+        main {activity()!!.onBackPressedDispatcher.onBackPressed()}
+        await {canvas().map!!.id==original.startMapId}
+        select(right)
+        main {views().filterIsInstance<MaterialButton>().single {it.text==context.getString(R.string.free_flick_edit_destination,"濁音")}.performClick()}
+        await {canvas().map!!.name=="濁音"}
+        main {views().filterIsInstance<MaterialButton>().single {it.text==context.getString(R.string.free_flick_return_to_map,"通常")}.performClick()}
+        select(right)
+        main {
+            assertTrue(views().filterIsInstance<MaterialCardView>().any {it.isChecked && it.contentDescription==context.getString(R.string.free_flick_map_card,"濁音")})
+            assertTrue(views().filterIsInstance<MaterialButton>().any {it.text==context.getString(R.string.popup_add)})
+        }
+        await {views().filterIsInstance<MaterialCardView>().any {it.isChecked && it.getGlobalVisibleRect(Rect())}}
+        main {assertTrue("Save remains visible while inspecting a destination",views().filterIsInstance<MaterialButton>().single {it.text==context.getString(R.string.popup_save)}.getGlobalVisibleRect(Rect()))}
+        screenshot("08-assignment-and-permanent-add")
+        main {activity()!!.recreate()}
+        await {activity()!=null && views().filterIsInstance<PopupMapEditorCanvas>().any {it.config?.maps?.size==2}}
+        assertEquals(draft,main {canvas().config})
+        await {views().filterIsInstance<PopupMapThumbnail>().any {it.width>0 && it.keyWidth>1f}}
+        main {views().filterIsInstance<PopupMapThumbnail>().forEach {
+            assertEquals("Restored destination previews keep the physical key aspect ratio",canvas().keyWidth/canvas().keyHeight,it.keyWidth/it.keyHeight,.001f)
+        }}
+        click(R.string.popup_save)
+        val saved=SumirePopupRepository(context).load("は");assertEquals(draft,saved)
+        select(null)
+        main {views().filterIsInstance<RadioButton>().single {it.text==context.getString(R.string.free_flick_tap_size_sensitivity)}.performClick()}
+        assertEquals(PopupTapSizeMode.FLICK_SENSITIVITY,FreeFlickPreferences.read(context).tapSizeMode)
+        assertEquals("Changing the shared size mode must not rewrite saved maps",saved,SumirePopupRepository(context).load("は"))
+        val tap=main {canvas().tapArea.bounds}
+        assertTrue(tap.width<1f)
+        main {views().filterIsInstance<RadioButton>().single {it.text==context.getString(R.string.free_flick_tap_size_sensitivity)}
+            .requestRectangleOnScreen(Rect(0,0,300,200),true)}
+        screenshot("09-editor-tap-size-setting")
+        click(R.string.popup_add)
+        assertEquals(tap.width,main {canvas().selectedBounds!!.width},.0001f)
+        assertEquals(tap.height,main {canvas().selectedBounds!!.height},.0001f)
+        click(R.string.popup_undo);assertEquals(4,main {canvas().map!!.regions.size})
+        click(R.string.popup_add)
+        main {
+            views().filterIsInstance<TextInputEditText>().single {it.contentDescription==context.getString(R.string.popup_input)}.setText("追加")
+            assertTrue(views().filterIsInstance<MaterialButton>().any {it.text==context.getString(R.string.free_flick_shape_edit)})
+        }
+        click(R.string.popup_save)
+        val persisted=SumirePopupRepository(context).load("は")
+        val added=persisted.map(persisted.startMapId)!!.regions.single {it.action.text=="追加"}
+        assertEquals(tap.width,added.bounds.width,.0001f);assertEquals(tap.height,added.bounds.height,.0001f)
+        assertTrue(PopupMapValidator.conflicts(persisted).isEmpty())
+        click(R.string.popup_delete);assertEquals(4,main {canvas().map!!.regions.size})
+        click(R.string.popup_undo);assertEquals(persisted,main {canvas().config})
+        main {activity()!!.finish()}
+    }
+
+    @Test fun actualImeUsesSensitivityTapBoundsAndInitialTouchForBothPopupPositions() {
+        val originalIme=shell("settings get secure default_input_method").trim()
+        val target="${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        prefs.edit().putString(FreeFlickPreferences.TAP_SIZE,"flick_sensitivity").commit()
+        var host: FastInputHostSession?=null
+        try {
+            shell("ime enable $target");shell("ime set $target")
+            host=FastInputHostSession.launch(context);host.onActivity {it.requestImeForEditor()}
+            fun keyboard()=windows().filterIsInstance<FlickKeyboardView>().firstOrNull {it.isShown && it.width>0}
+            await {keyboard()!=null};SystemClock.sleep(600)
+            for(presentation in PopupMapPresentation.entries) for(sensitivity in listOf(1,100,200)) {
+                AppPreference.flick_sensitivity_preference=sensitivity
+                val above=presentation==PopupMapPresentation.GUIDE_ABOVE_KEY
+                AppPreference.long_press_timeout_preference=if(above) 2000 else 300
+                prefs.edit().putString(FreeFlickPreferences.PRESENTATION,presentation.preferenceValue)
+                    .putBoolean(AppPreference.SUMIRE_SHOW_FLICK_POPUP_KEY,!above || sensitivity!=1)
+                    .putBoolean(AppPreference.SUMIRE_SHOW_LONG_PRESS_POPUP_KEY,!above || sensitivity==1).commit()
+                SystemClock.sleep(300)
+                host.onActivity {it.restartEditorInput(true)};SystemClock.sleep(500)
+                var source=key(main {keyboard()!!},"は")
+                var down=SystemClock.uptimeMillis()
+                event(down,MotionEvent.ACTION_DOWN,source,.4f,.35f)
+                event(down,MotionEvent.ACTION_UP,source,.4f,.35f)
+                SystemClock.sleep(300)
+                var actual="";host.onActivity {actual=it.editText.text.toString()}
+                assertEquals("An edge tap must stay a tap: $presentation / $sensitivity","は",actual)
+                host.onActivity {it.restartEditorInput(true)};SystemClock.sleep(500)
+                source=key(main {keyboard()!!},"は");down=SystemClock.uptimeMillis()
+                val area=FreeFlickPreferences.tapArea(context,source.width().toFloat(),source.height().toFloat())
+                event(down,MotionEvent.ACTION_DOWN,source)
+                if(above) {
+                    await {windows().filterIsInstance<PopupMapGuideView>().any {it.isShown}}
+                    assertTrue("The guide must appear before the 2-second long-press timeout",SystemClock.uptimeMillis()-down<1800)
+                    main {
+                        val guide=windows().filterIsInstance<PopupMapGuideView>().single {it.isShown}
+                        assertNull("Above-key ranges must all be visible on ordinary press",guide.visibleRegionIds)
+                        assertTrue(guide.tapPopupVisible)
+                    }
+                    if(sensitivity==1) screenshot("12-ime-above-without-holding")
+                }
+                SystemClock.sleep(600)
+                await {windows().filterIsInstance<com.kazumaproject.custom_keyboard.view.PopupMapView>()
+                    .any {it.isShown && it.tapArea==area}}
+                main {
+                    val views=windows().filterIsInstance<com.kazumaproject.custom_keyboard.view.PopupMapView>()
+                        .filter {it.isShown && it.tapArea.followsSensitivity}
+                    assertTrue(views.isNotEmpty());views.forEach {assertEquals(area,it.tapArea)}
+                }
+                if(sensitivity==1) screenshot(if(presentation==PopupMapPresentation.AROUND_KEY) "10-ime-sensitivity-around" else "11-ime-sensitivity-above")
+                val dx=area.bounds.right+4f/source.width()
+                event(down,MotionEvent.ACTION_MOVE,source,dx,0f)
+                event(down,MotionEvent.ACTION_UP,source,dx,0f)
+                SystemClock.sleep(300);host.onActivity {actual=it.editText.text.toString()}
+                assertEquals("A right flick just past the tap area: $presentation / $sensitivity","へ",actual)
+            }
         } finally {host?.close();shell("ime set $originalIme")}
     }
 

@@ -42,4 +42,26 @@ class PopupMapVisibilityTest {
         rectangle.move(15f,15f);assertTrue(rectangle.longPressEligible)
         rectangle.move(20f,0f);assertFalse(rectangle.longPressEligible)
     }
+    @Test fun aboveShowsAllRegionsImmediatelyWithEitherPopupFlagAndNeverDependsOnHolding() {
+        val session=PopupMapSession(SumirePopupDefaults.create("は"))
+        for(flick in listOf(false,true)) for(long in listOf(false,true)) {
+            val policy=PopupMapVisibility(settings.copy(showFlickPopup=flick,showLongPressPopup=long),0f,0f,PopupMapPresentation.GUIDE_ABOVE_KEY)
+            assertEquals(flick || long,policy.visible)
+            assertNull(policy.regions(session));assertTrue(policy.showsTap(session))
+            assertFalse(policy.longPress(true));policy.move(300f,0f);session.move(1f,0f)
+            assertEquals(flick || long,policy.visible)
+            assertNull(policy.regions(session));assertTrue(policy.showsTap(session))
+        }
+    }
+    @Test fun aboveKeepsTheTapRangeAndEveryCurrentMapRegionVisibleAfterSwitchingMaps() {
+        val original=SumirePopupDefaults.create("は")
+        val root=original.maps.single().let {it.copy(regions=it.regions.mapIndexed {i,r -> if(i==0)
+            r.copy(action=PopupAction(PopupActionType.SWITCH,targetMapId="child")) else r})}
+        val child=original.maps.single().copy(id="child",name="濁音",tapText="ば")
+        val session=PopupMapSession(original.copy(maps=listOf(root,child)))
+        val policy=PopupMapVisibility(settings,0f,0f,PopupMapPresentation.GUIDE_ABOVE_KEY)
+        session.move(-1f,0f)
+        assertEquals("child",session.currentMap.id)
+        assertNull(policy.regions(session));assertTrue(policy.showsTap(session));assertTrue(policy.visible)
+    }
 }

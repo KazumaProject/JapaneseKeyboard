@@ -46,4 +46,20 @@ class FreeFlickPreferencesTest {
         model.change(template);repository.save(model.config!!)
         assertEquals(template,repository.load("は"))
     }
+    @Test fun tapSizeIsSharedBackedUpAndUsesTheCurrentSensitivityWithoutEditingMaps() {
+        val original=SumirePopupRepository(context).load("は")
+        preferences.edit().putString(FreeFlickPreferences.TAP_SIZE,"flick_sensitivity").commit()
+        AppPreference.flick_sensitivity_preference=1
+        val first=FreeFlickPreferences.tapArea(context,200f,100f)
+        AppPreference.flick_sensitivity_preference=200
+        val next=FreeFlickPreferences.tapArea(context,200f,100f)
+        assertTrue(first.bounds.width<next.bounds.width)
+        assertEquals(original,SumirePopupRepository(context).load("は"))
+        val backup=AppPreference.exportAllToJson()
+        preferences.edit().clear().commit();AppPreference.importAllFromJson(backup)
+        assertEquals(com.kazumaproject.custom_keyboard.data.PopupTapSizeMode.FLICK_SENSITIVITY,FreeFlickPreferences.read(context).tapSizeMode)
+        assertEquals(next,FreeFlickPreferences.tapArea(context,200f,100f))
+        preferences.edit().putString(FreeFlickPreferences.TAP_SIZE,"invalid").commit()
+        assertEquals(com.kazumaproject.custom_keyboard.data.PopupTapArea.KEY,FreeFlickPreferences.tapArea(context,200f,100f))
+    }
 }

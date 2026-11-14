@@ -62,7 +62,7 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
             canvas.restoreToCount(saved)
         }
         if (tapPopupVisible && map != null) {
-            val target = rect(PopupBounds.KEY)
+            val target = rect(tapArea.bounds)
             drawRange(target.popupRoundedPath(),target,map!!.tapText,tapActive,false)
         }
         map?.regions?.filter { visibleRegionIds == null || it.id in visibleRegionIds!! }?.forEach { region ->

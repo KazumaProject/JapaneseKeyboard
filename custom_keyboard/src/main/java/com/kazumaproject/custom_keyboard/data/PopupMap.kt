@@ -101,7 +101,8 @@ data class PopupMapInputOptions(
     val nearestText: Boolean = true,
     val nearestSwitch: Boolean = false,
     val nearestBack: Boolean = false,
-    val presentation: PopupMapPresentation = PopupMapPresentation.AROUND_KEY
+    val presentation: PopupMapPresentation = PopupMapPresentation.AROUND_KEY,
+    val tapSizeMode: PopupTapSizeMode = PopupTapSizeMode.KEY
 ) {
     fun includes(region: PopupRegion, canGoBack: Boolean): Boolean = nearestEnabled && when (region.action.type) {
         PopupActionType.TEXT -> nearestText && region.action.text.isNotEmpty()
@@ -122,7 +123,8 @@ class PopupMapSession(
     val config: PopupKeyConfig,
     private val keyWidth: Float = 1f,
     private val keyHeight: Float = 1f,
-    val options: PopupMapInputOptions = PopupMapInputOptions()
+    val options: PopupMapInputOptions = PopupMapInputOptions(),
+    val tapArea: PopupTapArea = PopupTapArea.KEY
 ) {
     private val history = mutableListOf(config.startMapId)
     val currentMap get() = requireNotNull(config.map(history.last()))
@@ -152,12 +154,17 @@ class PopupMapSession(
         select(x, y)
     }
     fun release(x: Float, y: Float): String? { select(x, y); return selectedText?.takeIf { it.isNotEmpty() } }
-    private fun insideKey(x: Float, y: Float) = x >= -.5f && x < .5f && y >= -.5f && y < .5f
+    private fun insideKey(x: Float, y: Float) = tapArea.contains(x, y, keyWidth, keyHeight)
     private fun resolve(x: Float, y: Float): PopupRegion? {
         if (!x.isFinite() || !y.isFinite() || insideKey(x,y)) return null
         currentMap.regions.firstOrNull { it.contains(x, y, keyWidth, keyHeight) }?.let { return it }
         val candidates = currentMap.regions.filter { options.includes(it, history.size > 1) }
-        val distances = candidates.map { it to it.distanceTo(x,y,keyWidth,keyHeight) }
+        // The sensitivity box can leave a gap inside the reserved key. Project that motion
+        // to the key's edge, so a short horizontal flick does not pick a nearer top/bottom
+        // popup simply because the physical key is wider than it is tall.
+        val extent=maxOf(abs(x),abs(y))
+        val scale=if(tapArea.followsSensitivity && extent>0f && extent<.5f) .5f/extent else 1f
+        val distances = candidates.map { it to it.distanceTo(x*scale,y*scale,keyWidth,keyHeight) }
         val minimum = distances.minOfOrNull { it.second } ?: return null
         val tied = distances.filter { abs(it.second - minimum) < .001f }.map { it.first }
         return tied.firstOrNull { it.id == selectedRegionId } ?: tied.firstOrNull()
