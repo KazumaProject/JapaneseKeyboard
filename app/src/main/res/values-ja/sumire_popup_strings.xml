@@ -68,7 +68,7 @@
     <string name="free_flick_presentation">popupの表示位置</string>
     <string name="free_flick_around">キー周辺</string>
     <string name="free_flick_above">キー上部のガイド</string>
-    <string name="free_flick_preview_hint">「は」から動かして試せます。上部表示でも基準は元キーです。長押し表示が有効なら、長押しで全体を表示します。</string>
+    <string name="free_flick_preview_hint">キーボードの各キーを操作して試せます。上部表示でも判定の基準は押した元キーです。長押し表示が有効なら、長押しで全体を表示します。</string>
     <string name="free_flick_template">テンプレートを適用</string>
     <string name="free_flick_template_12">12キーフリック</string>
     <string name="free_flick_template_confirm">「%1$s」キーのすべてのマップを、通常の12キーフリックに置き換えます。保存するまで実入力には反映されません。取り消すこともできます。</string>

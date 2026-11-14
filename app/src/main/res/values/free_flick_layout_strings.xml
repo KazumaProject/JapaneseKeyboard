@@ -4,7 +4,7 @@
     <string name="free_flick_layout_current">My layout</string>
     <string name="free_flick_layout_selected">Selected: %1$s</string>
     <string name="free_flick_layout_editing">Editing: %1$s</string>
-    <string name="free_flick_layout_scope">A layout contains all 10 kana keys and their maps and popup shapes. The selected layout is used by Free Flick. Popup position and nearest-selection settings are shared.</string>
+    <string name="free_flick_layout_scope">A layout contains the 10 kana keys and the punctuation key, with their maps and popup shapes. The selected layout is used by Free Flick. Popup position and nearest-selection settings are shared.</string>
     <string name="free_flick_layout_new">+ New layout</string>
     <string name="free_flick_layout_snapshot">Save current layout as…</string>
     <string name="free_flick_layout_import">Import layout</string>
