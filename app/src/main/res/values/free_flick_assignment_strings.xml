@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="free_flick_layout_manage_short">Layouts</string>
+    <string name="free_flick_map_manage">Map options ⋮</string>
+    <string name="free_flick_choose_map">Choose a map to edit</string>
+    <string name="free_flick_map_card">Map: %1$s</string>
+    <string name="free_flick_return_to_map">← Back to %1$s</string>
+    <string name="free_flick_return_to_edit">Back to editing</string>
+    <string name="free_flick_try_above">Start on the key and release on a character to type. The above-key guide shows every current-map region immediately.</string>
+    <string name="free_flick_assign_popup">Assign “%1$s”</string>
+    <string name="free_flick_open_map">Open map</string>
+    <string name="free_flick_choose_destination">Tap a map preview to assign it.</string>
+    <string name="free_flick_no_destination">Create a destination map below.</string>
+    <string name="free_flick_create_and_assign">Create map and assign</string>
+    <string name="free_flick_edit_destination">Edit “%1$s”</string>
+    <string name="free_flick_assignment_conflict">This destination conflicts with a map transition. No map has been added or assigned. Adjust the source popup or choose an empty map.</string>
+    <string name="free_flick_position_size">Position / size</string>
+    <string name="free_flick_shape_edit">Edit shape</string>
+    <string name="free_flick_tap_size">Tap popup size</string>
+    <string name="free_flick_tap_size_key">Same as the key</string>
+    <string name="free_flick_tap_size_sensitivity">Follow flick sensitivity</string>
+    <string name="free_flick_tap_size_scope">All Free Flick keys · saved automatically</string>
+    <string name="free_flick_tap_size_hint">Sensitivity mode follows the initial touch, up to the key size. New popups start at the same size.</string>
+    <string-array name="free_flick_tap_size_entries"><item>@string/free_flick_tap_size_key</item><item>@string/free_flick_tap_size_sensitivity</item></string-array>
+    <string-array name="free_flick_tap_size_values"><item>key</item><item>flick_sensitivity</item></string-array>
+</resources>

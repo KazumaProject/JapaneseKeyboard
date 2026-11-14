@@ -9,6 +9,7 @@
         <SwitchPreferenceCompat app:singleLineTitle="false" android:key="sumire_free_flick_nearest_back" android:defaultValue="false" android:dependency="sumire_free_flick_nearest" android:title="@string/free_flick_nearest_back" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/free_flick_display">
+        <ListPreference android:key="sumire_free_flick_tap_size" android:defaultValue="key" android:title="@string/free_flick_tap_size" android:summary="@string/free_flick_tap_size_hint" android:entries="@array/free_flick_tap_size_entries" android:entryValues="@array/free_flick_tap_size_values" app:useSimpleSummaryProvider="true" />
         <ListPreference android:key="sumire_free_flick_presentation" android:defaultValue="around_key" android:title="@string/free_flick_presentation" android:entries="@array/free_flick_presentation_entries" android:entryValues="@array/free_flick_presentation_values" app:useSimpleSummaryProvider="true" />
         <com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreviewPreference android:key="sumire_free_flick_preview" android:selectable="false" />
     </PreferenceCategory>

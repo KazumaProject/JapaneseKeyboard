@@ -20,6 +20,7 @@ import com.kazumaproject.custom_keyboard.data.PopupBounds
 import com.kazumaproject.custom_keyboard.data.PopupMapSession
 import com.kazumaproject.custom_keyboard.data.PopupMapInputOptions
 import com.kazumaproject.custom_keyboard.data.PopupMapPresentation
+import com.kazumaproject.custom_keyboard.data.PopupTapArea
 import com.kazumaproject.custom_keyboard.view.PopupMapView
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -63,8 +64,12 @@ class PopupMapInputController(
         if (inputOptions != value) { cancel(); inputOptions = value }
     }
     private fun sample(x: Float, y: Float) {
-        fingerPosition = x/width-.5f to y/height-.5f
+        fingerPosition = coordinateX(x) to coordinateY(y)
     }
+    private var inputOriginX = 0f
+    private var inputOriginY = 0f
+    private fun coordinateX(x: Float) = (x - inputOriginX) / width
+    private fun coordinateY(y: Float) = (y - inputOriginY) / height
     private var observingAttachment = false
     private val attachmentListener = object : View.OnAttachStateChangeListener {
         override fun onViewAttachedToWindow(v: View) = Unit
@@ -104,12 +109,15 @@ class PopupMapInputController(
                     rotation = view.rotation
                     view.getLocationOnScreen(locationScratch)
                     initialLeft = locationScratch[0]; initialTop = locationScratch[1]
-                    session = PopupMapSession(config, width.toFloat(), height.toFloat(), inputOptions)
-                    sample(event.x,event.y)
                     val settings=gestureConfigSource?.snapshot() ?: GestureSessionConfig(0L,100,
                         ViewConfiguration.get(view.context).scaledTouchSlop*3.5f,300L)
-                    visibility=PopupMapVisibility(settings,event.x,event.y)
-                    handler.postDelayed(longPress,settings.longPressTimeoutMillis)
+                    val tapArea=PopupTapArea.resolve(inputOptions.tapSizeMode,width.toFloat(),height.toFloat(),settings.flickThresholdPx)
+                    inputOriginX=if(tapArea.followsSensitivity) event.x else width/2f
+                    inputOriginY=if(tapArea.followsSensitivity) event.y else height/2f
+                    session = PopupMapSession(config, width.toFloat(), height.toFloat(), inputOptions, tapArea)
+                    sample(event.x,event.y)
+                    visibility=PopupMapVisibility(settings,event.x,event.y,inputOptions.presentation)
+                    if(inputOptions.presentation==PopupMapPresentation.AROUND_KEY) handler.postDelayed(longPress,settings.longPressTimeoutMillis)
                     originalLabel = (view as? TextView)?.text
                     view.isPressed = true
                     onPress(session!!.currentMap.tapText)
@@ -121,12 +129,12 @@ class PopupMapInputController(
                     if (!sameGeometry(view)) { end(true); return@setOnTouchListener true }
                     for (i in 0 until event.historySize) {
                         visibility?.move(event.getHistoricalX(i),event.getHistoricalY(i))
-                        active.move(event.getHistoricalX(i) / width - .5f, event.getHistoricalY(i) / height - .5f)
+                        active.move(coordinateX(event.getHistoricalX(i)), coordinateY(event.getHistoricalY(i)))
                     }
                     visibility?.move(event.x,event.y)
                     if(visibility?.longPressEligible==false) handler.removeCallbacks(longPress)
                     sample(event.x,event.y)
-                    active.move(event.x / width - .5f, event.y / height - .5f)
+                    active.move(coordinateX(event.x), coordinateY(event.y))
                     onSelection(active.selectedText, !active.isTap)
                     render()
                     true
@@ -134,7 +142,7 @@ class PopupMapInputController(
                 MotionEvent.ACTION_UP -> {
                     if (!sameGeometry(view)) { end(true); return@setOnTouchListener true }
                     val active = session
-                    val output = active?.release(event.x / width - .5f, event.y / height - .5f)
+                    val output = active?.release(coordinateX(event.x), coordinateY(event.y))
                     val flick = active?.isTap == false
                     end(output == null)
                     if (output != null) onCommit(output, flick)
@@ -171,6 +179,7 @@ class PopupMapInputController(
                 sourceKeyWidth=this@PopupMapInputController.width.toFloat();sourceKeyHeight=this@PopupMapInputController.height.toFloat()
                 fingerPosition=this@PopupMapInputController.fingerPosition;tapActive=active.isTap;textTransform=transform
                 visibleRegionIds=policy.regions(active);tapPopupVisible=policy.showsTap(active)
+                tapArea=active.tapArea
                 title=active.mapPath.joinToString(" → ") { id -> config?.map(id)?.name.orEmpty() } + "  " + transform(active.selectedText.orEmpty())
             }
             guide.updatePointer()
@@ -192,6 +201,7 @@ class PopupMapInputController(
         val drawing = content ?: PopupMapView(key.context).also { it.applyPopupViewStyle(popupStyle, highlightColor, borderColor); content = it }
         drawing.map = active.currentMap; drawing.selectedId = active.selectedRegionId; drawing.tapActive = active.isTap
         drawing.visibleRegionIds=policy.regions(active);drawing.tapPopupVisible=policy.showsTap(active)
+        drawing.tapArea=active.tapArea
         drawing.keyWidth = width.toFloat(); drawing.keyHeight = height.toFloat(); drawing.keyRotation = rotation
         drawing.originX = -left.toFloat(); drawing.originY = -top.toFloat(); drawing.textTransform = transform
         val window = popup ?: PopupWindow(drawing, right-left, bottom-top, false).apply {
@@ -199,8 +209,8 @@ class PopupMapInputController(
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         }.also { popup = it }
         val location = getLocationRelativeToWindowAnchor(key, host)
-        val x = location[0] + width / 2 + left
-        val y = location[1] + height / 2 + top
+        val x = (location[0] + inputOriginX + left).toInt()
+        val y = (location[1] + inputOriginY + top).toInt()
         val placement=listOf(x,y,right-left,bottom-top)
         if (window.isShowing) {
             if(lastPlacement!=placement) window.update(x,y,right-left,bottom-top)

@@ -13,6 +13,7 @@ import com.google.android.material.R
 import com.google.android.material.color.MaterialColors
 import com.kazumaproject.custom_keyboard.data.PopupMap
 import com.kazumaproject.custom_keyboard.data.PopupBounds
+import com.kazumaproject.custom_keyboard.data.PopupTapArea
 import com.kazumaproject.custom_keyboard.data.labelBounds
 
 /** Draws the same key-relative contours used by PopupMapSession. */
@@ -26,6 +27,7 @@ open class PopupMapView(context: Context) : View(context) {
     var tapActive = true
     var visibleRegionIds: Set<String>? = null
     var tapPopupVisible = true
+    var tapArea = PopupTapArea.KEY
     protected open val drawsTapRegion = true
     var keyRotation = 0f
     var textTransform: (String) -> String = { it }
@@ -78,7 +80,7 @@ open class PopupMapView(context: Context) : View(context) {
         }
         fun rect(b: PopupBounds) = RectF(originX + b.left * keyWidth, originY + b.top * keyHeight, originX + b.right * keyWidth, originY + b.bottom * keyHeight)
         if (drawsTapRegion && tapPopupVisible && map != null) {
-            val tapRect = rect(PopupBounds.KEY)
+            val tapRect = rect(tapArea.bounds)
             drawArea(tapRect.popupRoundedPath(), tapRect, map!!.tapText, tapActive)
         }
         map?.regions?.filter { visibleRegionIds == null || it.id in visibleRegionIds!! }?.forEach { region ->
