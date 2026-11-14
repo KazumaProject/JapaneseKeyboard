@@ -10,6 +10,7 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -19,6 +20,18 @@ import org.robolectric.annotation.Config
 class KeyInputBehaviorDispatcherTest {
 
     private val dispatcher = KeyInputBehaviorDispatcher()
+
+    @Test fun commitObserverReceivesTheActualResultAndIgnoresEmptyText() {
+        val results = mutableListOf<Pair<String, Boolean>>()
+        val handler = DirectCommitHandler { text, success -> results.add(text to success) }
+        val connection = mock<InputConnection>()
+        handler.commitText(connection, "failure")
+        handler.commitText(null, "disconnected")
+        handler.commitText(connection, "")
+        whenever(connection.commitText("success", 1)).thenReturn(true)
+        handler.commitText(connection, "success")
+        assertEquals(listOf("failure" to false, "disconnected" to false, "success" to true), results)
+    }
 
     @Test
     fun directCommitTextCommitsWithoutComposingPipeline() {
