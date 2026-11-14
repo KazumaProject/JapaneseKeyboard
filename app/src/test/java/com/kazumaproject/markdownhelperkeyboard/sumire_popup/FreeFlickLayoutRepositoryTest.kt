@@ -40,7 +40,7 @@ class FreeFlickLayoutRepositoryTest {
         preferences.edit().putString(SumirePopupRepository.PREFIX + "は", json)
             .putString(SumirePopupRepository.PREFIX + "か", "{broken").commit()
         val selected = repository.find(repository.selectedId())
-        assertEquals(10, selected.keys.size)
+        assertEquals(11, selected.keys.size)
         assertEquals(edited, selected.keys.first { it.keyId == "は" })
         assertEquals(json, preferences.getString(SumirePopupRepository.PREFIX + "は", null))
         assertEquals("{broken", preferences.getString(SumirePopupRepository.PREFIX + "か", null))
@@ -199,6 +199,71 @@ class FreeFlickLayoutRepositoryTest {
         val changed=saved.copy(keys=saved.keys.map {if(it.keyId=="か") it.withMap(it.maps.single().copy(tapText="保存")) else it})
         preferences.edit().putString(FreeFlickLayoutRepository.STORAGE_KEY,FreeFlickLayoutCodec.encodeLibrary(state.copy(layouts=listOf(changed)))).commit()
         assertEquals("A restored library must invalidate any cached fallback",changed.keys.first {it.keyId=="か"},active.load("か"))
+    }
+
+    private fun smallGaplessDefaults(key: String): PopupKeyConfig {
+        val config = SumirePopupDefaults.create(key)
+        val bounds = listOf(PopupBounds(-1.4f,-.4f,-.5f,.4f), PopupBounds(-.45f,-1.3f,.45f,-.5f),
+            PopupBounds(.5f,-.4f,1.4f,.4f), PopupBounds(-.45f,.5f,.45f,1.3f))
+        return config.copy(maps = config.maps.map { map -> map.copy(regions = map.regions.map {
+            it.copy(bounds = bounds[it.id.substringAfterLast('-').toInt()])
+        }) })
+    }
+    @Test fun untouchedSmallBuiltinExpandsButSavedLayoutsKeepTheirExactSizes() {
+        repository.selectedId()
+        val old = SumirePopupDefaults.rows.keys.map(::smallGaplessDefaults)
+        val copy = repository.create("Saved small popups")
+        old.forEach { active.save(it, copy.id) }
+        preferences.edit().also { editor -> old.forEach { editor.putString(SumirePopupRepository.PREFIX+it.keyId,active.encode(it)) } }.commit()
+        assertEquals(repository.builtin().keys, SumirePopupDefaults.rows.keys.map { active.load(it) })
+        assertEquals(old, repository.find(copy.id).keys)
+        val after = preferences.all
+        active.load("は"); repository.list()
+        assertEquals(after, preferences.all)
+        repository.select(copy.id)
+        val saved = preferences.all
+        assertEquals(old, SumirePopupDefaults.rows.keys.map { active.load(it) })
+        assertEquals(saved, preferences.all)
+    }
+    @Test fun aResizedKeyPreventsPartialBuiltinMigration() {
+        repository.selectedId()
+        val old = SumirePopupDefaults.rows.keys.map(::smallGaplessDefaults).map { config ->
+            if (config.keyId != "は") config else config.withMap(config.maps.single().let { map ->
+                map.copy(regions=map.regions.mapIndexed { index, region ->
+                    if (index==0) region.copy(bounds=region.bounds.offset(-.1f,0f)) else region
+                })
+            })
+        }
+        preferences.edit().also { editor -> old.forEach { editor.putString(SumirePopupRepository.PREFIX+it.keyId,active.encode(it)) } }.commit()
+        val before = preferences.all
+        assertEquals(old, SumirePopupDefaults.rows.keys.map { active.load(it) })
+        assertEquals(before, preferences.all)
+    }
+    @Test fun legacyTenKeyFilesAndLibrariesAddPunctuationWithoutRewritingKana() {
+        val punctuation = SumirePopupDefaults.PUNCTUATION_KEY
+        val layout = repository.create("Legacy")
+        val oldKeys = layout.keys.filter { it.keyId != punctuation }.map { smallGaplessDefaults(it.keyId) }
+        val portable = JSONObject(FreeFlickLayoutCodec.encode(layout))
+        portable.put("keys", org.json.JSONArray(portable.getJSONArray("keys").let { array ->
+            (0 until array.length()).map { array.getJSONObject(it) }.filter { it.getString("keyId") != punctuation }
+        }))
+        val imported = FreeFlickLayoutCodec.decode(portable.toString())
+        assertEquals(layout.keys.filter { it.keyId != punctuation }, imported.keys.filter { it.keyId != punctuation })
+        assertEquals(SumirePopupDefaults.create(punctuation), imported.keys.last())
+        val state = JSONObject(FreeFlickLayoutCodec.encodeLibrary(FreeFlickLayoutLibrary(layout.id,listOf(layout))))
+        val storedLayout = state.getJSONArray("layouts").getJSONObject(0)
+        val oldJson = JSONObject(FreeFlickLayoutCodec.encode(layout.copy(keys=oldKeys+SumirePopupDefaults.create(punctuation))))
+        val keys = oldJson.getJSONArray("keys"); keys.remove(keys.length()-1)
+        storedLayout.put("keys",keys)
+        preferences.edit().putString(FreeFlickLayoutRepository.STORAGE_KEY,state.toString()).commit()
+        val before = preferences.all
+        assertEquals(oldKeys, repository.find(layout.id).keys.filter { it.keyId != punctuation })
+        assertEquals(SumirePopupDefaults.create(punctuation), active.load(punctuation))
+        assertEquals(before, preferences.all)
+        val changed = modified(punctuation,"句読点")
+        active.save(changed)
+        assertEquals(changed, active.load(punctuation))
+        assertEquals(oldKeys, repository.find(layout.id).keys.filter { it.keyId != punctuation })
     }
 
 }

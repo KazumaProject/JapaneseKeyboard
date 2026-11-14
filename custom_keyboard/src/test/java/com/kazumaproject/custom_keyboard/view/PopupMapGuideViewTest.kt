@@ -40,7 +40,7 @@ class PopupMapGuideViewTest {
         val actual=render(free)
         val expected=render(panelOnly)
         assertNotEquals(0,actual.getPixel(30,30))
-        assertEquals(expected.getPixel(200,30),actual.getPixel(200,30))
+        assertEquals(expected.getPixel(200,5),actual.getPixel(200,5))
         assertEquals(expected.getPixel(30,133),actual.getPixel(30,133))
         assertFalse("Configured contours still have to be drawn",actual.sameAs(expected))
     }
@@ -75,6 +75,9 @@ class PopupMapGuideViewTest {
         }
         fun render()=Bitmap.createBitmap(237,211,Bitmap.Config.ARGB_8888).also {view.draw(Canvas(it))}
         val labelled=render()
+        val appearance=PopupMapGuideView::class.java.getDeclaredField("appearance").apply {isAccessible=true}.get(view)
+        val text=TfbiGuidePopupView::class.java.getDeclaredField("activeTextPaint").apply {isAccessible=true}.get(appearance) as android.graphics.Paint
+        assertTrue("Compact contour padding must leave room for at least 8sp text",text.textSize>=8*theme.resources.displayMetrics.scaledDensity)
         view.map=map.copy(regions=map.regions.map {it.copy(action=PopupAction())})
         assertFalse("The contour label must not disappear due to fixed padding",labelled.sameAs(render()))
     }
@@ -164,6 +167,38 @@ class PopupMapGuideViewTest {
         for(y in (view.originY+b.top*view.keyHeight).toInt()+3 until (view.originY+b.bottom*view.keyHeight).toInt()-3)
             for(x in (view.originX+b.left*view.keyWidth).toInt()+3 until (view.originX+b.right*view.keyWidth).toInt()-3)
                 assertEquals("The position marker must leave the popup label readable at $x,$y",clear.getPixel(x,y),pointing.getPixel(x,y))
+    }
+
+    @Test fun guideShowsTheSavedCircularRangeWithoutFillingItAsAKey() {
+        val theme=ContextThemeWrapper(ApplicationProvider.getApplicationContext(),com.google.android.material.R.style.Theme_Material3_DayNight)
+        val original=SumirePopupDefaults.create("は")
+        val region=original.maps.single().regions.first().copy(outline=PopupOutline(),action=PopupAction(text="○"))
+        val page=original.maps.single().copy(regions=listOf(region))
+        val guide=PopupMapGuideView(theme).apply {
+            config=original.withMap(page);map=page;tapPopupVisible=false;tapActive=false
+            sourceKeyWidth=200f;sourceKeyHeight=100f
+            applyPopupViewStyle(com.kazumaproject.core.data.popup.PopupViewStyle(100,20f,
+                backgroundColor=0xff243648.toInt(),textColor=0xffffdd88.toInt()),0xff1976d2.toInt())
+            measure(View.MeasureSpec.makeMeasureSpec(600,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY));layout(0,0,600,400)
+        }
+        fun render()=Bitmap.createBitmap(600,400,Bitmap.Config.ARGB_8888).also {guide.draw(Canvas(it))}
+        val actual=render()
+        guide.map=page.copy(regions=emptyList())
+        val panel=render()
+        val cx=guide.originX-guide.keyWidth
+        val cy=guide.originY
+        val insideX=(cx+guide.keyWidth*.1f).toInt()
+        val insideY=(cy+guide.keyHeight*.25f).toInt()
+        assertTrue(region.contains(-.9f,.25f,guide.keyWidth,guide.keyHeight))
+        assertEquals("Unselected ranges use the two-step guide panel, not filled key surfaces",panel.getPixel(insideX,insideY),actual.getPixel(insideX,insideY))
+        val outsideX=(guide.originX-1.45f*guide.keyWidth).toInt()
+        val outsideY=(guide.originY-.45f*guide.keyHeight).toInt()
+        assertFalse(region.contains(-1.45f,-.45f,guide.keyWidth,guide.keyHeight))
+        assertEquals("The bounds corner must not replace the actual circular range",panel.getPixel(outsideX,outsideY),actual.getPixel(outsideX,outsideY))
+        val top=(cy-guide.keyHeight/2).toInt()
+        assertTrue("The actual circular boundary must be visible",(-2..2).any {dy -> (-2..2).any {dx ->
+            actual.getPixel(cx.toInt()+dx,top+dy)!=panel.getPixel(cx.toInt()+dx,top+dy)
+        }})
     }
 
 }

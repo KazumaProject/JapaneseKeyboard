@@ -68,7 +68,7 @@
     <string name="free_flick_presentation">Popup position</string>
     <string name="free_flick_around">Around the key</string>
     <string name="free_flick_above">Guide above the key</string>
-    <string name="free_flick_preview_hint">Start on は to try. The input origin is the original key in either display mode. Hold to show all popups when long-press popups are enabled.</string>
+    <string name="free_flick_preview_hint">Try any key on the keyboard. The input origin is the pressed key in either display mode. Hold to show all popups when long-press popups are enabled.</string>
     <string name="free_flick_template">Apply template</string>
     <string name="free_flick_template_12">12-key flick</string>
     <string name="free_flick_template_confirm">Replace all maps for key “%1$s” with standard 12-key flick. This affects input only after saving and can be undone.</string>
