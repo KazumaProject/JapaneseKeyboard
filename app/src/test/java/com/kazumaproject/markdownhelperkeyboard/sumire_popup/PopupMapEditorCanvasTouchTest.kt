@@ -1,16 +1,20 @@
 package com.kazumaproject.markdownhelperkeyboard.sumire_popup
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.view.ContextThemeWrapper
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.*
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[35])
@@ -49,5 +53,47 @@ class PopupMapEditorCanvasTouchTest {
         val result=canvas.selectedBounds!!
         assertEquals(initial.left,result.left,0f);assertEquals(initial.right,result.right,0f)
         assertTrue(result.top<initial.top);assertEquals(initial.bottom,result.bottom,0f)
+    }
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun sensitivityTryPopupsKeepTheSameImageForCenterAndOffCenterPresses() {
+        val canvas=canvas()
+        AppPreference.init(canvas.context)
+        AppPreference.flick_sensitivity_preference=1
+        canvas.setSourceKeySize(200f,100f)
+        val config=SumirePopupDefaults.create("は")
+        fun render()=Bitmap.createBitmap(canvas.width,canvas.height,Bitmap.Config.ARGB_8888).also {canvas.draw(Canvas(it))}
+        for(presentation in PopupMapPresentation.entries) {
+            canvas.inputOptions=PopupMapInputOptions(presentation=presentation,tapSizeMode=PopupTapSizeMode.FLICK_SENSITIVITY)
+            canvas.showConfig(config,"normal",null,true)
+            touch(canvas,MotionEvent.ACTION_DOWN,0f,0f)
+            val centered=render()
+            touch(canvas,MotionEvent.ACTION_CANCEL,0f,0f)
+            touch(canvas,MotionEvent.ACTION_DOWN,-.375f,.25f)
+            val offCenter=render()
+            assertTrue("$presentation must keep the tap and surrounding popups in place",centered.sameAs(offCenter))
+            touch(canvas,MotionEvent.ACTION_CANCEL,-.375f,.25f)
+            centered.recycle();offCenter.recycle()
+        }
+    }
+    @Test fun sensitivityTrySelectsTheDisplayedSmallPopupAfterAnOffCenterPress() {
+        val canvas=canvas()
+        AppPreference.init(canvas.context)
+        AppPreference.flick_sensitivity_preference=1
+        canvas.setSourceKeySize(200f,100f)
+        val config=PopupKeyConfig("は","normal",listOf(PopupMap("normal","通常","は",listOf(
+            PopupRegion("small",PopupBounds(.7f,-.1f,.9f,.1f),PopupAction(text="へ"))))))
+        for(presentation in PopupMapPresentation.entries) {
+            canvas.inputOptions=PopupMapInputOptions(nearestEnabled=false,presentation=presentation,tapSizeMode=PopupTapSizeMode.FLICK_SENSITIVITY)
+            canvas.showConfig(config,"normal",null,true)
+            val output=mutableListOf<String>()
+            canvas.onTrial={text,_->if(text!=null) output+=text}
+            touch(canvas,MotionEvent.ACTION_DOWN,-.375f,.25f)
+            touch(canvas,MotionEvent.ACTION_UP,-.375f,.25f)
+            assertEquals(listOf("は"),output)
+            touch(canvas,MotionEvent.ACTION_DOWN,-.375f,.25f)
+            touch(canvas,MotionEvent.ACTION_MOVE,.8f,0f)
+            touch(canvas,MotionEvent.ACTION_UP,.8f,0f)
+            assertEquals(listOf("は","へ"),output)
+        }
     }
 }

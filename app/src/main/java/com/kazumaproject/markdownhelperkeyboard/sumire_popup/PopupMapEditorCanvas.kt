@@ -112,9 +112,7 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
     }
     fun canPlace(value: PopupKeyConfig, bounds: PopupBounds): Boolean = inViewport(bounds) && PopupMapValidator.conflicts(value).isEmpty()
     override fun onDraw(canvas: Canvas) {
-        val savedDrawing=canvas.save()
         val above=trying && trialVisibility?.visible==true && inputOptions.presentation==PopupMapPresentation.GUIDE_ABOVE_KEY
-        if(!above) canvas.translate(trialOffsetX,trialOffsetY)
         if (!trying || (trialVisibility?.visible==true && inputOptions.presentation == PopupMapPresentation.AROUND_KEY)) {
             super.onDraw(canvas)
         } else if(trialVisibility?.visible==true) {
@@ -168,7 +166,6 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
             ghost?.let { pen.style=Paint.Style.STROKE;pen.color=MaterialColors.getColor(this,androidx.appcompat.R.attr.colorError);pen.strokeWidth=2*resources.displayMetrics.density;pen.pathEffect=DashPathEffect(floatArrayOf(10f,6f),0f);canvas.drawRect(rect(it),pen);pen.pathEffect=null }
         }
         contentDescription="${config?.keyId} / ${map?.name} / ${map?.tapText}"
-        canvas.restoreToCount(savedDrawing)
     }
     override fun performClick(): Boolean { super.performClick(); return true }
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -183,7 +180,7 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                     updateTapArea()
                     trialOffsetX=if(tapArea.followsSensitivity) event.x-originX else 0f
                     trialOffsetY=if(tapArea.followsSensitivity) event.y-originY else 0f
-                    trial=PopupMapSession(value,keyWidth,keyHeight,inputOptions,tapArea)
+                    trial=PopupMapSession(value,keyWidth,keyHeight,inputOptions,tapArea,trialOffsetX/keyWidth,trialOffsetY/keyHeight)
                     fingerPosition=(event.x-originX-trialOffsetX)/keyWidth to (event.y-originY-trialOffsetY)/keyHeight
                     val settings=FreeFlickPreferences.gestureConfig(context)
                     trialVisibility=PopupMapVisibility(settings,event.x,event.y,inputOptions.presentation)
@@ -191,7 +188,7 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                 }
                 MotionEvent.ACTION_MOVE -> trial?.let { active ->
                     for(i in 0 until event.historySize) {
-                        val hx=(event.getHistoricalX(i)-originX-trialOffsetX)/keyWidth;val hy=(event.getHistoricalY(i)-originY-trialOffsetY)/keyHeight
+                        val hx=(event.getHistoricalX(i)-originX)/keyWidth;val hy=(event.getHistoricalY(i)-originY)/keyHeight
                         trialVisibility?.move(event.getHistoricalX(i),event.getHistoricalY(i))
                         active.move(hx,hy)
                     }
@@ -199,10 +196,10 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                     if(trialVisibility?.longPressEligible==false) removeCallbacks(expandTrial)
                     val tx=(event.x-originX-trialOffsetX)/keyWidth;val ty=(event.y-originY-trialOffsetY)/keyHeight
                     fingerPosition=tx to ty
-                    active.move(tx,ty)
+                    active.move(x,y)
                 }
                 MotionEvent.ACTION_UP -> trial?.let { active ->
-                    val output=active.release((event.x-originX-trialOffsetX)/keyWidth,(event.y-originY-trialOffsetY)/keyHeight);onTrial(output,active)
+                    val output=active.release(x,y);onTrial(output,active)
                     cancelTrial()
                 }
                 MotionEvent.ACTION_CANCEL -> {cancelTrial()}

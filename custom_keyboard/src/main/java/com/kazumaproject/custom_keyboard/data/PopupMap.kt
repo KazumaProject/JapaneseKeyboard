@@ -124,7 +124,10 @@ class PopupMapSession(
     private val keyWidth: Float = 1f,
     private val keyHeight: Float = 1f,
     val options: PopupMapInputOptions = PopupMapInputOptions(),
-    val tapArea: PopupTapArea = PopupTapArea.KEY
+    val tapArea: PopupTapArea = PopupTapArea.KEY,
+    // Only sensitivity-based tap detection follows the initial touch. Map coordinates stay key-relative.
+    val tapOriginX: Float = 0f,
+    val tapOriginY: Float = 0f
 ) {
     private val history = mutableListOf(config.startMapId)
     val currentMap get() = requireNotNull(config.map(history.last()))
@@ -133,7 +136,7 @@ class PopupMapSession(
     var selectedText: String? = null; private set
     var isTap = true; private set
     private var arrivalControl: String? = null
-    init { require(PopupMapValidator.conflicts(config).isEmpty()); select(0f, 0f) }
+    init { require(PopupMapValidator.conflicts(config).isEmpty()); select(tapOriginX, tapOriginY) }
     fun move(x: Float, y: Float) {
         if (!x.isFinite() || !y.isFinite()) return
         val region = resolve(x, y)
@@ -154,7 +157,7 @@ class PopupMapSession(
         select(x, y)
     }
     fun release(x: Float, y: Float): String? { select(x, y); return selectedText?.takeIf { it.isNotEmpty() } }
-    private fun insideKey(x: Float, y: Float) = tapArea.contains(x, y, keyWidth, keyHeight)
+    private fun insideKey(x: Float, y: Float) = tapArea.contains(x-tapOriginX, y-tapOriginY, keyWidth, keyHeight)
     private fun resolve(x: Float, y: Float): PopupRegion? {
         if (!x.isFinite() || !y.isFinite() || insideKey(x,y)) return null
         currentMap.regions.firstOrNull { it.contains(x, y, keyWidth, keyHeight) }?.let { return it }
@@ -162,9 +165,13 @@ class PopupMapSession(
         // The sensitivity box can leave a gap inside the reserved key. Project that motion
         // to the key's edge, so a short horizontal flick does not pick a nearer top/bottom
         // popup simply because the physical key is wider than it is tall.
-        val extent=maxOf(abs(x),abs(y))
-        val scale=if(tapArea.followsSensitivity && extent>0f && extent<.5f) .5f/extent else 1f
-        val distances = candidates.map { it to it.distanceTo(x*scale,y*scale,keyWidth,keyHeight) }
+        val dx=x-tapOriginX;val dy=y-tapOriginY
+        val extent=maxOf(abs(dx),abs(dy))
+        val projectFromTouch=tapArea.followsSensitivity && extent>0f && abs(x)<=.5f && abs(y)<=.5f
+        val scale=if(projectFromTouch) .5f/extent else 1f
+        val nearestX=if(projectFromTouch) dx*scale else x
+        val nearestY=if(projectFromTouch) dy*scale else y
+        val distances = candidates.map { it to it.distanceTo(nearestX,nearestY,keyWidth,keyHeight) }
         val minimum = distances.minOfOrNull { it.second } ?: return null
         val tied = distances.filter { abs(it.second - minimum) < .001f }.map { it.first }
         return tied.firstOrNull { it.id == selectedRegionId } ?: tied.firstOrNull()
