@@ -103,7 +103,8 @@ object FreeFlickLayoutCodec {
             }}))
     }}
 
-    private fun readKeys(array: JSONArray) = array.objects(SumirePopupDefaults.rows.size).map { key ->
+    private fun readKeys(array: JSONArray): List<PopupKeyConfig> {
+        val keys = array.objects(SumirePopupDefaults.rows.size).map { key ->
         PopupKeyConfig(key.string("keyId"), key.string("startMapId"), key.array("maps").objects(64).map { map ->
             PopupMap(map.string("id"), map.string("name"), map.string("tapText"), map.array("regions").objects(128).map { region ->
                 val b = region.getJSONObject("bounds"); val action = region.getJSONObject("action")
@@ -116,6 +117,12 @@ object FreeFlickLayoutCodec {
                     ))
             })
         }, key.integer("version"))
+        }
+        // v1 layouts written before punctuation editing contain exactly the ten kana keys.
+        val legacyKeys = SumirePopupDefaults.rows.keys - SumirePopupDefaults.PUNCTUATION_KEY
+        return if (keys.size == legacyKeys.size && keys.map { it.keyId }.toSet() == legacyKeys) {
+            keys + SumirePopupDefaults.create(SumirePopupDefaults.PUNCTUATION_KEY)
+        } else keys
     }
     private fun parse(json: String, limit: Int = MAX_BYTES): JSONObject {
         require(json.toByteArray(Charsets.UTF_8).size <= limit)

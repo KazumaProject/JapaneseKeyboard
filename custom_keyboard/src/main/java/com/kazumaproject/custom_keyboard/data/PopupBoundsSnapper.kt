@@ -15,6 +15,8 @@ class PopupBoundsSnapper(
     private val engage = 8f * density
     private val release = 12f * density
     private val source = requireNotNull(config.map(mapId)).regions.first { it.id == regionId }
+    private val minWidth = minOf(MIN_SIZE, source.bounds.width)
+    private val minHeight = minOf(MIN_SIZE, source.bounds.height)
     private val obstacles: List<PopupBounds>
     init {
         fun destinations(page: PopupMap, region: PopupRegion): Set<String> = when(region.action.type) {
@@ -69,22 +71,22 @@ class PopupBoundsSnapper(
             b=b.offset(0f,dy)
         } else {
             if(handle and LEFT != 0) {
-                var v=desired.left.coerceIn(viewport.left,b.right-MIN_SIZE)
+                var v=desired.left.coerceIn(viewport.left,b.right-minWidth)
                 for(o in obstacles) if(b.top<o.bottom && b.bottom>o.top && b.left>=o.right) v=maxOf(v,o.right)
                 b=b.copy(left=v)
             }
             if(handle and RIGHT != 0) {
-                var v=desired.right.coerceIn(b.left+MIN_SIZE,viewport.right)
+                var v=desired.right.coerceIn(b.left+minWidth,viewport.right)
                 for(o in obstacles) if(b.top<o.bottom && b.bottom>o.top && b.right<=o.left) v=minOf(v,o.left)
                 b=b.copy(right=v)
             }
             if(handle and TOP != 0) {
-                var v=desired.top.coerceIn(viewport.top,b.bottom-MIN_SIZE)
+                var v=desired.top.coerceIn(viewport.top,b.bottom-minHeight)
                 for(o in obstacles) if(b.left<o.right && b.right>o.left && b.top>=o.bottom) v=maxOf(v,o.bottom)
                 b=b.copy(top=v)
             }
             if(handle and BOTTOM != 0) {
-                var v=desired.bottom.coerceIn(b.top+MIN_SIZE,viewport.bottom)
+                var v=desired.bottom.coerceIn(b.top+minHeight,viewport.bottom)
                 for(o in obstacles) if(b.left<o.right && b.right>o.left && b.bottom<=o.top) v=minOf(v,o.top)
                 b=b.copy(bottom=v)
             }

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.preference.PreferenceManager
 import com.kazumaproject.custom_keyboard.data.PopupMapInputOptions
 import com.kazumaproject.custom_keyboard.data.PopupMapPresentation
+import com.kazumaproject.custom_keyboard.data.PopupTapSizeMode
+import com.kazumaproject.custom_keyboard.data.PopupTapArea
 
 object FreeFlickPreferences {
     const val PREFIX = "sumire_free_flick_"
@@ -12,6 +14,9 @@ object FreeFlickPreferences {
     const val SWITCH = PREFIX + "nearest_switch"
     const val BACK = PREFIX + "nearest_back"
     const val PRESENTATION = PREFIX + "presentation"
+    const val TAP_SIZE = PREFIX + "tap_size"
+    fun tapArea(context: Context, keyWidth: Float, keyHeight: Float): PopupTapArea = PopupTapArea.resolve(
+        read(context).tapSizeMode, keyWidth, keyHeight, gestureConfig(context).flickThresholdPx)
     fun gestureConfig(context: Context): com.kazumaproject.core.domain.flick.GestureSessionConfig {
         val p=com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
         val sensitivity=p.flick_sensitivity_preference ?: 100
@@ -28,7 +33,8 @@ object FreeFlickPreferences {
         return PopupMapInputOptions(
             preferences.getBoolean(NEAREST,true),preferences.getBoolean(TEXT,true),
             preferences.getBoolean(SWITCH,false),preferences.getBoolean(BACK,false),
-            PopupMapPresentation.fromPreference(preferences.getString(PRESENTATION,null))
+            PopupMapPresentation.fromPreference(preferences.getString(PRESENTATION,null)),
+            PopupTapSizeMode.fromPreference(preferences.getString(TAP_SIZE,null))
         )
     }
 }

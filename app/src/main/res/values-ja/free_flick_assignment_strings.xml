@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="free_flick_layout_manage_short">レイアウト管理</string>
+    <string name="free_flick_map_manage">マップ管理 ⋮</string>
+    <string name="free_flick_choose_map">編集するマップを選択</string>
+    <string name="free_flick_map_card">マップ：%1$s</string>
+    <string name="free_flick_return_to_map">← %1$sへ戻る</string>
+    <string name="free_flick_return_to_edit">編集に戻る</string>
+    <string name="free_flick_try_above">元キーから動かし、文字で離すと入力します。上部のガイドは押した直後から現在のマップの全領域を表示します。</string>
+    <string name="free_flick_assign_popup">「%1$s」に割り当て</string>
+    <string name="free_flick_open_map">別マップを開く</string>
+    <string name="free_flick_choose_destination">縮小図をタップして、マップを割り当てます。</string>
+    <string name="free_flick_no_destination">下のボタンで、割り当て先のマップを作成できます。</string>
+    <string name="free_flick_create_and_assign">新しいマップを作って割り当て</string>
+    <string name="free_flick_edit_destination">「%1$s」を編集する</string>
+    <string name="free_flick_assignment_conflict">マップ切替の範囲が重なるため、作成・割り当ては行っていません。元のポップアップを移動するか、空のマップを選んでください。</string>
+    <string name="free_flick_position_size">位置・サイズ</string>
+    <string name="free_flick_shape_edit">形状を編集</string>
+    <string name="free_flick_tap_size">タップpopupのサイズ</string>
+    <string name="free_flick_tap_size_key">キーと同じサイズ</string>
+    <string name="free_flick_tap_size_sensitivity">フリック感度に連動</string>
+    <string name="free_flick_tap_size_scope">フリーフリック全体に適用・自動保存</string>
+    <string name="free_flick_tap_size_hint">感度連動では押し始めた位置を基準に、キーサイズ以内で判定します。新規popupも同じサイズになります。</string>
+</resources>

@@ -8,8 +8,8 @@
     <string name="popup_key">Starting key</string>
     <string name="popup_map">Map</string>
     <string name="popup_edit">Edit</string>
-    <string name="popup_try">Try</string>
-    <string name="popup_save">Save</string>
+    <string name="popup_try">Try input</string>
+    <string name="popup_save">Save changes</string>
     <string name="popup_saved">Saved</string>
     <string name="popup_tap">Tap (inside key)</string>
     <string name="popup_fixed">Entire key · fixed position and size</string>
@@ -47,7 +47,7 @@
     <string name="popup_discard">Discard</string>
     <string name="popup_result">Output</string>
     <string name="popup_selection">Selection</string>
-    <string name="popup_try_hint">Start on the key and release on a character to type. Enter a control to switch maps. Hold to show all popups when long-press popups are enabled.</string>
+    <string name="popup_try_hint">Start on the key and release on a character to type. Enter a control to switch maps. Above-key guides show all regions immediately; around-key popups reveal all on hold when long-press display is enabled.</string>
     <string name="popup_invalid_saved">Saved maps could not be loaded. Showing defaults; the stored data has not been replaced.</string>
     <string name="popup_delete_confirm">Delete this map?</string>
     <string name="popup_name_required">Enter a unique map name.</string>
@@ -60,7 +60,7 @@
     <string name="free_flick_settings_summary">Freely edit text, destinations, and popup regions</string>
     <string name="free_flick_detection">Selection outside regions</string>
     <string name="free_flick_nearest">Select the nearest popup outside regions</string>
-    <string name="free_flick_nearest_summary">On: select the eligible popup with the shortest distance to its rounded edge. Off: only the actual regions respond. The tap area stays inside the key.</string>
+    <string name="free_flick_nearest_summary">On: select the nearest eligible popup. In sensitivity mode, movement inside the key selects from the edge in that direction. Off: only the actual regions respond. The tap area follows the tap popup size setting.</string>
     <string name="free_flick_nearest_text">Nearest text selection</string>
     <string name="free_flick_nearest_switch">Nearest map switches</string>
     <string name="free_flick_nearest_back">Nearest Back</string>
@@ -68,7 +68,7 @@
     <string name="free_flick_presentation">Popup position</string>
     <string name="free_flick_around">Around the key</string>
     <string name="free_flick_above">Guide above the key</string>
-    <string name="free_flick_preview_hint">Start on は to try. The input origin is the original key in either display mode. Hold to show all popups when long-press popups are enabled.</string>
+    <string name="free_flick_preview_hint">Try any key on the keyboard. Above-key guides show all regions immediately; around-key popups reveal all on hold when long-press display is enabled.</string>
     <string name="free_flick_template">Apply template</string>
     <string name="free_flick_template_12">12-key flick</string>
     <string name="free_flick_template_confirm">Replace all maps for key “%1$s” with standard 12-key flick. This affects input only after saving and can be undone.</string>

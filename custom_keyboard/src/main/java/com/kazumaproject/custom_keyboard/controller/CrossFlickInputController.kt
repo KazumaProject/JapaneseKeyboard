@@ -9,6 +9,7 @@ import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
 import android.view.ViewConfiguration
 import android.widget.Button
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
@@ -301,6 +302,7 @@ class CrossFlickInputController(
                         )
                     }
                 }
+                updatePopupFingerFeedback(event.rawX, event.rawY)
                 return true
             }
 
@@ -324,6 +326,12 @@ class CrossFlickInputController(
             }
         }
         return false
+    }
+
+    private fun updatePopupFingerFeedback(rawX: Float, rawY: Float) {
+        currentVisibleDirectionalPopup?.takeIf(popupOverlay::isShowing)?.updateFingerFeedback(rawX, rawY)
+        if (popupOverlay.isShowing(gridPopupView)) gridPopupView.updateFingerFeedback(rawX, rawY)
+        actionPopupViews.values.filter(popupOverlay::isShowing).forEach { it.updateFingerFeedback(rawX, rawY) }
     }
 
     // 長押しタイマーが満了したときに呼ばれる。モードに応じてポップアップ表示を切り替える。
@@ -692,11 +700,13 @@ class CrossFlickInputController(
     // 同じ方向が連続した場合はちらつき防止のためスキップする。
     private fun showDirectionalPopup(direction: FlickDirection) {
         ensureDirectionalPopups()
-        if (direction == currentVisibleDirectional) {
-            return
-        }
+        if (direction == currentVisibleDirectional &&
+            currentVisibleDirectionalPopup?.let(popupOverlay::isShowing) == true
+        ) return
 
         currentVisibleDirectionalPopup?.let(popupOverlay::dismiss)
+        currentVisibleDirectionalPopup = null
+        currentVisibleDirectional = null
 
         val popupToShow = directionalPopupMap[direction] ?: return
         val currentAnchor = anchorView ?: return
@@ -958,10 +968,25 @@ class CrossFlickInputController(
         val dy = popupPositionScratch[1] + popupView.measuredHeight / 2f - originY
         val (rotatedX, rotatedY) = KeyboardGeometryMath.localDelta(dx, dy, -anchor.rotation)
         popupView.rotation = anchor.rotation
+        var centerX = originX + rotatedX
+        var centerY = originY + rotatedY
+        val style = if (popupView is DirectionalKeyPopupView) directionalPopupStyle else crossPopupStyle
+        if (style.skinId == KeyboardSkinId.FEVER) popupOverlay.currentHost?.let { host ->
+            // Keep FEVER's animated rim visible at edge keys, including rotated layouts.
+            val radians = Math.toRadians(anchor.rotation.toDouble())
+            val cosine = kotlin.math.abs(kotlin.math.cos(radians)).toFloat()
+            val sine = kotlin.math.abs(kotlin.math.sin(radians)).toFloat()
+            val halfWidth = ((popupView.measuredWidth * cosine + popupView.measuredHeight * sine) / 2f)
+                .coerceAtMost(host.width / 2f)
+            val halfHeight = ((popupView.measuredHeight * cosine + popupView.measuredWidth * sine) / 2f)
+                .coerceAtMost(host.height / 2f)
+            centerX = centerX.coerceIn(halfWidth, host.width - halfWidth)
+            centerY = centerY.coerceIn(halfHeight, host.height - halfHeight)
+        }
         popupOverlay.place(
             popupView = popupView,
-            left = (originX + rotatedX - popupView.measuredWidth / 2f).toInt(),
-            top = (originY + rotatedY - popupView.measuredHeight / 2f).toInt(),
+            left = (centerX - popupView.measuredWidth / 2f).toInt(),
+            top = (centerY - popupView.measuredHeight / 2f).toInt(),
         )
     }
 }

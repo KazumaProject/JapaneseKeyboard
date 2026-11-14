@@ -5,7 +5,7 @@ import android.graphics.Canvas
 import android.graphics.RectF
 import com.kazumaproject.custom_keyboard.data.PopupBounds
 import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
-import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.data.labelBounds
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 
@@ -52,13 +52,24 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
         keyWidth=sourceKeyWidth*scale;keyHeight=sourceKeyHeight*scale;keyRotation=0f
         originX=area.centerX()-(left+right)*keyWidth/2
         originY=area.centerY()-(top+bottom)*keyHeight/2
-        fingerPosition?.let { (x,y) ->
-            appearance.drawGuidePointer(canvas,panel,TfbiGuideFingerPosition(
-                (originX+x*keyWidth-panel.left)/panel.width(),(originY+y*keyHeight-panel.top)/panel.height()
-            ))
+        fun rect(b: PopupBounds) = RectF(originX+b.left*keyWidth,originY+b.top*keyHeight,
+            originX+b.right*keyWidth,originY+b.bottom*keyHeight)
+        fun drawRange(path: android.graphics.Path, target: RectF, label: String, active: Boolean, compact: Boolean) {
+            appearance.drawGuideOutline(canvas,path,active)
+            val saved = canvas.save()
+            canvas.clipPath(path)
+            appearance.drawGuideLabel(canvas,textTransform(label),target,active,compact)
+            canvas.restoreToCount(saved)
         }
-        // The selection fill and labels stay above the finger marker.
-        super.onDraw(canvas)
+        if (tapPopupVisible && map != null) {
+            val target = rect(tapArea.bounds)
+            drawRange(target.popupRoundedPath(),target,map!!.tapText,tapActive,false)
+        }
+        map?.regions?.filter { visibleRegionIds == null || it.id in visibleRegionIds!! }?.forEach { region ->
+            drawRange(region.outlinePath(originX,originY,keyWidth,keyHeight),
+                rect(region.labelBounds(keyWidth,keyHeight)),region.displayLabel(),region.id==selectedId,true)
+        }
+        // The flick arrow belongs to the physical key (PopupMapGuideHost), outside this guide.
         contentDescription=title
     }
 }

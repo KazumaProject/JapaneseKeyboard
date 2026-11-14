@@ -18,6 +18,9 @@ class PopupMapEditorViewModel(private val state: SavedStateHandle) : ViewModel()
     var selectedId: String?
         get() = state["selected"]
         set(value) { state["selected"] = value }
+    var assigningMap: Boolean
+        get() = state["assigningMap"] ?: false
+        set(value) { state["assigningMap"] = value }
     var trying: Boolean
         get() = state["trying"] ?: false
         set(value) { state["trying"] = value }
@@ -30,7 +33,7 @@ class PopupMapEditorViewModel(private val state: SavedStateHandle) : ViewModel()
     val dirty get() = config != null && gson.toJson(config) != state.get<String>("baseline")
     fun load(value: PopupKeyConfig) {
         config = value; state["draft"] = gson.toJson(value); state["baseline"] = gson.toJson(value)
-        mapId = value.startMapId; selectedId = null; path = arrayListOf(); undo = arrayListOf(); trying = false
+        mapId = value.startMapId; selectedId = null; path = arrayListOf(); undo = arrayListOf(); trying = false; assigningMap = false
     }
     fun change(value: PopupKeyConfig) {
         if (value == config) return
@@ -44,6 +47,7 @@ class PopupMapEditorViewModel(private val state: SavedStateHandle) : ViewModel()
         config = gson.fromJson(previous, PopupKeyConfig::class.java); state["draft"] = previous
         if (config?.map(mapId) == null) mapId = config!!.startMapId
         selectedId = selectedId?.takeIf { id -> config!!.map(mapId)!!.regions.any { it.id == id } }
+        assigningMap = false
         return true
     }
 }
