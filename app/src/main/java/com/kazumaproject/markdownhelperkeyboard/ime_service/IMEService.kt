@@ -733,6 +733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cachedClipboardPreviewSensitive: Boolean = false
     private val zenzModelPathMutex = Mutex()
     private var cachedZenzModelSource: String? = null
+    private var cachedZenzModelSelectionVersion: String? = null
     private var cachedZenzModelPath: String? = null
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
@@ -7281,6 +7282,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzRuntimeClient.close()
         }
         cachedZenzModelSource = null
+        cachedZenzModelSelectionVersion = null
         cachedZenzModelPath = null
         qwertyGlideInputCoordinator?.cancelPending()
         englishEngine.cancelQwertyGlideWarmup()
@@ -32253,15 +32255,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!AppVariantConfig.hasZenz) return null
 
         val modelSource = AppPreference.zenz_model_uri_preference
+        val selectionVersion = AppPreference.zenz_model_selection_version
         val modelPath = zenzModelPathMutex.withLock {
             cachedZenzModelPath
-                ?.takeIf { cachedZenzModelSource == modelSource && File(it).isFile }
+                ?.takeIf {
+                    cachedZenzModelSource == modelSource &&
+                        cachedZenzModelSelectionVersion == selectionVersion && File(it).isFile
+                }
                 ?.let { return@withLock it }
 
             val resolvedPath = withContext(Dispatchers.IO) {
                 resolveZenzModelPath(modelSource)
             }
             cachedZenzModelSource = modelSource
+            cachedZenzModelSelectionVersion = selectionVersion
             cachedZenzModelPath = resolvedPath
             resolvedPath
         } ?: return null
@@ -32290,24 +32297,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         fun copyUriToInternalFile(uriString: String): File {
             val uri = uriString.toUri()
-            val dest = File(filesDir, "zenz_custom_model.gguf")
-            val temporary = File(filesDir, "zenz_custom_model.gguf.tmp")
-
-            contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input) { "openInputStream returned null for uri=$uri" }
-                FileOutputStream(temporary).use { output ->
-                    input.copyTo(output)
+            val modelCache = File(cacheDir, "zenz-models")
+            check(modelCache.isDirectory || modelCache.mkdirs()) { "Could not create the Zenz model cache." }
+            val temporary = File.createTempFile("zenz_custom_model_", ".tmp", modelCache)
+            try {
+                val digest = java.security.MessageDigest.getInstance("SHA-256")
+                contentResolver.openInputStream(uri).use { input ->
+                    requireNotNull(input) { "openInputStream returned null for uri=$uri" }
+                    java.security.DigestInputStream(input, digest).use { source ->
+                        FileOutputStream(temporary).use { output -> source.copyTo(output) }
+                    }
                 }
-            }
-            if (dest.exists() && !dest.delete()) {
+                val identity = digest.digest().joinToString("") { "%02x".format(it) }
+                val dest = File(modelCache, "zenz_custom_model_$identity.gguf")
+                // The runtime caches models by path and may still mmap the previous file.
+                // Different bytes need a new path; never overwrite a mapped model in place.
+                if (!dest.exists() && !temporary.renameTo(dest)) {
+                    error("Could not install the custom Zenz model.")
+                }
+                return dest
+            } finally {
                 temporary.delete()
-                error("Could not replace the existing custom Zenz model.")
             }
-            if (!temporary.renameTo(dest)) {
-                temporary.delete()
-                error("Could not install the custom Zenz model.")
-            }
-            return dest
         }
 
         if (customUri.isNotBlank()) {
