@@ -151,9 +151,10 @@ android {
     }
 
     androidResources {
-        // These assets are already compact binary images. Keeping them stored lets
-        // Android read them directly instead of inflating them on the IME's cold path.
-        noCompress += ['kdict', 'compact', 'index', 'erol']
+        // Keep only memory-mapped assets stored. The connection matrix is read
+        // through streams, so its compact data and index can still be compressed.
+        noCompress += ['kdict', 'reading.compact', 'word.compact', 'token.compact',
+            'english.lookup.index', 'erol']
     }
 
     sourceSets {
@@ -213,9 +214,6 @@ abstract class GenerateDictionaryLicenseAssets extends DefaultTask {
 }
 
 abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
-    @Input
-    abstract Property<Boolean> getStandardChannel()
-
     @InputDirectory
     @PathSensitive(PathSensitivity.RELATIVE)
     abstract DirectoryProperty getMergedAssets()
@@ -232,9 +230,7 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
             from(mergedAssets)
             into(packagedAssets)
             exclude('english/reading.dat.zip', 'english/word.dat', 'english/token.dat.zip')
-            if (standardChannel.get()) {
-                exclude('system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip')
-            }
+            exclude('system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip')
         }
     }
 }
@@ -279,9 +275,7 @@ androidComponents {
             }
             variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
             def compactAssets = tasks.register("package${variant.name.capitalize()}RuntimeDictionaryAssets",
-                PackageRuntimeDictionaryAssets) {
-                standardChannel.set(variant.productFlavors.any { it.first == 'channel' && it.second == 'standard' })
-            }
+                PackageRuntimeDictionaryAssets)
             variant.artifacts.use(compactAssets)
                 .wiredWithDirectories({ it.mergedAssets }, { it.packagedAssets })
                 .toTransform(SingleArtifact.ASSETS.INSTANCE)
@@ -757,19 +751,41 @@ tasks.register("generateCompactSystemDictionary") {
                 write(output)
             }
         }
-        writeEntries("reading.compact", 0x4B455231) { output -> // KER1
+        // English tries use a small alphabet. Store one-byte alphabet indices,
+        // then restore the same CharArray at load time. Larger alphabets keep UTF-16.
+        def writeLabels = { DataOutputStream output, char[] labels ->
+            char[] alphabet = new String(labels).chars().distinct().sorted().toArray()
+                .collect { (char) it } as char[]
+            if (alphabet.length == 0 || alphabet.length > 256) {
+                output.writeInt(0)
+                writeArray(output, labels.length, Character.BYTES) { it.asCharBuffer().put(labels) }
+            } else {
+                writeArray(output, alphabet.length, Character.BYTES) { it.asCharBuffer().put(alphabet) }
+                byte[] indexByChar = new byte[Character.MAX_VALUE + 1]
+                for (int index = 0; index < alphabet.length; index++) {
+                    indexByChar[(int) alphabet[index]] = (byte) index
+                }
+                byte[] indices = new byte[labels.length]
+                for (int index = 0; index < labels.length; index++) {
+                    indices[index] = indexByChar[(int) labels[index]]
+                }
+                output.writeInt(indices.length)
+                output.write(indices)
+            }
+        }
+        writeEntries("reading.compact", 0x4B455232) { output -> // KER2
             writeBitSet(output, englishReading[0] as BitSet)
             writeBitSet(output, englishReading[1] as BitSet)
             char[] labels = englishReading[2] as char[]
             int[] termIds = englishReading[3] as int[]
-            writeArray(output, labels.length, Character.BYTES) { it.asCharBuffer().put(labels) }
+            writeLabels(output, labels)
             writeArray(output, termIds.length, Integer.BYTES) { it.asIntBuffer().put(termIds) }
         }
-        writeEntries("word.compact", 0x4B455731) { output -> // KEW1
+        writeEntries("word.compact", 0x4B455732) { output -> // KEW2
             writeBitSet(output, englishWord[0] as BitSet)
             writeBitSet(output, englishWord[1] as BitSet)
             char[] labels = englishWord[2] as char[]
-            writeArray(output, labels.length, Character.BYTES) { it.asCharBuffer().put(labels) }
+            writeLabels(output, labels)
         }
         writeEntries("token.compact", 0x4B455431) { output -> // KET1
             short[] costs = englishToken[0] as short[]
