@@ -328,7 +328,9 @@ zenzModelAssetName=ggml-model-Q5_K_M.gguf
 Zenz の推論ライブラリは公式の `ggml-org/llama.cpp` を使用し、サブモジュールのコミットで固定しています。
 旧 GGUF の `gpt2-small-japanese-char` は、読み込み時に GPT-2 BPE と語彙に基づく特殊トークン ID へ補正します。モデルファイル自体は変更しません。
 Hugging Face 形式からの変換には `zenz/scripts/convert_zenz_model.py` を使用し、既知の Zenz トークナイザーだけに同じ補正を適用します。
-上流更新により推論の数値や候補順位が変わる可能性があるため、更新時は同梱モデルで変換・評価を検証してください。
+旧フォークとの完全な数値互換はありません。上流の CPU 実装では FP16 の重みと FP32 の入力を用いる経路など、計算方法が変わっています。同じ GGUF でもスコア・候補順位・生成文字列が変わるため、更新時は使用する各モデルで変換・評価を検証してください。
+
+設定から選んだカスタム GGUF は、内容に対応した別々の内部キャッシュファイルへコピーします。モデルを変更すると次の推論で読み直します。外部のモデルファイルを更新した場合は、設定から同じファイルを再選択してください。同じ URI の再選択も内部キャッシュの再確認対象になります。
 
 互換メタデータのホストテストは、ビルド先をリポジトリ外に指定して実行できます。
 
@@ -337,6 +339,11 @@ cmake -S zenz/src/test/cpp -B /tmp/zenz-model-compat -DCMAKE_BUILD_TYPE=Release
 cmake --build /tmp/zenz-model-compat --target zenz_model_compat_test -j 4
 ctest --test-dir /tmp/zenz-model-compat --output-on-failure
 ```
+
+Full 版の `ZenzModelCompatibilityInstrumentedTest` と `ZenzModelSettingsInstrumentedTest` は、実際のモデルを使う opt-in テストです。
+`zenzModelMatrixDir` に、GGUF ファイルと `models.json` を置いた端末内のディレクトリを指定します。`models.json` は JSON 配列で、各要素に `repo`、`revision`、`filename`、`sha256` を指定します。
+設定画面のテストでは、同じ GGUF を端末の `Download/zenz-upstream-compat` にも配置してください。実際のファイル選択画面と IME を操作し、別モデルへの切り替え・同じ URI の更新・デフォルトへの復帰を検証します。
+プロセス再起動の検証は、設定テストに `zenzSettingsRestartPhase=prepare` を指定し、アプリを force-stop した後に `zenzSettingsRestartPhase=verify` で実行します。検証終了時に設定と URI 権限を復元します。
 
 #### 配布バリアント
 

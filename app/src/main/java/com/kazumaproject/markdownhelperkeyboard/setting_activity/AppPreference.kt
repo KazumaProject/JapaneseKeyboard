@@ -890,6 +890,7 @@ object AppPreference {
         Pair("qwerty_keyboard_margin_end_dp_landscape_preference", 0)
 
     private val ZENZ_MODEL_URI_PREFERENCE = Pair("zenz_model_uri_preference", "")
+    private const val ZENZ_MODEL_SELECTION_VERSION = "zenz_model_selection_version"
     private val ENABLE_GEMMA_TRANSLATION_PREFERENCE =
         Pair("gemma_translation_enable_preference", false)
     private val GEMMA_TRANSLATION_BACKEND_PREFERENCE =
@@ -4607,7 +4608,12 @@ object AppPreference {
         ) ?: ""
         set(value) = preferences.edit {
             it.putString(ZENZ_MODEL_URI_PREFERENCE.first, value)
+            // Selecting the same URI again can mean that its model bytes were replaced.
+            it.putString(ZENZ_MODEL_SELECTION_VERSION, java.util.UUID.randomUUID().toString())
         }
+
+    val zenz_model_selection_version: String
+        get() = preferences.getString(ZENZ_MODEL_SELECTION_VERSION, "").orEmpty()
 
     var enable_gemma_translation_preference: Boolean
         get() = preferences.getBoolean(
