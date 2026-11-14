@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Rect
 import android.os.Looper
 import android.os.ParcelFileDescriptor
@@ -200,4 +201,48 @@ class FreeFlickRefinementsDeviceTest {
             host?.close();shell("ime set $originalIme")
         }
     }
+    private data class KeyImage(val bounds: Rect,val label: String?,val textSize: Float?,val textColor: Int?,val selected: Boolean,val image: Bitmap)
+    private fun keyImages(keyboard: FlickKeyboardView)=main {
+        (0 until keyboard.childCount).map { index ->
+            val view=keyboard.getChildAt(index)
+            val bitmap=Bitmap.createBitmap(view.width,view.height,Bitmap.Config.ARGB_8888).also {view.draw(Canvas(it))}
+            KeyImage(Rect(view.left,view.top,view.right,view.bottom),(view as? TextView)?.text?.toString(),
+                (view as? TextView)?.textSize,(view as? TextView)?.currentTextColor,view.isSelected,bitmap)
+        }
+    }
+    @Test fun mapEditorPreviewMatchesActualImeKeyDimensionsAndAppearance() {
+        start(R.id.popupMapEditorFragment)
+        await {views().filterIsInstance<FreeFlickKeyPicker>().any {it.keyboard.width>0 && it.keyboard.height>0}}
+        val picker=main {views().filterIsInstance<FreeFlickKeyPicker>().single()}
+        main {picker.keyboard.requestRectangleOnScreen(Rect(0,0,picker.keyboard.width,picker.keyboard.height),true)}
+        val editorWidth=main {picker.keyboard.width};val editorHeight=main {picker.keyboard.height}
+        assertEquals(context.resources.displayMetrics.widthPixels,editorWidth)
+        val editor=keyImages(picker.keyboard)
+        screenshot("07-map-editor-keyboard")
+        main {activity()!!.finish()}
+        val originalIme=shell("settings get secure default_input_method").trim()
+        val target="${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
+        var host: FastInputHostSession?=null
+        try {
+            shell("ime enable $target");shell("ime set $target")
+            host=FastInputHostSession.launch(context);host.onActivity {it.requestImeForEditor()}
+            fun keyboard()=windows().filterIsInstance<FlickKeyboardView>().firstOrNull {it.isShown && it.width>0 && it.height>0}
+            await {keyboard()!=null}
+            SystemClock.sleep(600)
+            val ime=main {keyboard()!!}
+            assertEquals("Editor and IME keyboard widths",main {ime.width},editorWidth)
+            assertEquals("Editor and IME keyboard heights",main {ime.height},editorHeight)
+            val actual=keyImages(ime);assertEquals(actual.size,editor.size)
+            for(index in editor.indices) {
+                val source=editor[index];val input=actual[index]
+                assertEquals("Key $index ${source.label} dimensions",input.bounds,source.bounds)
+                assertEquals("Key $index text size",input.textSize,source.textSize)
+                assertEquals("Key $index text color",input.textColor,source.textColor)
+                if(!source.selected) assertTrue("Key $index ${source.label}: the idle key image must match the actual IME",source.image.sameAs(input.image))
+                source.image.recycle();input.image.recycle()
+            }
+            screenshot("06-ime-keyboard-idle")
+        } finally {host?.close();shell("ime set $originalIme")}
+    }
+
 }

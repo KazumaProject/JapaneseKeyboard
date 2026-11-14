@@ -58,7 +58,7 @@ class PopupMapEditorFragment : Fragment() {
             return text(label(R.string.free_flick_layout_operation_error))
         }
         if(model.config==null) model.load(repository.load("は", model.layoutId))
-        content=column().apply {setPadding(dp(16),dp(8),dp(16),dp(24))}
+        content=column().apply {setPadding(dp(16),dp(8),dp(16),dp(24));clipToPadding=false}
         val scroll=NestedScrollView(requireContext()).apply {isFillViewport=true;addView(content)}
         layoutHeading = text("")
         content.addView(layoutHeading)
@@ -73,7 +73,9 @@ class PopupMapEditorFragment : Fragment() {
         })
         content.addView(text(label(R.string.free_flick_choose_key)))
         keyPicker=FreeFlickKeyPicker(requireContext())
-        content.addView(keyPicker,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT))
+        content.addView(keyPicker,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            setMargins(-dp(16),0,-dp(16),0)
+        })
         mapSpinner=Spinner(requireContext()).apply {contentDescription=label(R.string.popup_map)}
         content.addView(row().apply {
             item(text(label(R.string.popup_map)));item(mapSpinner,1f)
