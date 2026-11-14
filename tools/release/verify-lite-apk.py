@@ -1,10 +1,12 @@
-"""Check the runtime dictionary packaging of release Lite APKs."""
+"""Check compressed runtime dictionaries in release Lite APKs."""
 import argparse
+import hashlib
+import json
+import lzma
 from pathlib import Path
 import zipfile
 
 
-# openFd() and the dictionary readers require these assets to be stored.
 MAPPED_ASSETS = {
     'system/system.compact.kdict': b'KDS1',
     'english/reading.compact': b'KER2',
@@ -22,14 +24,33 @@ LEGACY_ASSETS = (
 
 def verify_apk(apk):
     with zipfile.ZipFile(apk) as archive:
+        manifest = json.loads(archive.read('assets/dictionary-assets.json'))
+        if manifest['version'] != 1 or set(manifest['assets']) != set(MAPPED_ASSETS):
+            raise ValueError(f'{apk}: invalid dictionary asset manifest')
         for asset, magic in MAPPED_ASSETS.items():
-            name = f'assets/{asset}'
+            if f'assets/{asset}' in archive.namelist():
+                raise ValueError(f'{apk}: duplicate uncompressed dictionary: {asset}')
+            name = f'assets/{asset}.xz'
             info = archive.getinfo(name)
             if info.compress_type != zipfile.ZIP_STORED:
-                raise ValueError(f'{apk}: memory-mapped asset is compressed: {name}')
-            with archive.open(info) as stream:
-                if stream.read(4) != magic:
+                raise ValueError(f'{apk}: XZ dictionary is compressed again by ZIP: {name}')
+            record = manifest['assets'][asset]
+            if not 0 < record['size'] <= 128 * 1024 * 1024:
+                raise ValueError(f'{apk}: invalid dictionary size: {asset}')
+            size = 0
+            digest = hashlib.sha256()
+            with archive.open(info) as raw, lzma.LZMAFile(raw) as stream:
+                if (header := stream.read(4)) != magic:
                     raise ValueError(f'{apk}: unexpected dictionary format: {name}')
+                size += len(header)
+                digest.update(header)
+                while data := stream.read(64 * 1024):
+                    size += len(data)
+                    if size > record['size']:
+                        raise ValueError(f'{apk}: dictionary exceeds expected size: {name}')
+                    digest.update(data)
+            if size != record['size'] or digest.hexdigest() != record['sha256']:
+                raise ValueError(f'{apk}: dictionary checksum/size mismatch: {name}')
         for asset in STREAMED_ASSETS:
             info = archive.getinfo(f'assets/{asset}')
             if info.compress_type != zipfile.ZIP_DEFLATED:
@@ -40,7 +61,7 @@ def verify_apk(apk):
         for name in archive.namelist():
             if name.startswith('lib/') or name.lower().endswith(('.gguf', '.tflite', '.litertlm')):
                 raise ValueError(f'{apk}: unexpected native library or AI model in Lite: {name}')
-    print(f'{apk}: runtime dictionary packaging verified; {apk.stat().st_size:,} bytes')
+    print(f'{apk}: compressed runtime dictionary packaging verified; {apk.stat().st_size:,} bytes')
 
 
 def main():

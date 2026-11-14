@@ -77,17 +77,31 @@ Lite still bundles the Japanese and English dictionaries, classified dictionarie
 English grammar data, and precomputed search indexes. Excluding AI features does
 not remove those assets.
 
-The system dictionary, English arrays, English lookup index, and grammar index
-are stored uncompressed because runtime readers use `AssetManager.openFd()` and
-memory mapping. English trie labels use a small alphabet and one-byte indices in
-the APK; the reader restores the original UTF-16 `CharArray`, including non-ASCII
-characters. Alphabets larger than 256 characters use the raw UTF-16 format.
-No extracted dictionary cache is needed.
+Release APKs store the six memory-mapped dictionaries and indexes as XZ streams.
+The encoder and decoder both use the pinned pure-Java `org.tukaani:xz:1.12`;
+the build emits an asset manifest with the uncompressed sizes and SHA-256 hashes.
+It includes no timestamps or machine paths.
 
-Release variants package the generated dictionaries instead of also shipping the
-old English and Japanese system dictionary files. Connection matrix assets are
-read through streams and can use APK compression. `verify-lite-apk.py` checks
-these packaging rules and rejects native libraries or AI model files in Lite.
+On first use of an asset, the app verifies and atomically writes a read-only copy
+to its private `noBackupFilesDir/bundled-dictionaries/` directory, then uses the
+existing memory-mapped reader. Later processes reuse copies whose content-addressed
+name and size match the packaged manifest. Changed assets replace obsolete copies
+under a cross-process file lock. The cache is not included in backups.
+
+This reduces APK/download size. Expanding all six assets requires about 65.73 MB
+of additional private storage and adds work on first use after a dictionary change.
+If a cache write fails, the reader decompresses and verifies the asset in memory;
+that fallback uses more heap until its source buffer is no longer needed (lookup
+bounds and grammar retain their backing buffers).
+
+Debug variants retain directly mappable assets. English trie labels use a small
+alphabet and one-byte indices; the reader restores the original UTF-16 arrays.
+Alphabets larger than 256 characters use raw UTF-16.
+
+Release variants exclude duplicate legacy Japanese system and English dictionary
+files. Streamed connection matrices use APK compression. `verify-lite-apk.py`
+decodes all six XZ streams, checks their sizes, hashes and format headers, and
+rejects duplicate or unexpected native/model assets.
 
 ## Store metadata
 

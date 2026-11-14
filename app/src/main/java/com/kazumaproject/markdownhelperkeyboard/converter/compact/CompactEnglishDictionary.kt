@@ -36,8 +36,15 @@ internal object BundledEnglishDictionaryReader {
         reading: LOUDSWithTermId,
         word: LOUDS,
         token: TokenArray,
+    ): CompactEnglishDictionary = readIndex(map(descriptor), reading, word, token)
+
+    internal fun readIndex(
+        source: ByteBuffer,
+        reading: LOUDSWithTermId,
+        word: LOUDS,
+        token: TokenArray,
     ): CompactEnglishDictionary {
-        val input = Cursor(descriptor)
+        val input = Cursor(source)
         require(input.readInt() == MAGIC) { "Invalid English lookup index magic" }
         // The build indexes the used words of each BitSet. A serialized BitSet may
         // also retain spare words that would make its runtime rank table larger.
@@ -83,7 +90,9 @@ internal object BundledEnglishDictionaryReader {
         LOUDS(lbs, readLabels(), leaves)
     }
 
-    fun readToken(descriptor: AssetFileDescriptor): TokenArray = read(map(descriptor), 0x4B455431) {
+    fun readToken(descriptor: AssetFileDescriptor): TokenArray = readToken(map(descriptor))
+
+    internal fun readToken(source: ByteBuffer): TokenArray = read(source, 0x4B455431) {
         TokenArray.fromArrays(readShortArray(), readIntArray(), readBitSet())
     }
 

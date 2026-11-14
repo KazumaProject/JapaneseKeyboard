@@ -186,6 +186,7 @@ jobs:
         run: |
           ./gradlew :app:testLiteFdroidDebugUnitTest \
             --tests '*BundledEnglishDictionaryReaderTest' \
+            --tests '*MappedDictionaryAssetCacheTest' \
             --no-daemon --max-workers=1
 
       - name: Upload unsigned F-Droid APK for comparison

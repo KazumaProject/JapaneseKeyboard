@@ -245,6 +245,8 @@ internal class RuntimeGrammarRoles private constructor(
 
         internal fun read(source: ByteBuffer): RuntimeGrammarRoles = read(source, validateAllRecords = true)
 
+        internal fun readBundled(source: ByteBuffer): RuntimeGrammarRoles = read(source, validateAllRecords = false)
+
         private fun read(source: ByteBuffer, validateAllRecords: Boolean): RuntimeGrammarRoles {
             val data = source.slice().asReadOnlyBuffer().order(ByteOrder.BIG_ENDIAN)
             require(data.capacity() in HEADER_SIZE..MAX_INDEX_SIZE && data.getInt(0) == MAGIC &&

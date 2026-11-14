@@ -5,6 +5,11 @@ import org.gradle.process.ExecOperations
 import com.android.build.api.artifact.SingleArtifact
 import com.android.build.gradle.internal.tasks.ExtractNativeDebugMetadataTask
 
+buildscript {
+    repositories { mavenCentral() }
+    dependencies { classpath 'org.tukaani:xz:1.12' }
+}
+
 plugins {
     id 'com.android.application'
     id 'com.google.dagger.hilt.android'
@@ -151,10 +156,10 @@ android {
     }
 
     androidResources {
-        // Keep only memory-mapped assets stored. The connection matrix is read
-        // through streams, so its compact data and index can still be compressed.
+        // Debug assets remain directly mappable. Releases replace these six
+        // dictionaries with XZ streams and map their verified private copies.
         noCompress += ['kdict', 'reading.compact', 'word.compact', 'token.compact',
-            'english.lookup.index', 'erol']
+            'english.lookup.index', 'erol', 'xz']
     }
 
     sourceSets {
@@ -232,6 +237,26 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
             exclude('english/reading.dat.zip', 'english/word.dat', 'english/token.dat.zip')
             exclude('system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip')
         }
+        def records = [:]
+        ['system/system.compact.kdict', 'english/reading.compact', 'english/word.compact',
+            'english/token.compact', 'english/english.lookup.index', 'english/grammar/categories.erol'].each { path ->
+            def source = new File(packagedAssets.get().asFile, path)
+            def digest = java.security.MessageDigest.getInstance('SHA-256')
+            source.withInputStream { input ->
+                new java.security.DigestInputStream(input, digest).withCloseable { hashed ->
+                    new File(source.path + '.xz').withOutputStream { destination ->
+                        new org.tukaani.xz.XZOutputStream(destination,
+                            new org.tukaani.xz.LZMA2Options(6), org.tukaani.xz.XZ.CHECK_CRC64).withCloseable { compressed ->
+                            hashed.transferTo(compressed)
+                        }
+                    }
+                }
+            }
+            records[path] = [size: source.length(), sha256: digest.digest().encodeHex().toString()]
+            if (!source.delete()) throw new GradleException("Could not remove uncompressed dictionary: $path")
+        }
+        new File(packagedAssets.get().asFile, 'dictionary-assets.json').text =
+            groovy.json.JsonOutput.toJson([version: 1, assets: records]) + '\n'
     }
 }
 
@@ -1341,6 +1366,7 @@ tasks.named("preBuild").configure {
 }
 
 dependencies {
+    implementation 'org.tukaani:xz:1.12'
     implementation 'androidx.profileinstaller:profileinstaller:1.4.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
