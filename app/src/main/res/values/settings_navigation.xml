@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_navigation_title">Menu</string>
+    <string name="settings_navigation_edit">Edit screens</string>
+    <string name="settings_navigation_done">Done</string>
+    <string name="settings_navigation_add">Add screen</string>
+    <string name="settings_navigation_reset">Reset tabs</string>
+    <string name="settings_navigation_reset_confirm">Restore the side menu and bottom tabs to their defaults?</string>
+    <string name="settings_navigation_side">Side menu</string>
+    <string name="settings_navigation_bottom">Bottom tabs</string>
+    <string name="settings_navigation_hint">Choose a screen. Use Edit screens to change this menu or the tabs at the bottom.</string>
+    <string name="settings_navigation_side_hint">Screens shown in this side menu. Drag to reorder; × removes a shortcut. Changes save automatically.</string>
+    <string name="settings_navigation_bottom_hint">Screens shown as tabs at the bottom. Add up to 5. Long-press and drag the bottom bar to reorder too.</string>
+    <string name="settings_navigation_limit">The bottom bar holds 5 tabs. Remove one before adding another.</string>
+    <string name="settings_navigation_all_added">All available screens have been added.</string>
+    <string name="settings_navigation_drag_handle">≡</string>
+    <string name="settings_navigation_remove_symbol">×</string>
+    <string name="settings_navigation_open">Open side navigation</string>
+    <string name="settings_navigation_appearance">Appearance and position</string>
+    <string name="settings_navigation_home">Settings home</string>
+    <string name="settings_navigation_remove_item">Remove %1$s shortcut</string>
+</resources>
