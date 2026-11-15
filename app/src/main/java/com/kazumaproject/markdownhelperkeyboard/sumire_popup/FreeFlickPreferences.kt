@@ -15,6 +15,8 @@ object FreeFlickPreferences {
     const val BACK = PREFIX + "nearest_back"
     const val PRESENTATION = PREFIX + "presentation"
     const val TAP_SIZE = PREFIX + "tap_size"
+    const val CUSTOM_TAP_SIZE = "custom_free_flick_tap_size"
+    enum class Scope { SUMIRE, CUSTOM }
     fun tapArea(context: Context, keyWidth: Float, keyHeight: Float): PopupTapArea = PopupTapArea.resolve(
         read(context).tapSizeMode, keyWidth, keyHeight, gestureConfig(context).flickThresholdPx)
     fun gestureConfig(context: Context): com.kazumaproject.core.domain.flick.GestureSessionConfig {
@@ -28,13 +30,13 @@ object FreeFlickPreferences {
             showFlickPopup=p.sumire_show_flick_popup_preference,
             showLongPressPopup=p.sumire_show_long_press_popup_preference)
     }
-    fun read(context: Context): PopupMapInputOptions {
+    fun read(context: Context, scope: Scope = Scope.SUMIRE): PopupMapInputOptions {
         val preferences=PreferenceManager.getDefaultSharedPreferences(context)
         return PopupMapInputOptions(
             preferences.getBoolean(NEAREST,true),preferences.getBoolean(TEXT,true),
             preferences.getBoolean(SWITCH,false),preferences.getBoolean(BACK,false),
             PopupMapPresentation.fromPreference(preferences.getString(PRESENTATION,null)),
-            PopupTapSizeMode.fromPreference(preferences.getString(TAP_SIZE,null))
+            PopupTapSizeMode.fromPreference(preferences.getString(if (scope == Scope.CUSTOM) CUSTOM_TAP_SIZE else TAP_SIZE,null))
         )
     }
 }

@@ -46,7 +46,7 @@ class FreeFlickPreferencesTest {
         model.change(template);repository.save(model.config!!)
         assertEquals(template,repository.load("は"))
     }
-    @Test fun tapSizeIsSharedBackedUpAndUsesTheCurrentSensitivityWithoutEditingMaps() {
+    @Test fun sumireTapSizeIsBackedUpAndUsesTheCurrentSensitivityWithoutEditingMaps() {
         val original=SumirePopupRepository(context).load("は")
         preferences.edit().putString(FreeFlickPreferences.TAP_SIZE,"flick_sensitivity").commit()
         AppPreference.flick_sensitivity_preference=1
@@ -62,4 +62,24 @@ class FreeFlickPreferencesTest {
         preferences.edit().putString(FreeFlickPreferences.TAP_SIZE,"invalid").commit()
         assertEquals(com.kazumaproject.custom_keyboard.data.PopupTapArea.KEY,FreeFlickPreferences.tapArea(context,200f,100f))
     }
+    @Test fun tapSizeIsIndependentForEachKeyboardAndBothValuesSurviveBackup() {
+        val key = com.kazumaproject.custom_keyboard.data.PopupTapSizeMode.KEY
+        val sensitivity = com.kazumaproject.custom_keyboard.data.PopupTapSizeMode.FLICK_SENSITIVITY
+        val custom = FreeFlickPreferences.Scope.CUSTOM
+        preferences.edit().putString(FreeFlickPreferences.TAP_SIZE, sensitivity.preferenceValue).commit()
+        assertEquals(sensitivity, FreeFlickPreferences.read(context).tapSizeMode)
+        assertEquals(key, FreeFlickPreferences.read(context, custom).tapSizeMode)
+        preferences.edit().putString(FreeFlickPreferences.CUSTOM_TAP_SIZE, sensitivity.preferenceValue)
+            .putString(FreeFlickPreferences.TAP_SIZE, key.preferenceValue).commit()
+        assertEquals(key, FreeFlickPreferences.read(context).tapSizeMode)
+        assertEquals(sensitivity, FreeFlickPreferences.read(context, custom).tapSizeMode)
+        val backup = AppPreference.exportAllToJson()
+        preferences.edit().clear().commit()
+        AppPreference.importAllFromJson(backup)
+        assertEquals(key, FreeFlickPreferences.read(context).tapSizeMode)
+        assertEquals(sensitivity, FreeFlickPreferences.read(context, custom).tapSizeMode)
+        preferences.edit().putString(FreeFlickPreferences.CUSTOM_TAP_SIZE, "invalid").commit()
+        assertEquals(key, FreeFlickPreferences.read(context, custom).tapSizeMode)
+    }
+
 }

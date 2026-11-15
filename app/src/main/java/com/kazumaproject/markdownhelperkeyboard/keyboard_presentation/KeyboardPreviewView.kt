@@ -281,6 +281,9 @@ internal class KeyboardPreviewView(
             KeyboardType.SUMIRE, KeyboardType.CUSTOM -> binding.customLayoutDefault.apply {
                 style.apply(this)
                 val sumire = bodyType == KeyboardType.SUMIRE
+                setPopupMapOptions(com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.read(ctx,
+                    if (sumire) com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.Scope.SUMIRE
+                    else com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.Scope.CUSTOM))
                 KeyboardKeyPresentation.flick(this, sumire, flickMode)
                 val layout = if (sumire) SumireLayoutPresentation.create(ctx, flickMode,
                     mapOf("enter_key" to EditorEnterPolicy.keyStateIndex(EditorEnterAction.Enter), "dakuten_toggle_key" to 0, "katakana_toggle_key" to 0, "space_convert_key" to 0),

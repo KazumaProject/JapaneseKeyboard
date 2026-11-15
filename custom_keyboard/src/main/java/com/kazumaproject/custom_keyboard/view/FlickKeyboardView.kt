@@ -161,10 +161,19 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val independentTextPreviews = linkedMapOf<KeyData, FlickTextSelection>()
     private val independentLastCoordinates = mutableMapOf<Int, Pair<Float, Float>>()
 
-    private var popupMapOptions = com.kazumaproject.custom_keyboard.data.PopupMapInputOptions()
-    fun setPopupMapOptions(value: com.kazumaproject.custom_keyboard.data.PopupMapInputOptions) {
-        popupMapOptions=value
-        popupMapControllers.forEach { it.setOptions(value) }
+    private var builtInPopupMapOptions = com.kazumaproject.custom_keyboard.data.PopupMapInputOptions()
+    private var customPopupMapOptions = com.kazumaproject.custom_keyboard.data.PopupMapInputOptions()
+    private val popupMapOptions get() = if (layoutOrigin == KeyboardLayoutOrigin.BUILT_IN)
+        builtInPopupMapOptions else customPopupMapOptions
+
+    @JvmOverloads
+    fun setPopupMapOptions(
+        value: com.kazumaproject.custom_keyboard.data.PopupMapInputOptions,
+        origin: KeyboardLayoutOrigin? = null,
+    ) {
+        if (origin == null || origin == KeyboardLayoutOrigin.BUILT_IN) builtInPopupMapOptions = value
+        if (origin == null || origin == KeyboardLayoutOrigin.CUSTOM) customPopupMapOptions = value
+        if (origin == null || origin == layoutOrigin) popupMapControllers.forEach { it.setOptions(popupMapOptions) }
     }
     private val popupMapControllers = mutableListOf<com.kazumaproject.custom_keyboard.controller.PopupMapInputController>()
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
@@ -759,6 +768,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             cancelTrackedTouchState()
             doubleTapActionDispatcher.cancel()
             layoutOrigin = origin
+            popupMapControllers.forEach { it.setOptions(popupMapOptions) }
             keyboardRenderRevision += 1
         }
         setKeyHitTestMode(hitTestMode)
