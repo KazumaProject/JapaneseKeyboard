@@ -39,7 +39,10 @@ class SettingMainFragment : AsyncPreferenceFragment() {
                 }
             })
             SettingsOverview.sections(context).forEach { section ->
-                val group = PreferenceCategory(context).apply { setTitle(section.title) }
+                val group = PreferenceCategory(context).apply {
+                    setTitle(section.title)
+                    isIconSpaceReserved = false
+                }
                 addPreference(group)
                 section.entries.forEach { destination ->
                     group.addPreference(Preference(context).apply {
