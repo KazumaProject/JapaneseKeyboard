@@ -8,6 +8,10 @@ import android.widget.*
 import androidx.activity.OnBackPressedCallback
 import androidx.core.widget.NestedScrollView
 import androidx.core.widget.doAfterTextChanged
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnAttach
+import androidx.core.view.updatePadding
 import androidx.core.view.doOnLayout
 import androidx.preference.PreferenceManager
 import androidx.fragment.app.Fragment
@@ -143,6 +147,19 @@ class PopupMapEditorFragment : Fragment() {
         refresh()
         editorReady = true
         return column().apply {
+            ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
+                val safeTypes = WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+                val bars = insets.getInsets(safeTypes)
+                val rootBars = ViewCompat.getRootWindowInsets(view)?.getInsets(safeTypes) ?: bars
+                // MainActivity already applies/consumes system bars; the dialog does not.
+                // Subtract an ancestor's bottom inset from IME padding to apply it once.
+                val ancestorBottom = (rootBars.bottom - bars.bottom).coerceAtLeast(0)
+                val imeBottom = (insets.getInsets(WindowInsetsCompat.Type.ime()).bottom - ancestorBottom).coerceAtLeast(0)
+                view.updatePadding(left = bars.left, top = bars.top, right = bars.right,
+                    bottom = maxOf(bars.bottom, imeBottom))
+                insets
+            }
+            doOnAttach { root -> root.post { ViewCompat.requestApplyInsets(root) } }
             addView(scroll,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
             addView(footer,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT))
         }
