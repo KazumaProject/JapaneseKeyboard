@@ -1,7 +1,7 @@
 {
   "character": {
-    "count": 6856,
-    "digestSum": "be07c424f9c2cc08ded6919fd1aa9404ccddcbea24bca37837a0adbddf80fa50",
+    "count": 6858,
+    "digestSum": "fc4581d9765393f138a914cb69d2a44da8150b29088dd9262d665efc7053410a",
     "sample": {
       "reading": "あかざあかね",
       "surface": "赤座あかね"
@@ -16,8 +16,8 @@
     }
   },
   "place": {
-    "count": 45092,
-    "digestSum": "e15e70b67821958b31c54cfcf281a1bd16c1981f6a54bc707785a3773cc3ca54",
+    "count": 45094,
+    "digestSum": "5720f1e2bba0d20eed0eacaa2567a6c17d84b187db030ad5228a8f0f9fb9433c",
     "sample": {
       "reading": "かろけん",
       "surface": "カロ県"
@@ -168,8 +168,8 @@
     }
   },
   "facility/cultural/art_museum": {
-    "count": 380,
-    "digestSum": "70ebfcf76581fa3e1875159a46b6c7d026cf40b7ce3b345789aa0c0425673507",
+    "count": 381,
+    "digestSum": "d83ebc986b398d0d48c315e6015821ffa74f73af5ce302961787149fb0a442d8",
     "sample": {
       "reading": "えろーら",
       "surface": "エローラ"
@@ -264,8 +264,8 @@
     }
   },
   "facility/commercial/shopping": {
-    "count": 1302,
-    "digestSum": "413b26d26580eb100db6b03eb7adfa84a93003f859eb34870f1e0cc7731b9830",
+    "count": 1303,
+    "digestSum": "7d5f045abac378e6a9e53bf494e3d03176658020fd06fb64d510e33e36a5b39e",
     "sample": {
       "reading": "きくのま",
       "surface": "菊の間"
@@ -480,8 +480,8 @@
     }
   },
   "facility/residential/mixed_use_building": {
-    "count": 95,
-    "digestSum": "febb7e1db2cf3a44073242291760945953fd8197f239fdeef7e6cdf778228088",
+    "count": 98,
+    "digestSum": "fdef80a05f6e6f8483e32dc0b1951ef9e890cf5df1fffd46691d3994d2847296",
     "sample": {
       "reading": "くずだて",
       "surface": "くず館"
@@ -520,11 +520,11 @@
     }
   },
   "organization": {
-    "count": 47519,
-    "digestSum": "92d411144249a96ae3dcdea4202864c08f44e517c9d7e3fb1621357327fe76cc",
+    "count": 47525,
+    "digestSum": "7fa3ca53fdd96912966e37cb79f626ef2e13eef7e187f5556b4baced5bf7ce1a",
     "sample": {
-      "reading": "のべるず",
-      "surface": "NOVELS"
+      "reading": "ねいばー",
+      "surface": "NAVER"
     }
   },
   "lineage": {
@@ -536,11 +536,11 @@
     }
   },
   "product": {
-    "count": 10198,
-    "digestSum": "73d4f52ad45b6de51a0bbf3775bc43871f70161635d4cadded1dbd1ee5cd5068",
+    "count": 10220,
+    "digestSum": "992fb6570be8ae6b4d03c837224dbedae1e1e29bedafc90e17869818e0050368",
     "sample": {
-      "reading": "ぽたぽたやき",
-      "surface": "ぽたぽた焼"
+      "reading": "のるもなーる",
+      "surface": "ノルモナール"
     }
   },
   "vehicle": {
@@ -640,8 +640,8 @@
     }
   },
   "term/general/internet_slang_culture": {
-    "count": 579,
-    "digestSum": "2d72b330ba4cbb9e9d86493309e6ab225430837409730c469c974cc41b81dd71",
+    "count": 580,
+    "digestSum": "c07ee990699feb7bf1b8998267bb977e574b49e4c601114a48eb002fca3b0547",
     "sample": {
       "reading": "あちぇけ",
       "surface": "アチェケ"
@@ -664,8 +664,8 @@
     }
   },
   "term/specialist/information_communications": {
-    "count": 6092,
-    "digestSum": "936236ed6ceb0618e84226089f9a1e0f450c32734e6fae5a95e09eaa15aaf0fe",
+    "count": 6095,
+    "digestSum": "f7e74bf6d72abad24857bf3f7ba0f9e61db8ed09ffd5962dbcd66ddcd484d49f",
     "sample": {
       "reading": "あいじつり",
       "surface": "I字吊り"
@@ -680,8 +680,8 @@
     }
   },
   "term/specialist/chemistry_life_sciences": {
-    "count": 27574,
-    "digestSum": "61ad416a3b8175956e3010ccbfa36b12580ac6fa89dabb6263286b27e845a6fa",
+    "count": 27577,
+    "digestSum": "2b85df7624e290099e73471efecf95b5de1c427f6819693986cfbab7f5dbfea6",
     "sample": {
       "reading": "あかひめ",
       "surface": "赤姫"
@@ -696,24 +696,24 @@
     }
   },
   "term/specialist/earth_environment_resources": {
-    "count": 2117,
-    "digestSum": "fa6b1f47b38201e242614c5fa9e5b5b9b8c0beb8b4a646c9f9a805587356219f",
+    "count": 2118,
+    "digestSum": "49d8a49744254ef19a98abbcc2c45a22b2dd422dc3ccfa33bda72ebd8d29d4bf",
     "sample": {
       "reading": "あなはぜ",
       "surface": "孔鯊"
     }
   },
   "term/specialist/economics_management": {
-    "count": 5911,
-    "digestSum": "14de6abf1880d80f1b0111ad7465cd5022d83792ca2da542953837fe6be88c26",
+    "count": 5913,
+    "digestSum": "a17908a937bdf3c5ac6b2101d156f8ede9625c04c57504ebd6ce52d12e782c2d",
     "sample": {
       "reading": "あいずごよう",
       "surface": "会津五葉"
     }
   },
   "term/specialist/law_politics": {
-    "count": 5721,
-    "digestSum": "c7d43ce7dc4dca4554beb80ea969e0b6e0d89865322e3419ad1c5b56290d1b14",
+    "count": 5726,
+    "digestSum": "8cf8c7df6a73d1194de8ec9bb62946a986360dd6a7cc697763609ca1f5e435f9",
     "sample": {
       "reading": "ぎいんせき",
       "surface": "議院石"
@@ -739,8 +739,8 @@
     "count": 4064,
     "digestSum": "55e4a19ecb5964645e36c7ee9b64b093d3048756ff96c762dbd6d22e7001d525",
     "sample": {
-      "reading": "あこうぎし",
-      "surface": "赤穂義士"
+      "reading": "さんばしん",
+      "surface": "3馬身"
     }
   },
   "work_franchise": {
@@ -760,8 +760,8 @@
     }
   },
   "work_anime": {
-    "count": 1093,
-    "digestSum": "51932e57b9ca1533ac3127dbaace118dd1248268175c50dd52646609c5d795b3",
+    "count": 1094,
+    "digestSum": "a2bf592ddc66c5114b54fa0d079f1df8c5a83c9bcce606923033661a9ecd633c",
     "sample": {
       "reading": "あいどるじへん",
       "surface": "アイドル事変"
@@ -816,8 +816,8 @@
     }
   },
   "media_demographic/audience/unspecified": {
-    "count": 5106,
-    "digestSum": "d10f124b26833f7ddf6c6efb37e4a42e79a28776b668a0e604e3a2c7e2abdc80",
+    "count": 5109,
+    "digestSum": "6078fad5c5b0b743d862c4582cddc0e2495d80e94fc38c48d87854174c73f0c3",
     "sample": {
       "reading": "あいばゆみ",
       "surface": "相葉夕美"
@@ -856,16 +856,16 @@
     }
   },
   "work_game": {
-    "count": 3179,
-    "digestSum": "43b1d3a1826a67c9317f056cfacde28e2aa43258c65a7c0f09f2c2e6bbfcbfde",
+    "count": 3182,
+    "digestSum": "e60c2fb3c16fbc57ae1f6cfa4984e79b2d8aaa861f20e692011a319c6208d5d4",
     "sample": {
       "reading": "あじとつー",
       "surface": "AZITO2"
     }
   },
   "work_music": {
-    "count": 10353,
-    "digestSum": "aed8aaeaa39884260d1d72cafb5c48e29b87844c89cf74ad5291d9dbea2198b6",
+    "count": 10355,
+    "digestSum": "ed9f4733278cee0bdec3caf8eb5d45ec2ee17bba27a410ba79cf24859c66a4ed",
     "sample": {
       "reading": "あいをくれ",
       "surface": "アイヲクレ"
