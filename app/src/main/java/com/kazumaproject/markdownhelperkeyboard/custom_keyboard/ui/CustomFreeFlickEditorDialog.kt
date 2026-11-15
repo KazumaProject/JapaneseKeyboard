@@ -3,9 +3,11 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 import android.app.Dialog
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.WindowManager
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.os.bundleOf
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment
@@ -33,7 +35,11 @@ class CustomFreeFlickEditorDialog : DialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        dialog?.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        dialog?.window?.let { window ->
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
         if (childFragmentManager.findFragmentById(R.id.custom_free_flick_editor_host) == null) {
             childFragmentManager.beginTransaction().replace(R.id.custom_free_flick_editor_host,
                 PopupMapEditorFragment().apply { arguments = this@CustomFreeFlickEditorDialog.arguments }).commitNow()
