@@ -3,6 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/category_custom_keyboard_title">
+        <ListPreference android:key="custom_free_flick_tap_size" android:defaultValue="key"
+            android:title="@string/free_flick_tap_size"
+            android:entries="@array/free_flick_tap_size_entries"
+            android:entryValues="@array/free_flick_tap_size_values" app:useSimpleSummaryProvider="true" />
         <SwitchPreferenceCompat
             android:key="custom_keyboard_show_key_preview"
             android:defaultValue="true"

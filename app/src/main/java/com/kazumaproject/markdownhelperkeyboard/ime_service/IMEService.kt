@@ -1155,11 +1155,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     refreshSumireLayouts(hiraganaOnly = false)
                 }
             }
-            if (key == null || key.startsWith(com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.PREFIX)) {
+            if (key == null || key.startsWith(com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.PREFIX) ||
+                key == com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.CUSTOM_TAP_SIZE) {
                 runOnMainThread {
-                    val options=com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.read(this)
-                    mainLayoutBinding?.customLayoutDefault?.setPopupMapOptions(options)
-                    floatingKeyboardBinding?.customLayoutFloating?.setPopupMapOptions(options)
+                    (listOfNotNull(mainLayoutBinding?.customLayoutDefault, floatingKeyboardBinding?.customLayoutFloating) +
+                        splitInputs.values.map { it.binding.customLayoutFloating }).forEach(::applyFreeFlickOptions)
                 }
             }
             if (key == null || key.startsWith(com.kazumaproject.markdownhelperkeyboard.sumire_popup.SumirePopupRepository.PREFIX)) {
@@ -15692,6 +15692,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun applyFreeFlickOptions(view: FlickKeyboardView) {
+        val preferences = com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences
+        view.setPopupMapOptions(preferences.read(this), com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin.BUILT_IN)
+        view.setPopupMapOptions(preferences.read(this, com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.Scope.CUSTOM),
+            com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin.CUSTOM)
+    }
+
     private fun configureFlickKeyboardView(
         flickView: FlickKeyboardView,
         mainView: MainLayoutBinding,
@@ -15701,7 +15708,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.bindRuntimeGestureSettings(runtimeGestureSettingsSource)
         val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
         val tfbiFlickStartPositionMode = appPreference.flick_tfbi_flick_start_position
-        flickView.setPopupMapOptions(com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickPreferences.read(this))
+        applyFreeFlickOptions(flickView)
         flickView.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
         flickView.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         if (isFloatingView) {

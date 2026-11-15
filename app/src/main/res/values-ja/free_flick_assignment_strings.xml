@@ -19,6 +19,5 @@
     <string name="free_flick_tap_size">タップpopupのサイズ</string>
     <string name="free_flick_tap_size_key">キーと同じサイズ</string>
     <string name="free_flick_tap_size_sensitivity">フリック感度に連動</string>
-    <string name="free_flick_tap_size_scope">フリーフリック全体に適用・自動保存</string>
     <string name="free_flick_tap_size_hint">感度連動では押し始めた位置を基準に、キーサイズ以内で判定します。新しく追加するpopupは通常のキーと同じサイズになります。</string>
 </resources>

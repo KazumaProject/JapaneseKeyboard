@@ -13,7 +13,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnAttach
 import androidx.core.view.updatePadding
 import androidx.core.view.doOnLayout
-import androidx.preference.PreferenceManager
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
@@ -99,7 +98,7 @@ class PopupMapEditorFragment : Fragment() {
             item(button(label(R.string.free_flick_map_manage)) {}.apply {setOnClickListener {showMapMenu(it)}})
         })
         canvas=PopupMapEditorCanvas(requireContext()).apply { applyFreeFlickTheme();
-            inputOptions=FreeFlickPreferences.read(requireContext())
+            inputOptions=FreeFlickPreferences.read(requireContext(), if (customKey) FreeFlickPreferences.Scope.CUSTOM else FreeFlickPreferences.Scope.SUMIRE)
             onSelect={ selected -> model.selectedId=selected;model.assigningMap=false;showProperties() }
             onEdit={properties.doOnLayout {
                 properties.requestRectangleOnScreen(android.graphics.Rect(0,0,properties.width,minOf(properties.height,dp(260))),false)
@@ -180,7 +179,7 @@ class PopupMapEditorFragment : Fragment() {
         super.onResume()
         if (editorReady) {
             canvas.applyFreeFlickTheme()
-            canvas.inputOptions=FreeFlickPreferences.read(requireContext())
+            canvas.inputOptions=FreeFlickPreferences.read(requireContext(), if (customKey) FreeFlickPreferences.Scope.CUSTOM else FreeFlickPreferences.Scope.SUMIRE)
             runCatching {
                 if (!customKey) {
                     val saved = repository.load(config.keyId, model.layoutId)
@@ -312,26 +311,6 @@ class PopupMapEditorFragment : Fragment() {
         }
         val selected=page.regions.firstOrNull { it.id==model.selectedId }
         if(selected==null) {
-            properties.addView(text(label(R.string.free_flick_tap_size)))
-            properties.addView(text(label(R.string.free_flick_tap_size_scope)))
-            val choices=RadioGroup(requireContext())
-            val modes=listOf(PopupTapSizeMode.KEY to R.string.free_flick_tap_size_key,
-                PopupTapSizeMode.FLICK_SENSITIVITY to R.string.free_flick_tap_size_sensitivity)
-            val current=FreeFlickPreferences.read(requireContext()).tapSizeMode
-            val ids=modes.associate { (mode,title) ->
-                val radio=RadioButton(requireContext()).apply {id=View.generateViewId();text=label(title);minHeight=dp(48)}
-                choices.addView(radio);mode to radio.id
-            }
-            choices.check(ids.getValue(current))
-            choices.setOnCheckedChangeListener { _, checked ->
-                val mode=ids.entries.first {it.value==checked}.key
-                PreferenceManager.getDefaultSharedPreferences(requireContext()).edit()
-                    .putString(FreeFlickPreferences.TAP_SIZE,mode.preferenceValue).apply()
-                canvas.inputOptions=FreeFlickPreferences.read(requireContext());refreshCanvas()
-                status.text=""
-            }
-            properties.addView(choices)
-            properties.addView(text(label(R.string.free_flick_tap_size_hint)))
             field(label(R.string.popup_input),page.tapText) { value -> change(config.withMap(page.copy(tapText=value))) }
             return
         }

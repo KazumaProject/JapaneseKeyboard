@@ -72,7 +72,7 @@ class CustomFreeFlickEditorDialogTest {
                 val activity = controller.get()
                 AppPreference.init(activity)
                 PreferenceManager.getDefaultSharedPreferences(activity).edit()
-                    .putString(FreeFlickPreferences.TAP_SIZE, mode.preferenceValue).commit()
+                    .putString(FreeFlickPreferences.CUSTOM_TAP_SIZE, mode.preferenceValue).commit()
                 val existing = PopupRegion("existing", PopupBounds(.6f, -.4f, 1.4f, .4f), PopupAction(text = "saved"))
                 val original = PopupKeyConfig("custom-key", "normal", listOf(PopupMap("normal", "Normal", "tap", listOf(existing))))
                 val dialog = CustomFreeFlickEditorDialog.create(PopupKeyConfigCodec.encode(original))
@@ -82,6 +82,10 @@ class CustomFreeFlickEditorDialogTest {
                 val canvas = descendants(editor.requireView()).filterIsInstance<PopupMapEditorCanvas>().single()
                 canvas.setSourceKeySize(200f * activity.resources.displayMetrics.density, 100f * activity.resources.displayMetrics.density)
                 canvas.layout(0, 0, 900, 600)
+                assertTrue("Tap sizing belongs in keyboard settings, not the map editor",
+                    descendants(editor.requireView()).filterIsInstance<TextView>().none {
+                        it.text == activity.getString(R.string.free_flick_tap_size)
+                    })
                 assertEquals(mode, canvas.inputOptions.tapSizeMode)
                 if (mode == PopupTapSizeMode.FLICK_SENSITIVITY) assertTrue(canvas.tapArea.bounds.width < 1f)
                 descendants(editor.requireView()).filterIsInstance<TextView>()
