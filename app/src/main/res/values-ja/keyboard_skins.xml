@@ -13,5 +13,5 @@
     <string name="keyboard_skin_light_description">明るいキーと、やわらかなグレーの背景。</string>
     <string name="keyboard_skin_dark_description">暗いキーと、読みやすい明るい文字。</string>
     <string name="keyboard_skin_classic_description">立体感のあるキーと青みがかった背景。</string>
-    <string name="keyboard_skin_preview_note">プレビューは配色とキーの形のイメージです。</string>
+    <string name="keyboard_skin_preview_note">使用中の配列に、各テーマを適用して表示しています。</string>
 </resources>

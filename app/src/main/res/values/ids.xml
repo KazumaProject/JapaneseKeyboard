@@ -12,5 +12,10 @@
     <item
         name="shortcut_toolbar_action_move_down"
         type="id" />
+    <item name="keyboard_trial_input" type="id" />
+    <item name="keyboard_preview_pager" type="id" />
+    <item name="setting_home_preview_edit" type="id" />
+    <item name="keyboard_preview_expanded" type="id" />
+    <item name="keyboard_preview_expanded_close" type="id" />
     <item name="custom_free_flick_editor_host" type="id" />
 </resources>

@@ -52,6 +52,8 @@ class SettingHomeFragment : Fragment() {
     private var frequentCandidatesJob: Job? = null
     private var initialDataJob: Job? = null
     private var loadingUi: SettingsLoadingUi? = null
+    private var previewCarousel: com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel? = null
+    private var previewPageId: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -65,11 +67,14 @@ class SettingHomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        previewPageId = savedInstanceState?.getString("keyboard-preview-page")
         settingCardEditorController = SettingCardEditorController(requireContext(), appPreference)
         loadInitialData()
         loadAndRenderFrequentCards()
         renderCategoryRows()
         renderManagementRows()
+        renderPurposeTiles()
+        renderPreview()
 
         binding.settingHomeSearchButton.setOnClickListener {
             navigateSafely(R.id.settingSearchFragment)
@@ -107,12 +112,15 @@ class SettingHomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        renderPreview()
         frequentCandidates = null
         loadAndRenderFrequentCards()
         if (initialDataJob?.isActive != true) loadInitialData()
     }
 
     override fun onDestroyView() {
+        previewPageId = previewCarousel?.selectedId ?: previewPageId
+        previewCarousel = null
         frequentCandidatesJob = null
         initialDataJob = null
         loadingUi = null
@@ -173,6 +181,54 @@ class SettingHomeFragment : Fragment() {
         }
     }
 
+    private fun renderPreview() {
+        if (previewCarousel == null) {
+            previewCarousel = com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel(
+                requireContext(), viewLifecycleOwner, childFragmentManager, binding.settingHomePreviewSummary,
+                { navigateSafely(R.id.keyboardDisplayPreferenceFragment) }, previewPageId,
+            ).also { binding.settingHomePreview.addView(it) }
+        }
+        previewCarousel?.reload()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("keyboard-preview-page", previewCarousel?.selectedId ?: previewPageId)
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun renderPurposeTiles() {
+        val categories = SettingDestinations.categories(requireContext()).associateBy { it.key }
+        val entries = listOf(
+            R.string.settings_purpose_appearance to "setting_route_keyboard_display",
+            R.string.settings_purpose_typing to "setting_route_operation_feedback",
+            R.string.settings_purpose_words to "setting_route_dictionary",
+            R.string.settings_purpose_ai to "setting_route_voice_input",
+        )
+        binding.settingHomePurposeGrid.removeAllViews()
+        entries.forEach { (label, key) ->
+            val aiAvailable = com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasZenz ||
+                com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasGemma
+            val destination = categories.getValue(key).copy(title = getString(
+                if (label == R.string.settings_purpose_ai && !aiAvailable) R.string.setting_category_voice_input_title else label,
+            ))
+            val tile = createFrequentCard(destination)
+            if (label == R.string.settings_purpose_ai && aiAvailable) tile.setOnClickListener {
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.settings_purpose_ai)
+                    .setItems(arrayOf(getString(R.string.setting_category_ai_conversion_title), getString(R.string.setting_category_voice_input_title))) { _, selected ->
+                        navigateSafely(if (selected == 0) R.id.aiConversionPreferenceFragment else R.id.voiceInputPreferenceFragment)
+                    }.setNegativeButton(android.R.string.cancel, null).show()
+            }
+            binding.settingHomePurposeGrid.addView(tile, GridLayout.LayoutParams().apply {
+                width = 0
+                height = ViewGroup.LayoutParams.WRAP_CONTENT
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                setGravity(Gravity.FILL)
+                setMargins(dp(4), dp(4), dp(4), dp(4))
+            })
+        }
+    }
+
     private fun createFrequentCard(destination: SettingDestination): View {
         val context = requireContext()
         val title = destination.title
@@ -181,7 +237,7 @@ class SettingHomeFragment : Fragment() {
         val switchTarget = destination.destination as? SettingDestinationType.SwitchPreference
         val switchValue = switchTarget?.let { settingCardEditorController.readSwitchPreference(it) }
         val card = MaterialCardView(context).apply {
-            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            radius = dp(18).toFloat()
             strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
@@ -197,7 +253,7 @@ class SettingHomeFragment : Fragment() {
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(14), dp(14), dp(14))
-            minimumHeight = dp(120)
+            minimumHeight = dp(104)
         }
 
         val headerRow = LinearLayout(context).apply {
@@ -299,7 +355,7 @@ class SettingHomeFragment : Fragment() {
         val title = destination.title
         val summary = currentSummary(destination)
         val card = MaterialCardView(context).apply {
-            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            radius = dp(18).toFloat()
             strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))

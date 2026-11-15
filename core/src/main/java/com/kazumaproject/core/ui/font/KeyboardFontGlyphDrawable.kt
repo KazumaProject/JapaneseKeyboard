@@ -58,6 +58,9 @@ class KeyboardFontGlyphDrawable private constructor(
         delegate.bounds = bounds
         delegate.state = state
         delegate.level = level
+        delegate.alpha = alphaValue
+        delegate.colorFilter = explicitColorFilter
+        delegate.setTintMode(tintMode)
         KeyboardFontApplicator.track(this)
     }
 
@@ -168,13 +171,8 @@ class KeyboardFontGlyphDrawable private constructor(
     }
 
     private fun drawDelegate(canvas: Canvas) {
-        delegate.bounds = bounds
-        delegate.state = state
-        delegate.level = level
-        delegate.alpha = alphaValue
-        delegate.colorFilter = explicitColorFilter
-        tintList?.let(delegate::setTintList)
-        delegate.setTintMode(tintMode)
+        // Bounds/state/style are forwarded by their setters. Setting them during draw can
+        // invalidate the VectorDrawable and schedule another frame indefinitely.
         delegate.draw(canvas)
     }
 

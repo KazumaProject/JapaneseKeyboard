@@ -26,6 +26,7 @@ internal class SplitKeyboardController(
     private val onEditing: () -> Unit,
     private val colors: () -> CandidatePanelColors = { CandidatePanelColors.resolve(context) },
     private val onWindowFailure: () -> Unit = {},
+    private val persistChanges: () -> Boolean = { true },
     private val onGestureChanged: (SplitSlot, Boolean) -> Unit = { _, _ -> },
 ) {
     private val manager = context.getSystemService(WindowManager::class.java)
@@ -195,10 +196,9 @@ internal class SplitKeyboardController(
         pane.root.setEditing(editing)
         pane.candidates.isVisible = showsCandidates(pane.slot)
         pane.input.importantForAccessibility = if (editing) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
-        val width = (dp(pane.placement.widthDp).coerceAtLeast(dp(pane.minWidth)) + pane.horizontalChrome).coerceAtMost(area.width())
-        val height = (dp(pane.placement.heightDp).coerceAtLeast(dp(pane.minHeight)) + pane.verticalChrome).coerceAtMost(area.height())
-        val x = area.left + ((area.width() - width) * pane.placement.x).roundToInt()
-        val y = area.top + ((area.height() - height) * pane.placement.y).roundToInt()
+        val bounds = splitPaneBounds(area, pane.placement, density, pane.horizontalChrome, pane.verticalChrome)
+        val width = bounds.width(); val height = bounds.height()
+        val x = bounds.left; val y = bounds.top
         pane.bounds = GuideBounds(x, y, width, height)
         val params = pane.params ?: WindowManager.LayoutParams(width, height,
             WindowManager.LayoutParams.TYPE_APPLICATION_PANEL,
@@ -255,7 +255,7 @@ internal class SplitKeyboardController(
                 render(pane)
                 if (event.actionMasked == MotionEvent.ACTION_POINTER_UP) gesture.remove(event.getPointerId(index))
                 if (event.actionMasked == MotionEvent.ACTION_UP) {
-                    settings.savePlacement(pane.slot, landscape, pane.placement)
+                    if (persistChanges()) settings.savePlacement(pane.slot, landscape, pane.placement)
                     pane.gesture = null
                     pane.gestureStart = null
                 }
