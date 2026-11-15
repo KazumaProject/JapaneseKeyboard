@@ -94,7 +94,7 @@ class SettingReclassificationTest {
             "theme_custom_candidate_item_bg_color" to R.id.candidateDisplayPreferenceFragment,
             "candidate_view_height_landscape_setting_fragment_preference" to R.id.candidateDisplayPreferenceFragment,
             "live_conversion_preference" to R.id.conversionEnginePreferenceFragment,
-            "custom_romaji_preference" to R.id.legacyCommonPreferenceFragment,
+            "custom_romaji_preference" to R.id.legacyCommonSectionFragment,
         )
         for (scope in SettingSearchScope.entries) {
             val destinations = SettingSearchIndex.searchable(context, scope)

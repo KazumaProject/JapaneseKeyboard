@@ -52,7 +52,6 @@ class SettingHomeFragment : Fragment() {
     private var frequentCandidatesJob: Job? = null
     private var initialDataJob: Job? = null
     private var loadingUi: SettingsLoadingUi? = null
-    private var previewCarousel: com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -71,8 +70,6 @@ class SettingHomeFragment : Fragment() {
         loadAndRenderFrequentCards()
         renderCategoryRows()
         renderManagementRows()
-        renderPurposeTiles()
-        renderPreview()
 
         binding.settingHomeSearchButton.setOnClickListener {
             navigateSafely(R.id.settingSearchFragment)
@@ -110,14 +107,12 @@ class SettingHomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        renderPreview()
         frequentCandidates = null
         loadAndRenderFrequentCards()
         if (initialDataJob?.isActive != true) loadInitialData()
     }
 
     override fun onDestroyView() {
-        previewCarousel = null
         frequentCandidatesJob = null
         initialDataJob = null
         loadingUi = null
@@ -175,50 +170,6 @@ class SettingHomeFragment : Fragment() {
         binding.settingHomeManagementList.removeAllViews()
         SettingDestinations.management(requireContext()).forEach { destination ->
             binding.settingHomeManagementList.addView(createCategoryRow(destination))
-        }
-    }
-
-    private fun renderPreview() {
-        if (previewCarousel == null) {
-            previewCarousel = com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel(
-                requireContext(), viewLifecycleOwner, childFragmentManager, binding.settingHomePreviewSummary,
-                { navigateSafely(R.id.keyboardDisplayPreferenceFragment) },
-            ).also { binding.settingHomePreview.addView(it) }
-        }
-        previewCarousel?.reload()
-    }
-
-
-    private fun renderPurposeTiles() {
-        val categories = SettingDestinations.categories(requireContext()).associateBy { it.key }
-        val entries = listOf(
-            R.string.settings_purpose_appearance to "setting_route_keyboard_display",
-            R.string.settings_purpose_typing to "setting_route_operation_feedback",
-            R.string.settings_purpose_words to "setting_route_dictionary",
-            R.string.settings_purpose_ai to "setting_route_voice_input",
-        )
-        binding.settingHomePurposeGrid.removeAllViews()
-        entries.forEach { (label, key) ->
-            val aiAvailable = com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasZenz ||
-                com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasGemma
-            val destination = categories.getValue(key).copy(title = getString(
-                if (label == R.string.settings_purpose_ai && !aiAvailable) R.string.setting_category_voice_input_title else label,
-            ))
-            val tile = createFrequentCard(destination)
-            if (label == R.string.settings_purpose_ai && aiAvailable) tile.setOnClickListener {
-                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setTitle(R.string.settings_purpose_ai)
-                    .setItems(arrayOf(getString(R.string.setting_category_ai_conversion_title), getString(R.string.setting_category_voice_input_title))) { _, selected ->
-                        navigateSafely(if (selected == 0) R.id.aiConversionPreferenceFragment else R.id.voiceInputPreferenceFragment)
-                    }.setNegativeButton(android.R.string.cancel, null).show()
-            }
-            binding.settingHomePurposeGrid.addView(tile, GridLayout.LayoutParams().apply {
-                width = 0
-                height = ViewGroup.LayoutParams.WRAP_CONTENT
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                setGravity(Gravity.FILL)
-                setMargins(dp(4), dp(4), dp(4), dp(4))
-            })
         }
     }
 

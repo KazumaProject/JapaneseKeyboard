@@ -90,10 +90,10 @@ class IndependentMultiTouchPreferenceTest {
 
     @Test fun searchAndFrequentSettingsPointToTheCorrectOperationScreen() {
         val newSetting = SettingSearchIndex.destinationsForKeys(context, listOf(key)).single()
-        assertEquals(R.id.legacyCommonPreferenceFragment, SettingDestinations.destinationId(newSetting.destination))
+        assertEquals(R.id.legacyCommonSectionFragment, SettingDestinations.destinationId(newSetting.destination))
         assertEquals(key, (newSetting.destination as SettingDestinationType.NavDestination).highlightPreferenceKey)
         val legacySetting = SettingSearchIndex.legacyDestinationsForKeys(context, listOf(key)).single()
-        assertEquals(R.id.legacyCommonPreferenceFragment, SettingDestinations.destinationId(legacySetting.destination))
+        assertEquals(R.id.legacyCommonSectionFragment, SettingDestinations.destinationId(legacySetting.destination))
         assertTrue(SettingDestinations.frequentCandidates(context).any { it.key == key })
     }
 }

@@ -165,7 +165,7 @@ object SettingSearchIndex {
         R.id.advancedPreferenceFragment,
         R.id.zenzPreferenceFragment,
         R.id.gemmaPreferenceFragment,
-        R.id.legacyCommonPreferenceFragment,
+        R.id.legacyCommonSectionFragment,
         R.id.keyboardThemeFragment,
     )
 
@@ -174,7 +174,7 @@ object SettingSearchIndex {
             SettingDestinations.management(context) +
             SettingDestinations.frequentCandidates(context)
         val xmlItems = preferenceXmlDestinations(context)
-        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
+        val officialIds = setOf(R.id.legacyCommonSectionFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
         val official = xmlItems.filter { SettingDestinations.destinationId(it.destination) in officialIds }
         return (official + topLevel + xmlItems).distinctBy { it.key }
     }
@@ -428,7 +428,7 @@ object SettingSearchIndex {
         }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
-        add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
+        add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonSectionFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_theme, R.id.keyboardThemeFragment, SettingCategory.KEYBOARD_DISPLAY))
         add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
@@ -472,7 +472,7 @@ object SettingSearchIndex {
                 tabKey = tab.key,
                 tabTitle = tab.title(context),
                 xmlRes = xmlRes,
-                destinationId = tab.destinationId,
+                destinationId = if (tab.key == SettingTabRegistry.TAB_COMMON) R.id.legacyCommonSectionFragment else tab.destinationId,
                 category = legacyCategoryForTab(tab.key),
             )
         }

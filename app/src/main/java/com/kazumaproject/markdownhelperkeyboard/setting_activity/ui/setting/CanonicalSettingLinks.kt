@@ -14,7 +14,7 @@ internal fun PreferenceFragmentCompat.bindCanonicalSettingLinks() {
                 ?.takeIf { preference.key != it }
             if (category != null) {
                 val destination = when {
-                    category.startsWith("settings_common_") -> R.id.legacyCommonPreferenceFragment
+                    category.startsWith("settings_common_") -> R.id.legacyCommonSectionFragment
                     category.startsWith("settings_theme_") -> R.id.keyboardThemeFragment
                     category.startsWith("settings_engine_") -> R.id.conversionEnginePreferenceFragment
                     else -> continue

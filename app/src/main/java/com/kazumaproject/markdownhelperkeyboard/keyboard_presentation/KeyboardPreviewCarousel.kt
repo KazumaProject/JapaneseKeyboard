@@ -41,6 +41,8 @@ internal class KeyboardPreviewCarousel(
     private var targets = emptyList<KeyboardPreviewTarget>()
     var selectedId: String? = null; private set
     private var job: Job? = null
+    private var playbackObserver: Job? = null
+    private var selectionObserver: Job? = null
     private val pager = ViewPager2(context).apply {
         id = R.id.keyboard_preview_pager
         isUserInputEnabled = false
@@ -78,8 +80,17 @@ internal class KeyboardPreviewCarousel(
                 updatePosition()
             }
         })
-        owner.lifecycleScope.launch { KeyboardTrialSession.active.collect { updatePlayback() } }
-        owner.lifecycleScope.launch { KeyboardPreviewSelection.current.collect { reload() } }
+    }
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        playbackObserver = owner.lifecycleScope.launch { KeyboardTrialSession.active.collect { updatePlayback() } }
+        selectionObserver = owner.lifecycleScope.launch { KeyboardPreviewSelection.current.collect { reload() } }
+    }
+    override fun onDetachedFromWindow() {
+        playbackObserver?.cancel()
+        selectionObserver?.cancel()
+        job?.cancel()
+        super.onDetachedFromWindow()
     }
     private fun updatePlayback() {
         fun update(view: View) {

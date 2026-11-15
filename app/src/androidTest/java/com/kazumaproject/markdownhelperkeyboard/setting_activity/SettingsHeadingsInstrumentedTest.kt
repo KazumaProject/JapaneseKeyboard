@@ -41,9 +41,9 @@ class SettingsHeadingsInstrumentedTest {
                 prefs.edit().putBoolean("setting_use_new_home_screen_preference", newHome).commit()
                 ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                     scenario.awaitSettingsContentReady()
-                    for (destination in listOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment,
+                    for (destination in listOf(R.id.legacyCommonSectionFragment, R.id.keyboardThemeFragment,
                         R.id.conversionEnginePreferenceFragment, R.id.dictionaryPreferenceFragment)) {
-                        scenario.onActivity { activity -> (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController.navigate(destination) }
+                        scenario.onActivity { activity -> (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController.navigate(destination, if (destination == R.id.legacyCommonSectionFragment) android.os.Bundle().apply { putString("legacy_common_section_key", "settings_common_selection") } else null) }
                         fun verify(): Boolean {
                             var ready = false
                             scenario.onActivity { activity ->

@@ -87,7 +87,7 @@ class FlickPreviewDelayPreferenceTest {
     fun settingCardOpensTheCanonicalEditor() {
         val destination = SettingDestinations.frequentCandidates(context).first { it.key == FlickPreviewDelaySettings.KEY }
         val navigation = destination.destination as SettingDestinationType.NavDestination
-        assertEquals(R.id.legacyCommonPreferenceFragment, navigation.destinationId)
+        assertEquals(R.id.legacyCommonSectionFragment, navigation.destinationId)
         assertEquals(FlickPreviewDelaySettings.KEY, navigation.highlightPreferenceKey)
     }
 

@@ -96,11 +96,16 @@ class SettingsDesignRefreshInstrumentedTest {
                     activity.applySettingHomeModeFromPreference()
                     host(activity).navController.navigate(R.id.navigation_setting)
                 }
-                await(scenario, "Studio preview did not load") { it.findViewById<View>(R.id.setting_home_preview_edit) != null }
+                await(scenario, "Settings home did not load") { it.findViewById<View>(R.id.setting_home_category_list) != null }
+                scenario.onActivity {
+                    assertNull("Home should focus on settings entrances", it.findViewById<View>(R.id.setting_home_preview))
+                    host(it).navController.navigate(R.id.keyboardDisplayPreferenceFragment)
+                }
+                await(scenario, "Appearance preview did not load") { it.findViewById<View>(R.id.setting_home_preview_edit) != null }
                 scenario.onActivity { it.findViewById<View>(R.id.setting_home_preview_edit).performClick() }
-                await(scenario, "Appearance route is not reachable") { host(it).navController.currentDestination?.id == R.id.keyboardDisplayPreferenceFragment }
+                await(scenario, "Theme route is not reachable") { host(it).navController.currentDestination?.id == R.id.keyboardThemeFragment }
                 scenario.onActivity { assertTrue(host(it).navController.popBackStack()) }
-                await(scenario, "Studio preview was not restored") { it.findViewById<View>(R.id.setting_home_preview) != null }
+                await(scenario, "Appearance preview was not restored") { it.findViewById<View>(R.id.setting_home_preview) != null }
                 scenario.recreate()
                 scenario.awaitSettingsContentReady()
                 await(scenario, "Studio preview did not survive recreation") { it.findViewById<View>(R.id.setting_home_preview) != null }
@@ -183,7 +188,7 @@ class SettingsDesignRefreshInstrumentedTest {
             AppPreference.init(context)
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.awaitSettingsContentReady()
-                scenario.onActivity { host(it).navController.navigate(R.id.legacyCommonPreferenceFragment) }
+                scenario.onActivity { host(it).navController.navigate(R.id.legacyCommonSectionFragment, bundleOf("legacy_common_section_key" to "settings_common_touch")) }
                 await(scenario, "List preference did not load") {
                     (host(it).childFragmentManager.primaryNavigationFragment as? CommonPreferenceFragment)?.findPreference<ListPreference>(key) != null
                 }

@@ -282,7 +282,11 @@ class KeyboardPreviewProductDeviceTest {
             AppPreference.keyboardSkin = KeyboardSkinId.DEFAULT
             shell("ime enable $ime"); shell("ime set $ime")
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
-                scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+                scenario.awaitSettingsContentReady()
+                scenario.onActivity {
+                    it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController.navigate(R.id.keyboardDisplayPreferenceFragment)
+                }
                 var activity: MainActivity? = null
                 await("Portrait settings did not load") {
                     activity = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
@@ -411,8 +415,11 @@ class KeyboardPreviewProductDeviceTest {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.awaitSettingsContentReady()
                 var activity: MainActivity? = null
-                scenario.onActivity { activity = it }
-                await("Home carousel did not load") { activePreview(activity!!, targets.first().id) != null }
+                scenario.onActivity {
+                    activity = it
+                    (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController.navigate(R.id.keyboardDisplayPreferenceFragment)
+                }
+                await("Appearance preview did not load") { activePreview(activity!!, targets.first().id) != null }
                 val matrix = InstrumentationRegistry.getArguments().getString("matrix") == "true"
                 val skins = if (matrix) KeyboardSkinId.entries.toList() else listOf(KeyboardSkinId.DEFAULT)
                 val orientations = (if (matrix) listOf(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
@@ -430,8 +437,9 @@ class KeyboardPreviewProductDeviceTest {
                     ins.runOnMainSync { activity!!.findViewById<ViewPager2>(R.id.keyboard_preview_pager).setCurrentItem(0, false) }
                     await("First layout was not restored") { activePreview(activity!!, targets.first().id) != null }
                     gesture(requireNotNull(activePreview(activity!!, targets.first().id)), false)
-                    await("Vertical scroll was intercepted by preview") { descendants(activity!!.window.decorView).filterIsInstance<androidx.core.widget.NestedScrollView>().any { it.scrollY > 0 } }
-                    ins.runOnMainSync { descendants(activity!!.window.decorView).filterIsInstance<androidx.core.widget.NestedScrollView>().forEach { it.scrollTo(0, 0) } }
+                    await("Vertical scroll was intercepted by preview") { descendants(activity!!.window.decorView).filterIsInstance<androidx.recyclerview.widget.RecyclerView>().any { it.canScrollVertically(-1) } }
+                    ins.runOnMainSync { (home(activity!!) as androidx.preference.PreferenceFragmentCompat).listView.scrollToPosition(0) }
+                    await("Preview was not restored after scrolling") { activePreview(activity!!, targets.first().id) != null }
                     assertEquals("Browsing changed selected keyboards", baseline, selectionState())
                 }
                 var lastVisitedId = targets.first().id
