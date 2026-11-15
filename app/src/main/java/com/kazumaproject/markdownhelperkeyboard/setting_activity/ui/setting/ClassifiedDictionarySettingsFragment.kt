@@ -1,14 +1,12 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.content.Context
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.os.bundleOf
@@ -239,11 +237,6 @@ class ClassifiedDictionarySettingsFragment : Fragment() {
             private val title = TextView(context).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f); setTextColor(MaterialColors.getColor(this, MaterialR.attr.colorOnSurface)) }
             private val summary = TextView(context).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f); setTextColor(MaterialColors.getColor(this, MaterialR.attr.colorOnSurfaceVariant)) }
             private val switch = MaterialSwitch(context)
-            private val arrow = ImageView(context).apply {
-                setImageResource(com.kazumaproject.core.R.drawable.baseline_arrow_right_24)
-                imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this, MaterialR.attr.colorOnSurfaceVariant))
-                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            }
             init {
                 card.radius = dp(18).toFloat()
                 card.cardElevation = 0f
@@ -255,7 +248,6 @@ class ClassifiedDictionarySettingsFragment : Fragment() {
                 val texts = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; addView(title); addView(summary) }
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
                 row.addView(switch, LinearLayout.LayoutParams(-2, dp(48)))
-                row.addView(arrow, LinearLayout.LayoutParams(dp(24), dp(24)))
                 card.addView(row)
             }
             fun bind(value: CategoryRow) {
@@ -265,7 +257,6 @@ class ClassifiedDictionarySettingsFragment : Fragment() {
                 summary.text = if (group) itemView.context.getString(R.string.classified_group_enabled_count, value.enabled, value.total) else value.path
                 summary.isVisible = summary.text.isNotBlank()
                 check.isVisible = group
-                arrow.isVisible = group
                 switch.isVisible = !group
                 check.setOnCheckedChangeListener(null)
                 check.checkedState = when (value.enabled) { 0 -> MaterialCheckBox.STATE_UNCHECKED; value.total -> MaterialCheckBox.STATE_CHECKED; else -> MaterialCheckBox.STATE_INDETERMINATE }
