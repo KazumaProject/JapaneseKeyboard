@@ -44,7 +44,7 @@ class SettingReclassificationTest {
         cases.forEach { (xml, expected) ->
             val screen = inflate(xml)
             assertEquals(expected, (0 until screen.preferenceCount).map { screen.getPreference(it).key })
-            (0 until screen.preferenceCount).forEach { index -> assertFalse((screen.getPreference(index) as CollapsiblePreferenceCategory).isExpanded) }
+            (0 until screen.preferenceCount).forEach { index -> assertTrue((screen.getPreference(index) as CollapsiblePreferenceCategory).isExpanded) }
         }
         val common = inflate(R.xml.pref_common_legacy)
         val theme = inflate(R.xml.pref_theme)
