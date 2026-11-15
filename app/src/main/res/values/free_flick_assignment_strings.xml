@@ -20,7 +20,7 @@
     <string name="free_flick_tap_size_key">Same as the key</string>
     <string name="free_flick_tap_size_sensitivity">Follow flick sensitivity</string>
     <string name="free_flick_tap_size_scope">All Free Flick keys · saved automatically</string>
-    <string name="free_flick_tap_size_hint">Sensitivity mode follows the initial touch, up to the key size. New popups start at the same size.</string>
+    <string name="free_flick_tap_size_hint">Sensitivity mode follows the initial touch, up to the key size. New popups start at the normal key size.</string>
     <string-array name="free_flick_tap_size_entries"><item>@string/free_flick_tap_size_key</item><item>@string/free_flick_tap_size_sensitivity</item></string-array>
     <string-array name="free_flick_tap_size_values"><item>key</item><item>flick_sensitivity</item></string-array>
 </resources>
