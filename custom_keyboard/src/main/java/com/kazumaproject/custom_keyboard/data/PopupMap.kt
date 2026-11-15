@@ -32,6 +32,11 @@ data class PopupBounds(val left: Float, val top: Float, val right: Float, val bo
     companion object { val KEY = PopupBounds(-.5f, -.5f, .5f, .5f) }
 }
 
+private val standardPopupSlots = listOf(
+    PopupBounds.KEY.offset(-1f, 0f), PopupBounds.KEY.offset(0f, -1f),
+    PopupBounds.KEY.offset(1f, 0f), PopupBounds.KEY.offset(0f, 1f)
+)
+
 @Keep
 enum class PopupActionType { TEXT, SWITCH, BACK }
 @Keep
@@ -125,10 +130,20 @@ class PopupMapSession(
     private val keyHeight: Float = 1f,
     val options: PopupMapInputOptions = PopupMapInputOptions(),
     val tapArea: PopupTapArea = PopupTapArea.KEY,
-    // Only sensitivity-based tap detection follows the initial touch. Map coordinates stay key-relative.
+    // Sensitivity-linked tapping and directional selection follow the initial touch. Saved geometry stays key-relative.
     val tapOriginX: Float = 0f,
     val tapOriginY: Float = 0f
 ) {
+    // A regular text cross is directional input. Arbitrary shapes, placements and
+    // map controls keep their literal hit/nearest-distance behavior below.
+    private val cardinalRegions = config.map(config.startMapId)?.let { map ->
+        if (map.regions.size != 4 || map.regions.any {
+                it.action.type != PopupActionType.TEXT || it.action.text.isEmpty() || it.outline != null
+            }) null else {
+            val regions = standardPopupSlots.map { bounds -> map.regions.singleOrNull { it.bounds == bounds } }
+            if (regions.any { it == null }) null else regions.filterNotNull()
+        }
+    }
     private val history = mutableListOf(config.startMapId)
     val currentMap get() = requireNotNull(config.map(history.last()))
     val mapPath get() = history.toList()
@@ -160,6 +175,17 @@ class PopupMapSession(
     private fun insideKey(x: Float, y: Float) = tapArea.contains(x-tapOriginX, y-tapOriginY, keyWidth, keyHeight)
     private fun resolve(x: Float, y: Float): PopupRegion? {
         if (!x.isFinite() || !y.isFinite() || insideKey(x,y)) return null
+        if (tapArea.followsSensitivity && options.nearestEnabled && options.nearestText &&
+            currentMap.id == config.startMapId && cardinalRegions != null) {
+            val dxPx = (x - tapOriginX) * keyWidth
+            val dyPx = (y - tapOriginY) * keyHeight
+            val index = if (abs(dxPx) > abs(dyPx)) {
+                if (dxPx < 0f) 0 else 2
+            } else {
+                if (dyPx < 0f) 1 else 3
+            }
+            return cardinalRegions[index]
+        }
         currentMap.regions.firstOrNull { it.contains(x, y, keyWidth, keyHeight) }?.let { return it }
         val candidates = currentMap.regions.filter { options.includes(it, history.size > 1) }
         // The sensitivity box can leave a gap inside the reserved key. Project that motion
@@ -195,16 +221,12 @@ object SumirePopupDefaults {
         info.tap.toString() to listOf(info.tap, info.flickLeft, info.flickTop, info.flickRight, info.flickBottom)
     }.apply { put(PUNCTUATION_KEY, listOf('、', '。', '？', '！', '…')) }
     val rows = definitions.mapValues { (_, characters) -> characters.filterNotNull().joinToString("") }
-    private val slots = listOf(
-        PopupBounds.KEY.offset(-1f, 0f), PopupBounds.KEY.offset(0f, -1f),
-        PopupBounds.KEY.offset(1f, 0f), PopupBounds.KEY.offset(0f, 1f)
-    )
     /** Standard 12-key text assignments, with no preconfigured map transitions. */
     fun create(keyId: String): PopupKeyConfig {
         val definition = definitions.getValue(keyId)
         val characters = definition.drop(1)
         val regions = characters.mapIndexedNotNull { index, character ->
-            character?.let { PopupRegion("normal-$index", slots[index], PopupAction(text=it.toString())) }
+            character?.let { PopupRegion("normal-$index", standardPopupSlots[index], PopupAction(text=it.toString())) }
         }
         return PopupKeyConfig(keyId,"normal",listOf(PopupMap("normal","通常",definition.first().toString(),regions)))
     }
