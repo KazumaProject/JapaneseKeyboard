@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Bitmap
 import android.os.SystemClock
+import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -127,151 +128,83 @@ class ClassifiedDictionaryUiInstrumentedTest {
     }
 
     @Test fun dictionarySettingsExposeAndPersistAllPopulatedIndependentSwitches() {
-        shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard")
         val target = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val wasEnabled = shell("ime list -s").lines().contains(target)
-        shell("ime enable $target")
-        try {
-        shell("am start -f 0x10008000 -n ${context.packageName}/com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity")
-        lateinit var activity: MainActivity
-        await("Settings not ready") {
-            val resumed = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
-            if (resumed == null || !resumed.isSettingsContentReady || !resumed.window.decorView.hasWindowFocus()) false else { activity = resumed; true }
-        }
-        lateinit var host: NavHostFragment
-        main {
-            activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
-            host.navController.navigate(R.id.dictionaryPreferenceFragment)
-        }
-        lateinit var fragment: DictionaryPreferenceFragment
-        try { await("Dictionary settings not ready") {
-            val current = host.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
-            if (current?.preferenceScreen == null) false else { fragment = current; true }
-        } } catch (failure: Throwable) {
-            screenshot("classified-settings-failure.png")
-            main { println("CLASSIFIED_SETTINGS_DEST " + host.navController.currentDestination); println("CLASSIFIED_SETTINGS_FRAGMENTS " + host.childFragmentManager.fragments.map { it.javaClass.name }); println("CLASSIFIED_SETTINGS_TEXT " + descendants(activity.window.decorView).filterIsInstance<TextView>().map { it.text.toString() }.toList()) }
-            throw failure
-        }
         val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
-        val previous = ClassifiedDictionaries.all.associate { it.category to store.isOptionalBundledEnabled(it.category) }
+        val previous = ClassifiedDictionaries.all.associate { it.category to
+            (store.isOptionalBundledEnabled(it.category) to store.isExternalEnabledForCategory(it.category)) }
         val settingsPrefs = PreferenceManager.getDefaultSharedPreferences(context)
         val oldHomeMode = settingsPrefs.getBoolean("setting_use_new_home_screen_preference", true)
-        fun findSwitch(spec: ClassifiedDictionarySpec): SwitchPreferenceCompat? {
-            // Loading publishes the hierarchy before its RecyclerView layout completes.
-            val loading = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment::class.java
-                .getDeclaredField("loadJob").apply { isAccessible = true }.get(fragment) as? kotlinx.coroutines.Job
-            if (loading?.isActive == true) return null
-            return fragment.findPreference<SwitchPreferenceCompat>(spec.preferenceKey)
-
-        }
+        var activity: MainActivity? = null
         try {
+            shell("ime enable $target")
+            shell("am start -f 0x10008000 -n ${context.packageName}/com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity")
+            await("Settings not ready") {
+                ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<MainActivity>().firstOrNull()?.takeIf { it.isSettingsContentReady }?.let { activity = it; true } == true
+            }
+            lateinit var host: NavHostFragment
+            main { host = requireNotNull(activity).supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment }
+            val tree = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ClassifiedDictionaryNode.load(context)
+            for (newHome in listOf(true, false)) {
+                settingsPrefs.edit().putBoolean("setting_use_new_home_screen_preference", newHome).commit()
+                main {
+                    requireNotNull(activity).applySettingHomeModeFromPreference()
+                    host.navController.navigate(R.id.classifiedDictionarySettingsFragment)
+                }
+                lateinit var page: View
+                await("Dictionary manager not ready") {
+                    host.childFragmentManager.primaryNavigationFragment?.view?.takeIf {
+                        (it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.classified_list)?.adapter?.itemCount ?: 0) == 7
+                    }?.let { page = it; true } == true
+                }
+                for (spec in ClassifiedDictionaries.all) {
+                    val name = context.getString(spec.nameRes)
+                    val index = tree.visible(name,
+                        com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.DictionarySelectionFilter.ALL,
+                        store::isOptionalBundledEnabled).indexOfFirst { it.key == spec.preferenceKey }
+                    assertTrue(spec.id, index >= 0)
+                    main {
+                        page.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.classified_search).setText(name)
+                    }
+                    val list = page.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.classified_list)
+                    fun switch(): com.google.android.material.materialswitch.MaterialSwitch? =
+                        descendants(list).filterIsInstance<com.google.android.material.materialswitch.MaterialSwitch>()
+                            .firstOrNull { it.contentDescription == name }
+                    await("${spec.id} switch not displayed") { list.scrollToPosition(index); switch() != null }
+                    val original = store.isOptionalBundledEnabled(spec.category)
+                    main { switch()!!.performClick() }
+                    await("${spec.id} change not saved and displayed") { store.isOptionalBundledEnabled(spec.category) == !original && switch()?.isChecked == !original }
+                    main { switch()!!.performClick() }
+                    await("${spec.id} state not restored") { store.isOptionalBundledEnabled(spec.category) == original && switch()?.isChecked == original }
+                }
+            }
+            ClassifiedDictionaries.all.forEach { store.setDisableableCategoryEnabled(it.category, false, true) }
             for (spec in ClassifiedDictionaries.all) {
-                val original = previous.getValue(spec.category)
-                await("${spec.id} switch not ready") { findSwitch(spec)?.let { it.onPreferenceChangeListener != null && it.isChecked == original } == true }
-                main {
-                    val switch = findSwitch(spec)!!
-                    assertTrue(switch.onPreferenceChangeListener!!.onPreferenceChange(switch, !original))
-                    assertEquals(spec.id, !original, store.isOptionalBundledEnabled(spec.category))
+                main { host.navController.navigate(R.id.externalDictionarySettingsFragment,
+                    Bundle().apply { putString("externalDictionaryCategory", spec.category.name) }) }
+                var externalSwitch: SwitchPreferenceCompat? = null
+                await("External ${spec.id} did not open") {
+                    val current = host.childFragmentManager.primaryNavigationFragment as? ExternalDictionarySettingsFragment
+                    val screen = current?.preferenceScreen
+                    val group = screen?.let { (0 until it.preferenceCount).map(it::getPreference) }
+                        ?.filterIsInstance<PreferenceCategory>()?.firstOrNull { it.title == context.getString(spec.nameRes) }
+                    externalSwitch = group?.let { (0 until it.preferenceCount).map(it::getPreference) }
+                        ?.filterIsInstance<SwitchPreferenceCompat>()?.singleOrNull()
+                    externalSwitch?.let { !it.isChecked && it.onPreferenceChangeListener != null } == true
                 }
-                await("${spec.id} enabled state not displayed") { findSwitch(spec)?.let { it.onPreferenceChangeListener != null && it.isChecked == !original } == true }
-                main {
-                    val switch = findSwitch(spec)!!
-                    assertTrue(switch.onPreferenceChangeListener!!.onPreferenceChange(switch, original))
-                    assertEquals(spec.id, original, store.isOptionalBundledEnabled(spec.category))
-                }
-                await("${spec.id} restored state not displayed") { findSwitch(spec)?.let { it.onPreferenceChangeListener != null && it.isChecked == original } == true }
+                main { val toggle = requireNotNull(externalSwitch); assertTrue(toggle.callChangeListener(true)) }
+                await("External ${spec.id} did not share ON") { store.isOptionalBundledEnabled(spec.category) }
+                main { assertTrue(host.navController.popBackStack()) }
             }
-            // Change all categories in the normal screen, then turn them back on
-            // through the external screen and confirm both views read the same store.
-            main {
-                ClassifiedDictionaries.all.forEach { spec ->
-                    val switch = findSwitch(spec)!!
-                    switch.onPreferenceChangeListener!!.onPreferenceChange(switch, false)
-                }
-                host.navController.navigate(R.id.externalDictionarySettingsFragment)
-            }
-            lateinit var external: ExternalDictionarySettingsFragment
-            fun externalSwitch(spec: ClassifiedDictionarySpec): SwitchPreferenceCompat? {
-                val screen = external.preferenceScreen ?: return null
-                val loading = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment::class.java
-                    .getDeclaredField("loadJob").apply { isAccessible = true }.get(external) as? kotlinx.coroutines.Job
-                if (loading?.isActive == true) return null
-                val group = (0 until screen.preferenceCount).map { screen.getPreference(it) }
-                    .filterIsInstance<PreferenceCategory>().firstOrNull { it.title == activity.getString(spec.nameRes) } ?: return null
-                return (0 until group.preferenceCount).map { group.getPreference(it) }.filterIsInstance<SwitchPreferenceCompat>().singleOrNull()
-            }
-            await("External screen not ready") {
-                host.childFragmentManager.fragments.filterIsInstance<ExternalDictionarySettingsFragment>().firstOrNull()
-                    ?.let { external = it; it.preferenceScreen != null } == true
-            }
-            for (spec in ClassifiedDictionaries.all) {
-                await("External ${spec.id} did not share OFF") { externalSwitch(spec)?.let { !it.isChecked && it.onPreferenceChangeListener != null } == true }
-                main {
-                    val switch = externalSwitch(spec)!!
-                    assertTrue(switch.onPreferenceChangeListener!!.onPreferenceChange(switch, true))
-                }
-                await("External ${spec.id} did not show ON") { externalSwitch(spec)?.let { it.isChecked && it.onPreferenceChangeListener != null } == true }
-            }
-            main { host.navController.popBackStack() }
-            await("Dictionary screen did not refresh shared ON states") {
-                host.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
-                    ?.let { fragment = it; ClassifiedDictionaries.all.all { spec -> findSwitch(spec)?.isChecked == true } } == true
-            }
-            // External settings enqueue long Toasts; allow the bounded queue to drain before capture.
-            SystemClock.sleep(20_000)
-            val screenshotCategories = listOf(
-                "person/surname_origin_unconfirmed", "person/actor", "person/thought",
-                "event/occasion/organized_event", "event/incident/natural_disaster",
-                "term/general/products_daily_goods", "term/specialist/information_communications",
-            )
-            for (id in screenshotCategories) {
-                val groupKey = when {
-                    id == "person/thought" -> "optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
-                    id.startsWith("person/") -> "classified_group_person"
-                    else -> "classified_group_" + id.substringBeforeLast('/').replace('/', '_')
-                }
-                scrollSettingsTo(fragment, groupKey)
-                screenshot("classified-settings-${id.replace('/', '_')}.png")
-            }
-            main { fragment.scrollToPreference(ClassifiedDictionaries.all.last().preferenceKey) }
-            SystemClock.sleep(300)
-            screenshot("classified-dictionary-settings-medical.png")
-            // The legacy pager instantiates the same fragment under a different parent.
-            settingsPrefs.edit().putBoolean("setting_use_new_home_screen_preference", false).commit()
-            main {
-                activity.applySettingHomeModeFromPreference()
-                host.navController.navigate(R.id.settingMainFragment)
-            }
-            lateinit var legacy: com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment
-            await("Legacy settings pager not ready") {
-                host.childFragmentManager.fragments.filterIsInstance<com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment>()
-                    .firstOrNull()?.let { legacy = it; it.view?.findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.setting_view_pager)?.adapter != null } == true
-            }
-            main {
-                val tabs = com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingTabRegistry.createTabs()
-                val dictionaryIndex = tabs.indexOfFirst { it.key == "dictionary" }
-                assertTrue(dictionaryIndex >= 0)
-                legacy.requireView().findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.setting_view_pager).setCurrentItem(dictionaryIndex, false)
-            }
-            await("Legacy dictionary switches did not share enabled states") {
-                legacy.childFragmentManager.fragments.filterIsInstance<DictionaryPreferenceFragment>().firstOrNull()
-                    ?.let { fragment = it; ClassifiedDictionaries.all.all { spec -> findSwitch(spec)?.isChecked == true } } == true
-            }
-            for (id in listOf("person/actor", "person/thought", "event/occasion/organized_event", "term/specialist/information_communications")) {
-                val groupKey = if (id == "person/thought") "optional_bundled_enabled_CLASSIFIED_PERSON_THOUGHT"
-                    else if (id.startsWith("person/")) "classified_group_person"
-                    else "classified_group_" + id.substringBeforeLast('/').replace('/', '_')
-                scrollSettingsTo(fragment, groupKey)
-                screenshot("classified-legacy-${id.replace('/', '_')}.png")
-            }
-
+            assertTrue(ClassifiedDictionaries.all.all { store.isOptionalBundledEnabled(it.category) })
         } finally {
-            previous.forEach { (category, value) -> store.setOptionalBundledEnabled(category, value) }
+            previous.forEach { (category, selection) ->
+                store.setOptionalBundledEnabled(category, selection.first)
+                store.setExternalEnabledForCategory(category, selection.second)
+            }
             settingsPrefs.edit().putBoolean("setting_use_new_home_screen_preference", oldHomeMode).commit()
-            main { activity.applySettingHomeModeFromPreference() }
-        }
-        } finally {
+            main { activity?.finish() }
             if (!wasEnabled) shell("ime disable $target")
         }
     }

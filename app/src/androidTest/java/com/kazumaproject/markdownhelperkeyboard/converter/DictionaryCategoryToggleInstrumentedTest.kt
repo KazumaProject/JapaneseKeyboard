@@ -69,7 +69,10 @@ class DictionaryCategoryToggleInstrumentedTest {
                         true
                     } else false
                 }
-                main { host().navController.navigate(R.id.dictionaryPreferenceFragment) }
+                // Retain coverage for saved links to the legacy collapsible hierarchy.
+                main { host().navController.navigate(R.id.dictionaryPreferenceFragment, android.os.Bundle().apply {
+                    putString("highlightPreferenceKey", "classified_dictionaries")
+                }) }
                 await("Dictionary settings not ready", ::ready)
                 fun choose(group: String, enabled: Boolean) {
                     val key = "classified_group_${group}_bulk_toggle"

@@ -67,7 +67,7 @@ class SettingsBackupInsetsInstrumentedTest {
         checkBackupImport(reapplyEdgeToEdge = false)
     }
 
-    @Test fun exportedBackupImportKeepsLegacyTabsBelowActionBarWithStableEdgeToEdgeLayout() {
+    @Test fun exportedBackupImportKeepsLegacySettingsBelowActionBarWithStableEdgeToEdgeLayout() {
         checkBackupImport(reapplyEdgeToEdge = true)
     }
 
@@ -147,7 +147,7 @@ class SettingsBackupInsetsInstrumentedTest {
         }
     }
 
-    private data class Geometry(val barBottom: Int, val tabsTop: Int, val rootPadding: Int, val contentPadding: Int)
+    private data class Geometry(val barBottom: Int, val settingsTop: Int, val rootPadding: Int, val contentPadding: Int)
 
     private fun recordGeometry(scenario: ActivityScenario<MainActivity>, label: String): Geometry {
         instrumentation.waitForIdleSync()
@@ -156,13 +156,13 @@ class SettingsBackupInsetsInstrumentedTest {
             val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
             assertEquals(R.id.settingMainFragment, host.navController.currentDestination?.id)
             val bar = activity.findViewById<View>(androidx.appcompat.R.id.action_bar_container)
-            val tabs = activity.findViewById<View>(R.id.setting_tab_layout)
+            val settings = activity.findViewById<View>(R.id.nav_host_fragment_activity_main)
             assertEquals(View.VISIBLE, bar.visibility)
-            assertTrue(tabs.isLaidOut)
+            assertTrue(settings.isLaidOut)
             val barPosition = IntArray(2).also(bar::getLocationOnScreen)
-            val tabsPosition = IntArray(2).also(tabs::getLocationOnScreen)
+            val settingsPosition = IntArray(2).also(settings::getLocationOnScreen)
             result = Geometry(
-                barPosition[1] + bar.height, tabsPosition[1],
+                barPosition[1] + bar.height, settingsPosition[1],
                 activity.findViewById<View>(R.id.container).paddingTop,
                 activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).paddingTop,
             )
@@ -180,7 +180,7 @@ class SettingsBackupInsetsInstrumentedTest {
     private fun assertLegacyTabsBelowActionBar(scenario: ActivityScenario<MainActivity>, label: String) {
         awaitCommonPreference(scenario, "pref_backup_import")
         val geometry = recordGeometry(scenario, label)
-        assertEquals("$label: tabs must start immediately below ActionBar: $geometry", geometry.barBottom, geometry.tabsTop)
+        assertEquals("$label: settings must start immediately below ActionBar: $geometry", geometry.barBottom, geometry.settingsTop)
     }
 
     private fun await(message: String, condition: () -> Boolean) {

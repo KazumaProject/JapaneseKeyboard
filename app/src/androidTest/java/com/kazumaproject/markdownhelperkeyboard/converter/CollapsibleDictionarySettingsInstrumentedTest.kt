@@ -106,7 +106,10 @@ class CollapsibleDictionarySettingsInstrumentedTest {
                     }
                     ins.waitForIdleSync()
                 }
-                main { host().navController.navigate(R.id.dictionaryPreferenceFragment) }
+                // The conventional hierarchy remains available to existing category links.
+                main { host().navController.navigate(R.id.dictionaryPreferenceFragment, Bundle().apply {
+                    putString("highlightPreferenceKey", "classified_dictionaries")
+                }) }
                 await("Dictionary settings not ready", ::ready)
                 main {
                     assertFalse(group("person").isExpanded)

@@ -1,0 +1,30 @@
+<resources>
+    <string name="settings_overview_keyboard">キーボード</string>
+    <string name="settings_overview_input">入力</string>
+    <string name="settings_overview_other">その他の設定</string>
+    <string name="settings_preview_title">いまのキーボード</string>
+    <string name="settings_preview_summary">現在のテーマのプレビュー</string>
+    <string name="settings_preview_edit">見た目を調整</string>
+    <string name="settings_preview_try">ここで入力を試す</string>
+    <string name="settings_purpose_title">何を変えたいですか？</string>
+    <string name="settings_purpose_appearance">見た目</string>
+    <string name="settings_purpose_typing">打ち心地</string>
+    <string name="settings_purpose_words">ことば</string>
+    <string name="settings_purpose_ai">AI・音声</string>
+    <string name="settings_all_categories">すべての設定</string>
+    <string name="settings_apply_changes">適用</string>
+    <string name="settings_discard_changes">元に戻す</string>
+    <string name="classified_search_hint">辞書カテゴリを検索</string>
+    <string name="classified_dictionary_other">その他の辞書</string>
+    <string name="classified_filter_all">すべて</string>
+    <string name="classified_filter_enabled">有効のみ</string>
+    <string name="classified_filter_disabled">無効のみ</string>
+    <string name="classified_search_empty">一致する辞書がありません</string>
+    <string name="classified_visible_count">表示中 %1$d 件</string>
+    <string name="classified_change_message">%1$d 件の辞書を変更しました</string>
+    <string name="classified_undo">元に戻す</string>
+    <string name="classified_bulk_scope">ここに表示中の %1$d 件に適用</string>
+    <string name="classified_group_open">%1$s を開く</string>
+    <string name="classified_group_toggle">%1$s の辞書をまとめて切り替え</string>
+    <string name="classified_back">%1$s に戻る</string>
+</resources>

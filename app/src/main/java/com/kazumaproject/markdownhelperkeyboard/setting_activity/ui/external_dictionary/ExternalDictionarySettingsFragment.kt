@@ -18,7 +18,10 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import android.content.Context
 import androidx.preference.PreferenceScreen
+import androidx.core.os.bundleOf
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ClassifiedDictionaryNode
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsLoadStage
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.settingsIo
 import androidx.preference.SwitchPreferenceCompat
@@ -47,6 +50,10 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
+    private companion object {
+        const val ARG_CATEGORY = "externalDictionaryCategory"
+        const val ARG_GROUP = "externalDictionaryGroup"
+    }
 
     @Inject
     lateinit var storeProvider: javax.inject.Provider<DictionaryOverrideStore>
@@ -61,6 +68,7 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
 
     private var pendingKey: DictionaryFileKey? = null
     private var preparedRevision: Long = Long.MIN_VALUE
+    private lateinit var classifiedTree: ClassifiedDictionaryNode
     private var compatibilityUiState = CompatibilityUiState()
     private val displayStateResolver: ExternalDictionaryDisplayStateResolver
         get() = ExternalDictionaryDisplayStateResolver(store)
@@ -82,6 +90,7 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
         }
 
     override suspend fun preparePreferenceData(context: Context) {
+        classifiedTree = settingsIo(SettingsLoadStage.XML) { ClassifiedDictionaryNode.load(context) }
         store = settingsIo(SettingsLoadStage.DATABASE) { storeProvider.get() }
         compatibilityValidator = settingsIo(SettingsLoadStage.DATABASE) { compatibilityValidatorProvider.get() }
         compatibilityUiState = settingsIo(SettingsLoadStage.DATABASE) { buildCompatibilityUiState() }
@@ -137,6 +146,21 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
             screen.addPreference(this)
         }
 
+        val selected = arguments?.getString(ARG_CATEGORY)?.let { name -> DictionaryCategory.entries.find { it.name == name } }
+        if (selected == DictionaryCategory.COMMON) {
+            addSingleFileCategory(screen, categoryTitle(selected), COMMON_REPLACEMENT_KEYS)
+            return screen
+        }
+        if (selected in DICTIONARY_CATEGORIES) {
+            addDictionaryCategory(screen, requireNotNull(selected))
+            return screen
+        }
+        val selectedGroup = arguments?.getString(ARG_GROUP)?.let(classifiedTree::find)
+        if (selectedGroup != null && selectedGroup.category == null) {
+            addClassifiedLinks(screen, selectedGroup)
+            return screen
+        }
+
         Preference(preferenceContext()).apply {
             title = preferenceContext().getString(R.string.external_dictionary_reset_all)
             summary = preferenceContext().getString(R.string.external_dictionary_reset_all_summary)
@@ -147,14 +171,47 @@ class ExternalDictionarySettingsFragment : AsyncPreferenceFragment() {
             screen.addPreference(this)
         }
 
-        addSingleFileCategory(
-            screen = screen,
-            title = preferenceContext().getString(R.string.external_dictionary_category_common),
-            keys = COMMON_REPLACEMENT_KEYS
-        )
-
-        DICTIONARY_CATEGORIES.forEach { addDictionaryCategory(screen, it) }
+        addCategoryLink(screen, DictionaryCategory.COMMON)
+        val classified = ClassifiedDictionaries.all.map { it.category }.toSet()
+        DICTIONARY_CATEGORIES.filter { it !in classified }.forEach { addCategoryLink(screen, it) }
+        addClassifiedLinks(screen, classifiedTree)
         return screen
+    }
+
+    private fun addClassifiedLinks(screen: PreferenceScreen, group: ClassifiedDictionaryNode) {
+        group.children.forEach { node ->
+            if (node.category != null) addCategoryLink(screen, node.category)
+            else screen.addPreference(Preference(preferenceContext()).apply {
+                key = "external_${node.key}"
+                title = node.title
+                val leaves = node.leaves()
+                summary = preferenceContext().getString(R.string.classified_group_enabled_count,
+                    leaves.count { store.isOptionalBundledEnabled(requireNotNull(it.category)) }, leaves.size)
+                isIconSpaceReserved = false
+                configureClickListener {
+                    navigateSafely(R.id.action_external_dictionary_category, bundleOf(ARG_GROUP to node.key))
+                    true
+                }
+            })
+        }
+    }
+
+    private fun addCategoryLink(screen: PreferenceScreen, category: DictionaryCategory) {
+        screen.addPreference(Preference(preferenceContext()).apply {
+            key = "external_dictionary_category_${category.name}"
+            title = categoryTitle(category)
+            isIconSpaceReserved = false
+            if (category != DictionaryCategory.COMMON) {
+                val issues = compatibilityUiState.categoryProblems[category].orEmpty()
+                summary = if (category.isDisableableBundledDictionary()) {
+                    buildDisableableCategorySummary(category, displayStateResolver.resolveDisableableCategoryDisplayState(category), issues)
+                } else buildCategorySummary(displayStateResolver.resolveCategoryDisplayState(category), issues)
+            }
+            configureClickListener {
+                navigateSafely(R.id.action_external_dictionary_category, bundleOf(ARG_CATEGORY to category.name))
+                true
+            }
+        })
     }
 
     private fun addSingleFileCategory(screen: PreferenceScreen, title: String, keys: List<DictionaryFileKey>) {

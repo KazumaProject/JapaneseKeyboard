@@ -202,6 +202,8 @@ class UnifiedKeyboardSettingsDeviceTest {
         AppPreference.init(context)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
+        // These assertions cover classic immediate saving; studio staging has its own UI test.
+        prefs.edit().putBoolean("setting_use_new_home_screen_preference", false).commit()
         val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val oldIme = shell("settings get secure default_input_method")
         val enabled = shell("ime list -s").lineSequence().any { it.trim() == ime }
@@ -283,6 +285,7 @@ class UnifiedKeyboardSettingsDeviceTest {
         AppPreference.init(context)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
+        prefs.edit().putBoolean("setting_use_new_home_screen_preference", false).commit()
         val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val oldIme = shell("settings get secure default_input_method")
         val enabled = shell("ime list -s").lineSequence().any { it.trim() == ime }
@@ -334,6 +337,7 @@ class UnifiedKeyboardSettingsDeviceTest {
         AppPreference.init(context)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.all.toMap()
+        prefs.edit().putBoolean("setting_use_new_home_screen_preference", false).commit()
         val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         val oldIme = shell("settings get secure default_input_method")
         val enabled = shell("ime list -s").lineSequence().any { it.trim() == ime }

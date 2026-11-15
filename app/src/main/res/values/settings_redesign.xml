@@ -1,0 +1,32 @@
+<resources>
+    <string name="settings_overview_keyboard">Keyboard</string>
+    <string name="settings_overview_input">Typing</string>
+    <string name="settings_overview_other">More settings</string>
+    <string name="settings_preview_title">Your keyboard</string>
+    <string name="settings_preview_summary">Preview of your current theme</string>
+    <string name="settings_preview_edit">Adjust appearance</string>
+    <string name="settings_preview_try">Try typing here</string>
+    <string name="settings_purpose_title">What would you like to change?</string>
+    <string name="settings_purpose_appearance">Appearance</string>
+    <string name="settings_purpose_typing">Typing feel</string>
+    <string name="settings_purpose_words">Words</string>
+    <string name="settings_purpose_ai">AI and voice</string>
+    <string name="settings_all_categories">All settings</string>
+    <string name="settings_apply_changes">Apply</string>
+    <string name="settings_discard_changes">Reset changes</string>
+    <item name="settings_draft_apply" type="id" />
+    <item name="settings_draft_discard" type="id" />
+    <string name="classified_search_hint">Search dictionary categories</string>
+    <string name="classified_dictionary_other">Other dictionaries</string>
+    <string name="classified_filter_all">All</string>
+    <string name="classified_filter_enabled">Enabled</string>
+    <string name="classified_filter_disabled">Disabled</string>
+    <string name="classified_search_empty">No matching dictionaries</string>
+    <string name="classified_visible_count">%1$d shown</string>
+    <string name="classified_change_message">Updated %1$d dictionaries</string>
+    <string name="classified_undo">Undo</string>
+    <string name="classified_bulk_scope">Applies to the %1$d dictionaries shown here</string>
+    <string name="classified_group_open">Open %1$s</string>
+    <string name="classified_group_toggle">Toggle all dictionaries in %1$s</string>
+    <string name="classified_back">Back to %1$s</string>
+</resources>

@@ -70,12 +70,17 @@ class SettingHomeFragment : Fragment() {
         loadAndRenderFrequentCards()
         renderCategoryRows()
         renderManagementRows()
+        renderPurposeTiles()
+        renderPreview()
 
         binding.settingHomeSearchButton.setOnClickListener {
             navigateSafely(R.id.settingSearchFragment)
         }
         binding.settingHomeFrequentEditButton.setOnClickListener {
             navigateSafely(R.id.frequentSettingsEditFragment)
+        }
+        binding.settingHomePreviewEdit.setOnClickListener {
+            navigateSafely(R.id.keyboardDisplayPreferenceFragment)
         }
 
         requireActivity().onBackPressedDispatcher.addCallback(
@@ -107,6 +112,7 @@ class SettingHomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        renderPreview()
         frequentCandidates = null
         loadAndRenderFrequentCards()
         if (initialDataJob?.isActive != true) loadInitialData()
@@ -173,6 +179,50 @@ class SettingHomeFragment : Fragment() {
         }
     }
 
+    private fun renderPreview() {
+        binding.settingHomePreview.removeAllViews()
+        binding.settingHomePreview.addView(
+            com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemePreviewView(
+                requireContext(), appPreference.keyboardSkin,
+            ),
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(156)),
+        )
+        binding.settingHomePreviewSummary.text = getString(R.string.settings_preview_summary)
+    }
+
+    private fun renderPurposeTiles() {
+        val categories = SettingDestinations.categories(requireContext()).associateBy { it.key }
+        val entries = listOf(
+            R.string.settings_purpose_appearance to "setting_route_keyboard_display",
+            R.string.settings_purpose_typing to "setting_route_operation_feedback",
+            R.string.settings_purpose_words to "setting_route_dictionary",
+            R.string.settings_purpose_ai to "setting_route_voice_input",
+        )
+        binding.settingHomePurposeGrid.removeAllViews()
+        entries.forEach { (label, key) ->
+            val aiAvailable = com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasZenz ||
+                com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasGemma
+            val destination = categories.getValue(key).copy(title = getString(
+                if (label == R.string.settings_purpose_ai && !aiAvailable) R.string.setting_category_voice_input_title else label,
+            ))
+            val tile = createFrequentCard(destination)
+            if (label == R.string.settings_purpose_ai && aiAvailable) tile.setOnClickListener {
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.settings_purpose_ai)
+                    .setItems(arrayOf(getString(R.string.setting_category_ai_conversion_title), getString(R.string.setting_category_voice_input_title))) { _, selected ->
+                        navigateSafely(if (selected == 0) R.id.aiConversionPreferenceFragment else R.id.voiceInputPreferenceFragment)
+                    }.setNegativeButton(android.R.string.cancel, null).show()
+            }
+            binding.settingHomePurposeGrid.addView(tile, GridLayout.LayoutParams().apply {
+                width = 0
+                height = ViewGroup.LayoutParams.WRAP_CONTENT
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                setGravity(Gravity.FILL)
+                setMargins(dp(4), dp(4), dp(4), dp(4))
+            })
+        }
+    }
+
     private fun createFrequentCard(destination: SettingDestination): View {
         val context = requireContext()
         val title = destination.title
@@ -181,7 +231,7 @@ class SettingHomeFragment : Fragment() {
         val switchTarget = destination.destination as? SettingDestinationType.SwitchPreference
         val switchValue = switchTarget?.let { settingCardEditorController.readSwitchPreference(it) }
         val card = MaterialCardView(context).apply {
-            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            radius = dp(18).toFloat()
             strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))
@@ -197,7 +247,7 @@ class SettingHomeFragment : Fragment() {
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(14), dp(14), dp(14))
-            minimumHeight = dp(120)
+            minimumHeight = dp(104)
         }
 
         val headerRow = LinearLayout(context).apply {
@@ -299,7 +349,7 @@ class SettingHomeFragment : Fragment() {
         val title = destination.title
         val summary = currentSummary(destination)
         val card = MaterialCardView(context).apply {
-            radius = resources.getDimension(R.dimen.settings_card_corner_radius)
+            radius = dp(18).toFloat()
             strokeWidth = resources.getDimensionPixelSize(R.dimen.settings_card_stroke_width)
             setStrokeColor(resolveColor(MaterialR.attr.colorOutline))
             setCardBackgroundColor(resolveColor(MaterialR.attr.colorSurface))

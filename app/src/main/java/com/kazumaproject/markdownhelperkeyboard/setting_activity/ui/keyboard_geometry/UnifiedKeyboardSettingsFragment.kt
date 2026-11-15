@@ -109,9 +109,24 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     private var actionBarWasVisible = false
     private var backCallback: OnBackPressedCallback? = null
     private var initialized = false
+    private var draftMode = false
+    private val sizeDrafts = linkedMapOf<String, IndependentKeyboardSize>()
+    private var applyDraftButton: MaterialButton? = null
+    private var discardDraftButton: MaterialButton? = null
+    private var draftFooter: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        draftMode = savedInstanceState?.takeIf { it.containsKey("sizeDraftMode") }?.getBoolean("sizeDraftMode")
+            ?: AppPreference.setting_use_new_home_screen_preference
+        savedInstanceState?.getBundle("sizeDrafts")?.let { drafts ->
+            drafts.keySet().forEach { key ->
+                drafts.getBundle(key)?.let { value ->
+                    sizeDrafts[key] = IndependentKeyboardSize(value.getInt("height"), value.getInt("width"),
+                        value.getInt("bottom"), value.getInt("start"), value.getInt("end"), value.getBoolean("position"))
+                }
+            }
+        }
         val destination = runCatching { findNavController().currentDestination?.id }.getOrNull()
         val argument = arguments?.getString("geometryKeyboard")
         type = savedInstanceState?.getString("type")?.let { runCatching { PreviewKeyboard.valueOf(it) }.getOrNull() }
@@ -136,6 +151,16 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         outState.putString("custom", selectedCustomId)
         outState.putString("editMode", editMode?.name)
         outState.putInt("originalOrientation", originalOrientation)
+        outState.putBoolean("sizeDraftMode", draftMode)
+        outState.putBundle("sizeDrafts", Bundle().apply {
+            sizeDrafts.forEach { (key, size) ->
+                putBundle(key, Bundle().apply {
+                    putInt("height", size.heightDp); putInt("width", size.widthPercent)
+                    putInt("bottom", size.bottomMarginPx); putInt("start", size.marginStartDp)
+                    putInt("end", size.marginEndDp); putBoolean("position", size.positionEnd)
+                })
+            }
+        })
     }
 
     override fun onDestroy() {
@@ -191,7 +216,26 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         initialized = true
         normalScroll = ScrollView(ctx).apply { isFillViewport = true; addView(page) }
         screen = FrameLayout(ctx).apply { addView(normalScroll, FrameLayout.LayoutParams(-1, -1)) }
-        return screen
+        if (!draftMode) return screen
+        return LinearLayout(ctx).apply {
+            this.orientation = LinearLayout.VERTICAL
+            addView(screen, LinearLayout.LayoutParams(-1, 0, 1f))
+            addView(LinearLayout(ctx).apply {
+                this.orientation = LinearLayout.HORIZONTAL
+                setPadding(dp(16), dp(8), dp(16), dp(12))
+                discardDraftButton = MaterialButton(ctx, null, MaterialR.attr.materialButtonOutlinedStyle).apply {
+                    id = R.id.settings_draft_discard
+                    setText(R.string.settings_discard_changes)
+                    setOnClickListener { finishDraft(apply = false) }
+                }.also { addView(it, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) }) }
+                applyDraftButton = MaterialButton(ctx).apply {
+                    id = R.id.settings_draft_apply
+                    setText(R.string.settings_apply_changes)
+                    setOnClickListener { finishDraft(apply = true) }
+                }.also { addView(it, LinearLayout.LayoutParams(0, -2, 1f)) }
+            }.also { draftFooter = it }, LinearLayout.LayoutParams(-1, -2))
+            updateDraftButtons()
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -207,6 +251,8 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     override fun onDestroyView() {
         if (editMode != null && actionBarWasVisible) (activity as? AppCompatActivity)?.supportActionBar?.show()
         editMode = null; initialized = false; loadJob?.cancel(); backCallback = null
+        applyDraftButton = null; discardDraftButton = null
+        draftFooter = null
         super.onDestroyView()
     }
 
@@ -241,7 +287,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         else -> null
     }
     private fun loadValues() {
-        size = sizes.read(target(), landscape)
+        size = sizeDrafts[draftKey()] ?: sizes.read(target(), landscape)
         geometry = geometryTarget()?.let { geometries.read(it, landscape) } ?: KeyboardGeometryPreference()
     }
     private fun rebuildPreview() {
@@ -284,8 +330,31 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     }
     private fun updateSize(next: IndependentKeyboardSize, save: Boolean) {
         size = next
-        if (save) { sizes.save(target(), landscape, next); buildBody() }
+        if (save) {
+            if (draftMode) {
+                if (next == sizes.read(target(), landscape)) sizeDrafts.remove(draftKey()) else sizeDrafts[draftKey()] = next
+                updateDraftButtons()
+            } else sizes.save(target(), landscape, next)
+            buildBody()
+        }
         updatePreview()
+    }
+
+    private fun draftKey() = "${target().name}:$landscape"
+
+    private fun updateDraftButtons() {
+        applyDraftButton?.isEnabled = sizeDrafts.isNotEmpty()
+        discardDraftButton?.isEnabled = sizeDrafts.isNotEmpty()
+    }
+
+    private fun finishDraft(apply: Boolean) {
+        if (editMode != null) leaveEditor()
+        if (apply) sizeDrafts.forEach { (key, value) ->
+            val parts = key.split(':')
+            sizes.save(KeyboardSurfaceSizeTarget.valueOf(parts[0]), parts[1].toBoolean(), value)
+        }
+        sizeDrafts.clear()
+        loadValues(); rebuildPreview(); buildBody(); updateDraftButtons()
     }
     private fun buildBody() {
         if (!::body.isInitialized) return
@@ -351,6 +420,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         if (editMode != null) return
         val ctx = requireContext()
         editMode = mode; backCallback?.isEnabled = true
+        draftFooter?.isVisible = false
         val actionBar = (activity as? AppCompatActivity)?.supportActionBar
         actionBarWasVisible = actionBar?.isShowing == true
         if (actionBarWasVisible) actionBar?.hide()
@@ -384,6 +454,7 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         previewHolder.addView(previewFrame, ViewGroup.LayoutParams(previewScreenWidth(), ViewGroup.LayoutParams.WRAP_CONTENT))
         editMode = null; handles.mode = null; handles.isVisible = false
         normalScroll.isVisible = true; backCallback?.isEnabled = false
+        draftFooter?.isVisible = true
         if (actionBarWasVisible) (activity as? AppCompatActivity)?.supportActionBar?.show()
         actionBarWasVisible = false
         buildBody(); updatePreview()
