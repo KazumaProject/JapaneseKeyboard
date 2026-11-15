@@ -73,7 +73,7 @@ def main():
                 source_notices = original.get('sourceNotices', [])
                 names = {license['name'].lower() for license in original['licenses']}
                 assert (names and all('apache' in name for name in names)) or (
-                    names == {'mit license'} and source_notices
+                    names in ({'mit license'}, {'0bsd'}) and source_notices
                 ), f'Audit license text mapping before adding {key}'
                 for notice in source_notices:
                     verify_notice(notice)

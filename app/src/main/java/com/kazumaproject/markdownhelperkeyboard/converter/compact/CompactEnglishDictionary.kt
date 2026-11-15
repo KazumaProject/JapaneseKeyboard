@@ -36,8 +36,15 @@ internal object BundledEnglishDictionaryReader {
         reading: LOUDSWithTermId,
         word: LOUDS,
         token: TokenArray,
+    ): CompactEnglishDictionary = readIndex(map(descriptor), reading, word, token)
+
+    internal fun readIndex(
+        source: ByteBuffer,
+        reading: LOUDSWithTermId,
+        word: LOUDS,
+        token: TokenArray,
     ): CompactEnglishDictionary {
-        val input = Cursor(descriptor)
+        val input = Cursor(source)
         require(input.readInt() == MAGIC) { "Invalid English lookup index magic" }
         // The build indexes the used words of each BitSet. A serialized BitSet may
         // also retain spare words that would make its runtime rank table larger.
@@ -67,39 +74,50 @@ internal object BundledEnglishDictionaryReader {
         if (size() == (length() + Long.SIZE_BITS - 1) / Long.SIZE_BITS * Long.SIZE_BITS) this
         else BitSet.valueOf(toLongArray())
 
-    fun readReading(descriptor: AssetFileDescriptor): LOUDSWithTermId = read(descriptor, 0x4B455231) {
+    fun readReading(descriptor: AssetFileDescriptor): LOUDSWithTermId = readReading(map(descriptor))
+
+    internal fun readReading(source: ByteBuffer): LOUDSWithTermId = read(source, 0x4B455232) {
         val lbs = readBitSet()
         val leaves = readBitSet()
-        LOUDSWithTermId(lbs, readCharArray(), leaves, readIntArray())
+        LOUDSWithTermId(lbs, readLabels(), leaves, readIntArray())
     }
 
-    fun readWord(descriptor: AssetFileDescriptor): LOUDS = read(descriptor, 0x4B455731) {
+    fun readWord(descriptor: AssetFileDescriptor): LOUDS = readWord(map(descriptor))
+
+    internal fun readWord(source: ByteBuffer): LOUDS = read(source, 0x4B455732) {
         val lbs = readBitSet()
         val leaves = readBitSet()
-        LOUDS(lbs, readCharArray(), leaves)
+        LOUDS(lbs, readLabels(), leaves)
     }
 
-    fun readToken(descriptor: AssetFileDescriptor): TokenArray = read(descriptor, 0x4B455431) {
+    fun readToken(descriptor: AssetFileDescriptor): TokenArray = readToken(map(descriptor))
+
+    internal fun readToken(source: ByteBuffer): TokenArray = read(source, 0x4B455431) {
         TokenArray.fromArrays(readShortArray(), readIntArray(), readBitSet())
     }
 
     private inline fun <T> read(
-        descriptor: AssetFileDescriptor,
+        source: ByteBuffer,
         magic: Int,
         decode: Cursor.() -> T,
     ): T {
-        val input = Cursor(descriptor)
+        val input = Cursor(source)
         require(input.readInt() == magic) { "Invalid bundled English dictionary header" }
         return input.decode().also {
             require(input.remaining == 0) { "Unexpected trailing English dictionary data" }
         }
     }
 
-    private class Cursor(descriptor: AssetFileDescriptor) {
-        private val buffer: ByteBuffer = FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
+    private fun map(descriptor: AssetFileDescriptor): ByteBuffer =
+        FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
             require(descriptor.length > 0L) { "English dictionary asset must have a known length" }
             channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.length)
-        }.order(ByteOrder.BIG_ENDIAN)
+        }
+
+    private class Cursor(source: ByteBuffer) {
+        constructor(descriptor: AssetFileDescriptor) : this(map(descriptor))
+
+        private val buffer = source.duplicate().order(ByteOrder.BIG_ENDIAN)
 
         val remaining: Int
             get() = buffer.remaining()
@@ -128,6 +146,18 @@ internal object BundledEnglishDictionaryReader {
         fun readCharArray(): CharArray {
             val size = readSizedCount(Char.SIZE_BYTES)
             return CharArray(size).also { take(size * Char.SIZE_BYTES).asCharBuffer().get(it) }
+        }
+
+        fun readLabels(): CharArray {
+            val alphabet = readCharArray()
+            require(alphabet.size <= 256) { "Invalid English label alphabet" }
+            if (alphabet.isEmpty()) return readCharArray()
+            val size = readSizedCount(Byte.SIZE_BYTES)
+            return CharArray(size) {
+                val index = buffer.get().toInt() and 0xff
+                require(index < alphabet.size) { "Invalid English label index: $index" }
+                alphabet[index]
+            }
         }
 
         fun readShortArray(): ShortArray {
