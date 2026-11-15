@@ -12,8 +12,8 @@
             android:entryValues="@array/flick_threshold_shape_values" app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/settings_per_keyboard">
-        <Preference android:key="setting_route_sumire_preferences" android:title="@string/keyboard_type_sumire" android:summary="@string/setting_route_sumire_summary" />
-        <Preference android:key="setting_route_custom_keyboard_preferences" android:title="@string/keyboard_type_custom" android:summary="@string/settings_popup_independent" />
+        <Preference android:key="setting_route_sumire_preferences" android:title="@string/settings_keyboard_sumire" android:summary="@string/setting_route_sumire_summary" />
+        <Preference android:key="setting_route_custom_keyboard_preferences" android:title="@string/category_custom_keyboard_title" android:summary="@string/settings_popup_independent" />
     </PreferenceCategory>
     <Preference android:key="setting_route_canonical_settings_common_touch" android:title="@string/settings_more_input" android:summary="@string/settings_common_touch_summary" />
     <Preference android:key="setting_route_canonical_settings_common_editing" android:title="@string/settings_common_editing_title" android:summary="@string/settings_common_editing_summary" />
