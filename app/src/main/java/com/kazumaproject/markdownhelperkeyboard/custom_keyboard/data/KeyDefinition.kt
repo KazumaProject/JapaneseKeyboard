@@ -46,6 +46,6 @@ data class KeyDefinition(
     val doubleTapAction: String? = null,
     val doubleTapPolicy: String? = null,
     val textInputBehavior: String = KeyTextInputBehavior.NORMAL.dbValue,
-    val hierarchicalFlickJson: String? = null,
+    val popupMapConfigJson: String? = null,
     val qwertyConfigJson: String? = null
 )

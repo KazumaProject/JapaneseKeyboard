@@ -42,7 +42,7 @@ class FreeFlickKeyPicker(context: Context) : LinearLayout(context) {
         val layout=KeyboardDefaultLayouts.createFinalLayout(KeyboardInputMode.HIRAGANA,emptyMap(),
             p.sumire_input_method,SumirePopupDefaults.STYLE,
             KeyboardDefaultLayouts.DeleteKeyFlickSettings(p.delete_key_left_flick_preference,p.delete_key_up_flick_preference,p.delete_key_down_flick_preference),
-            p.sumire_flick_rotation_preference,p.sumire_flick_input_mode_preference,p.sumire_mode_key_highlight_preference)
+            p.sumire_flick_rotation_preference, p.sumire_mode_key_highlight_preference)
         keyboard.setKeyboard(layout.copyWithKeys(layout.keys.map { key ->
             key.popupMapConfig?.let { original -> key.copy(popupMapConfig=keys.first { it.keyId==original.keyId }) } ?: key
         }),origin=KeyboardLayoutOrigin.BUILT_IN)

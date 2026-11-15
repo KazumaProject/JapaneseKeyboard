@@ -113,8 +113,8 @@ data class KeyDefinitionDto(
     val specialKeyColorStyle: String? = null,
     @SerializedName("textInputBehavior")
     val textInputBehavior: String? = null,
-    @SerializedName("hierarchicalFlick")
-    val hierarchicalFlick: JsonElement? = null,
+    @SerializedName("freeFlick")
+    val freeFlick: JsonElement? = null,
     @SerializedName("qwerty")
     val qwerty: JsonElement? = null
 )

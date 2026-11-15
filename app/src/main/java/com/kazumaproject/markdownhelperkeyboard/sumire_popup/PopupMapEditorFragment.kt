@@ -21,11 +21,13 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.kazumaproject.custom_keyboard.data.*
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.CustomFreeFlickEditorDialog
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import java.util.UUID
 
 class PopupMapEditorFragment : Fragment() {
     private val model: PopupMapEditorViewModel by viewModels()
+    private val customKey get() = arguments?.containsKey(CustomFreeFlickEditorDialog.ARG_CONFIG) == true
     private lateinit var repository: SumirePopupRepository
     private lateinit var content: LinearLayout
     private lateinit var properties: LinearLayout
@@ -40,6 +42,10 @@ class PopupMapEditorFragment : Fragment() {
     private var editorReady = false
     private var result = ""
     private val config get() = requireNotNull(model.config)
+    private val editingKeyLabel get() = if (customKey) {
+        arguments?.getString(CustomFreeFlickEditorDialog.ARG_KEY_LABEL).orEmpty()
+            .ifEmpty { config.map(config.startMapId)?.tapText.orEmpty() }.ifEmpty { label(R.string.custom_free_flick) }
+    } else config.keyId
     private val page get() = requireNotNull(config.map(model.mapId))
     private fun id() = UUID.randomUUID().toString()
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
@@ -56,24 +62,30 @@ class PopupMapEditorFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         editorReady = false
         repository=SumirePopupRepository(requireContext())
-        if (model.layoutId == null) model.layoutId = arguments?.getString(FreeFlickLayoutRepository.ARG_LAYOUT_ID)
-            ?: runCatching { FreeFlickLayoutRepository(requireContext()).selectedId() }.getOrNull()
-        if (model.layoutId == null || runCatching { FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!) }.isFailure) {
-            return text(label(R.string.free_flick_layout_operation_error))
+        if (customKey) {
+            if (model.config == null) model.load(requireNotNull(PopupKeyConfigCodec.decode(
+                arguments?.getString(CustomFreeFlickEditorDialog.ARG_CONFIG))))
+        } else {
+            if (model.layoutId == null) model.layoutId = arguments?.getString(FreeFlickLayoutRepository.ARG_LAYOUT_ID)
+                ?: runCatching { FreeFlickLayoutRepository(requireContext()).selectedId() }.getOrNull()
+            if (model.layoutId == null || runCatching { FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!) }.isFailure) {
+                return text(label(R.string.free_flick_layout_operation_error))
+            }
+            if(model.config==null) model.load(repository.load("は", model.layoutId))
         }
-        if(model.config==null) model.load(repository.load("は", model.layoutId))
         content=column().apply {setPadding(dp(16),dp(8),dp(16),dp(24));clipToPadding=false}
         val scroll=NestedScrollView(requireContext()).apply {isFillViewport=true;addView(content)}
+        if (customKey) content.addView(button(label(android.R.string.cancel)) { leaveEditor() })
         layoutHeading = text("")
-        content.addView(row().apply {
+        if (!customKey) content.addView(row().apply {
             item(layoutHeading,1f)
             item(button(label(R.string.free_flick_layout_manage_short)) { guardUnsaved { findNavController().navigate(R.id.freeFlickLayoutsFragment) } })
         })
-        if(AppPreference.sumire_keyboard_style!=SumirePopupDefaults.STYLE) content.addView(text(label(R.string.popup_inactive)))
+        if(!customKey && AppPreference.sumire_keyboard_style!=SumirePopupDefaults.STYLE) content.addView(text(label(R.string.popup_inactive)))
         sourceButton=button(label(R.string.popup_back_editor)) { goSource() }
-        content.addView(text(label(R.string.free_flick_choose_key)))
+        if (!customKey) content.addView(text(label(R.string.free_flick_choose_key)))
         keyPicker=FreeFlickKeyPicker(requireContext())
-        content.addView(keyPicker,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+        if (!customKey) content.addView(keyPicker,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             setMargins(-dp(16),0,-dp(16),0)
         })
         content.addView(sourceButton)
@@ -94,7 +106,7 @@ class PopupMapEditorFragment : Fragment() {
                 if(entered!=null) result+=entered
                 output.text="${label(R.string.popup_result)}：$result"
                 status.text=session.mapPath.joinToString(" → ") { this@PopupMapEditorFragment.config.map(it)?.name.orEmpty() } + "　" + session.selectedText.orEmpty()
-                mapButton.text=(listOf(this@PopupMapEditorFragment.config.keyId)+session.mapPath.mapNotNull { this@PopupMapEditorFragment.config.map(it)?.name }).joinToString(" › ")+" ▾"
+                mapButton.text=(listOf(editingKeyLabel)+session.mapPath.mapNotNull { this@PopupMapEditorFragment.config.map(it)?.name }).joinToString(" › ")+" ▾"
             }
         }
         content.addView(canvas,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(200)))
@@ -119,15 +131,15 @@ class PopupMapEditorFragment : Fragment() {
             setPadding(dp(16),dp(4),dp(16),dp(8))
             item(tryButton,1f)
             item(MaterialButton(requireContext()).apply {
-                text=label(R.string.popup_save);isAllCaps=false;minWidth=0;minimumWidth=0
-                setOnClickListener {save()}
+                text=label(if (customKey) R.string.popup_apply else R.string.popup_save);isAllCaps=false;minWidth=0;minimumWidth=0
+                setOnClickListener {if (save() && customKey) closeEditor()}
             },1f)
         }
-        content.addView(button(label(R.string.free_flick_template)) { applyTemplate() })
-        content.addView(button(label(R.string.free_flick_settings)) {
+        if (!customKey) content.addView(button(label(R.string.free_flick_template)) { applyTemplate() })
+        if (!customKey) content.addView(button(label(R.string.free_flick_settings)) {
             findNavController().navigate(R.id.freeFlickSettingsFragment)
         })
-        installSelectors()
+        if (!customKey) installSelectors()
         refresh()
         editorReady = true
         return column().apply {
@@ -153,8 +165,10 @@ class PopupMapEditorFragment : Fragment() {
             canvas.applyFreeFlickTheme()
             canvas.inputOptions=FreeFlickPreferences.read(requireContext())
             runCatching {
-                val saved = repository.load(config.keyId, model.layoutId)
-                if (!model.dirty && saved != config) model.load(saved)
+                if (!customKey) {
+                    val saved = repository.load(config.keyId, model.layoutId)
+                    if (!model.dirty && saved != config) model.load(saved)
+                }
                 refresh()
             }.onFailure { status.text=label(R.string.free_flick_layout_operation_error) }
         }
@@ -176,16 +190,16 @@ class PopupMapEditorFragment : Fragment() {
         }
     }
     private fun refresh() {
-        layoutHeading.text = getString(R.string.free_flick_layout_editing, FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!).name)
+        if (!customKey) layoutHeading.text = getString(R.string.free_flick_layout_editing, FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!).name)
         if(config.map(model.mapId)==null) model.mapId=config.startMapId
-        keyPicker.showSelection(FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!).keys.map { if(it.keyId==config.keyId) config else it },config.keyId)
-        mapButton.text=(if(model.trying) listOf(config.keyId,config.map(config.startMapId)!!.name)
-            else listOf(config.keyId)+model.path.mapNotNull { config.map(it)?.name }+page.name).joinToString(" › ")+" ▾"
+        if (!customKey) keyPicker.showSelection(FreeFlickLayoutRepository(requireContext()).find(model.layoutId!!).keys.map { if(it.keyId==config.keyId) config else it },config.keyId)
+        mapButton.text=(if(model.trying) listOf(editingKeyLabel,config.map(config.startMapId)!!.name)
+            else listOf(editingKeyLabel)+model.path.mapNotNull { config.map(it)?.name }+page.name).joinToString(" › ")+" ▾"
         sourceButton.visibility=if(model.path.isEmpty() || model.trying) View.GONE else View.VISIBLE
         sourceButton.text=getString(R.string.free_flick_return_to_map,config.map(model.path.lastOrNull().orEmpty())?.name.orEmpty())
         tryButton.text=label(if(model.trying) R.string.free_flick_return_to_edit else R.string.popup_try)
         status.text=when {
-            repository.hasInvalidSavedConfig(config.keyId, model.layoutId) -> label(R.string.popup_invalid_saved)
+            !customKey && repository.hasInvalidSavedConfig(config.keyId, model.layoutId) -> label(R.string.popup_invalid_saved)
             model.trying && canvas.inputOptions.presentation==PopupMapPresentation.GUIDE_ABOVE_KEY -> label(R.string.free_flick_try_above)
             model.trying -> label(if(canvas.inputOptions.nearestEnabled) R.string.free_flick_try_nearest else R.string.popup_try_hint)
             config.maps.any { source -> source.regions.any { it.action.type==PopupActionType.SWITCH && it.action.targetMapId==model.mapId } } -> label(R.string.popup_transition_hint)
@@ -193,7 +207,7 @@ class PopupMapEditorFragment : Fragment() {
         }
         output.text="${label(R.string.popup_result)}：$result";output.visibility=if(model.trying) View.VISIBLE else View.GONE
         refreshCanvas();showProperties()
-        keyPicker.keyboard.doOnLayout {
+        if (!customKey) keyPicker.keyboard.doOnLayout {
             val key=(0 until keyPicker.keyboard.childCount).map(keyPicker.keyboard::getChildAt)
                 .filterIsInstance<TextView>().firstOrNull {it.text.toString()==config.keyId}
             if(key!=null) {
@@ -222,7 +236,7 @@ class PopupMapEditorFragment : Fragment() {
     }
     private fun conflictMessage(conflict: PopupConflict?): String {
         if(conflict==null) return label(R.string.popup_collision)
-        if(conflict.type==PopupConflictType.KEY) return getString(R.string.popup_collision_detail,label(R.string.popup_tap),config.keyId)
+        if(conflict.type==PopupConflictType.KEY) return getString(R.string.popup_collision_detail,label(R.string.popup_tap),editingKeyLabel)
         val map=config.map(conflict.otherMapId ?: conflict.mapId)
         val region=map?.regions?.firstOrNull {it.id==(conflict.otherRegionId ?: conflict.regionId)}
         return getString(R.string.popup_collision_detail,map?.name.orEmpty(),region?.displayLabel().orEmpty())
@@ -441,14 +455,27 @@ class PopupMapEditorFragment : Fragment() {
             model.change(config.copy(maps=config.maps.filterNot {it.id==page.id}));model.mapId=config.startMapId;model.path=arrayListOf();model.selectedId=null;refresh()
         }.show()
     }
+    private fun closeEditor() {
+        if (customKey) (parentFragment as? androidx.fragment.app.DialogFragment)?.dismiss()
+        else findNavController().popBackStack()
+    }
     private fun save(): Boolean {
+        if (customKey) {
+            val json = PopupKeyConfigCodec.encode(config)
+            parentFragmentManager.setFragmentResult(
+                CustomFreeFlickEditorDialog.RESULT,
+                androidx.core.os.bundleOf(CustomFreeFlickEditorDialog.ARG_CONFIG to json))
+            model.markSaved()
+            return true
+        }
+
         return runCatching {model.layoutId=repository.save(config, model.layoutId);model.markSaved();refresh();status.text=label(R.string.popup_saved);true}
             .getOrElse {status.text=label(R.string.free_flick_layout_operation_error);false}
     }
     fun leaveEditor() {
         if(model.trying) {model.trying=false;refresh();return}
         if(model.path.isNotEmpty()) {goSource();return}
-        guardUnsaved {findNavController().popBackStack()}
+        guardUnsaved {closeEditor()}
     }
     private fun guardUnsaved(next: ()->Unit) {
         if(!model.dirty) {next();return}

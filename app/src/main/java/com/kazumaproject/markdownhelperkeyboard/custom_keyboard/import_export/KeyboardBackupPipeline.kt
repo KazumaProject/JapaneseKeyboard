@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 
+import com.kazumaproject.custom_keyboard.data.PopupKeyConfigCodec
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -295,6 +296,12 @@ object KeyboardBackupNormalizer {
                     "Invalid QWERTY configuration for key ${keyIndex + 1}")
                 return@mapIndexedNotNull null
             }
+            val freeFlickConfig = PopupKeyConfigCodec.decode(keyDto.freeFlick?.toString())
+            if (keyDto.keyType == KeyType.FREE_FLICK.name && freeFlickConfig == null) {
+                errors += KeyboardLayoutImportError.ValidationFailed(layoutIndex,
+                    "Invalid Free Flick configuration for key ${keyIndex + 1}")
+                return@mapIndexedNotNull null
+            }
             val identifier = keyDto.keyIdentifier
                 ?.takeIf { it.isNotBlank() && it !in usedKeyIdentifiers }
                 ?: UUID.randomUUID().toString().also {
@@ -345,10 +352,6 @@ object KeyboardBackupNormalizer {
                 ).serializedName
             }
 
-            // Preserve suspended definitions verbatim without interpreting input stages.
-            val hierarchicalFlickJson = keyDto.hierarchicalFlick
-                ?.takeUnless { it.isJsonNull }?.toString()
-
             val normalizedKey = KeyDefinition(
                 keyId = 0,
                 ownerLayoutId = 0,
@@ -383,7 +386,8 @@ object KeyboardBackupNormalizer {
                     .dbValue,
                 doubleTapAction = normalizedDoubleTapAction,
                 doubleTapPolicy = normalizedDoubleTapPolicy,
-                hierarchicalFlickJson = hierarchicalFlickJson,
+                popupMapConfigJson = freeFlickConfig?.takeIf { keyDto.keyType == KeyType.FREE_FLICK.name }
+                    ?.copy(keyId = identifier)?.let(PopupKeyConfigCodec::encode),
                 qwertyConfigJson = qwertyConfig?.let(QwertyKeyConfigCodec::encode),
                 textInputBehavior = KeyTextInputBehavior
                     .fromDbValue(keyDto.textInputBehavior)

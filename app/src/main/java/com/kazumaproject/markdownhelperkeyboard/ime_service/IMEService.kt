@@ -208,7 +208,6 @@ import com.kazumaproject.custom_keyboard.data.KeyCharacterCase
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
-import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts.DeleteKeyFlickSettings
@@ -1044,7 +1043,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
         AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY,
         AppPreference.SUMIRE_FLICK_ROTATION_KEY,
-        AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY,
         AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
         AppPreference.TENKEY_SHOW_FLICK_POPUP_KEY,
@@ -2361,7 +2359,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputKeyLayoutType: String? = "toggle"
     private var sumireInputStyle: String? = "default"
     private var sumireFlickRotation = TfbiFlickRotation.DEFAULT
-    private var sumireFlickInputMode = SumireFlickInputMode.ALL
     private var sumireModeKeyHighlight = false
     private var candidateColumns: String? = "1"
     private var candidateColumnsLandscape: String? = "1"
@@ -2403,7 +2400,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var learningPausedForSession: Boolean = false
     private var circularFlickWindowScale: Float? = 1.0f
     private var circularFlickDirectionCount: Int? = 4
-    private var hierarchicalFlickModeSwitchAngleMargin: Int? = 20
 
     private var customKeyBorderWidth: Int? = 1
 
@@ -4457,9 +4453,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val latestSumireFlickRotation = appPreference.sumire_flick_rotation_preference
         val sumireFlickRotationChanged = sumireFlickRotation != latestSumireFlickRotation
         sumireFlickRotation = latestSumireFlickRotation
-        val latestSumireFlickInputMode = appPreference.sumire_flick_input_mode_preference
-        val sumireFlickInputModeChanged = sumireFlickInputMode != latestSumireFlickInputMode
-        sumireFlickInputMode = latestSumireFlickInputMode
         val latestSumireModeKeyHighlight = appPreference.sumire_mode_key_highlight_preference
         val sumireModeKeyHighlightChanged = sumireModeKeyHighlight != latestSumireModeKeyHighlight
         sumireModeKeyHighlight = latestSumireModeKeyHighlight
@@ -4560,9 +4553,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncKeyPopupVisibility()
         applyIndependentMultiTouchPreference()
         syncCustomKeyboardHitTestPreference()
-        if (sumireModeKeyHighlightChanged || sumireFlickRotationChanged ||
-            (sumireFlickInputModeChanged && sumireInputStyle == "third-flick")
-        ) {
+        if (sumireModeKeyHighlightChanged || sumireFlickRotationChanged) {
             refreshSumireLayouts(hiraganaOnly = !sumireModeKeyHighlightChanged)
         }
     }
@@ -4802,9 +4793,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputStyle = preferences.sumireInputStyle
         sumireFlickRotation = TfbiFlickRotation.fromPreferenceValue(
             preferences.tfbiFlickRotationPreferenceValue
-        )
-        sumireFlickInputMode = SumireFlickInputMode.fromPreferenceValue(
-            preferences.sumireFlickInputModePreferenceValue
         )
         sumireModeKeyHighlight = preferences.sumireModeKeyHighlight
         candidateColumns = preferences.candidateColumns
@@ -5047,7 +5035,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.learnDictionaryPredictionCandidateLimit.coerceIn(1, 8)
         circularFlickWindowScale = preferences.circularFlickWindowScale
         circularFlickDirectionCount = preferences.circularFlickDirectionCount
-        hierarchicalFlickModeSwitchAngleMargin = preferences.hierarchicalFlickModeSwitchAngleMargin
         customKeyBorderWidth = preferences.customKeyBorderWidth
         qwertySwitchNumberKeyWithoutNumberPreference =
             preferences.qwertySwitchNumberKeyWithoutNumberPreference
@@ -11500,7 +11487,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 inputStyle = sumireInputStyle ?: "default",
                 deleteKeyFlickSettings = currentDeleteKeyFlickSettings(),
                 tfbiFlickRotation = sumireFlickRotation,
-                sumireFlickInputMode = sumireFlickInputMode,
                 highlightSelectedMode = sumireModeKeyHighlight
             ),
             mode
