@@ -366,7 +366,7 @@ class KeyboardPreviewProductDeviceTest {
     }
 
     @Test fun selectedLayoutsRemainCompactAndTrialDoesNotChangeRememberedSelection() {
-        assumeTrue(context.packageName.endsWith(".settingsreview"))
+        assumeTrue(context.packageName.endsWith(".settingsreview") || context.packageName.endsWith(".settingsuxreview"))
         val saved = prefs.all.toMap()
         val oldIme = shell("settings get secure default_input_method")
         val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
@@ -403,6 +403,7 @@ class KeyboardPreviewProductDeviceTest {
                 prefs.edit().putString(com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.SplitKeyboardSettings.CANDIDATES, "MAIN").commit()
             }
             val targets = keyboardPreviewTargets(AppPreference.keyboard_order, layouts)
+            KeyboardPreviewSelection.publish(targets.first())
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.awaitSettingsContentReady()
                 var activity: MainActivity? = null
@@ -420,11 +421,8 @@ class KeyboardPreviewProductDeviceTest {
                 }
                 val baseline = selectionState()
                 if (!matrix && InstrumentationRegistry.getArguments().getString("only_type") == null) {
-                    val first = requireNotNull(activePreview(activity!!, targets.first().id))
-                    gesture(first, true)
-                    await("Horizontal swipe did not browse layouts") { activity!!.findViewById<ViewPager2>(R.id.keyboard_preview_pager).let {
-                        it.currentItem == 1 && it.scrollState == ViewPager2.SCROLL_STATE_IDLE
-                    } }
+                    assertEquals("Home must show only the selected layout", 1,
+                        activity!!.findViewById<ViewPager2>(R.id.keyboard_preview_pager).adapter!!.itemCount)
                     ins.runOnMainSync { activity!!.findViewById<ViewPager2>(R.id.keyboard_preview_pager).setCurrentItem(0, false) }
                     await("First layout was not restored") { activePreview(activity!!, targets.first().id) != null }
                     gesture(requireNotNull(activePreview(activity!!, targets.first().id)), false)
@@ -455,7 +453,10 @@ class KeyboardPreviewProductDeviceTest {
                 for ((index, target) in targets.withIndex()) {
                     if (onlyType != null && target.type.name != onlyType) continue
                     lastVisitedId = target.id
-                    ins.runOnMainSync { activity!!.findViewById<ViewPager2>(R.id.keyboard_preview_pager).setCurrentItem(index, false) }
+                    ins.runOnMainSync {
+                        KeyboardPreviewSelection.publish(target)
+                        (activity!!.findViewById<ViewGroup>(R.id.setting_home_preview).getChildAt(0) as KeyboardPreviewCarousel).reload()
+                    }
                     await("Missing native preview ${target.id}") { activePreview(activity!!, target.id) != null }
                     ins.runOnMainSync { val a = activity!!
                         val height = a.findViewById<View>(R.id.setting_home_preview).height
@@ -535,6 +536,7 @@ class KeyboardPreviewProductDeviceTest {
                 File(output, "completed.json").writeText(org.json.JSONObject().put("matrix", matrix).put("onlyType", onlyType).put("splitFixture", splitFixture).put("runId", runId).toString())
             }
         } finally {
+            KeyboardPreviewSelection.publish(null)
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             runBlocking { created.forEach { repo.deleteLayout(it) } }
             prefs.edit().clear().apply {

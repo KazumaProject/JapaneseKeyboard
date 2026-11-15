@@ -36,14 +36,14 @@ internal class KeyboardPreviewCarousel(
     private val manager: FragmentManager,
     private val summary: TextView,
     private val onEdit: () -> Unit,
-    initialId: String?,
 ) : LinearLayout(context) {
     private var layouts = emptyList<CustomKeyboardLayout>()
     private var targets = emptyList<KeyboardPreviewTarget>()
-    var selectedId: String? = initialId; private set
+    var selectedId: String? = null; private set
     private var job: Job? = null
     private val pager = ViewPager2(context).apply {
         id = R.id.keyboard_preview_pager
+        isUserInputEnabled = false
         offscreenPageLimit = 1
         clipChildren = false
         (getChildAt(0) as RecyclerView).apply { clipToPadding = false; setPadding(0, 0, dp(20), 0) }
@@ -79,6 +79,7 @@ internal class KeyboardPreviewCarousel(
             }
         })
         owner.lifecycleScope.launch { KeyboardTrialSession.active.collect { updatePlayback() } }
+        owner.lifecycleScope.launch { KeyboardPreviewSelection.current.collect { reload() } }
     }
     private fun updatePlayback() {
         fun update(view: View) {
@@ -93,10 +94,13 @@ internal class KeyboardPreviewCarousel(
             try {
                 val dependencies = EntryPointAccessors.fromApplication(context.applicationContext, KeyboardPreviewDependencies::class.java)
                 layouts = withContext(Dispatchers.IO) { dependencies.keyboards().getLayoutsNotFlow() }
-                val desired = selectedId
-                targets = keyboardPreviewTargets(AppPreference.keyboard_order, layouts)
+                val prefs = AppPreference
+                targets = listOf(resolveHomeKeyboardPreviewTarget(prefs.keyboard_order, layouts,
+                    prefs.save_last_used_keyboard_enable_preference == true, prefs.save_last_used_keyboard_position_preference ?: 0,
+                    prefs.remember_last_custom_keyboard_preference == true, prefs.last_used_custom_keyboard_stable_id))
+                selectedId = targets.single().id
                 pager.adapter = Pages()
-                pager.setCurrentItem(targets.indexOfFirst { it.id == desired }.coerceAtLeast(0), false)
+                pager.setCurrentItem(0, false)
                 updatePosition()
                 setOnClickListener(null)
             } catch (e: CancellationException) { throw e }
@@ -115,14 +119,10 @@ internal class KeyboardPreviewCarousel(
             indicator.text = ""
             return
         }
-        summary.text = context.getString(R.string.keyboard_preview_position, targets.size, pager.currentItem + 1)
-        val count = if (targets.size <= 10) targets.size else 7
-        val start = if (targets.size <= count) 0 else (pager.currentItem - count / 2).coerceIn(0, targets.size - count)
-        indicator.text = if (targets.size > 1) (if (start > 0) "… " else "") +
-            (start until start + count).joinToString(" ") { if (it == pager.currentItem) "●" else "○" } +
-            (if (start + count < targets.size) " …" else "") + "  " + context.getString(R.string.keyboard_preview_swipe) else ""
-        indicator.isVisible = targets.size > 1
+        summary.text = context.getString(R.string.keyboard_preview_selected_layout, targets.single().name(context, layouts))
+        indicator.isVisible = false
     }
+
     private inner class Pages : RecyclerView.Adapter<Page>() {
         override fun getItemCount() = targets.size
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Page = Page(LinearLayout(context).apply {

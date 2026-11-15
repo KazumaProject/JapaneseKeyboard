@@ -40,4 +40,26 @@ class KeyboardPreviewTargetsTest {
         assertTrue(target.matches(layout))
         assertEquals("", layout.stableId)
     }
+    @Test fun homeResolvesOneSavedFamilyRatherThanAllEnabledKeyboards() {
+        val order = listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE, KeyboardType.QWERTY, KeyboardType.CUSTOM)
+        assertEquals(KeyboardPreviewTarget(KeyboardType.QWERTY), resolveHomeKeyboardPreviewTarget(
+            order, listOf(custom(1, "a"), custom(2, "b")), true, 2, false, "", null))
+        assertEquals(KeyboardPreviewTarget(KeyboardType.TENKEY), resolveHomeKeyboardPreviewTarget(
+            order, emptyList(), false, 2, false, "", null))
+    }
+    @Test fun homeUsesTheLiveSelectionOnlyWhileItRemainsAvailable() {
+        val order = listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE)
+        val live = KeyboardPreviewTarget(KeyboardType.SUMIRE)
+        assertEquals(live, resolveHomeKeyboardPreviewTarget(order, emptyList(), false, 0, false, "", live))
+        assertEquals(KeyboardPreviewTarget(KeyboardType.TENKEY), resolveHomeKeyboardPreviewTarget(
+            listOf(KeyboardType.TENKEY), emptyList(), false, 0, false, "", live))
+    }
+    @Test fun homeResolvesTheSelectedCustomStableIdAndFallsBackAfterDeletion() {
+        val layouts = listOf(custom(1, "first"), custom(2, "second"))
+        val selected = KeyboardPreviewTarget(KeyboardType.CUSTOM, "second", 2)
+        assertEquals(selected, resolveHomeKeyboardPreviewTarget(listOf(KeyboardType.CUSTOM), layouts, false, 0, true, "second", null))
+        assertEquals(KeyboardPreviewTarget(KeyboardType.CUSTOM, "first", 1), resolveHomeKeyboardPreviewTarget(
+            listOf(KeyboardType.CUSTOM), layouts.take(1), false, 0, true, "second", selected))
+    }
+
 }
