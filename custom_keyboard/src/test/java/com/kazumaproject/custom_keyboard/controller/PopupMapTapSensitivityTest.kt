@@ -22,6 +22,8 @@ import org.robolectric.annotation.Config
 @Config(sdk=[35])
 class PopupMapTapSensitivityTest {
     private fun verify(presentation: PopupMapPresentation, settings: GestureSessionConfig=GestureSessionConfig(0,1,20f,300),
+        config: PopupKeyConfig=SumirePopupDefaults.create("は"),nearestEnabled: Boolean=true,
+        tapSizeMode: PopupTapSizeMode=PopupTapSizeMode.FLICK_SENSITIVITY,
         block: (TextView,PopupMapInputController,MutableList<String>)->Unit) {
         val activity=Robolectric.buildActivity(Activity::class.java).setup().get()
         activity.setTheme(com.google.android.material.R.style.Theme_Material3_DayNight)
@@ -31,8 +33,8 @@ class PopupMapTapSensitivityTest {
         frame.measure(View.MeasureSpec.makeMeasureSpec(600,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(400,View.MeasureSpec.EXACTLY))
         frame.layout(0,0,600,400);key.layout(200,200,400,300)
         val output=mutableListOf<String>()
-        val controller=PopupMapInputController(SumirePopupDefaults.create("は"),{frame},{it},{},{_,_->},{text,_->output+=text},{},
-            PopupMapInputOptions(presentation=presentation,tapSizeMode=PopupTapSizeMode.FLICK_SENSITIVITY),
+        val controller=PopupMapInputController(config,{frame},{it},{},{_,_->},{text,_->output+=text},{},
+            PopupMapInputOptions(nearestEnabled=nearestEnabled,presentation=presentation,tapSizeMode=tapSizeMode),
             GestureSessionConfigSource {settings})
         controller.attach(key)
         try {block(key,controller,output)} finally {controller.cancel();activity.finish()}
@@ -70,6 +72,39 @@ class PopupMapTapSensitivityTest {
                 assertTrue(view.tapPopupVisible)
             }
             key.event(MotionEvent.ACTION_CANCEL,25f,75f)
+        }
+    }
+    @Test fun aroundKeyPopupStaysCenteredOnTheKeyForOffCenterPresses() {
+        for(mode in PopupTapSizeMode.entries) verify(PopupMapPresentation.AROUND_KEY,tapSizeMode=mode) { key,controller,_ ->
+            for((x,y) in listOf(25f to 75f,199f to 1f,100f to 50f)) {
+                key.event(MotionEvent.ACTION_DOWN,x,y)
+                val drawing=controller.javaClass.getDeclaredField("content").apply {isAccessible=true}.get(controller) as PopupMapView
+                @Suppress("UNCHECKED_CAST")
+                val placement=controller.javaClass.getDeclaredField("lastPlacement").apply {isAccessible=true}.get(controller) as List<Int>
+                val location=getLocationRelativeToWindowAnchor(key,key.parent as View)
+                assertEquals("Popup X must stay at the key center for press ($x,$y)",location[0]+100f,placement[0]+drawing.originX,.5f)
+                assertEquals("Popup Y must stay at the key center for press ($x,$y)",location[1]+50f,placement[1]+drawing.originY,.5f)
+                key.event(MotionEvent.ACTION_CANCEL,x,y)
+            }
+        }
+    }
+    @Test fun directSelectionUsesDisplayedKeyRelativeRegionsAfterAnOffCenterPress() {
+        val config=PopupKeyConfig("は","normal",listOf(PopupMap("normal","通常","は",listOf(
+            PopupRegion("small",PopupBounds(.7f,-.1f,.9f,.1f),PopupAction(text="へ"))))))
+        for(presentation in PopupMapPresentation.entries) verify(presentation,config=config,nearestEnabled=false) {key,_,output ->
+            key.event(MotionEvent.ACTION_DOWN,25f,75f)
+            key.event(MotionEvent.ACTION_MOVE,260f,50f)
+            key.event(MotionEvent.ACTION_UP,260f,50f)
+            assertEquals(listOf("へ"),output)
+        }
+    }
+    @Test fun aboveKeyPointerUsesMovementFromInitialTouchRatherThanTheKeyCenter() {
+        verify(PopupMapPresentation.GUIDE_ABOVE_KEY) { key,controller,_ ->
+            key.event(MotionEvent.ACTION_DOWN,25f,75f)
+            key.event(MotionEvent.ACTION_MOVE,49f,75f)
+            val host=controller.javaClass.getDeclaredField("guideHost").apply {isAccessible=true}.get(controller)!!
+            val view=host.javaClass.getDeclaredField("view").apply {isAccessible=true}.get(host) as PopupMapGuideView
+            assertEquals(com.kazumaproject.custom_keyboard.view.TfbiFlickDirection.RIGHT,view.pointerDirection())
         }
     }
     @Test fun disablingBothPopupFlagsStillAllowsInputWithoutShowingAnAboveGuide() {

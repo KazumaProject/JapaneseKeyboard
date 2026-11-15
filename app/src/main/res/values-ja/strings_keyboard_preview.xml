@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_preview_unavailable">プレビューを読み込めません。タップして再試行</string>
+    <string name="keyboard_preview_try">入力を試す</string>
+    <string name="keyboard_preview_trial_note">表示していた配列で試せます。普段使うキーボードの選択は保持されます。</string>
+    <string name="keyboard_preview_trial_hint">ここに入力してください</string>
+    <string name="keyboard_preview_choose_ime">この配列を試すには、このアプリを入力キーボードに選んでください。</string>
+    <string name="keyboard_preview_choose_keyboard">キーボードを選ぶ</string>
+    <string name="keyboard_preview_position">%1$d配列 · %2$d / %1$d</string>
+    <string name="keyboard_preview_swipe">横にスワイプして配列を確認</string>
+    <string name="keyboard_preview_info">%1$sの使い方</string>
+    <string name="keyboard_preview_appearance">見た目を調整</string>
+    <string name="keyboard_preview_idle">入力前の表示</string>
+    <string name="keyboard_preview_tenkey">キーを上下左右にフリックして、かなを入力。</string>
+    <string name="keyboard_preview_gojuon">50音表から、入力したいかなをタップ。</string>
+    <string name="keyboard_preview_sumire">設定した操作で、かなを入力するスミレ入力 β。</string>
+    <string name="keyboard_preview_qwerty">パソコンと同じ並びのキーで、英語を入力。</string>
+    <string name="keyboard_preview_romaji">アルファベットを組み合わせて、日本語を入力。</string>
+    <string name="keyboard_preview_custom">自分で配置したキーと操作で入力。</string>
+    <string name="keyboard_preview_split">設定した2つのキーボードを並べて入力。</string>
+    <string name="keyboard_preview_morse">短い信号と長い信号を組み合わせて文字を入力。</string>
+    <string name="keyboard_preview_two_step">二段フリック：指を離さず方向を変えて入力します。この配列で二段フリックに設定されたキーに適用されます。</string>
+    <string name="keyboard_preview_details_note">保存した配列・テーマ・サイズを表示しています。入力モードの切り替え、変換候補、入力時の演出は「入力を試す」で確認できます。</string>
+    <string name="keyboard_preview_expand">キーボードを拡大</string>
+    <string name="keyboard_preview_two_step_short">指を離さず方向を変えて、かなを入力。</string>
+    <string name="keyboard_preview_flick_short">キーから指を滑らせて、文字を選択。</string>
+    <string name="keyboard_preview_circle_short">キーの周りに指を動かして、文字を選択。</string>
+    <string name="keyboard_preview_qwerty_help">数字の行：%1$s\nカーソルキー：%2$s\n英語のスワイプ入力：%3$s</string>
+    <string name="keyboard_preview_enabled">有効</string>
+    <string name="keyboard_preview_disabled">無効</string>
+    <string name="keyboard_preview_romaji_help">「あa」キーで日本語入力と英語入力を切り替えられます。</string>
+    <string name="keyboard_preview_trial_candidate_note">「入力を試す」で入力すると、そのときの実際の変換候補をここで確認できます。</string>
+    <string name="keyboard_preview_showing_layout">現在の設定では「%1$s」のキー配置を表示。</string>
+    <string name="keyboard_preview_english_mode">保存した英語モードのキー配置を表示。</string>
+    <string name="keyboard_preview_number_mode">保存した数字・記号モードのキー配置を表示。</string>
+    <string name="keyboard_preview_close">閉じる</string>
+</resources>

@@ -65,13 +65,15 @@ class FeverSettingsDeviceTest {
                         var selected = false
                         val deadline = SystemClock.uptimeMillis() + 15000
                         while (!selected && SystemClock.uptimeMillis() < deadline) {
-                            ins.runOnMainSync {
-                                val activity = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
-                                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
-                                activity?.findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.setting_view_pager)?.let {
-                                    it.setCurrentItem(1, false)
-                                    selected = activity.supportFragmentManager.fragments.flatMap(::descendants)
-                                        .any { fragment -> fragment is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment && fragment.isResumed }
+                            scenario.onActivity { activity ->
+                                val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                                val current = host.childFragmentManager.primaryNavigationFragment
+                                when (current) {
+                                    is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment ->
+                                        current.findPreference<androidx.preference.Preference>("setting_route_keyboard_display")?.performClick()
+                                    is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.KeyboardDisplayPreferenceFragment ->
+                                        current.findPreference<androidx.preference.Preference>("setting_route_keyboard_theme")?.performClick()
+                                    is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment -> selected = current.isResumed
                                 }
                             }
                             SystemClock.sleep(100)

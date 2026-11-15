@@ -603,7 +603,6 @@ data class KeyboardLayout(
     val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
     val longPressFlickKeyMaps: Map<String, Map<FlickDirection, String>> = emptyMap(),
     val twoStepLongPressKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
-    val preservedFlickDefinitions: Map<String, String> = emptyMap(),
     val items: List<KeyboardLayoutItem> = keys.map { it.toKeyItem() },
     val columnUnitCount: Int = columnCount * 2,
     val rowUnitCount: Int = rowCount * 2,
@@ -635,7 +634,8 @@ enum class KeyType {
 
     STICKY_TWO_STEP_FLICK,
 
-    HIERARCHICAL_FLICK,
+    /** User-defined popup maps with arbitrary text and map transitions. */
+    FREE_FLICK,
 
     FLICK_LONG_PRESS,
 

@@ -100,5 +100,5 @@ class SumireModeKeyHighlightTest {
         KeyboardInputMode.SYMBOLS -> KeyAction.SwitchToNumberLayout
     }
 
-    private val styles = listOf("default", "circle", "sumire", "second-flick", "third-flick")
+    private val styles = listOf("default", "circle", "sumire", "second-flick")
 }

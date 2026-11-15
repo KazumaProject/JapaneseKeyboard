@@ -273,11 +273,6 @@
     <string name="flick_threshold_shape_rectangular">横・縦方向の距離で判定（矩形）</string>
     <string name="tfbi_diagonal_recognition_mode_title">2段フリックの斜め判定</string>
     <string name="sumire_flick_rotation_title">2段フリックの回転方向</string>
-    <string name="sumire_flick_input_mode_title">3段フリックの入力機能</string>
-    <string name="sumire_flick_input_mode_contracted">拗音・拗長音</string>
-    <string name="sumire_flick_input_mode_voiced">濁音・半濁音</string>
-    <string name="sumire_flick_input_mode_all">すべて（標準）</string>
-    <string name="sumire_flick_input_mode_summary">「きょ・きょう」などの拗音と、「が・ぱ」などの濁音の入力範囲を選びます。</string>
     <string name="sumire_flick_rotation_default">標準（従来の配置）</string>
     <string name="sumire_flick_rotation_clockwise">時計回り</string>
     <string name="sumire_flick_rotation_counterclockwise">反時計回り</string>
@@ -1088,14 +1083,6 @@
     <string name="circularflicksettingsfragment">ドーナツ入力</string>
     <string name="sumire_custom_angle_preference_title">ドーナツ入力の設定</string>
     <string name="sumire_custom_angle_preference_summary">フリックの角度を調整します。\n変更の適応にはキーボードの再起動が必要です。</string>
-    <string name="hierarchical_flick_angle_margin_preference_title">３段フリック入力の判定角度</string>
-    <string name="hierarchical_flick_angle_margin_preference_summary">隣り合う入力候補の境界角度を調整します</string>
-    <string name="hierarchical_flick_angle_margin_heading">イ段 濁音/拗音</string>
-    <string name="hierarchical_flick_angle_margin_description">「きょ / ぎょ」などが意図した入力になるように調整できます。\n角度を大きくすると「きょ」を入力するときに誤って「ぎょ」と判定されにくくなります。</string>
-    <string name="hierarchical_flick_angle_margin_label">濁音化に必要な角度差</string>
-    <string name="hierarchical_flick_angle_margin_value">%1$d°</string>
-    <string name="hierarchical_flick_angle_margin_reset">リセット</string>
-    <string name="hierarchical_flick_angle_margin_result">%1$s</string>
     <string name="custom_border_width">枠線の太さ</string>
     <string name="qwerty_switch_number_key_without_number_preference_title">数字キーボード切り替え時の入力モード</string>
     <string name="qwerty_switch_number_key_without_number_preference_sumary">かなキーボード／スミレキーボードに切り替えるとき、数字キーボードではなく日本語入力モードに切り替えます。</string>
@@ -1963,18 +1950,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_icon">特殊キーのアイコン</string>
     <string name="gojuon_sizing_special_text">特殊キーの文字</string>
 
-    <string name="input_style_three_stage">3段フリック</string>
-    <string name="template_three_stage_flick">かな（3段フリック）</string>
-    <string name="three_stage_state">文字の状態</string>
-    <string name="three_stage_normal">通常</string>
-    <string name="three_stage_dakuten">濁点</string>
-    <string name="three_stage_handakuten">半濁点</string>
-    <string name="three_stage_path">%1$d段目 / 最大3段  %2$s</string>
-    <string name="three_stage_back">前の段へ</string>
-    <string name="three_stage_open">次の段を開く</string>
-    <string name="three_stage_branch_label">分岐ラベル</string>
-    <string name="three_stage_add_branch">次の段を作成</string>
-    <string name="three_stage_clear">割り当てを削除</string>
     <string name="mushroom_shortcut_summary">マッシュルーム対応アプリで文字を変換・入力します</string>
     <string name="mushroom_choose_app">マッシュルーム対応アプリを選択</string>
     <string name="mushroom_unavailable">マッシュルーム対応アプリがインストールされていません</string>
@@ -2036,4 +2011,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="qwerty_more_columns_description">横に並べる候補を増やす</string>
     <string name="qwerty_display_fallback">空欄なら入力する文字を表示します。</string>
     <string name="free_flick_choose_key">キーボードのキーをタップして、ポップアップを編集します。</string>
+    <string name="custom_free_flick">フリーフリック</string>
+    <string name="custom_free_flick_edit">マップを編集・入力を試す</string>
 </resources>

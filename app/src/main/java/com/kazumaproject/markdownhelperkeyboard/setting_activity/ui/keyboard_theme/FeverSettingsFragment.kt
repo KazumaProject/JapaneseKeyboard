@@ -1,26 +1,21 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme
 
 import android.content.Context
-import android.graphics.RectF
-import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.FrameLayout
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
 import androidx.preference.PreferenceScreen
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
-import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.fever.*
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AsyncPreferenceFragment
 
 /** Both settings experiences navigate here and use the same preference storage. */
 class FeverSettingsFragment : AsyncPreferenceFragment() {
-    private var preview: AlertDialog? = null
     override fun createPreferenceHierarchy(context: Context): PreferenceScreen {
         val screen = preferenceManager.createPreferenceScreen(context)
         fun toggle(key: String, title: Int, default: Boolean, summary: Int? = null) {
@@ -78,58 +73,9 @@ class FeverSettingsFragment : AsyncPreferenceFragment() {
             }.show()
     }
     private fun showPreview() {
-        val context = requireContext()
-        val settings = FeverSettings.read(preferenceManager.sharedPreferences!!)
-        val frame = FrameLayout(context)
-        val height = (320 * resources.displayMetrics.density).toInt()
-        val miniature = KeyboardThemePreviewView(context, KeyboardSkinId.FEVER)
-        frame.addView(miniature, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
-        val effect = FeverEffectView(context).apply { intensity = settings.intensity }
-        frame.addView(effect, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height))
-        val feedback = FeverFeedback(context)
-        var previewStep = 0
-        fun play() {
-            effect.setArena(RectF(0f, 0f, frame.width.toFloat(), frame.height.toFloat()))
-            effect.protectKeys(RectF(0f, miniature.top.toFloat(), frame.width.toFloat(), frame.height.toFloat()))
-            val sx = miniature.width / 320f
-            val sy = miniature.height / 184f
-            effect.setKeyEdges((0 until 20).map { index ->
-                val left = (6 + index % 5 * 63) * sx
-                val top = miniature.top + (34 + index / 5 * 37) * sy
-                RectF(left, top, left + 57 * sx, top + 32 * sy)
-            }, RectF(0f, miniature.top.toFloat(), miniature.width.toFloat(), miniature.top + 34 * sy))
-            previewStep++
-            val event = when (previewStep) {
-                10 -> FeverEvent(10, FeverAward.COMBO)
-                11 -> FeverEvent(25, FeverAward.FEVER)
-                12 -> FeverEvent(50, FeverAward.HOT)
-                13 -> FeverEvent(100, FeverAward.JACKPOT)
-                else -> FeverEvent(previewStep)
-            }
-            val key = (previewStep - 1) % 20
-            effect.show(event, (34 + key % 5 * 63) * sx, miniature.top + (50 + key / 5 * 37) * sy)
-            feedback.playEvent(event, settings, AppPreference.vibration_preference != false)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val target = com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.currentKeyboardPreviewTarget(requireContext())
+            com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardTrialDialog.show(childFragmentManager, target)
         }
-        fun restart() {
-            previewRunnable?.let(frame::removeCallbacks)
-            previewStep = 0; effect.clear(); feedback.stop()
-            previewRunnable = object : Runnable {
-                override fun run() {
-                    play()
-                    if (previewStep < 13) frame.postDelayed(this, if (previewStep < 10) 300 else 2100)
-                }
-            }
-            frame.postDelayed(previewRunnable, 180)
-        }
-        frame.setOnClickListener { restart() }
-        preview = AlertDialog.Builder(context).setTitle(R.string.fever_preview).setView(frame)
-            .setPositiveButton(android.R.string.ok, null).create().also { dialog ->
-                dialog.setOnDismissListener { previewRunnable?.let(frame::removeCallbacks); effect.clear(); feedback.release(); preview = null }
-                dialog.show()
-            }
-        restart()
     }
-    private var previewRunnable: Runnable? = null
-    override fun onDestroyView() { preview?.dismiss(); super.onDestroyView() }
 }

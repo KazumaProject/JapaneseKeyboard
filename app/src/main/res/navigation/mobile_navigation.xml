@@ -6,6 +6,14 @@
     app:startDestination="@+id/navigation_setting">
 
     <fragment
+        android:id="@+id/classifiedDictionarySettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ClassifiedDictionarySettingsFragment"
+        android:label="@string/classified_dictionary_settings_title">
+        <action android:id="@+id/action_classified_dictionary_group"
+            app:destination="@id/classifiedDictionarySettingsFragment" />
+    </fragment>
+
+    <fragment
         android:id="@+id/navigation_setting"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingHomeFragment"
         android:label="@string/setting_fragment_title"
@@ -586,7 +594,10 @@
     <fragment
         android:id="@+id/externalDictionarySettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionarySettingsFragment"
-        android:label="@string/external_dictionary_settings_title" />
+        android:label="@string/external_dictionary_settings_title">
+        <action android:id="@+id/action_external_dictionary_category"
+            app:destination="@id/externalDictionarySettingsFragment" />
+    </fragment>
     <fragment
         android:id="@+id/ngramRuleFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NgramRuleFragment"

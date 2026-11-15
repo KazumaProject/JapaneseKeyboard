@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="?attr/colorSurface">
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="8dp"
+        android:hint="@string/classified_search_hint" app:startIconDrawable="@drawable/baseline_search_24"
+        app:endIconMode="clear_text">
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/classified_search"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:inputType="text" android:imeOptions="actionSearch" android:singleLine="true"
+            android:importantForAutofill="no" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <TextView android:id="@+id/classified_breadcrumb" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:layout_marginTop="12dp"
+        android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="?attr/colorOnSurfaceVariant" />
+    <TextView android:id="@+id/classified_count" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:layout_marginTop="8dp"
+        android:accessibilityLiveRegion="polite" android:textAppearance="?attr/textAppearanceTitleLarge" />
+    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:fillViewport="true" android:scrollbars="none">
+        <com.google.android.material.chip.ChipGroup android:id="@+id/classified_filters"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:paddingStart="16dp" android:paddingEnd="16dp"
+            app:singleSelection="true" app:selectionRequired="true" app:singleLine="true">
+            <com.google.android.material.chip.Chip android:id="@+id/classified_filter_all"
+                style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:checked="true" android:text="@string/classified_filter_all" />
+            <com.google.android.material.chip.Chip android:id="@+id/classified_filter_enabled"
+                style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="@string/classified_filter_enabled" />
+            <com.google.android.material.chip.Chip android:id="@+id/classified_filter_disabled"
+                style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="@string/classified_filter_disabled" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+    <TextView android:id="@+id/classified_bulk_scope" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:orientation="horizontal">
+        <com.google.android.material.button.MaterialButton android:id="@+id/classified_enable_all"
+            style="@style/Widget.Material3.Button.TextButton" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/classified_group_enable_all" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/classified_disable_all"
+            style="@style/Widget.Material3.Button.TextButton" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/classified_group_disable_all" />
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/classified_list" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingBottom="24dp" android:clipToPadding="false" />
+        <TextView android:id="@+id/classified_empty" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_gravity="center" android:padding="24dp" android:gravity="center" android:visibility="gone"
+            android:text="@string/classified_search_empty" android:textAppearance="?attr/textAppearanceBodyLarge" />
+    </FrameLayout>
+</LinearLayout>

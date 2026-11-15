@@ -93,7 +93,7 @@ internal class FreeFlickKeyboardPreview(context: Context) : FrameLayout(context)
         val repository = SumirePopupRepository(context)
         val base = KeyboardDefaultLayouts.createFinalLayout(mode, emptyMap(), layoutType, SumirePopupDefaults.STYLE,
             DeleteKeyFlickSettings(p.delete_key_left_flick_preference, p.delete_key_up_flick_preference, p.delete_key_down_flick_preference),
-            p.sumire_flick_rotation_preference, p.sumire_flick_input_mode_preference, p.sumire_mode_key_highlight_preference)
+            p.sumire_flick_rotation_preference, p.sumire_mode_key_highlight_preference)
         val mapped = base.copyWithKeys(base.keys.map { key ->
             key.popupMapConfig?.let { key.copy(popupMapConfig = repository.load(it.keyId)) } ?: key
         })

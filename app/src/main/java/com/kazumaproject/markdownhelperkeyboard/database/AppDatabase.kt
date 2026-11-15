@@ -84,7 +84,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         CustomZeroQueryEntry::class,
         TextMacro::class,
     ],
-    version = 50,
+    version = 51,
     exportSchema = false
 )
 @TypeConverters(
@@ -116,6 +116,45 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun textMacroDao(): TextMacroDao
 
     companion object {
+        val MIGRATION_50_51 = object : Migration(50, 51) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Rebuild for SQLite versions before DROP COLUMN (Android 7+).
+                // Dropping the parent cascades, so preserve all five mapping tables first.
+                val mappingTables = listOf("flick_mappings", "circular_flick_mappings",
+                    "two_step_flick_mappings", "long_press_flick_mappings", "two_step_long_press_mappings")
+                mappingTables.forEach { table ->
+                    db.execSQL("CREATE TEMP TABLE `backup_$table` AS SELECT * FROM `$table`")
+                }
+                val columns = mutableListOf<String>()
+                val definitions = mutableListOf<String>()
+                db.query("PRAGMA table_info(`key_definitions`)").use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val name = cursor.getString(1)
+                        if (name == "hierarchicalFlickJson") continue
+                        columns += "`$name`"
+                        definitions += buildString {
+                            append("`$name` ${cursor.getString(2)}")
+                            if (cursor.getInt(5) != 0) append(" PRIMARY KEY AUTOINCREMENT")
+                            if (cursor.getInt(3) != 0) append(" NOT NULL")
+                            if (!cursor.isNull(4)) append(" DEFAULT ${cursor.getString(4)}")
+                        }
+                    }
+                }
+                definitions += "`popupMapConfigJson` TEXT"
+                definitions += "FOREIGN KEY(`ownerLayoutId`) REFERENCES `keyboard_layouts`(`layoutId`) ON DELETE CASCADE ON UPDATE NO ACTION"
+                db.execSQL("CREATE TABLE `key_definitions_new` (${definitions.joinToString()})")
+                db.execSQL("INSERT INTO `key_definitions_new` (${columns.joinToString()}) SELECT ${columns.joinToString()} FROM `key_definitions`")
+                db.execSQL("UPDATE `key_definitions_new` SET `keyType` = 'NORMAL' WHERE `keyType` = 'HIERARCHICAL_FLICK'")
+                db.execSQL("DROP TABLE `key_definitions`")
+                db.execSQL("ALTER TABLE `key_definitions_new` RENAME TO `key_definitions`")
+                db.execSQL("CREATE INDEX `index_key_definitions_ownerLayoutId` ON `key_definitions` (`ownerLayoutId`)")
+                mappingTables.forEach { table ->
+                    db.execSQL("INSERT OR REPLACE INTO `$table` SELECT * FROM `backup_$table`")
+                    db.execSQL("DROP TABLE `backup_$table`")
+                }
+            }
+        }
+
         val MIGRATION_49_50 = object : Migration(49, 50) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `qwertyConfigJson` TEXT")

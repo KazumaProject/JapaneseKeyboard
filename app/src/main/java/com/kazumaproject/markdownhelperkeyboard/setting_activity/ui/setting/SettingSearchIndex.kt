@@ -517,12 +517,13 @@ object SettingSearchIndex {
                                 .ifBlank { key }
                             val summary = readSummary(context, parser)
                             val isOfficial = source.xmlRes in setOf(R.xml.pref_common_legacy, R.xml.pref_theme, R.xml.pref_conversion_engine, R.xml.pref_candidate_display)
-                            val destinationId = if (isOfficial) source.destinationId else
+                            val classified = key.startsWith("optional_bundled_enabled_CLASSIFIED_")
+                            val destinationId = if (classified) R.id.classifiedDictionarySettingsFragment else if (isOfficial) source.destinationId else
                                 SettingDestinations.routeDestinationId(key) ?: source.destinationId
                             val highlightKey =
                                 key.takeIf {
-                                    destinationId == source.destinationId &&
-                                        source.destinationId in highlightableDestinations
+                                    classified || (destinationId == source.destinationId &&
+                                        source.destinationId in highlightableDestinations)
                                 }
                             add(
                                 SettingDestinations.destination(
@@ -535,7 +536,7 @@ object SettingSearchIndex {
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = highlightKey,
-                                    destinationType = if (isOfficial || source.xmlRes == R.xml.pref_free_flick) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
+                                    destinationType = if (classified || isOfficial || source.xmlRes == R.xml.pref_free_flick) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
                                         context = context,
                                         parser = parser,
                                         key = key,
@@ -581,10 +582,12 @@ object SettingSearchIndex {
                             val summary = readSummary(context, parser)
                             val dependencyKey = readDependency(parser)
                             val relatedKeys = legacyRelatedKeys(key, dependencyKey)
+                            val destinationId = if (key.startsWith("optional_bundled_enabled_CLASSIFIED_"))
+                                R.id.classifiedDictionarySettingsFragment else source.destinationId
                             val legacyTarget = LegacySettingTarget(
                                 tabKey = source.tabKey,
                                 xmlRes = source.xmlRes,
-                                destinationId = source.destinationId,
+                                destinationId = destinationId,
                                 preferenceKey = key,
                                 relatedPreferenceKeys = relatedKeys,
                             )
@@ -595,12 +598,12 @@ object SettingSearchIndex {
                                     summary = summary,
                                     category = source.category,
                                     keywords = buildKeywords(key, title, summary) + headings,
-                                    destinationId = source.destinationId,
+                                    destinationId = destinationId,
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = key,
                                     destinationType = SettingDestinationType.NavDestination(
-                                        destinationId = source.destinationId,
+                                        destinationId = destinationId,
                                         highlightPreferenceKey = key,
                                     ),
                                     legacyTarget = legacyTarget,

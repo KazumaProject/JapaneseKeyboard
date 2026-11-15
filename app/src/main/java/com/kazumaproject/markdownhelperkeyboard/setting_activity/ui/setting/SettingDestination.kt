@@ -152,14 +152,7 @@ object SettingDestinations {
 
     private val defaultFrequentKeys = listOf(
         "keyboard_screen_preference",
-        "setting_route_keyboard_theme",
-        "candidate_view_height_setting_fragment_preference",
-        "candidate_view_height_landscape_setting_fragment_preference",
-        "setting_route_input_method",
-        "setting_route_dictionary",
-        "clipboard_history_preference_fragment",
-        "setting_route_zenz_preferences",
-        "setting_route_custom_keyboard_preferences",
+        "key_sound_preference",
     )
 
     fun defaultFrequent(context: Context): List<SettingDestination> =
