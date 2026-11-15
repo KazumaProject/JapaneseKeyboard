@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
+import com.google.android.material.tabs.TabLayout
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingTabRegistry
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.PreferenceManager
@@ -69,8 +71,13 @@ class FeverSettingsDeviceTest {
                                 val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
                                 val current = host.childFragmentManager.primaryNavigationFragment
                                 when (current) {
-                                    is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment ->
-                                        current.findPreference<androidx.preference.Preference>("setting_route_keyboard_display")?.performClick()
+                                    is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment -> {
+                                        val index = SettingTabRegistry.createTabs().indexOfFirst { it.key == SettingTabRegistry.TAB_THEME }
+                                        activity.findViewById<TabLayout>(R.id.setting_tab_layout).getTabAt(index)?.select()
+                                        selected = current.childFragmentManager.fragments.any {
+                                            it is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment && it.isResumed
+                                        }
+                                    }
                                     is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.KeyboardDisplayPreferenceFragment ->
                                         current.findPreference<androidx.preference.Preference>("setting_route_keyboard_theme")?.performClick()
                                     is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment -> selected = current.isResumed

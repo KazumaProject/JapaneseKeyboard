@@ -15,6 +15,10 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.google.android.material.tabs.TabLayout
+import androidx.viewpager2.widget.ViewPager2
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingTabRegistry
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.DictionaryPreferenceFragment
 import com.google.android.material.chip.Chip
 import com.google.android.material.textfield.TextInputEditText
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -54,7 +58,7 @@ class SettingsDesignRefreshInstrumentedTest {
         if (view is ViewGroup) for (i in 0 until view.childCount) yieldAll(descendants(view.getChildAt(i)))
     }
 
-    @Test fun conventionalHomeUsesCategoriesAndStudioPreviewReturnsAfterAppearanceEditing() {
+    @Test fun conventionalHomeRestoresTabsAndStudioPreviewReturnsAfterAppearanceEditing() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val original = prefs.getBoolean("setting_use_new_home_screen_preference", true)
         try {
@@ -63,15 +67,29 @@ class SettingsDesignRefreshInstrumentedTest {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.awaitSettingsContentReady()
                 scenario.onActivity { host(it).navController.navigate(R.id.settingMainFragment) }
-                await(scenario, "Conventional settings did not load") {
-                    val fragment = host(it).childFragmentManager.primaryNavigationFragment as? SettingMainFragment
-                    fragment?.findPreference<androidx.preference.Preference>("setting_route_dictionary") != null
+                val tabs = SettingTabRegistry.createTabs()
+                val dictionaryIndex = tabs.indexOfFirst { it.key == SettingTabRegistry.TAB_DICTIONARY }
+                await(scenario, "Conventional tabs did not load") {
+                    it.findViewById<TabLayout>(R.id.setting_tab_layout)?.tabCount == tabs.size
                 }
                 scenario.onActivity { activity ->
-                    val fragment = host(activity).childFragmentManager.primaryNavigationFragment as SettingMainFragment
-                    fragment.findPreference<androidx.preference.Preference>("setting_route_dictionary")!!.performClick()
+                    val tabLayout = activity.findViewById<TabLayout>(R.id.setting_tab_layout)
+                    tabs.forEachIndexed { index, tab ->
+                        assertEquals(tab.title(activity), tabLayout.getTabAt(index)?.text)
+                    }
+                    tabLayout.getTabAt(dictionaryIndex)!!.select()
                 }
-                await(scenario, "Dictionary route is not reachable") { host(it).navController.currentDestination?.id == R.id.dictionaryPreferenceFragment }
+                await(scenario, "Dictionary tab did not load") { activity ->
+                    val fragment = host(activity).childFragmentManager.primaryNavigationFragment as? SettingMainFragment
+                    fragment?.childFragmentManager?.fragments?.filterIsInstance<DictionaryPreferenceFragment>()
+                        ?.any { it.isResumed && it.preferenceScreen != null } == true
+                }
+                scenario.recreate()
+                scenario.awaitSettingsContentReady()
+                await(scenario, "Selected tab did not survive recreation") {
+                    it.findViewById<ViewPager2>(R.id.setting_view_pager)?.currentItem == dictionaryIndex &&
+                        it.findViewById<TabLayout>(R.id.setting_tab_layout)?.selectedTabPosition == dictionaryIndex
+                }
                 scenario.onActivity { activity ->
                     AppPreference.setting_use_new_home_screen_preference = true
                     activity.applySettingHomeModeFromPreference()
@@ -89,9 +107,8 @@ class SettingsDesignRefreshInstrumentedTest {
                     host(it).navController.navigate(R.id.advancedPreferenceFragment)
                     host(it).navController.navigate(R.id.settingMainFragment)
                 }
-                await(scenario, "All-settings index did not open") {
-                    (host(it).childFragmentManager.primaryNavigationFragment as? SettingMainFragment)
-                        ?.findPreference<androidx.preference.Preference>("setting_route_dictionary") != null
+                await(scenario, "Tabbed settings did not open") {
+                    it.findViewById<TabLayout>(R.id.setting_tab_layout)?.tabCount == tabs.size
                 }
                 scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
                 await(scenario, "Back from all settings did not restore the previous screen") {
