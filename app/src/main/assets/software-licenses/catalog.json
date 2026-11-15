@@ -3686,6 +3686,39 @@
         "liteFdroidRelease"
       ],
       "notices": []
+    },
+    {
+      "group": "org.tukaani",
+      "name": "xz",
+      "version": "1.12",
+      "pomUrl": "https://repo.maven.apache.org/maven2/org/tukaani/xz/1.12/xz-1.12.pom",
+      "licenses": [
+        {
+          "name": "0BSD"
+        }
+      ],
+      "evidence": [
+        {
+          "url": "https://repo.maven.apache.org/maven2/org/tukaani/xz/1.12/xz-1.12.pom",
+          "sha256": "937b44d869c059c39f07ae194d8cd6219f5aebf2200ef9707f0b50b7837da281"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/tukaani-project/xz-java/v1.12/COPYING",
+          "sha256": "1e77ef26cee5216d6531e49cbf2f6111a0270dc7b322fc65477063c5aff88766"
+        }
+      ],
+      "variants": [
+        "fullStandardRelease",
+        "liteStandardRelease",
+        "liteFdroidRelease"
+      ],
+      "notices": [
+        {
+          "title": "XZ for Java 1.12 COPYING (0BSD)",
+          "asset": "software-licenses/xz-1.12-0bsd.txt",
+          "sha256": "1e77ef26cee5216d6531e49cbf2f6111a0270dc7b322fc65477063c5aff88766"
+        }
+      ]
     }
   ]
 }
