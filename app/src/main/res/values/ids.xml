@@ -12,4 +12,5 @@
     <item
         name="shortcut_toolbar_action_move_down"
         type="id" />
+    <item name="custom_free_flick_editor_host" type="id" />
 </resources>

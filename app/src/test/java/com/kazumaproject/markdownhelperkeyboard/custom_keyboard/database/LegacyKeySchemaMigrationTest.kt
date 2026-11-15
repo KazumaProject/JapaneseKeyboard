@@ -15,29 +15,29 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
-class HierarchicalFlickMigrationTest {
+class LegacyKeySchemaMigrationTest {
     @Test fun migratedDatabasePassesRoomValidation() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val name = "hierarchical-room-validation-${System.nanoTime()}.db"
+        val name = "legacy-key-schema-validation-${System.nanoTime()}.db"
         try {
             val initial = Room.databaseBuilder(context, AppDatabase::class.java, name)
                 .allowMainThreadQueries().build()
             try {
                 val db = initial.openHelper.writableDatabase
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN qwertyConfigJson")
-                db.execSQL("ALTER TABLE key_definitions DROP COLUMN hierarchicalFlickJson")
+                db.execSQL("ALTER TABLE key_definitions DROP COLUMN popupMapConfigJson")
                 db.execSQL("PRAGMA user_version = 48")
             } finally { initial.close() }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_48_49, AppDatabase.MIGRATION_49_50).allowMainThreadQueries().build()
-            try { assertEquals(50, migrated.openHelper.writableDatabase.version) }
+                .addMigrations(AppDatabase.MIGRATION_48_49, AppDatabase.MIGRATION_49_50, AppDatabase.MIGRATION_50_51).allowMainThreadQueries().build()
+            try { assertEquals(51, migrated.openHelper.writableDatabase.version) }
             finally { migrated.close() }
         } finally { context.deleteDatabase(name) }
     }
 
     @Test fun migration48To49PreservesKeysWithNoHierarchy() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val name = "hierarchical-migration-${System.nanoTime()}.db"
+        val name = "legacy-key-schema-migration-${System.nanoTime()}.db"
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context).name(name)
                 .callback(object : SupportSQLiteOpenHelper.Callback(48) {

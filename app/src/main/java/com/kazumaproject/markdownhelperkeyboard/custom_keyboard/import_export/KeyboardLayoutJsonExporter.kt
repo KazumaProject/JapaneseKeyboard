@@ -120,7 +120,7 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
             rowSpanUnits = this.key.rowSpanUnits,
             columnSpanUnits = this.key.columnSpanUnits,
             specialKeyColorStyle = this.key.specialKeyColorStyle,
-            hierarchicalFlick = this.key.hierarchicalFlickJson?.let {
+            freeFlick = this.key.popupMapConfigJson?.let {
                 JsonParser.parseString(it)
             },
             qwerty = this.key.qwertyConfigJson?.let(JsonParser::parseString),
