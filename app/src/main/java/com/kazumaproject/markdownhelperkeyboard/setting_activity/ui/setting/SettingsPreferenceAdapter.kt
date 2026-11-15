@@ -37,14 +37,14 @@ internal class SettingsPreferenceAdapter(group: PreferenceGroup) : PreferenceGro
         val preference = getItem(position)
         val widget = holder.findViewById(android.R.id.widget_frame) as? ViewGroup
         val arrowTag = "settings_navigation_arrow"
-        if (widget != null && widget.childCount == 0) widget.addView(ImageView(view.context).apply {
+        if (studio && widget != null && widget.childCount == 0) widget.addView(ImageView(view.context).apply {
             tag = arrowTag
             setImageResource(com.kazumaproject.core.R.drawable.baseline_arrow_right_24)
             imageTintList = ColorStateList.valueOf(MaterialColors.getColor(view, MaterialR.attr.colorOnSurfaceVariant))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }, ViewGroup.LayoutParams(dp(24), dp(24)))
         if (widget?.getChildAt(0)?.tag == arrowTag) {
-            widget.visibility = if (preference?.isSelectable == true && (preference.javaClass == Preference::class.java ||
+            widget.visibility = if (studio && preference?.isSelectable == true && (preference.javaClass == Preference::class.java ||
                     preference is ListPreference || preference is EditTextPreference)) View.VISIBLE else View.GONE
         }
         if (category) {
