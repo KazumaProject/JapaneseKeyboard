@@ -69,7 +69,8 @@ class SettingSearchAdapter(
                     contentDescription = destination.title
                 }
             }
-            binding.settingSearchResultArrow.isVisible = !isDirectEditable
+            binding.settingSearchResultArrow.isVisible =
+                destination.searchScope != SettingSearchScope.LEGACY_TABS && !isDirectEditable
             binding.root.apply {
                 contentDescription = context.getString(
                     R.string.setting_search_result_content_description,
