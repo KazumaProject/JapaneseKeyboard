@@ -8,8 +8,8 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import android.widget.Toast
+import androidx.core.os.bundleOf
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
@@ -24,7 +24,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardSelectionBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewSelection
+import com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewTarget
+import com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.isAvailable
+import com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.keyboardSettingsDestination
+import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.util.Collections
@@ -32,192 +39,106 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class KeyboardSelectionFragment : Fragment() {
-
     private var _binding: FragmentKeyboardSelectionBinding? = null
     private val binding get() = _binding!!
-
-    @Inject
-    lateinit var appPreferences: AppPreference
-
+    @Inject lateinit var appPreferences: AppPreference
+    @Inject lateinit var repository: KeyboardRepository
     private val viewModel: KeyboardSelectionViewModel by viewModels()
-
-    private lateinit var keyboardSelectionAdapter: KeyboardSelectionAdapter
+    private lateinit var adapter: KeyboardSelectionAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
+    private var layouts = emptyList<com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout>()
+    private var lastUsed: KeyboardPreviewTarget? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-            show()
-        }
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentKeyboardSelectionBinding.inflate(inflater, container, false)
         return binding.root
     }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        setupMenu()
-        setupRecyclerView()
-        setupAddButton()
-        observeUiState()
-
-        if (savedInstanceState == null) {
-            viewModel.setInitialKeyboards(appPreferences.keyboard_order)
-        }
-    }
-
-    private fun setupMenu() {
-        val menuHost: MenuHost = requireActivity()
-        menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(R.menu.keyboard_selection_menu, menu)
-            }
-
-            override fun onPrepareMenu(menu: Menu) {
-                val editItem = menu.findItem(R.id.action_edit)
-                val isEditing = viewModel.uiState.value.isEditing
-                editItem.title =
-                    if (isEditing) getString(com.kazumaproject.core.R.string.done_text) else getString(
-                        R.string.edit_text
-                    )
-            }
-
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                return when (menuItem.itemId) {
-                    R.id.action_edit -> {
-                        viewModel.toggleEditMode()
-                        // If we are finishing editing, save the latest state
-                        if (!viewModel.uiState.value.isEditing) {
-                            appPreferences.keyboard_order = viewModel.uiState.value.keyboards
-                        }
-                        true
-                    }
-
-                    android.R.id.home -> {
-                        parentFragmentManager.popBackStack()
-                        true
-                    }
-
-                    else -> false
-                }
-            }
-        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
-    }
-
-    private fun setupRecyclerView() {
-        keyboardSelectionAdapter = KeyboardSelectionAdapter(
-            onStartDrag = { viewHolder ->
-                if (viewModel.uiState.value.isEditing) {
-                    itemTouchHelper.startDrag(viewHolder)
-                }
+        adapter = KeyboardSelectionAdapter(
+            onStartDrag = { itemTouchHelper.startDrag(it) },
+            onToggle = { type, enabled ->
+                val order = viewModel.uiState.value.keyboards.toMutableList()
+                if (enabled) order.add(type) else if (order.size > 1) order.remove(type) else
+                    Toast.makeText(requireContext(), R.string.settings_keyboard_last_required, Toast.LENGTH_SHORT).show()
+                updateOrder(order.distinct())
+                render()
             },
-            onDeleteClick = { position ->
-                val currentList = viewModel.uiState.value.keyboards.toMutableList()
-                if (currentList.size > 1) {
-                    currentList.removeAt(position)
-                    viewModel.updateKeyboardOrder(currentList)
-                }
-            }
+            onSettings = { navigateSafely(if (it == KeyboardType.CUSTOM) R.id.keyboardListFragment else keyboardSettingsDestination(it)) },
         )
-
         binding.keyboardSelectionView.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = keyboardSelectionAdapter
+            adapter = this@KeyboardSelectionFragment.adapter
             addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
         }
-
-        val callback = object : ItemTouchHelper.SimpleCallback(
-            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
-        ) {
-            override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-            ): Boolean {
-                val fromPosition = viewHolder.bindingAdapterPosition
-                val toPosition = target.bindingAdapterPosition
-                val currentList = viewModel.uiState.value.keyboards.toMutableList()
-                Collections.swap(currentList, fromPosition, toPosition)
-                viewModel.updateKeyboardOrder(currentList)
-                return true
+        itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
+            override fun onMove(recyclerView: RecyclerView, holder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
+                val order = viewModel.uiState.value.keyboards.toMutableList()
+                val from = holder.bindingAdapterPosition; val to = target.bindingAdapterPosition
+                if (!viewModel.uiState.value.isEditing || from !in order.indices || to !in order.indices) return false
+                Collections.swap(order, from, to); updateOrder(order); return true
             }
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
-
-            override fun isLongPressDragEnabled(): Boolean = false // Disable default drag
-            override fun isItemViewSwipeEnabled(): Boolean = false // Disable swipe
-        }
-        itemTouchHelper = ItemTouchHelper(callback)
+            override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int =
+                if (viewModel.uiState.value.isEditing && viewHolder.bindingAdapterPosition in viewModel.uiState.value.keyboards.indices)
+                    makeMovementFlags(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) else 0
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
+            override fun isLongPressDragEnabled() = false
+        })
         itemTouchHelper.attachToRecyclerView(binding.keyboardSelectionView)
-    }
-
-    private fun observeUiState() {
+        if (viewModel.uiState.value.keyboards.isEmpty()) viewModel.setInitialKeyboards(appPreferences.keyboard_order.ifEmpty { listOf(KeyboardType.TENKEY) })
+        setupMenu()
+        binding.keyboardStartupSettings.setOnClickListener {
+            navigateSafely(R.id.legacyCommonSectionFragment, bundleOf(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY to "settings_common_selection"))
+        }
         viewLifecycleOwner.lifecycleScope.launch {
+            lastUsed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { KeyboardPreviewSelection.lastUsed(requireContext()) }
+            render()
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    keyboardSelectionAdapter.submitList(state.keyboards)
-                    keyboardSelectionAdapter.setEditMode(state.isEditing)
-                    // Make the menu redraw itself to update the text
-                    requireActivity().invalidateOptionsMenu()
-                }
+                launch { viewModel.uiState.collect { render(); requireActivity().invalidateOptionsMenu() } }
+                launch { KeyboardPreviewSelection.current.collect {
+                    lastUsed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { KeyboardPreviewSelection.lastUsed(requireContext()) }
+                    render()
+                } }
+                launch { repository.getLayouts().collect { layouts = it; render() } }
             }
         }
     }
-
-    private fun setupAddButton() {
-        binding.addNewKeyboardDialogTrigger.setOnClickListener {
-            showAddKeyboardDialog()
-        }
+    private fun updateOrder(order: List<KeyboardType>) {
+        val previous = appPreferences.keyboard_order.getOrNull(appPreferences.save_last_used_keyboard_position_preference)
+        appPreferences.save_last_used_keyboard_position_preference = order.indexOf(previous).coerceAtLeast(0)
+        appPreferences.keyboard_order = order
+        viewModel.updateKeyboardOrder(order)
     }
-
-    private fun showAddKeyboardDialog() {
-        val allKeyboardTypes = KeyboardType.entries.toTypedArray()
-        val currentKeyboards = viewModel.uiState.value.keyboards
-        val availableKeyboards = allKeyboardTypes.filter { it !in currentKeyboards }
-
-        if (availableKeyboards.isEmpty()) return
-
-        val dialogItems = availableKeyboards.map { requireContext().getKeyboardDisplayName(it) }
-            .toTypedArray()
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(com.kazumaproject.core.R.string.add_keyboard_dialog_title)
-            .setItems(dialogItems) { dialog, which ->
-                val selectedKeyboard = availableKeyboards[which]
-                val newList = currentKeyboards.toMutableList().apply { add(selectedKeyboard) }
-                viewModel.updateKeyboardOrder(newList)
-                dialog.dismiss()
+    private fun render() {
+        if (_binding == null) return
+        val state = viewModel.uiState.value
+        val live = KeyboardPreviewSelection.current.value?.takeIf { it.isAvailable(state.keyboards, layouts) }
+        val selected = live ?: lastUsed?.takeIf { it.isAvailable(state.keyboards, layouts) }
+        adapter.render(state.keyboards, state.isEditing, selected?.type,
+            if (live != null) R.string.settings_keyboard_selected else R.string.settings_keyboard_last_used, layouts.size)
+        binding.keyboardStartupSettings.text = getString(R.string.settings_keyboard_startup_settings) + " · " +
+            getString(if (appPreferences.save_last_used_keyboard_enable_preference == true) R.string.settings_keyboard_startup_remember else R.string.settings_keyboard_startup_first)
+    }
+    private fun setupMenu() {
+        (requireActivity() as MenuHost).addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, inflater: MenuInflater) { inflater.inflate(R.menu.keyboard_selection_menu, menu) }
+            override fun onPrepareMenu(menu: Menu) {
+                menu.findItem(R.id.action_edit)?.setTitle(if (viewModel.uiState.value.isEditing) com.kazumaproject.core.R.string.done_text else R.string.settings_keyboard_reorder)
             }
-            .show()
+            override fun onMenuItemSelected(item: MenuItem): Boolean = if (item.itemId == R.id.action_edit) {
+                viewModel.toggleEditMode(); true
+            } else false
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
-
-    override fun onPause() {
-        super.onPause()
-        // Save the latest state when the user leaves the screen
-        appPreferences.keyboard_order = viewModel.uiState.value.keyboards
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
+    override fun onDestroyView() { itemTouchHelper.attachToRecyclerView(null); _binding = null; super.onDestroyView() }
 }
 
-fun Context.getKeyboardDisplayName(keyboardType: KeyboardType): String {
-    return when (keyboardType) {
-        KeyboardType.TENKEY -> getString(R.string.keyboard_type_tenkey)
-        KeyboardType.MORSE -> getString(R.string.morse_title)
-        KeyboardType.GOJUON -> getString(R.string.keyboard_type_gojuon)
-        KeyboardType.QWERTY -> getString(R.string.keyboard_type_qwerty)
-        KeyboardType.ROMAJI -> getString(R.string.keyboard_type_romaji)
-        KeyboardType.SUMIRE -> getString(R.string.keyboard_type_sumire)
-        KeyboardType.CUSTOM -> getString(R.string.keyboard_type_custom)
-        KeyboardType.SPLIT -> getString(R.string.split_keyboard_title)
-    }
-}
+fun Context.getKeyboardDisplayName(keyboardType: KeyboardType): String = getString(when (keyboardType) {
+    KeyboardType.TENKEY -> R.string.settings_keyboard_tenkey
+    KeyboardType.MORSE -> R.string.morse_title
+    KeyboardType.GOJUON -> R.string.keyboard_type_gojuon
+    KeyboardType.QWERTY -> R.string.settings_keyboard_qwerty
+    KeyboardType.ROMAJI -> R.string.settings_keyboard_romaji
+    KeyboardType.SUMIRE -> R.string.settings_keyboard_sumire
+    KeyboardType.CUSTOM -> R.string.keyboard_type_custom
+    KeyboardType.SPLIT -> R.string.split_keyboard_title
+})

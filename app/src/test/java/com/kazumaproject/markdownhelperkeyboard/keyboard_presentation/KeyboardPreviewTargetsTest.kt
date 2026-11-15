@@ -62,4 +62,21 @@ class KeyboardPreviewTargetsTest {
             listOf(KeyboardType.CUSTOM), layouts.take(1), false, 0, true, "second", selected))
     }
 
+    @Test fun lastRealSelectionWinsOverStartupOrderEvenWhenRememberIsOff() {
+        val selected = KeyboardPreviewTarget(KeyboardType.SUMIRE, inputMode = com.kazumaproject.core.domain.state.InputMode.ModeEnglish)
+        assertEquals(selected, resolveHomeKeyboardPreviewTarget(listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE), emptyList(),
+            false, 0, false, null, live = null, lastUsed = selected))
+        assertEquals(selected, resolveHomeKeyboardPreviewTarget(listOf(KeyboardType.SUMIRE, KeyboardType.TENKEY), emptyList(),
+            false, 1, false, null, live = null, lastUsed = selected))
+    }
+    @Test fun deletedOrDisabledLastSelectionIsNotPresentedAsTheCurrentKeyboard() {
+        val selected = KeyboardPreviewTarget(KeyboardType.CUSTOM, "deleted", 7)
+        assertFalse(selected.isAvailable(listOf(KeyboardType.CUSTOM), listOf(custom(1, "remaining"))))
+        assertFalse(KeyboardPreviewTarget(KeyboardType.SUMIRE).isAvailable(listOf(KeyboardType.TENKEY), emptyList()))
+        val startup = resolveHomeKeyboardPreviewTarget(listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE), emptyList(),
+            false, 0, false, null, live = null, lastUsed = selected)
+        assertEquals(KeyboardType.TENKEY, startup.type)
+        assertNotEquals(selected, startup)
+    }
+
 }

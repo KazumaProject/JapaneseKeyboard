@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference android:key="setting_route_voice_input" android:title="@string/setting_category_voice_input_title" android:summary="@string/setting_category_voice_input_summary" />
+    <Preference android:key="setting_route_zenz_preferences" android:title="zenz" android:summary="@string/setting_route_zenz_summary" />
+    <Preference android:key="setting_route_gemma_preferences" android:title="@string/category_gemma_translation_title" android:summary="@string/setting_route_gemma_summary" />
+    <Preference android:key="setting_route_ai_conversion" android:title="@string/setting_category_ai_advanced_title" android:summary="@string/setting_route_ai_advanced_summary" />
+</PreferenceScreen>

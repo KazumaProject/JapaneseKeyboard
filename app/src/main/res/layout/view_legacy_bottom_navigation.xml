@@ -7,4 +7,6 @@
     android:background="?android:attr/windowBackground"
     app:itemIconTint="@color/main_text_color"
     app:itemTextColor="@color/main_text_color"
+    app:labelVisibilityMode="labeled"
+    app:itemHorizontalTranslationEnabled="false"
     app:menu="@menu/bottom_nav_menu" />

@@ -33,7 +33,11 @@ internal class KeyboardTrialDialog : BottomSheetDialogFragment() {
         super.onCreate(savedInstanceState)
         val args = requireArguments()
         token = KeyboardTrialSession.begin(KeyboardPreviewTarget(KeyboardType.valueOf(args.getString("type")!!),
-            args.getString("stable"), args.getLong("layout").takeIf { it > 0 }))
+            args.getString("stable"), args.getLong("layout").takeIf { it > 0 },
+            args.getString("mode")?.let(com.kazumaproject.markdownhelperkeyboard.ime_service.RestartInputModePreference::fromPreferenceValue),
+            args.getString("presentation"),
+            if (args.containsKey("direct")) args.getBoolean("direct") else null,
+            if (args.containsKey("romaji")) args.getBoolean("romaji") else null))
     }
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val context = requireContext()
@@ -116,6 +120,10 @@ internal class KeyboardTrialDialog : BottomSheetDialogFragment() {
             if (manager.findFragmentByTag("keyboard-trial") != null) return
             KeyboardTrialDialog().apply { arguments = Bundle().apply {
                 putString("type", target.type.name); putString("stable", target.customStableId); putLong("layout", target.customLayoutId ?: 0)
+                target.inputMode?.let { putString("mode", com.kazumaproject.markdownhelperkeyboard.ime_service.RestartInputModePreference.toPreferenceValue(it)) }
+                putString("presentation", target.presentation)
+                target.customDirectMode?.let { putBoolean("direct", it) }
+                target.customRomajiMode?.let { putBoolean("romaji", it) }
             } }.show(manager, "keyboard-trial")
         }
     }

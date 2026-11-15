@@ -153,6 +153,12 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.KeyboardDisplayPreferenceFragment"
         android:label="@string/setting_category_keyboard_display_title" />
 
+    <fragment android:id="@+id/inputFlickPreferenceFragment" android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.InputFlickPreferenceFragment" android:label="@string/settings_input_flick_title" />
+
+    <fragment android:id="@+id/aiVoicePreferenceFragment" android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AiVoicePreferenceFragment" android:label="@string/settings_ai_voice_title" />
+
+    <fragment android:id="@+id/externalKeyboardPreferenceFragment" android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ExternalKeyboardPreferenceFragment" android:label="@string/settings_external_title" />
+
     <fragment
         android:id="@+id/inputMethodPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.InputMethodPreferenceFragment"

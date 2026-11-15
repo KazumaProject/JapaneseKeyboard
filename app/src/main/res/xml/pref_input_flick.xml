@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory android:title="@string/settings_input_scope">
+        <SeekBarPreference android:key="flick_sensitivity_preference" android:title="@string/flick_sensitivity_title"
+            android:defaultValue="100" app:min="1" android:max="200" app:seekBarIncrement="5" app:showSeekBarValue="true" />
+        <SeekBarPreference android:key="long_press_timeout_preference" android:title="@string/long_press_timeout_preference_title"
+            android:defaultValue="300" app:min="100" android:max="2000" app:seekBarIncrement="25" app:showSeekBarValue="true" />
+        <SwitchPreferenceCompat android:key="flick_input_only_preference" android:title="@string/flick_input_only_title"
+            android:defaultValue="false" android:summaryOn="@string/flick_input_only_summary_on" android:summaryOff="@string/flick_input_only_summary_off" />
+        <ListPreference android:key="flick_threshold_shape_preference" android:title="@string/flick_threshold_shape_title"
+            android:defaultValue="radial" android:entries="@array/flick_threshold_shape_entries"
+            android:entryValues="@array/flick_threshold_shape_values" app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/settings_per_keyboard">
+        <Preference android:key="setting_route_sumire_preferences" android:title="@string/keyboard_type_sumire" android:summary="@string/setting_route_sumire_summary" />
+        <Preference android:key="setting_route_custom_keyboard_preferences" android:title="@string/keyboard_type_custom" android:summary="@string/settings_popup_independent" />
+    </PreferenceCategory>
+    <Preference android:key="setting_route_canonical_settings_common_touch" android:title="@string/settings_more_input" android:summary="@string/settings_common_touch_summary" />
+    <Preference android:key="setting_route_canonical_settings_common_editing" android:title="@string/settings_common_editing_title" android:summary="@string/settings_common_editing_summary" />
+    <Preference android:key="settings_input_trial" android:title="@string/settings_trial_action" />
+</PreferenceScreen>

@@ -2844,7 +2844,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customKeyboardMode = KeyboardInputMode.HIRAGANA
         setCurrentInputModeForSession(InputMode.ModeJapanese)
         _tenKeyQWERTYMode.value = TenKeyQWERTYMode.Default
-        val restored = restoreInputModeForKeyboardRestartIfEnabled(target.type)
+        val restored = target.inputMode?.let { mode ->
+            setCurrentInputModeForSession(mode)
+            RestartInputModeState(target.type, mode, RestartInputModePreference.presentationFromPreferenceValue(target.presentation ?: "native"))
+        } ?: restoreInputModeForKeyboardRestartIfEnabled(target.type)
         showKeyboard(target.type, source = "settingsTrial")
         restored?.let(::restoreRestartInputModeState)
         mainLayoutBinding?.let(::setKeyboardSizeSwitchKeyboard)
@@ -6973,6 +6976,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        captureKeyboardPreviewSelection()
         beginZenzRerankRequest()
         clearEnglishCorrection()
         backspaceHistoryCoordinator.cancel()
@@ -7036,6 +7040,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        captureKeyboardPreviewSelection()
         clearEnglishCorrection()
         cancelMorseInputs(clearPattern = true)
         clearGemmaFloating()
@@ -11556,12 +11561,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     return@launch
                 }
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
-            isCustomLayoutRomajiMode = resolveInitialCustomKeyboardRomajiMode(
+            isCustomLayoutRomajiMode = keyboardTrialTarget?.customRomajiMode ?: resolveInitialCustomKeyboardRomajiMode(
                 layoutId = id,
                 stableId = expectedStableId,
                 defaultValue = finalLayout.isRomaji
             )
-            isCustomLayoutDirectMode = resolveInitialCustomKeyboardDirectMode(
+            isCustomLayoutDirectMode = keyboardTrialTarget?.customDirectMode ?: resolveInitialCustomKeyboardDirectMode(
                 layoutId = id,
                 stableId = expectedStableId,
                 defaultValue = finalLayout.isDirectMode
@@ -15004,9 +15009,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun publishKeyboardPreviewSelection(type: KeyboardType, custom: CustomKeyboardLayout? = null) {
         if (keyboardTrialTarget != null) return
+        val restart = resolveCurrentRestartInputModeState()?.takeIf { it.keyboardType == type }
         com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewSelection.publish(
             com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewTarget(
-                type, custom?.stableId?.takeIf(String::isNotBlank), custom?.layoutId))
+                type, custom?.stableId?.takeIf(String::isNotBlank), custom?.layoutId,
+                restart?.inputMode ?: currentInputModeForSession,
+                restart?.presentation?.let(RestartInputModePreference::toPreferenceValue),
+                if (type == KeyboardType.CUSTOM) isCustomLayoutDirectMode else null,
+                if (type == KeyboardType.CUSTOM) isCustomLayoutRomajiMode else null), this)
+    }
+
+    private fun captureKeyboardPreviewSelection() {
+        if (keyboardTrialTarget != null) return
+        val previous = com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewSelection.current.value ?: return
+        val custom = if (previous.type == KeyboardType.CUSTOM) customLayouts.firstOrNull(previous::matches) else null
+        publishKeyboardPreviewSelection(previous.type, custom)
     }
 
     private fun updateKeyboardLayout() {
@@ -15401,12 +15418,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("renderCustomKeyboardLayout: $id $dbLayout")
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             Timber.d("renderCustomKeyboardLayout: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
-            isCustomLayoutRomajiMode = resolveInitialCustomKeyboardRomajiMode(
+            isCustomLayoutRomajiMode = keyboardTrialTarget?.customRomajiMode ?: resolveInitialCustomKeyboardRomajiMode(
                 layoutId = id,
                 stableId = expectedStableId,
                 defaultValue = finalLayout.isRomaji
             )
-            isCustomLayoutDirectMode = resolveInitialCustomKeyboardDirectMode(
+            isCustomLayoutDirectMode = keyboardTrialTarget?.customDirectMode ?: resolveInitialCustomKeyboardDirectMode(
                 layoutId = id,
                 stableId = expectedStableId,
                 defaultValue = finalLayout.isDirectMode

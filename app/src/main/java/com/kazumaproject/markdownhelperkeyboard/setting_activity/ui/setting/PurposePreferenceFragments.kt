@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.core.os.bundleOf
 import androidx.preference.Preference
 import androidx.appcompat.app.AppCompatActivity
@@ -16,29 +18,6 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class KeyboardDisplayPreferenceFragment : CommonPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_keyboard_display
-    private var selectedPreview: SelectedKeyboardPreviewPreference? = null
-
-    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
-        super.onPreferencesReady(savedInstanceState, rootKey)
-        preferenceScreen.findPreference<Preference>(SelectedKeyboardPreviewPreference.KEY)?.let {
-            preferenceScreen.removePreference(it)
-        }
-        selectedPreview = SelectedKeyboardPreviewPreference(
-            requireContext(), viewLifecycleOwner, childFragmentManager,
-        ) { navigateSafely(R.id.keyboardThemeFragment) }.also {
-            preferenceScreen.addPreference(it)
-        }
-    }
-
-    override fun onPreferencesResumed() {
-        super.onPreferencesResumed()
-        selectedPreview?.reload()
-    }
-
-    override fun onDestroyView() {
-        selectedPreview = null
-        super.onDestroyView()
-    }
 }
 
 @AndroidEntryPoint
@@ -197,4 +176,44 @@ class LegacyCommonPreferenceFragment : CommonPreferenceFragment() {
     companion object {
         const val ARG_SECTION_KEY = "legacy_common_section_key"
     }
+}
+
+
+@AndroidEntryPoint
+class InputFlickPreferenceFragment : CommonPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_input_flick
+
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        super.onPreferencesReady(savedInstanceState, rootKey)
+        findPreference<SeekBarPreference>("long_press_timeout_preference")?.apply {
+            setOnPreferenceClickListener(null)
+            setOnPreferenceChangeListener { _, next ->
+                summary = getString(R.string.settings_value_ms, next as Int)
+                true
+            }
+        }
+        findPreference<Preference>("settings_input_trial")?.setOnPreferenceClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardTrialDialog.show(childFragmentManager,
+                    com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.currentKeyboardPreviewTarget(requireContext()))
+            }
+            true
+        }
+    }
+}
+
+@AndroidEntryPoint
+class AiVoicePreferenceFragment : CommonPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_ai_voice
+    override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
+        super.onPreferencesReady(savedInstanceState, rootKey)
+        findPreference<Preference>("setting_route_ai_conversion")?.isVisible =
+            com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasZenz ||
+                com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig.hasGemma
+    }
+}
+
+@AndroidEntryPoint
+class ExternalKeyboardPreferenceFragment : CommonPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_external_keyboard
 }

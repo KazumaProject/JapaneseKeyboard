@@ -43,12 +43,13 @@ internal class KeyboardPreviewCarousel(
     private var job: Job? = null
     private var playbackObserver: Job? = null
     private var selectionObserver: Job? = null
+    private var statusRes: Int = R.string.settings_keyboard_startup
     private val pager = ViewPager2(context).apply {
         id = R.id.keyboard_preview_pager
         isUserInputEnabled = false
         offscreenPageLimit = 1
         clipChildren = false
-        (getChildAt(0) as RecyclerView).apply { clipToPadding = false; setPadding(0, 0, dp(20), 0) }
+        (getChildAt(0) as RecyclerView).apply { clipToPadding = false; setPadding(0, 0, 0, 0) }
         setPageTransformer { page, position ->
             val column = page as? LinearLayout
             val alpha = (1f - kotlin.math.abs(position)).coerceIn(0f, 1f)
@@ -60,13 +61,14 @@ internal class KeyboardPreviewCarousel(
     init {
         orientation = VERTICAL
         clipChildren = false
-        addView(pager, LayoutParams(-1, dp(240)))
-        addView(indicator, LayoutParams(-1, dp(24)))
+        addView(pager, LayoutParams(-1, dp(200)))
+        indicator.isVisible = false
+        addView(indicator, LayoutParams(-1, 0))
         addView(LinearLayout(context).apply {
             orientation = HORIZONTAL
             addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                 id = R.id.setting_home_preview_edit
-                setText(R.string.keyboard_preview_appearance); makeTextButton(this); setOnClickListener { onEdit() }
+                setText(R.string.settings_keyboard_settings); makeTextButton(this); setOnClickListener { onEdit() }
             }, LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(4) })
             addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                 setText(R.string.keyboard_preview_try); makeTextButton(this)
@@ -106,9 +108,16 @@ internal class KeyboardPreviewCarousel(
                 val dependencies = EntryPointAccessors.fromApplication(context.applicationContext, KeyboardPreviewDependencies::class.java)
                 layouts = withContext(Dispatchers.IO) { dependencies.keyboards().getLayoutsNotFlow() }
                 val prefs = AppPreference
+                val live = KeyboardPreviewSelection.current.value
+                val last = withContext(Dispatchers.IO) { KeyboardPreviewSelection.lastUsed(context) }
+                statusRes = when {
+                    live?.isAvailable(prefs.keyboard_order, layouts) == true -> R.string.settings_keyboard_selected
+                    last?.isAvailable(prefs.keyboard_order, layouts) == true -> R.string.settings_keyboard_last_used
+                    else -> R.string.settings_keyboard_startup
+                }
                 targets = listOf(resolveHomeKeyboardPreviewTarget(prefs.keyboard_order, layouts,
                     prefs.save_last_used_keyboard_enable_preference == true, prefs.save_last_used_keyboard_position_preference ?: 0,
-                    prefs.remember_last_custom_keyboard_preference == true, prefs.last_used_custom_keyboard_stable_id))
+                    prefs.remember_last_custom_keyboard_preference == true, prefs.last_used_custom_keyboard_stable_id, live, last))
                 selectedId = targets.single().id
                 pager.adapter = Pages()
                 pager.setCurrentItem(0, false)
@@ -130,7 +139,7 @@ internal class KeyboardPreviewCarousel(
             indicator.text = ""
             return
         }
-        summary.text = context.getString(R.string.keyboard_preview_selected_layout, targets.single().name(context, layouts))
+        summary.setText(statusRes)
         indicator.isVisible = false
     }
 
@@ -143,19 +152,19 @@ internal class KeyboardPreviewCarousel(
             val target = targets[position]
             val name = target.name(context, layouts)
             holder.column.removeAllViews()
-            val preview = KeyboardPreviewView(context, target).apply { setPlaybackActive(position == pager.currentItem && !KeyboardTrialSession.active.value) }
+            val preview = KeyboardPreviewView(context, target).apply { includeCandidates = false; respectOrientationOverride = target.inputMode == null; setPlaybackActive(position == pager.currentItem && !KeyboardTrialSession.active.value) }
             val text = MaterialTextView(context).apply { textSize = 13f; maxLines = 2; text = description(target.type) }
             holder.column.addView(LinearLayout(context).apply {
                 gravity = Gravity.CENTER_VERTICAL
-                addView(MaterialTextView(context).apply { this.text = name; gravity = Gravity.CENTER_VERTICAL; textSize = 15f; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }, LayoutParams(0, -1, 1f))
+                addView(MaterialTextView(context).apply { this.text = name; typeface = android.graphics.Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER_VERTICAL; textSize = 18f; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }, LayoutParams(0, -1, 1f))
                 addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                     this.text = "ⓘ"; makeTextButton(this); contentDescription = context.getString(R.string.keyboard_preview_info, name)
                     minWidth = dp(48); minimumWidth = dp(48); setPadding(0, 0, 0, 0)
                     setOnClickListener { showDetails(target, name, preview) }
                 }, LayoutParams(dp(48), dp(40)))
             }, LayoutParams(-1, dp(40)))
-            holder.column.addView(preview, LayoutParams(-1, dp(156)))
-            holder.column.addView(text, LayoutParams(-1, dp(44)))
+            holder.column.addView(preview, LayoutParams(-1, dp(136)))
+            holder.column.addView(text, LayoutParams(-1, dp(24)))
             preview.onReady = {
                 text.text = description(target, preview)
             }
@@ -184,6 +193,7 @@ internal class KeyboardPreviewCarousel(
         if (target.type != KeyboardType.SUMIRE && target.type != KeyboardType.CUSTOM) return description(target.type)
         val types = preview.resolvedLayout?.keys?.filter { !it.isSpecialKey }?.map { it.keyType }.orEmpty()
         return context.getString(when {
+            types.any { it == KeyType.FREE_FLICK } -> R.string.custom_free_flick
             types.any { it == KeyType.TWO_STEP_FLICK || it == KeyType.STICKY_TWO_STEP_FLICK } -> R.string.keyboard_preview_two_step_short
             types.any { it == KeyType.CIRCULAR_FLICK } -> R.string.keyboard_preview_circle_short
             types.any { it != KeyType.NORMAL && it != KeyType.QWERTY } -> R.string.keyboard_preview_flick_short
