@@ -253,7 +253,7 @@ class CandidateDisplayPreferenceFragment : CommonPreferenceFragment() {
         val context = requireContext()
         val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 16, 32, 0) }
         val label = TextView(context)
-        val sample = TextView(context).apply { text = context.getString(R.string.keyboard_geometry_example_hello) }
+        val sample = TextView(context).apply { text = context.getString(R.string.candidate_display_text_size) }
         val seek = SeekBar(context).apply { max = 300; progress = (((AppPreference.candidate_letter_size ?: 14f) - 10f) * 10f).toInt().coerceIn(0, 300) }
         fun update() { val size = 10f + seek.progress / 10f; label.text = String.format(Locale.getDefault(), "%.1f sp", size); sample.textSize = size }
         update(); box.addView(sample); box.addView(label); box.addView(seek)

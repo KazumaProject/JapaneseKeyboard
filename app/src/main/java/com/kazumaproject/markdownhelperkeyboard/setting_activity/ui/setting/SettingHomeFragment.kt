@@ -52,6 +52,8 @@ class SettingHomeFragment : Fragment() {
     private var frequentCandidatesJob: Job? = null
     private var initialDataJob: Job? = null
     private var loadingUi: SettingsLoadingUi? = null
+    private var previewCarousel: com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel? = null
+    private var previewPageId: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -65,6 +67,7 @@ class SettingHomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        previewPageId = savedInstanceState?.getString("keyboard-preview-page")
         settingCardEditorController = SettingCardEditorController(requireContext(), appPreference)
         loadInitialData()
         loadAndRenderFrequentCards()
@@ -78,9 +81,6 @@ class SettingHomeFragment : Fragment() {
         }
         binding.settingHomeFrequentEditButton.setOnClickListener {
             navigateSafely(R.id.frequentSettingsEditFragment)
-        }
-        binding.settingHomePreviewEdit.setOnClickListener {
-            navigateSafely(R.id.keyboardDisplayPreferenceFragment)
         }
 
         requireActivity().onBackPressedDispatcher.addCallback(
@@ -119,6 +119,8 @@ class SettingHomeFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        previewPageId = previewCarousel?.selectedId ?: previewPageId
+        previewCarousel = null
         frequentCandidatesJob = null
         initialDataJob = null
         loadingUi = null
@@ -180,14 +182,18 @@ class SettingHomeFragment : Fragment() {
     }
 
     private fun renderPreview() {
-        binding.settingHomePreview.removeAllViews()
-        binding.settingHomePreview.addView(
-            com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemePreviewView(
-                requireContext(), appPreference.keyboardSkin,
-            ),
-            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(156)),
-        )
-        binding.settingHomePreviewSummary.text = getString(R.string.settings_preview_summary)
+        if (previewCarousel == null) {
+            previewCarousel = com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel(
+                requireContext(), viewLifecycleOwner, childFragmentManager, binding.settingHomePreviewSummary,
+                { navigateSafely(R.id.keyboardDisplayPreferenceFragment) }, previewPageId,
+            ).also { binding.settingHomePreview.addView(it) }
+        }
+        previewCarousel?.reload()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("keyboard-preview-page", previewCarousel?.selectedId ?: previewPageId)
+        super.onSaveInstanceState(outState)
     }
 
     private fun renderPurposeTiles() {

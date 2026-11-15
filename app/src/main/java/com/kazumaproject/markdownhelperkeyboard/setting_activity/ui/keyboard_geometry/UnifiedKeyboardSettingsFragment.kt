@@ -261,8 +261,8 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
     }
     private fun dp(n: Int) = (n * resources.displayMetrics.density).roundToInt()
     private fun previewScreenWidth(): Int {
-        val metrics = resources.displayMetrics
-        return if (landscape) max(metrics.widthPixels, metrics.heightPixels) else min(metrics.widthPixels, metrics.heightPixels)
+        return com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.keyboardPresentationWidth(
+            requireContext(), requireActivity().window.decorView, landscape)
     }
     private fun label(res: Int) = TextView(requireContext()).apply { setText(res); textSize = 16f; setPadding(0, dp(10), 0, dp(3)) }
     private fun radio(options: List<Pair<Int, Int>>, vertical: Boolean = false) = RadioGroup(requireContext()).apply {
@@ -297,15 +297,16 @@ class UnifiedKeyboardSettingsFragment : Fragment() {
         }
         previewFrame.removeAllViews()
         preview = GeometryPreview(requireContext(), type).apply { id = R.id.keyboard_layout_preview }
-        preview.addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
-            if (view === preview && ::effectiveHeight.isInitialized) {
-                val heightDp = (preview.snapshotForTesting().bodyHeight / resources.displayMetrics.density).roundToInt()
+        val updatedPreview = preview
+        preview.onPresentationLayout = {
+            if (updatedPreview === preview && ::effectiveHeight.isInitialized) {
+                val heightDp = (requireNotNull(preview.bodyHeight()) / resources.displayMetrics.density).roundToInt()
                 effectiveHeight.text = getString(R.string.keyboard_layout_effective_height, heightDp)
                 // Post the layout request: changing another child's size during layout can
                 // otherwise be ignored, leaving a zero-height, untouchable overlay.
-                val expectedHeight = view.height
-                view.post {
-                    if (view === preview && ::handles.isInitialized && handles.layoutParams.height != expectedHeight) {
+                val expectedHeight = updatedPreview.height
+                updatedPreview.post {
+                    if (updatedPreview === preview && ::handles.isInitialized && handles.layoutParams.height != expectedHeight) {
                         handles.layoutParams = handles.layoutParams.apply { height = expectedHeight }
                     }
                 }

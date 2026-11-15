@@ -148,22 +148,24 @@ class UnifiedKeyboardSettingsDeviceTest {
 
     @Test fun sideCandidatePreviewUsesTheRequestedWidthAndKeepsKeysUsable() {
         AppPreference.init(context)
-        instrumentation.runOnMainSync {
+        withPreviewHost { activity ->
             val screen = context.resources.displayMetrics.widthPixels
             val density = context.resources.displayMetrics.density
             for (type in listOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE)) {
-                for (placement in listOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
-                    val preview = GeometryPreview(context, type)
-                    for (candidatePercent in listOf(15, 25, 40, 50)) {
-                        preview.update(KeyboardGeometryPreference(candidates = placement, sideCandidateWidthPercent = candidatePercent),
-                            false, 100, false, IndependentKeyboardSize(widthPercent = 100))
-                        measurePreview(preview, screen)
-                        val surface = requireNotNull(preview.adjustmentBounds())
-                        val body = requireNotNull(preview.bodyBounds())
-                        val expected = (screen * candidatePercent / 100f).coerceIn(64f * density, screen - 192f * density)
-                        assertEquals("candidate width follows its percentage and minimum sizes", expected, surface.width() - body.width(), 3f)
-                        if (placement == GeometryCandidatePlacement.LEFT) assertEquals(surface.left + expected, body.left, 3f)
-                        else assertEquals(surface.left, body.left, 2f)
+                NativeGeometryPreviewHarness(activity) { GeometryPreview(activity, type) }.use { harness ->
+                    for (placement in listOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
+                        for (candidatePercent in listOf(15, 25, 40, 50)) {
+                            harness.update { it.update(KeyboardGeometryPreference(candidates = placement, sideCandidateWidthPercent = candidatePercent),
+                                false, 100, false, IndependentKeyboardSize(widthPercent = 100)) }
+                            harness.inspect { preview ->
+                                val surface = requireNotNull(preview.adjustmentBounds())
+                                val body = requireNotNull(preview.bodyBounds())
+                                val expected = (screen * candidatePercent / 100f).coerceIn(64f * density, screen - 192f * density)
+                                assertEquals("candidate width follows its percentage and minimum sizes", expected, surface.width() - body.width(), 3f)
+                                if (placement == GeometryCandidatePlacement.LEFT) assertEquals(surface.left + expected, body.left, 3f)
+                                else assertEquals(surface.left, body.left, 2f)
+                            }
+                        }
                     }
                 }
             }
@@ -172,27 +174,30 @@ class UnifiedKeyboardSettingsDeviceTest {
 
     @Test fun sideCandidatePreviewResizesTheWholeSurfaceAndFallsBackWhenNarrow() {
         AppPreference.init(context)
-        instrumentation.runOnMainSync {
+        withPreviewHost { activity ->
             val screenWidth = context.resources.displayMetrics.widthPixels
             for (type in listOf(PreviewKeyboard.TENKEY, PreviewKeyboard.SUMIRE)) {
-                val preview = GeometryPreview(context, type)
-                for (placement in listOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
-                    for (percent in listOf(100, 80, 70)) {
-                        preview.update(KeyboardGeometryPreference(candidates = placement), false, percent, false,
-                            IndependentKeyboardSize(widthPercent = percent))
-                        measurePreview(preview, screenWidth)
-                        val body = requireNotNull(preview.bodyBounds())
-                        val surface = requireNotNull(preview.adjustmentBounds())
-                        assertEquals("surface follows width setting", screenWidth * percent / 100f, surface.width(), 2f)
-                        assertEquals("keyboard occupies three quarters", surface.width() * .75f, body.width(), 2f)
-                        assertEquals("candidate and keyboard share height", surface.height(), body.height(), 1f)
-                        if (placement == GeometryCandidatePlacement.LEFT) assertEquals(surface.left + surface.width() * .25f, body.left, 2f)
-                        else assertEquals(surface.left, body.left, 2f)
+                NativeGeometryPreviewHarness(activity) { GeometryPreview(activity, type) }.use { harness ->
+                    for (placement in listOf(GeometryCandidatePlacement.LEFT, GeometryCandidatePlacement.RIGHT)) {
+                        for (percent in listOf(100, 80, 70)) {
+                            harness.update { it.update(KeyboardGeometryPreference(candidates = placement), false, percent, false,
+                                IndependentKeyboardSize(widthPercent = percent)) }
+                            harness.inspect { preview ->
+                                val body = requireNotNull(preview.bodyBounds())
+                                val surface = requireNotNull(preview.adjustmentBounds())
+                                assertEquals("surface follows width setting", screenWidth * percent / 100f, surface.width(), 2f)
+                                assertEquals("keyboard occupies three quarters", surface.width() * .75f, body.width(), 2f)
+                                assertEquals("candidate and keyboard share height", surface.height(), body.height(), 1f)
+                                if (placement == GeometryCandidatePlacement.LEFT) assertEquals(surface.left + surface.width() * .25f, body.left, 2f)
+                                else assertEquals(surface.left, body.left, 2f)
+                            }
+                        }
+                        harness.update { it.update(KeyboardGeometryPreference(candidates = placement), false, 50, false,
+                            IndependentKeyboardSize(widthPercent = 50)) }
+                        harness.inspect { preview ->
+                            assertEquals("narrow layouts use top candidates", preview.adjustmentBounds()!!.width(), preview.bodyBounds()!!.width(), 1f)
+                        }
                     }
-                    preview.update(KeyboardGeometryPreference(candidates = placement), false, 50, false,
-                        IndependentKeyboardSize(widthPercent = 50))
-                    measurePreview(preview, screenWidth)
-                    assertEquals("narrow layouts use top candidates", preview.adjustmentBounds()!!.width(), preview.bodyBounds()!!.width(), 1f)
                 }
             }
         }
@@ -281,6 +286,30 @@ class UnifiedKeyboardSettingsDeviceTest {
         } finally { restore(prefs, original); if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme"); if (!enabled) shell("ime disable $ime") }
     }
 
+    @Test fun refreshedNativePreviewKeepsAdjustmentBoundsBeforeItsFirstLayout() {
+        AppPreference.init(context)
+        withPreviewHost { activity ->
+            NativeGeometryPreviewHarness(activity) { GeometryPreview(activity, PreviewKeyboard.TENKEY) }.use { harness ->
+                val size = IndependentKeyboardSize(heightDp = 220, widthPercent = 80,
+                    positionEnd = true, marginEndDp = 10)
+                harness.update { it.update(KeyboardGeometryPreference(candidates = GeometryCandidatePlacement.LEFT),
+                    false, 80, true, size) }
+                var expected: android.graphics.RectF? = null
+                var refreshed: android.graphics.RectF? = null
+                harness.inspect { geometry ->
+                    expected = android.graphics.RectF(requireNotNull(geometry.adjustmentBounds()))
+                    val native = geometry.getChildAt(0) as com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewView
+                    native.onReady = { refreshed = geometry.adjustmentBounds()?.let { android.graphics.RectF(it) } }
+                    native.reload()
+                }
+                await { var loaded = false; instrumentation.runOnMainSync { loaded = refreshed != null }; loaded }
+                assertEquals("Refreshing must not move the resize surface before its first layout",
+                    requireNotNull(expected).left, requireNotNull(refreshed).left, 1f)
+                assertEquals(requireNotNull(expected).right, requireNotNull(refreshed).right, 1f)
+            }
+        }
+    }
+
     @Test fun resizeHitAreasFollowTheVisibleHandlesAtScreenEdges() {
         AppPreference.init(context)
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
@@ -302,6 +331,14 @@ class UnifiedKeyboardSettingsDeviceTest {
                 await { scenario.onActivity { page = host(it).childFragmentManager.primaryNavigationFragment?.view }; page?.findViewById<View>(R.id.keyboard_layout_edit_size) != null }
                 instrumentation.runOnMainSync { requireNotNull(page).findViewById<View>(R.id.keyboard_layout_edit_size).performClick() }
                 await { var ready = false; instrumentation.runOnMainSync { ready = (page?.findViewById<View>(R.id.keyboard_layout_handles)?.height ?: 0) > 0 }; ready }
+                await {
+                    var ready = false
+                    instrumentation.runOnMainSync {
+                        val preview = page?.findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
+                        ready = runCatching { preview?.snapshotForTesting()?.bodyLeft?.let { it <= 1f } == true }.getOrDefault(false)
+                    }
+                    ready
+                }
                 instrumentation.runOnMainSync {
                     val preview = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
                     val bounds = preview.adjustmentBounds()!!
@@ -411,49 +448,53 @@ class UnifiedKeyboardSettingsDeviceTest {
 
     @Test fun gojuonAndCustomPreviewUseTheSameKeyFramesAsTheirActualViews() {
         AppPreference.init(context)
-        instrumentation.runOnMainSync {
+        withPreviewHost { activity ->
             val themed = android.view.ContextThemeWrapper(context, R.style.Theme_MarkdownKeyboard)
             val density = context.resources.displayMetrics.density
             val screen = context.resources.displayMetrics.widthPixels
             val height = (220 * density).roundToInt()
             val size = IndependentKeyboardSize(heightDp = 220)
-            val actualGojuon = GojuonKeyboardView(themed)
-            ModeKeySizing.applyGojuon(actualGojuon)
-            measure(actualGojuon, screen, height)
-            val gojuon = GeometryPreview(themed, PreviewKeyboard.GOJUON)
-            gojuon.update(KeyboardGeometryPreference(), false, 100, true, size)
-            measurePreview(gojuon, screen)
-            val frames = gojuon.snapshotForTesting()
-            assertEquals(height.toFloat(), frames.bodyHeight, 1f)
-            listOf(com.kazumaproject.gojuon_keyboard.R.id.key_1, com.kazumaproject.gojuon_keyboard.R.id.key_18,
-                com.kazumaproject.gojuon_keyboard.R.id.key_51).forEach { id ->
-                val actual = actualGojuon.findViewById<View>(id); val frame = frames.keys.first { it.id == id }
-                assertEquals(actual.left + actual.width / 2f, frame.x, 2f)
-                assertEquals(actual.top + actual.height / 2f, frame.y, 2f)
-                assertEquals(actual.width / 2f, frame.halfWidth, 2f)
+            NativeGeometryPreviewHarness(activity) { GeometryPreview(themed, PreviewKeyboard.GOJUON) }.use { harness ->
+                harness.update { it.update(KeyboardGeometryPreference(), false, 100, true, size) }
+                harness.inspect { gojuon ->
+                    val actualGojuon = GojuonKeyboardView(themed)
+                    ModeKeySizing.applyGojuon(actualGojuon)
+                    measure(actualGojuon, screen, height)
+                    val frames = gojuon.snapshotForTesting()
+                    assertEquals(height.toFloat(), frames.bodyHeight, 1f)
+                    listOf(com.kazumaproject.gojuon_keyboard.R.id.key_1, com.kazumaproject.gojuon_keyboard.R.id.key_18,
+                        com.kazumaproject.gojuon_keyboard.R.id.key_51).forEach { id ->
+                        val actual = actualGojuon.findViewById<View>(id); val frame = frames.keys.first { it.id == id }
+                        assertEquals(actual.left + actual.width / 2f, frame.x, 2f)
+                        assertEquals(actual.top + actual.height / 2f, frame.y, 2f)
+                        assertEquals(actual.width / 2f, frame.halfWidth, 2f)
+                    }
+                }
             }
             val a = KeyData("A", 0, 0, false, action = KeyAction.Text("A"), keyId = "a")
             val b = KeyData("B", 0, 1, false, action = KeyAction.Text("B"), keyId = "b")
             val layout = KeyboardLayout(keys = listOf(a, b), flickKeyMaps = emptyMap(), columnCount = 3, rowCount = 2,
                 items = listOf(KeyItem("a", a, GridPlacement(0, 0, 2, 3)), SpacerItem("space", GridPlacement(0, 3, 2, 1)),
                     KeyItem("b", b, GridPlacement(0, 4, 4, 2))), columnUnitCount = 6, rowUnitCount = 4, isFlexiblePlacementLayout = true)
-            val actualCustom = FlickKeyboardView(themed).apply {
-                applyKeySizing(AppPreference.flick_key_width_scale_percent ?: 160, AppPreference.flick_key_height_scale_percent ?: 160,
-                    AppPreference.flick_key_icon_scale_percent ?: 80, AppPreference.flick_key_text_size_sp ?: 16f,
-                    AppPreference.flick_special_key_text_size_sp ?: 12f)
-                setKeyboard(layout)
-            }
-            measure(actualCustom, screen, height)
-            val custom = GeometryPreview(themed, PreviewKeyboard.CUSTOM)
-            custom.update(KeyboardGeometryPreference(), false, 100, true, size, layout)
-            measurePreview(custom, screen)
-            val customFrames = custom.snapshotForTesting()
-            assertEquals(2, customFrames.keys.size)
-            listOf(0 to "A", 2 to "B").forEach { (index, label) ->
-                val actual = actualCustom.getChildAt(index); val frame = customFrames.keys.first { it.text == label }
-                assertEquals(actual.left + actual.width / 2f, frame.x, 2f)
-                assertEquals(actual.top + actual.height / 2f, frame.y, 2f)
-                assertEquals(actual.width / 2f, frame.halfWidth, 2f)
+            NativeGeometryPreviewHarness(activity) { GeometryPreview(themed, PreviewKeyboard.CUSTOM) }.use { harness ->
+                harness.update { it.update(KeyboardGeometryPreference(), false, 100, true, size, layout) }
+                harness.inspect { custom ->
+                    val actualCustom = FlickKeyboardView(themed).apply {
+                        applyKeySizing(AppPreference.flick_key_width_scale_percent ?: 160, AppPreference.flick_key_height_scale_percent ?: 160,
+                            AppPreference.flick_key_icon_scale_percent ?: 80, AppPreference.flick_key_text_size_sp ?: 16f,
+                            AppPreference.flick_special_key_text_size_sp ?: 12f)
+                        setKeyboard(layout)
+                    }
+                    measure(actualCustom, screen, height)
+                    val customFrames = custom.snapshotForTesting()
+                    assertEquals(2, customFrames.keys.size)
+                    listOf(0 to "A", 2 to "B").forEach { (index, label) ->
+                        val actual = actualCustom.getChildAt(index); val frame = customFrames.keys.first { it.text == label }
+                        assertEquals(actual.left + actual.width / 2f, frame.x, 2f)
+                        assertEquals(actual.top + actual.height / 2f, frame.y, 2f)
+                        assertEquals(actual.width / 2f, frame.halfWidth, 2f)
+                    }
+                }
             }
         }
     }
@@ -556,6 +597,7 @@ class UnifiedKeyboardSettingsDeviceTest {
         val oldIme = shell("settings get secure default_input_method")
         val enabled = shell("ime list -s").lineSequence().any { it.trim() == ime }
         var host: FastInputHostActivity? = null
+        var editor: ActivityScenario<FastInputHostActivity>? = null
         try {
             shell("ime disable $ime")
             prefs.edit().putString("keyboard_order_preference", "[\"TENKEY\"]")
@@ -664,6 +706,14 @@ class UnifiedKeyboardSettingsDeviceTest {
                     }
                     ready
                 }
+                await {
+                    var loaded = false
+                    instrumentation.runOnMainSync {
+                        loaded = runCatching { requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
+                            .snapshotForTesting().keys.isNotEmpty() }.getOrDefault(false)
+                    }
+                    loaded
+                }
                 instrumentation.runOnMainSync {
                     val preview = requireNotNull(page).findViewById<GeometryPreview>(R.id.keyboard_layout_preview)
                     assertEquals(preview.snapshotForTesting().screenWidth, preview.width.toFloat(), 1f)
@@ -675,6 +725,7 @@ class UnifiedKeyboardSettingsDeviceTest {
 
     private fun verifyImeSize(prefs: SharedPreferences, ime: String, type: String, floating: Boolean) {
         var host: FastInputHostActivity? = null
+        var editor: ActivityScenario<FastInputHostActivity>? = null
         try {
             shell("ime disable $ime")
             await { shell("settings get secure default_input_method") != ime }
@@ -685,14 +736,9 @@ class UnifiedKeyboardSettingsDeviceTest {
                 .putInt("keyboard_height_preference", 300).putInt("keyboard_width_preference", 100).commit()
             shell("ime enable $ime")
             await { shell("ime list -s").lineSequence().any { it.trim() == ime } }
-            shell("am start -n ${context.packageName}/${FastInputHostActivity::class.java.name}")
-            await {
-                instrumentation.runOnMainSync {
-                    host = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
-                        .filterIsInstance<FastInputHostActivity>().firstOrNull()?.takeIf { it.hasWindowFocus() }
-                }
-                host != null
-            }
+            editor = ActivityScenario.launch(Intent(context, FastInputHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            editor.onActivity { host = it }
+            await { var focused = false; instrumentation.runOnMainSync { focused = host?.hasWindowFocus() == true }; focused }
             shell("ime set $ime")
             await { shell("settings get secure default_input_method") == ime }
             instrumentation.runOnMainSync {
@@ -731,7 +777,15 @@ class UnifiedKeyboardSettingsDeviceTest {
                 val expectedWidth = context.resources.displayMetrics.widthPixels * .7f - if (floating) 16 * density else 0f
                 assertEquals("$type floating=$floating width", expectedWidth, visualWidth, 6f)
             }
-        } finally { instrumentation.runOnMainSync { host?.finish() } }
+        } finally { editor?.close() }
+    }
+
+    private fun withPreviewHost(block: (FastInputHostActivity) -> Unit) {
+        ActivityScenario.launch<FastInputHostActivity>(Intent(context, FastInputHostActivity::class.java)).use { scenario ->
+            var activity: FastInputHostActivity? = null
+            scenario.onActivity { activity = it }
+            block(requireNotNull(activity))
+        }
     }
 
     private fun host(activity: MainActivity) = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
