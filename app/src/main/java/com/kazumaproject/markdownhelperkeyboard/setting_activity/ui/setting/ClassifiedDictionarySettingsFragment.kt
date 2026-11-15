@@ -117,19 +117,12 @@ class ClassifiedDictionarySettingsFragment : Fragment() {
                 group = arguments?.getString(ARG_GROUP)?.let(tree::find)
                     ?: highlight?.let { tree.pathTo(it).dropLast(1).lastOrNull() }
                     ?: tree
-                refresh()
-                if (highlight != null) {
-                    binding.classifiedList.post {
-                        if (_binding == null) return@post
-                        val position = adapter.currentList.indexOfFirst { it.node.key == highlight }
-                        if (position >= 0) binding.classifiedList.scrollToPosition(position)
-                    }
-                }
+                refresh(highlight)
             }
         }
     }
 
-    private fun refresh() {
+    private fun refresh(highlight: String? = null) {
         if (_binding == null || !::group.isInitialized) return
         visible = group.visible(query, filter, store::isOptionalBundledEnabled)
         val all = group.leaves()
@@ -146,7 +139,12 @@ class ClassifiedDictionarySettingsFragment : Fragment() {
             CategoryRow(node, leaves.count { store.isOptionalBundledEnabled(requireNotNull(it.category)) }, leaves.size,
                 if (node.category != null && (query.isNotBlank() || filter != DictionarySelectionFilter.ALL))
                     tree.pathTo(node.key).drop(1).dropLast(1).joinToString(" › ") { it.title } else "")
-        })
+        }) {
+            if (_binding != null && highlight != null) {
+                val position = adapter.currentList.indexOfFirst { it.node.key == highlight }
+                if (position >= 0) binding.classifiedList.scrollToPosition(position)
+            }
+        }
     }
 
     private fun openGroup(node: ClassifiedDictionaryNode) {

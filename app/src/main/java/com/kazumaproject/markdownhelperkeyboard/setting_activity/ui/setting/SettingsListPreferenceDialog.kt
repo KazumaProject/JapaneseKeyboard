@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.radiobutton.MaterialRadioButton
 import kotlinx.coroutines.Job
@@ -56,6 +57,7 @@ class SettingsListPreferenceDialog : DialogFragment() {
 
     override fun onStart() {
         super.onStart()
+        (dialog as? BottomSheetDialog)?.behavior?.state = BottomSheetBehavior.STATE_EXPANDED
         choicesJob?.cancel()
         choicesJob = lifecycleScope.launch {
             val owner = requireNotNull(targetFragment as? PreferenceFragmentCompat)

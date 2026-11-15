@@ -181,7 +181,9 @@ class SettingsDesignRefreshInstrumentedTest {
                     val preference = owner.findPreference<ListPreference>(key)!!
                     val label = preference.entries!![preference.entryValues!!.indexOf(selected)]
                     val dialog = owner.parentFragmentManager.findFragmentByTag("androidx.preference.PreferenceFragment.DIALOG") as SettingsListPreferenceDialog
-                    descendants(dialog.requireDialog().window!!.decorView).filterIsInstance<TextView>().first { it.text == label }.performClick()
+                    val choice = descendants(dialog.requireDialog().window!!.decorView).filterIsInstance<TextView>().first { it.text == label }
+                    assertTrue("Choice must be visible in the sheet", choice.getGlobalVisibleRect(android.graphics.Rect()))
+                    choice.performClick()
                 }
                 assertEquals(selected, prefs.getString(key, null))
                 scenario.recreate()
@@ -243,6 +245,22 @@ class SettingsDesignRefreshInstrumentedTest {
             await(scenario, "External dictionary parent was not restored") {
                 (host(it).childFragmentManager.primaryNavigationFragment as? ExternalDictionarySettingsFragment)
                     ?.findPreference<androidx.preference.Preference>("external_dictionary_category_SYSTEM") != null
+            }
+        }
+    }
+
+    @Test fun settingsSearchHighlightScrollsToAnOffscreenDictionaryAfterListPublication() {
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            scenario.awaitSettingsContentReady()
+            scenario.onActivity {
+                host(it).navController.navigate(R.id.classifiedDictionarySettingsFragment, bundleOf(
+                    CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY to "optional_bundled_enabled_CLASSIFIED_MEDICAL",
+                ))
+            }
+            await(scenario, "Dictionary search target did not become visible") {
+                val list = it.findViewById<RecyclerView>(R.id.classified_list)
+                val count = list?.adapter?.itemCount ?: 0
+                count == 15 && list.findViewHolderForAdapterPosition(count - 1) != null
             }
         }
     }
