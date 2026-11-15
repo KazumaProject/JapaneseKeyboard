@@ -247,7 +247,9 @@ class MainActivity : AppCompatActivity() {
         navigationStore = SettingsNavigationStore(this)
         setupNavigationDrawer(navController)
         appBarConfiguration = AppBarConfiguration(
-            navigationStore.catalog.map { it.destination }.toSet() + R.id.settingMainFragment,
+            SettingsNavigationStore.DEFAULT_BOTTOM.mapNotNull { key ->
+                navigationStore.catalog.firstOrNull { it.key == key }?.destination
+            }.toSet() + R.id.settingMainFragment,
             binding.settingsDrawerLayout,
         )
         setupActionBarWithNavController(navController, appBarConfiguration)

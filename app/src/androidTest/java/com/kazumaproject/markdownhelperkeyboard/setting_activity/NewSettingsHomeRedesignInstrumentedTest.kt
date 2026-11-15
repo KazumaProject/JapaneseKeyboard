@@ -189,6 +189,10 @@ class NewSettingsHomeRedesignInstrumentedTest {
                 shot("keyboard-list")
                 scenario.onActivity { host(it).navController.navigate(R.id.inputFlickPreferenceFragment) }
                 scenario.awaitSettingsContentReady()
+                await(scenario, "Input controls did not finish loading") {
+                    (host(it).childFragmentManager.primaryNavigationFragment as? InputFlickPreferenceFragment)
+                        ?.findPreference<SeekBarPreference>("flick_sensitivity_preference") != null
+                }
                 shot("input-flick")
             }
         } finally {
