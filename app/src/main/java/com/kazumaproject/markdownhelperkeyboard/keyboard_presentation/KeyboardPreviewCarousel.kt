@@ -68,13 +68,13 @@ internal class KeyboardPreviewCarousel(
             orientation = HORIZONTAL
             addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                 id = R.id.setting_home_preview_edit
-                setText(R.string.settings_keyboard_settings); makeTextButton(this); setOnClickListener { onEdit() }
-            }, LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(4) })
+                setText(R.string.settings_keyboard_settings); minHeight = dp(48); maxLines = 2; makeTextButton(this); setOnClickListener { onEdit() }
+            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(4) })
             addView(MaterialButton(context, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
-                setText(R.string.keyboard_preview_try); makeTextButton(this)
+                setText(R.string.keyboard_preview_try); minHeight = dp(48); maxLines = 2; makeTextButton(this)
                 setOnClickListener { targets.getOrNull(pager.currentItem)?.let { KeyboardTrialDialog.show(manager, it) } }
-            }, LayoutParams(0, dp(48), 1f))
-        }, LayoutParams(-1, dp(48)))
+            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        }, LayoutParams(-1, LayoutParams.WRAP_CONTENT))
         pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 selectedId = targets.getOrNull(position)?.id
@@ -153,7 +153,12 @@ internal class KeyboardPreviewCarousel(
             val name = target.name(context, layouts)
             holder.column.removeAllViews()
             val preview = KeyboardPreviewView(context, target).apply { includeCandidates = false; respectOrientationOverride = target.inputMode == null; setPlaybackActive(position == pager.currentItem && !KeyboardTrialSession.active.value) }
-            val text = MaterialTextView(context).apply { textSize = 13f; maxLines = 2; text = description(target.type) }
+            val text = MaterialTextView(context).apply {
+                textSize = 13f; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+                text = description(target.type)
+            }
+            val captionHeight = kotlin.math.ceil((text.paint.fontMetrics.bottom - text.paint.fontMetrics.top).toDouble()).toInt()
+            pager.layoutParams = pager.layoutParams.apply { height = dp(176) + captionHeight }
             holder.column.addView(LinearLayout(context).apply {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(MaterialTextView(context).apply { this.text = name; typeface = android.graphics.Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER_VERTICAL; textSize = 18f; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }, LayoutParams(0, -1, 1f))
@@ -164,7 +169,7 @@ internal class KeyboardPreviewCarousel(
                 }, LayoutParams(dp(48), dp(40)))
             }, LayoutParams(-1, dp(40)))
             holder.column.addView(preview, LayoutParams(-1, dp(136)))
-            holder.column.addView(text, LayoutParams(-1, dp(24)))
+            holder.column.addView(text, LayoutParams(-1, captionHeight))
             preview.onReady = {
                 text.text = description(target, preview)
             }
