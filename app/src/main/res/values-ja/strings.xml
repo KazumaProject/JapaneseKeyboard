@@ -1560,7 +1560,7 @@
     <string name="setting_home_ai_status_summary">zenz %1$s / AI %2$s</string>
     <string name="setting_home_clipboard_shortcut_status_summary">履歴 %1$s / ツールバー %2$s</string>
     <string name="setting_home_operation_status_summary">振動 %1$s / キー音 %2$s</string>
-    <string name="setting_category_keyboard_display_title">キーボード表示</string>
+    <string name="setting_category_keyboard_display_title">見た目・配置</string>
     <string name="setting_category_keyboard_display_summary">サイズ・テーマ・外観</string>
     <string name="setting_category_input_method_title">入力方式</string>
     <string name="setting_category_input_method_summary">スミレ・かな・QWERTY など</string>

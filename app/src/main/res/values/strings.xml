@@ -1600,7 +1600,7 @@
     <string name="setting_home_ai_status_summary">zenz %1$s / AI %2$s</string>
     <string name="setting_home_clipboard_shortcut_status_summary">Clipboard %1$s / Toolbar %2$s</string>
     <string name="setting_home_operation_status_summary">Vibration %1$s / Sound %2$s</string>
-    <string name="setting_category_keyboard_display_title">Keyboard Display</string>
+    <string name="setting_category_keyboard_display_title">Appearance and position</string>
     <string name="setting_category_keyboard_display_summary">Size, theme, and appearance</string>
     <string name="setting_category_input_method_title">Input Method</string>
     <string name="setting_category_input_method_summary">Sumire, Kana, QWERTY, and more</string>

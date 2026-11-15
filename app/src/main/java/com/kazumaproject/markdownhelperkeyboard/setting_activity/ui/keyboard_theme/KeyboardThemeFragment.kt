@@ -491,7 +491,7 @@ class KeyboardThemeFragment : CommonPreferenceFragment() {
             true
         }
         findPreference<Preference>("settings_theme_enable_composing_guide_link")?.setOnPreferenceClickListener {
-            navigateSafely(R.id.legacyCommonPreferenceFragment, bundleOf(ARG_HIGHLIGHT_PREFERENCE_KEY to "composing_guide_text_enabled"))
+            navigateSafely(R.id.legacyCommonSectionFragment, bundleOf(ARG_HIGHLIGHT_PREFERENCE_KEY to "composing_guide_text_enabled"))
             true
         }
         syncCrossScreenDependencies()

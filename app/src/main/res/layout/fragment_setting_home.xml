@@ -12,22 +12,6 @@
             android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="56dp"
             android:gravity="start|center_vertical" android:text="@string/setting_home_search_content_description"
             android:textAlignment="viewStart" app:icon="@drawable/baseline_search_24" app:cornerRadius="28dp" />
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
-            app:cardCornerRadius="24dp" app:cardElevation="0dp" app:strokeWidth="0dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerLow">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:padding="16dp">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="@string/settings_preview_title" android:textAppearance="?attr/textAppearanceTitleLarge" />
-                <TextView android:id="@+id/setting_home_preview_summary" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:layout_marginTop="4dp"
-                    android:text="@string/settings_preview_summary" android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
-                <FrameLayout android:id="@+id/setting_home_preview" android:layout_width="match_parent"
-                    android:layout_height="wrap_content" android:layout_marginTop="12dp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:gravity="center_vertical" android:orientation="horizontal">
             <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
@@ -39,10 +23,6 @@
         </LinearLayout>
         <GridLayout android:id="@+id/setting_home_frequent_grid" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:alignmentMode="alignMargins" android:columnCount="2" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp"
-            android:text="@string/settings_purpose_title" android:textAppearance="?attr/textAppearanceTitleMedium" />
-        <GridLayout android:id="@+id/setting_home_purpose_grid" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:layout_marginTop="12dp" android:columnCount="2" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp"
             android:text="@string/settings_all_categories" android:textAppearance="?attr/textAppearanceTitleMedium" />
         <LinearLayout android:id="@+id/setting_home_category_list" android:layout_width="match_parent"

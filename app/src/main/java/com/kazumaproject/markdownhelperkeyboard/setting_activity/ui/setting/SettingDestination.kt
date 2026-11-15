@@ -481,7 +481,7 @@ object SettingDestinations {
             context = context,
             keys = (manualDestinations.map { it.key } + frequentCandidatePreferenceKeys).distinct(),
         )
-        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
+        val officialIds = setOf(R.id.legacyCommonSectionFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
         val officialByKey = xmlDestinations.filter { destinationId(it.destination) in officialIds }.associateBy { it.key }
         val resolvedManual = manualDestinations.map { old ->
             officialByKey[old.key]?.copy(category = old.category, iconRes = old.iconRes, keywords = old.keywords + officialByKey.getValue(old.key).keywords) ?: old
