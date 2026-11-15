@@ -1,6 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Intent
+import android.content.SharedPreferences
+import androidx.activity.OnBackPressedCallback
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.navigation.*
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.Menu
@@ -21,11 +26,11 @@ import androidx.lifecycle.withResumed
 import androidx.lifecycle.withStarted
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
@@ -57,6 +62,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
     private var bottomNavigationView: BottomNavigationView? = null
+    private lateinit var navigationStore: SettingsNavigationStore
+    private lateinit var navigationDrawer: SettingsNavigationDrawer
+    private lateinit var appBarConfiguration: AppBarConfiguration
+    private var bottomDrag: SettingsBottomDrag? = null
+    private var restoredNavigationState: Bundle? = null
+    private val navigationPreferencesListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == SettingsNavigationStore.KEY && ::navigationStore.isInitialized) runOnUiThread { renderBottomNavigation() }
+    }
+    private val drawerBack = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() { binding.settingsDrawerLayout.closeDrawer(GravityCompat.START) }
+    }
+
     private var currentDestinationId: Int? = null
     private var restoredNavHost: NavHostFragment? = null
     private var deferredFragmentManagerState: Bundle? = null
@@ -113,6 +130,7 @@ class MainActivity : AppCompatActivity() {
             ?.getBoolean(PENDING_INTENT_RECEIVED_KEY) ?: false
         pendingIntentRequest = savedInstanceState?.getString(PENDING_INTENT_REQUEST_KEY)
 
+        restoredNavigationState = savedInstanceState?.getBundle("settings-navigation-ui")
         super.onCreate(savedInstanceState)
         // Window fitting must be configured before the delayed preferences load.
         // Configuring it after the Activity has started can leave AppCompat's
@@ -175,6 +193,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+        val navigationState = if (::navigationDrawer.isInitialized) navigationDrawer.saveState().apply {
+            putBoolean("open", binding.settingsDrawerLayout.isDrawerVisible(GravityCompat.START))
+        } else restoredNavigationState
+        navigationState?.let { outState.putBundle("settings-navigation-ui", it) }
         outState.putBoolean(INITIAL_INTENT_HANDLED_KEY, initialIntentHandled)
         outState.putBoolean(
             PENDING_INTENT_RECEIVED_KEY,
@@ -222,13 +244,11 @@ class MainActivity : AppCompatActivity() {
         mainNavController = findMainNavController()
         val navController = mainNavController
         installNavigationGraph(navController)
-        val appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.navigation_setting,
-                R.id.settingMainFragment,
-                R.id.navigation_learn_dictionary,
-                R.id.navigation_user_dictionary,
-            )
+        navigationStore = SettingsNavigationStore(this)
+        setupNavigationDrawer(navController)
+        appBarConfiguration = AppBarConfiguration(
+            navigationStore.catalog.map { it.destination }.toSet() + R.id.settingMainFragment,
+            binding.settingsDrawerLayout,
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         if (dynamicColorsAvailable) {
@@ -247,10 +267,8 @@ class MainActivity : AppCompatActivity() {
                     ?.findItem(R.id.navigation_setting)
                     ?.isChecked = true
             }
-            updateBottomNavigationVisibility(
-                appPreference.setting_use_new_home_screen_preference,
-                navController,
-            )
+            updateBottomNavigationVisibility(navController)
+            updateNavigationSelection(destination.id)
             updateSharedActionBarVisibility(destination.id)
             invalidateOptionsMenu()
         }
@@ -305,13 +323,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSupportNavigateUp(): Boolean {
         if (!isSettingsContentReady) return super.onSupportNavigateUp()
+        if (binding.settingsDrawerLayout.isDrawerVisible(GravityCompat.START)) {
+            binding.settingsDrawerLayout.closeDrawer(GravityCompat.START)
+            return true
+        }
         val navController = currentNavController()
         val current = (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as? androidx.navigation.fragment.NavHostFragment)?.childFragmentManager?.primaryNavigationFragment
         if (current is com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment) {
             current.leaveEditor()
             return true
         }
-        return navController.navigateUp() || super.onSupportNavigateUp()
+        return NavigationUI.navigateUp(navController, appBarConfiguration) || super.onSupportNavigateUp()
     }
 
     private fun updateSharedActionBarVisibility(destinationId: Int) {
@@ -374,23 +396,17 @@ class MainActivity : AppCompatActivity() {
         }
 
     fun applySettingHomeModeFromPreference(navController: NavController? = null) {
-        val useNewDashboard = appPreference.setting_use_new_home_screen_preference
         val resolvedNavController = navController ?: currentNavController()
-        updateBottomNavigationVisibility(useNewDashboard, resolvedNavController)
+        updateBottomNavigationVisibility(resolvedNavController)
         ensurePreferredSettingHomeIfNeeded(resolvedNavController)
     }
 
     private fun updateBottomNavigationVisibility(
-        useNewDashboard: Boolean,
         navController: NavController,
     ) {
-        if (useNewDashboard) {
-            binding.navViewContainer.visibility = View.GONE
-            return
-        }
         ensureBottomNavigation(navController)
         binding.navViewContainer.visibility =
-            if (navController.currentDestination?.id in destinationsWithoutBottomNavigation) {
+            if (navController.currentDestination?.id in destinationsWithoutBottomNavigation || navigationStore.bottom().isEmpty()) {
                 View.GONE
             } else {
                 View.VISIBLE
@@ -407,6 +423,8 @@ class MainActivity : AppCompatActivity() {
         binding.navViewContainer.addView(navView)
         setupBottomNavigation(navView, navController)
         bottomNavigationView = navView
+        bottomDrag = SettingsBottomDrag(navView, navigationStore, ::renderBottomNavigation)
+        renderBottomNavigation()
         return navView
     }
 
@@ -414,10 +432,13 @@ class MainActivity : AppCompatActivity() {
         navView: BottomNavigationView,
         navController: NavController,
     ) {
-        navView.setupWithNavController(navController)
         navView.setOnItemSelectedListener { item ->
             if (item.itemId == R.id.navigation_setting) {
                 navigateToPreferredSettingHome(navController)
+                true
+            } else if (item.itemId == R.id.settingSearchFragment) {
+                navController.navigate(item.itemId, navigationArguments(item.itemId), NavOptions.Builder()
+                    .setLaunchSingleTop(true).setPopUpTo(navController.graph.findStartDestination().id, false).build())
                 true
             } else {
                 NavigationUI.onNavDestinationSelected(item, navController)
@@ -428,6 +449,67 @@ class MainActivity : AppCompatActivity() {
                 navigateToPreferredSettingHome(navController)
             }
         }
+    }
+
+    private fun navigationArguments(destination: Int): Bundle? = if (destination == R.id.settingSearchFragment) Bundle().apply {
+        putString(com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingSearchFragment.ARG_SEARCH_SCOPE,
+            (if (appPreference.setting_use_new_home_screen_preference)
+                com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingSearchScope.NEW_HOME
+            else com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingSearchScope.LEGACY_TABS).name)
+    } else null
+
+    private fun setupNavigationDrawer(navController: NavController) {
+        val width = minOf((360 * resources.displayMetrics.density).toInt(), resources.displayMetrics.widthPixels - (56 * resources.displayMetrics.density).toInt())
+        binding.settingsDrawerContent.layoutParams = binding.settingsDrawerContent.layoutParams.apply { this.width = width }
+        navigationDrawer = SettingsNavigationDrawer(this, navigationStore) { item ->
+            binding.settingsDrawerLayout.closeDrawer(GravityCompat.START)
+            if (item.key == "home") navigateToPreferredSettingHome(navController)
+            else navController.navigate(item.destination, navigationArguments(item.destination), NavOptions.Builder().setLaunchSingleTop(true)
+                .setPopUpTo(navController.graph.findStartDestination().id, false).build())
+        }
+        binding.settingsDrawerContent.addView(navigationDrawer)
+        navigationDrawer.restoreState(restoredNavigationState)
+        if (restoredNavigationState?.getBoolean("open") == true) binding.settingsDrawerLayout.post {
+            if (!isFinishing && !isDestroyed) binding.settingsDrawerLayout.openDrawer(GravityCompat.START)
+        }
+        restoredNavigationState = null
+        binding.settingsDrawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+            private var handlingBack = false
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                if (slideOffset > 0f && !handlingBack) {
+                    onBackPressedDispatcher.addCallback(this@MainActivity, drawerBack); handlingBack = true
+                }
+            }
+            override fun onDrawerClosed(drawerView: View) {
+                drawerBack.remove(); handlingBack = false; navigationDrawer.finishEditing()
+            }
+        })
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+            .registerOnSharedPreferenceChangeListener(navigationPreferencesListener)
+    }
+
+    private fun renderBottomNavigation() {
+        if (bottomDrag?.isDragging == true) return
+        val bar = bottomNavigationView ?: return
+        val items = navigationStore.bottom()
+        bar.menu.clear()
+        items.forEachIndexed { index, item -> bar.menu.add(Menu.NONE, item.destination, index, item.title).setIcon(item.icon) }
+        bottomDrag?.bind()
+        updateNavigationSelection(mainNavController.currentDestination?.id)
+        binding.navViewContainer.visibility = if (items.isEmpty() || mainNavController.currentDestination?.id in destinationsWithoutBottomNavigation) View.GONE else View.VISIBLE
+    }
+
+    private fun updateNavigationSelection(destination: Int?) {
+        val resolved = if (destination == R.id.settingMainFragment) R.id.navigation_setting else destination
+        navigationDrawer.select(resolved)
+        val menu = bottomNavigationView?.menu ?: return
+        for (index in 0 until menu.size()) menu.getItem(index).isChecked = menu.getItem(index).itemId == resolved
+    }
+
+    override fun onDestroy() {
+        if (::navigationStore.isInitialized) androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+            .unregisterOnSharedPreferenceChangeListener(navigationPreferencesListener)
+        super.onDestroy()
     }
 
     private fun setupSettingHomeSwitchMenu(navController: NavController) {

@@ -49,12 +49,12 @@ class SettingsNavigationLayoutInstrumentedTest {
         get() = InstrumentationRegistry.getInstrumentation()
 
     @Test
-    fun newHomeStartsWithoutLegacyNavigationAndKeepsTheStaticNavHostAnchor() {
+    fun newHomeSharesBottomNavigationAndKeepsTheStaticNavHostAnchor() {
         withHomeMode(useNewHome = true) { scenario ->
             assertLayout(
                 scenario = scenario,
-                expectedContainerVisibility = View.GONE,
-                expectedChildCount = 0,
+                expectedContainerVisibility = View.VISIBLE,
+                expectedChildCount = 1,
             )
         }
     }
@@ -100,12 +100,12 @@ class SettingsNavigationLayoutInstrumentedTest {
     }
 
     @Test
-    fun switchingHomeModesDoesNotDuplicateLegacyNavigation() {
+    fun switchingHomeModesDoesNotDuplicateSharedNavigation() {
         withHomeMode(useNewHome = true) { scenario ->
             assertLayout(
                 scenario = scenario,
-                expectedContainerVisibility = View.GONE,
-                expectedChildCount = 0,
+                expectedContainerVisibility = View.VISIBLE,
+                expectedChildCount = 1,
             )
 
             setHomeMode(scenario, useNewHome = false)
@@ -118,7 +118,7 @@ class SettingsNavigationLayoutInstrumentedTest {
             setHomeMode(scenario, useNewHome = true)
             assertLayout(
                 scenario = scenario,
-                expectedContainerVisibility = View.GONE,
+                expectedContainerVisibility = View.VISIBLE,
                 expectedChildCount = 1,
             )
 
@@ -312,14 +312,14 @@ class SettingsNavigationLayoutInstrumentedTest {
     }
 
     @Test
-    fun freshActivityCreationKeepsTheSelectedHomeAndInflatesOnlyItsRequiredNavigation() {
+    fun freshActivityCreationKeepsTheSelectedHomeAndSharedNavigation() {
         withHomeMode(useNewHome = true) { scenario ->
             val relaunchedScenario = relaunchAfterClosing(scenario)
             try {
                 assertLayout(
                     scenario = relaunchedScenario,
-                    expectedContainerVisibility = View.GONE,
-                    expectedChildCount = 0,
+                    expectedContainerVisibility = View.VISIBLE,
+                    expectedChildCount = 1,
                 )
             } finally {
                 closeScenario(relaunchedScenario)
@@ -588,10 +588,10 @@ class SettingsNavigationLayoutInstrumentedTest {
                     instrumentation.waitForIdleSync()
                     scenario.recreate()
                     scenario.awaitSettingsContentReady()
-                    assertLayout(scenario, View.GONE, if (useNewHome) 0 else 1)
+                    assertLayout(scenario, View.GONE, 1)
                     scenario.onActivity { assertTrue(navController(it).popBackStack()) }
                     instrumentation.waitForIdleSync()
-                    assertLayout(scenario, if (useNewHome) View.GONE else View.VISIBLE, if (useNewHome) 0 else 1)
+                    assertLayout(scenario, View.VISIBLE, 1)
                 }
             }
         }
