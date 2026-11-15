@@ -21,145 +21,78 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class CollapsibleDictionarySettingsTest {
     private val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
-
-    @Before fun clearExpansionState() {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-            .putBoolean("setting_use_new_home_screen_preference", false).commit()
-        context.getSharedPreferences(CollapsiblePreferenceCategory.STATE_PREFERENCES, Context.MODE_PRIVATE).edit().clear().commit()
-    }
-
-    private fun inflate(beforeAttach: (PreferenceScreen) -> Unit = {}): PreferenceScreen {
+    private val expansion get() = context.getSharedPreferences(CollapsiblePreferenceCategory.STATE_PREFERENCES, Context.MODE_PRIVATE)
+    @Before fun reset() { expansion.edit().clear().commit() }
+    private fun inflate(newHome: Boolean): PreferenceScreen {
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean("setting_use_new_home_screen_preference", newHome).commit()
         val manager = PreferenceManager(context)
-        val screen = manager.inflateFromResource(context, R.xml.pref_dictionary, null)
-        manager.setPreferences(screen)
-        beforeAttach(screen)
-        screen.onAttached()
-        return screen
+        return manager.inflateFromResource(context, R.xml.pref_dictionary, null).also { manager.setPreferences(it); it.onAttached() }
     }
-
     private fun descendants(group: PreferenceGroup): List<Preference> = buildList {
         for (index in 0 until group.preferenceCount) {
-            val child = group.getPreference(index)
-            add(child)
+            val child = group.getPreference(index); add(child)
             if (child is PreferenceGroup) addAll(descendants(child))
         }
     }
-
-    @Test fun allLeavesRemainSearchableWhileGroupsStartCollapsed() {
-        val screen = inflate()
-        val groups = descendants(screen).filterIsInstance<CollapsiblePreferenceCategory>()
-        assertEquals(28, groups.size)
-        groups.forEach { group ->
-            assertFalse(group.key, group.isExpanded)
-            for (index in 0 until group.preferenceCount) assertFalse(group.getPreference(index).isVisible)
+    @Test fun bothModesShowAllGroupsAndKeepEveryDictionarySearchable() {
+        for (newHome in listOf(false, true)) {
+            val screen = inflate(newHome)
+            val groups = descendants(screen).filterIsInstance<CollapsiblePreferenceCategory>()
+            assertEquals(28, groups.size)
+            groups.forEach { group ->
+                assertTrue(group.key, group.isExpanded); assertFalse(group.key, group.isSelectable)
+                assertEquals(0, group.widgetLayoutResource)
+                for (index in 0 until group.preferenceCount) assertTrue(group.getPreference(index).isVisible)
+            }
+            ClassifiedDictionaries.all.forEach { spec -> assertNotNull(screen.findPreference<SwitchPreferenceCompat>(spec.preferenceKey)) }
+            val keys = SettingSearchIndex.searchable(context).map { it.key }
+            assertTrue(keys.containsAll(ClassifiedDictionaries.all.map { it.preferenceKey }))
+            assertFalse(keys.any { it.startsWith("classified_group_") })
         }
-        ClassifiedDictionaries.all.forEach { spec -> assertNotNull(screen.findPreference<SwitchPreferenceCompat>(spec.preferenceKey)) }
-        val search = SettingSearchIndex.searchable(context)
-        assertTrue(search.map { it.key }.containsAll(ClassifiedDictionaries.all.map { it.preferenceKey }))
-        assertFalse(search.any { it.key.startsWith("classified_group_") })
     }
-
-    @Test fun nestedExpansionPersistsIndependentlyWithoutChangingSwitches() {
-        val screen = inflate()
-        val facility = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
-        val religious = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility_religious")!!
-        val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
-        shrine.isChecked = true
-        facility.performClick()
-        assertTrue(religious.isVisible)
-        assertFalse(shrine.isVisible)
-        religious.performClick()
-        assertTrue(shrine.isVisible)
-        facility.performClick()
-        assertFalse(religious.isVisible)
-        assertTrue(shrine.isChecked)
-        val restored = inflate()
-        assertFalse(restored.findPreference<CollapsiblePreferenceCategory>(facility.key)!!.isExpanded)
-        assertTrue(restored.findPreference<CollapsiblePreferenceCategory>(religious.key)!!.isExpanded)
-    }
-
-    @Test fun navigationExpansionSurvivesDeferredAttachmentWithoutOverwritingSavedState() {
-        val screen = inflate { pending ->
-            pending.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
-                .setExpanded(true, persist = false)
+    @Test fun storedCollapsedStateAndClicksCannotHideItemsOrChangeSavedValues() {
+        for (newHome in listOf(false, true)) {
+            expansion.edit().putBoolean("classified_group_facility", false).putBoolean("classified_group_facility_religious", false).commit()
+            val before = expansion.all.toMap()
+            val screen = inflate(newHome)
+            val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
+            val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
+            shrine.isChecked = true
+            group.performClick(); group.setExpanded(false)
+            assertTrue(group.isExpanded); assertTrue(shrine.isVisible); assertTrue(shrine.isChecked)
+            val restored = inflate(newHome)
+            assertTrue(restored.findPreference<SwitchPreferenceCompat>(shrine.key)!!.isVisible)
+            assertTrue(shrine.isChecked)
+            assertEquals(before, expansion.all)
         }
-        val facility = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
-        assertTrue(facility.isExpanded)
-        assertFalse(inflate().findPreference<CollapsiblePreferenceCategory>(facility.key)!!.isExpanded)
     }
-
-    @Test fun legacyFilteringKeepsNestedTargetAndAncestors() {
-        val screen = inflate()
+    @Test fun conditionalVisibilityRemainsIndependentOfHeadingAndSearchRequests() {
+        for (newHome in listOf(false, true)) {
+            val screen = inflate(newHome)
+            val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility_religious")!!
+            val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
+            val value = shrine.isChecked
+            shrine.conditionVisible = false; group.setExpanded(true, persist = false)
+            assertFalse(shrine.isVisible)
+            shrine.conditionVisible = true; group.setExpanded(false)
+            assertTrue(shrine.isVisible); assertEquals(value, shrine.isChecked)
+        }
+    }
+    @Test fun dynamicallyAddedDictionaryActionsAreVisibleImmediately() {
+        for (newHome in listOf(false, true)) {
+            val screen = inflate(newHome)
+            DictionaryCategoryActions(screen, { false }, { _, _ -> }).bind()
+            val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
+            val action = screen.findPreference<Preference>("classified_group_facility_bulk_toggle")!!
+            assertTrue(action.isVisible); group.performClick(); assertTrue(action.isVisible)
+        }
+    }
+    @Test fun legacyFilteringKeepsTheNestedTargetAndItsHeadings() {
+        val screen = inflate(false)
         val key = "optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE"
         LegacyPreferenceResultFilter.filterPreferenceScreen(screen, key, emptyList())
         assertNotNull(screen.findPreference<Preference>(key))
         assertNotNull(screen.findPreference<Preference>("classified_group_facility_religious"))
         assertEquals(1, descendants(screen).filterIsInstance<SwitchPreferenceCompat>().size)
     }
-
-    @Test fun conditionChangesWhileCollapsedDoNotExposeOrRestoreHiddenChildren() {
-        val screen = inflate()
-        val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility_religious")!!
-        val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
-        val original = shrine.isChecked
-        shrine.conditionVisible = false
-        group.setExpanded(true)
-        assertFalse(shrine.isVisible)
-        group.setExpanded(false)
-        shrine.conditionVisible = true
-        assertFalse(shrine.isVisible)
-        group.setExpanded(true)
-        assertTrue(shrine.isVisible)
-        assertEquals(original, shrine.isChecked)
-    }
-
-    @Test fun dynamicallyAddedDictionaryActionsAppearWhenTheirGroupOpens() {
-        val screen = inflate()
-        DictionaryCategoryActions(screen, { false }, { _, _ -> }).bind()
-        val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
-        val action = screen.findPreference<Preference>("classified_group_facility_bulk_toggle")!!
-        assertFalse(action.isVisible)
-        group.setExpanded(true)
-        assertTrue(action.isVisible)
-        group.setExpanded(false)
-        assertFalse(action.isVisible)
-    }
-    @Test fun newSettingsUseNonInteractiveHeadingsWithoutHidingItemsOrChangingValues() {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-            .putBoolean("setting_use_new_home_screen_preference", true).commit()
-        val screen = inflate()
-        val groups = descendants(screen).filterIsInstance<CollapsiblePreferenceCategory>()
-        assertTrue(groups.isNotEmpty())
-        groups.forEach { group ->
-            assertTrue(group.key, group.isExpanded)
-            assertFalse(group.key, group.isSelectable)
-            assertEquals(0, group.widgetLayoutResource)
-        }
-        val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
-        shrine.isChecked = true
-        assertTrue(shrine.isVisible)
-        assertTrue(shrine.isEnabled)
-        val facility = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
-        facility.performClick()
-        facility.setExpanded(false)
-        assertTrue(facility.isExpanded)
-        assertTrue(shrine.isVisible)
-        assertTrue(shrine.isChecked)
-        assertTrue(context.getSharedPreferences(CollapsiblePreferenceCategory.STATE_PREFERENCES, Context.MODE_PRIVATE).all.isEmpty())
-    }
-
-    @Test fun newSettingsRespectConditionalVisibilityWhileKeepingGroupsOpen() {
-        PreferenceManager.getDefaultSharedPreferences(context).edit()
-            .putBoolean("setting_use_new_home_screen_preference", true).commit()
-        val screen = inflate()
-        val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility_religious")!!
-        val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
-        shrine.conditionVisible = false
-        group.setExpanded(false)
-        assertTrue(group.isExpanded)
-        assertFalse(shrine.isVisible)
-        shrine.conditionVisible = true
-        assertTrue(shrine.isVisible)
-    }
-
 }

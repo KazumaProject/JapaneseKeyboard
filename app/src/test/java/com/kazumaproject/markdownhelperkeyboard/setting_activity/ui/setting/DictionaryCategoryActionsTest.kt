@@ -65,7 +65,7 @@ class DictionaryCategoryActionsTest {
         val unrelated = DictionaryCategory.CLASSIFIED_PERSON_ACTOR
         store.setDisableableCategoryEnabled(unrelated, true, true)
         val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
-        assertFalse(action("facility").isVisible)
+        assertTrue(action("facility").isVisible)
         group.setExpanded(true)
         assertTrue(action("facility").isVisible)
         choose("facility", 0)
