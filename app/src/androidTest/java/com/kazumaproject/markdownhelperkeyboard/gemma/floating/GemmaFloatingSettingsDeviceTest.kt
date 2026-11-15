@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.floating
 
 import android.content.Intent
 import android.os.SystemClock
+import com.google.android.material.tabs.TabLayout
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingTabRegistry
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.ListPreference
@@ -129,8 +131,11 @@ class GemmaFloatingSettingsDeviceTest {
                         scenario.onActivity { activity ->
                             val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
                             when (val current = host.childFragmentManager.primaryNavigationFragment) {
-                                is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment ->
-                                    current.findPreference<Preference>("setting_route_ai_conversion")?.performClick()
+                                is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment -> {
+                                    val index = SettingTabRegistry.createTabs().indexOfFirst { it.key == SettingTabRegistry.TAB_GEMMA }
+                                    activity.findViewById<TabLayout>(R.id.setting_tab_layout).getTabAt(index)?.select()
+                                    selected = current.childFragmentManager.fragments.any { it is GemmaPreferenceFragment && it.isResumed }
+                                }
                                 is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AiConversionPreferenceFragment ->
                                     current.findPreference<Preference>("setting_route_gemma_preferences")?.performClick()
                                 is GemmaPreferenceFragment -> selected = true

@@ -9,7 +9,6 @@ import android.widget.EditText
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.fragment.NavHostFragment
-import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
@@ -18,10 +17,8 @@ import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.typeText
 import androidx.test.espresso.matcher.ViewMatchers.withId
-import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,13 +65,10 @@ class SettingSearchEntryInstrumentedTest {
                 } else {
                     scenario.onActivity { host(it).navController.navigate(R.id.settingMainFragment) }
                     await(scenario, "Conventional search entry did not load") {
-                        val fragment = host(it).childFragmentManager.primaryNavigationFragment as? SettingMainFragment
-                        fragment?.findPreference<Preference>("settings_overview_search") != null &&
-                            fragment.listView.childCount > 0 && !hasLoadingOverlay(it.window.decorView)
+                        it.findViewById<View>(R.id.action_legacy_setting_search)?.isShown == true &&
+                            !hasLoadingOverlay(it.window.decorView)
                     }
-                    var label = ""
-                    scenario.onActivity { label = it.getString(R.string.setting_home_search_content_description) }
-                    onView(withText(label)).perform(click())
+                    onView(withId(R.id.action_legacy_setting_search)).perform(click())
                 }
                 await(scenario, "Search screen did not open") { host(it).navController.currentDestination?.id == R.id.settingSearchFragment }
                 fun awaitFocusedKeyboard() = await(scenario, "Search did not focus its input and show the keyboard") { activity ->
