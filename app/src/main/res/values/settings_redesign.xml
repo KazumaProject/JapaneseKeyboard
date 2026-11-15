@@ -2,7 +2,7 @@
     <string name="settings_overview_keyboard">Keyboard</string>
     <string name="settings_overview_input">Typing</string>
     <string name="settings_overview_other">More settings</string>
-    <string name="settings_preview_title">Your keyboard</string>
+    <string name="settings_preview_title">Keyboard preview</string>
     <string name="settings_preview_summary">Preview of your current theme</string>
     <string name="settings_preview_edit">Adjust appearance</string>
     <string name="settings_preview_try">Try typing here</string>
@@ -27,4 +27,5 @@
     <string name="classified_bulk_scope">Applies to the %1$d dictionaries shown here</string>
     <string name="classified_group_open">Open %1$s</string>
     <string name="classified_group_toggle">Toggle all dictionaries in %1$s</string>
+    <string name="keyboard_preview_selected_layout">Layout shown: %1$s</string>
 </resources>

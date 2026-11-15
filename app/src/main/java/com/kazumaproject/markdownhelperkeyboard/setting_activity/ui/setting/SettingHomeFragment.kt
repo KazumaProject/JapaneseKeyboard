@@ -53,7 +53,6 @@ class SettingHomeFragment : Fragment() {
     private var initialDataJob: Job? = null
     private var loadingUi: SettingsLoadingUi? = null
     private var previewCarousel: com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel? = null
-    private var previewPageId: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -67,7 +66,6 @@ class SettingHomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        previewPageId = savedInstanceState?.getString("keyboard-preview-page")
         settingCardEditorController = SettingCardEditorController(requireContext(), appPreference)
         loadInitialData()
         loadAndRenderFrequentCards()
@@ -119,7 +117,6 @@ class SettingHomeFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        previewPageId = previewCarousel?.selectedId ?: previewPageId
         previewCarousel = null
         frequentCandidatesJob = null
         initialDataJob = null
@@ -185,16 +182,12 @@ class SettingHomeFragment : Fragment() {
         if (previewCarousel == null) {
             previewCarousel = com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewCarousel(
                 requireContext(), viewLifecycleOwner, childFragmentManager, binding.settingHomePreviewSummary,
-                { navigateSafely(R.id.keyboardDisplayPreferenceFragment) }, previewPageId,
+                { navigateSafely(R.id.keyboardDisplayPreferenceFragment) },
             ).also { binding.settingHomePreview.addView(it) }
         }
         previewCarousel?.reload()
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        outState.putString("keyboard-preview-page", previewCarousel?.selectedId ?: previewPageId)
-        super.onSaveInstanceState(outState)
-    }
 
     private fun renderPurposeTiles() {
         val categories = SettingDestinations.categories(requireContext()).associateBy { it.key }

@@ -3276,6 +3276,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapter?.registerAdapterDataObserver(observer)
                 splitCandidateObserver = observer
                 controller.start()
+                publishKeyboardPreviewSelection(KeyboardType.SPLIT)
                 scheduleSplitCandidates()
                 composingGuide?.refresh()
                 refreshZenzFloatingCandidates()
@@ -7062,6 +7063,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewSelection.publish(null)
         com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardLayoutInflation.clear(this)
         beginZenzRerankRequest()
         clearEnglishCorrection()
@@ -11576,6 +11578,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 syncCustomKeyboardTogglePresentation(flickView)
                 refreshBaselineInputBehaviorForCurrentKeyboard("custom layout input mode loaded")
+                if (qwertyMode.value == TenKeyQWERTYMode.Custom) publishKeyboardPreviewSelection(KeyboardType.CUSTOM, layout)
             }
         }
     }
@@ -14995,7 +14998,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
             refreshBaselineInputBehaviorForCurrentKeyboard("keyboard layout change")
+            if (type != KeyboardType.CUSTOM) publishKeyboardPreviewSelection(type)
         }
+    }
+
+    private fun publishKeyboardPreviewSelection(type: KeyboardType, custom: CustomKeyboardLayout? = null) {
+        if (keyboardTrialTarget != null) return
+        com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewSelection.publish(
+            com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewTarget(
+                type, custom?.stableId?.takeIf(String::isNotBlank), custom?.layoutId))
     }
 
     private fun updateKeyboardLayout() {
@@ -15409,6 +15420,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setCustomLayoutOnAvailableSurfaces(finalLayout)
                 syncCustomKeyboardTogglePresentationOnAvailableSurfaces()
                 refreshBaselineInputBehaviorForCurrentKeyboard("custom layout input mode loaded")
+                if (qwertyMode.value == TenKeyQWERTYMode.Custom) publishKeyboardPreviewSelection(KeyboardType.CUSTOM, layout)
             }
         }
     }

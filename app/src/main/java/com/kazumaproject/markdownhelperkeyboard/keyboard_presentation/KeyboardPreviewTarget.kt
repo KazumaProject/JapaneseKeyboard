@@ -22,20 +22,35 @@ internal fun keyboardPreviewTargets(order: List<KeyboardType>, layouts: List<Cus
         } else listOf(KeyboardPreviewTarget(type))
     }
 
+/** Last real selection in this process. Trial typing never publishes here. */
+internal object KeyboardPreviewSelection {
+    private val state = kotlinx.coroutines.flow.MutableStateFlow<KeyboardPreviewTarget?>(null)
+    val current: kotlinx.coroutines.flow.StateFlow<KeyboardPreviewTarget?> = state
+    fun publish(target: KeyboardPreviewTarget?) { state.value = target }
+}
+
+internal fun resolveHomeKeyboardPreviewTarget(
+    order: List<KeyboardType>, layouts: List<CustomKeyboardLayout>,
+    rememberFamily: Boolean, savedPosition: Int, rememberCustom: Boolean, savedCustomId: String?,
+    live: KeyboardPreviewTarget? = KeyboardPreviewSelection.current.value,
+): KeyboardPreviewTarget {
+    val enabled = order.ifEmpty { listOf(KeyboardType.TENKEY) }
+    if (live != null && live.type in enabled &&
+        (live.type != KeyboardType.CUSTOM || layouts.any(live::matches))) return live
+    val type = if (rememberFamily) enabled.getOrNull(savedPosition) ?: enabled.first() else enabled.first()
+    val custom = if (type == KeyboardType.CUSTOM)
+        com.kazumaproject.markdownhelperkeyboard.ime_service.resolveInitialCustomKeyboardSelection(
+            layouts, rememberCustom, savedCustomId)?.let { layouts[it.index] } else null
+    return KeyboardPreviewTarget(type, custom?.stableId?.takeIf(String::isNotBlank), custom?.layoutId)
+}
+
 internal suspend fun currentKeyboardPreviewTarget(context: Context): KeyboardPreviewTarget {
     val dependencies = dagger.hilt.android.EntryPointAccessors.fromApplication(context.applicationContext, KeyboardPreviewDependencies::class.java)
     val layouts = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { dependencies.keyboards().getLayoutsNotFlow() }
     val prefs = com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-    val order = prefs.keyboard_order
-    val type = if (prefs.save_last_used_keyboard_enable_preference == true)
-        order.getOrNull(prefs.save_last_used_keyboard_position_preference ?: 0) ?: order.firstOrNull()
-        else order.firstOrNull()
-    val resolved = type ?: KeyboardType.TENKEY
-    val custom = if (resolved == KeyboardType.CUSTOM)
-        com.kazumaproject.markdownhelperkeyboard.ime_service.resolveInitialCustomKeyboardSelection(layouts,
-            prefs.remember_last_custom_keyboard_preference == true, prefs.last_used_custom_keyboard_stable_id)
-            ?.let { layouts[it.index] } else null
-    return KeyboardPreviewTarget(resolved, custom?.stableId, custom?.layoutId)
+    return resolveHomeKeyboardPreviewTarget(prefs.keyboard_order, layouts,
+        prefs.save_last_used_keyboard_enable_preference == true, prefs.save_last_used_keyboard_position_preference ?: 0,
+        prefs.remember_last_custom_keyboard_preference == true, prefs.last_used_custom_keyboard_stable_id)
 }
 
 internal suspend fun keyboardPreviewTargetForFamily(context: Context, type: KeyboardType): KeyboardPreviewTarget {
