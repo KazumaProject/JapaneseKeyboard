@@ -14,14 +14,14 @@ internal fun settingsNavigationCatalog(context: Context): List<SettingsNavigatio
     val core = listOf(
         SettingsNavigationItem("home", context.getString(R.string.settings_navigation_home), R.id.navigation_setting, CoreR.drawable.baseline_settings_24),
         SettingsNavigationItem("search", context.getString(R.string.setting_search_title), R.id.settingSearchFragment, CoreR.drawable.baseline_search_24),
-        SettingsNavigationItem("selection", context.getString(R.string.keyboard_selection_preference_title), R.id.keyboardSelectionFragment, CoreR.drawable.keyboard_24px),
-        SettingsNavigationItem("appearance", context.getString(R.string.settings_navigation_appearance), R.id.keyboardDisplayPreferenceFragment, CoreR.drawable.keyboard_24px),
+        SettingsNavigationItem("selection", context.getString(R.string.settings_keyboard_list), R.id.keyboardSelectionFragment, CoreR.drawable.keyboard_24px),
+        SettingsNavigationItem("appearance", context.getString(R.string.settings_appearance_title), R.id.keyboardDisplayPreferenceFragment, CoreR.drawable.keyboard_24px),
         SettingsNavigationItem("learn", context.getString(R.string.learn_dictionary_fragment_title), R.id.navigation_learn_dictionary, CoreR.drawable.table_lamp_24px),
         SettingsNavigationItem("user", context.getString(R.string.user_dictionary_title), R.id.navigation_user_dictionary, CoreR.drawable.dictionary_24px),
         SettingsNavigationItem("templates", context.getString(R.string.user_template), R.id.userTemplateFragment, CoreR.drawable.book_3_24px),
         SettingsNavigationItem("custom", context.getString(R.string.custom_keyboard_fragment_label), R.id.keyboardListFragment, CoreR.drawable.keyboard_24px),
     )
-    val routes = (SettingDestinations.categories(context) + SettingDestinations.management(context)).mapNotNull { item ->
+    val routes = (SettingDestinations.categories(context) + SettingDestinations.homeCategories(context) + SettingDestinations.management(context)).mapNotNull { item ->
         val destination = when (val route = item.destination) {
             is SettingDestinationType.NavDestination -> route.destinationId
             is SettingDestinationType.ManagementDestination -> route.destinationId
@@ -32,7 +32,7 @@ internal fun settingsNavigationCatalog(context: Context): List<SettingsNavigatio
     val tabs = SettingTabRegistry.createTabs().map {
         SettingsNavigationItem("tab:${it.key}", it.title(context), it.destinationId, CoreR.drawable.baseline_settings_24)
     }
-    return (core + routes + tabs).distinctBy { it.destination }
+    return (core + routes + tabs).distinctBy { it.key }.distinctBy { it.destination }
 }
 
 internal data class SettingsNavigationConfig(

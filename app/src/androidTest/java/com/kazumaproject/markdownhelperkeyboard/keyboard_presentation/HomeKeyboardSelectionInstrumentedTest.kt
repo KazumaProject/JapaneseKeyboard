@@ -67,7 +67,6 @@ class HomeKeyboardSelectionInstrumentedTest {
             KeyboardPreviewSelection.publish(null)
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.awaitSettingsContentReady()
-                scenario.onActivity { (it.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment).navController.navigate(R.id.keyboardDisplayPreferenceFragment) }
                 awaitTarget(scenario, KeyboardPreviewTarget(KeyboardType.QWERTY))
                 scenario.recreate(); scenario.awaitSettingsContentReady()
                 awaitTarget(scenario, KeyboardPreviewTarget(KeyboardType.QWERTY))

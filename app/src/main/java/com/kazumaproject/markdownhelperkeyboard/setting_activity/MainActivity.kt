@@ -247,7 +247,9 @@ class MainActivity : AppCompatActivity() {
         navigationStore = SettingsNavigationStore(this)
         setupNavigationDrawer(navController)
         appBarConfiguration = AppBarConfiguration(
-            navigationStore.catalog.map { it.destination }.toSet() + R.id.settingMainFragment,
+            SettingsNavigationStore.DEFAULT_BOTTOM.mapNotNull { key ->
+                navigationStore.catalog.firstOrNull { it.key == key }?.destination
+            }.toSet() + R.id.settingMainFragment,
             binding.settingsDrawerLayout,
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
@@ -493,7 +495,14 @@ class MainActivity : AppCompatActivity() {
         val bar = bottomNavigationView ?: return
         val items = navigationStore.bottom()
         bar.menu.clear()
-        items.forEachIndexed { index, item -> bar.menu.add(Menu.NONE, item.destination, index, item.title).setIcon(item.icon) }
+        items.forEachIndexed { index, item ->
+            val title = when (item.key) {
+                "home" -> getString(R.string.settings_nav_settings)
+                "custom" -> getString(R.string.settings_nav_custom)
+                else -> item.title
+            }
+            bar.menu.add(Menu.NONE, item.destination, index, title).setIcon(item.icon)
+        }
         bottomDrag?.bind()
         updateNavigationSelection(mainNavController.currentDestination?.id)
         binding.navViewContainer.visibility = if (items.isEmpty() || mainNavController.currentDestination?.id in destinationsWithoutBottomNavigation) View.GONE else View.VISIBLE
@@ -503,7 +512,15 @@ class MainActivity : AppCompatActivity() {
         val resolved = if (destination == R.id.settingMainFragment) R.id.navigation_setting else destination
         navigationDrawer.select(resolved)
         val menu = bottomNavigationView?.menu ?: return
-        for (index in 0 until menu.size()) menu.getItem(index).isChecked = menu.getItem(index).itemId == resolved
+        val directlyRepresented = (0 until menu.size()).any { menu.getItem(it).itemId == resolved }
+        val basicPages = (com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingDestinations.categories(this) +
+            com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingDestinations.homeCategories(this))
+            .mapNotNull { com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingDestinations.destinationId(it.destination) } +
+            com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType.entries.map {
+                com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.keyboardSettingsDestination(it)
+            }
+        val bottomDestination = if (!directlyRepresented && destination in basicPages) R.id.navigation_setting else resolved
+        for (index in 0 until menu.size()) menu.getItem(index).isChecked = menu.getItem(index).itemId == bottomDestination
     }
 
     override fun onDestroy() {
@@ -549,12 +566,12 @@ class MainActivity : AppCompatActivity() {
         if (!visible) return
 
         if (appPreference.setting_use_new_home_screen_preference) {
-            item.setTitle(R.string.setting_switch_to_legacy_home)
+            item.setTitle(R.string.settings_legacy_short)
         } else {
-            item.setTitle(R.string.setting_switch_to_new_home)
+            item.setTitle(R.string.settings_new_short)
         }
-        item.setIcon(CoreR.drawable.swap_horiz_24px)
-        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        item.setIcon(null)
+        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS or MenuItem.SHOW_AS_ACTION_WITH_TEXT)
     }
 
     private fun switchSettingHome(navController: NavController) {

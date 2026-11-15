@@ -153,7 +153,7 @@ internal class KeyboardPreviewView(
                         else resolveInitialCustomKeyboardSelection(layouts, AppPreference.remember_last_custom_keyboard_preference == true,
                             AppPreference.last_used_custom_keyboard_stable_id)?.let { layouts[it.index] }
                     } else null
-                    val displayTarget = KeyboardPreviewTarget(displayType, customRow?.stableId, customRow?.layoutId)
+                    val displayTarget = target.copy(type = displayType, customStableId = customRow?.stableId, customLayoutId = customRow?.layoutId)
                     val custom = customRow?.let {
                         dependencies.keyboards().convertLayout(dependencies.keyboards().getFullLayout(it.layoutId).first())
                     }
@@ -223,7 +223,7 @@ internal class KeyboardPreviewView(
         val binding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         val root = binding.root
         val restored = if (respectSavedInputMode && forcedSize == null) KeyboardRestartPresentation.resolve(target.type) else null
-        val inputMode = restored?.inputMode ?: InputMode.ModeJapanese
+        val inputMode = target.inputMode ?: restored?.inputMode ?: InputMode.ModeJapanese
         val flickMode = when (inputMode) {
             InputMode.ModeEnglish -> KeyboardInputMode.ENGLISH
             InputMode.ModeNumber -> KeyboardInputMode.SYMBOLS
@@ -233,14 +233,16 @@ internal class KeyboardPreviewView(
             KeyboardType.TENKEY, KeyboardType.GOJUON -> TenkeyEnglishQwertySwitchResolver.shouldSwitchEnglishToQwerty(
                 ctx.resources.getBoolean(com.kazumaproject.core.R.bool.isTablet), AppPreference.tablet_tenkey_qwerty_switch_english_layout,
                 AppPreference.tenkey_qwerty_switch_number_layout == true)
-            KeyboardType.SUMIRE -> AppPreference.sumire_english_qwerty_preference || restored?.presentation == RestartInputModePresentation.SumireQwertyProxy
+            KeyboardType.SUMIRE -> AppPreference.sumire_english_qwerty_preference || (if (target.inputMode != null) target.presentation == com.kazumaproject.markdownhelperkeyboard.ime_service.RestartInputModePreference.SUMIRE_QWERTY_PROXY
+                else restored?.presentation == RestartInputModePresentation.SumireQwertyProxy)
             else -> false
         }
-        val numberProxy = restored?.presentation == RestartInputModePresentation.TenkeyQwertyNumberProxy
+        val numberProxy = if (target.inputMode != null) target.presentation == com.kazumaproject.markdownhelperkeyboard.ime_service.RestartInputModePreference.TENKEY_QWERTY_NUMBER_PROXY
+            else restored?.presentation == RestartInputModePresentation.TenkeyQwertyNumberProxy
         val bodyType = if (englishProxy || numberProxy) KeyboardType.QWERTY else target.type
         previewInputMode = when (bodyType) {
             KeyboardType.QWERTY -> if (numberProxy) InputMode.ModeNumber else InputMode.ModeEnglish
-            KeyboardType.ROMAJI -> if (AppPreference.qwerty_romaji_initial_input_mode_preference == "english") InputMode.ModeEnglish else InputMode.ModeJapanese
+            KeyboardType.ROMAJI -> target.inputMode ?: if (AppPreference.qwerty_romaji_initial_input_mode_preference == "english") InputMode.ModeEnglish else InputMode.ModeJapanese
             else -> inputMode
         }
         val baseSize = forcedSize ?: sizeOverride ?: KeyboardSurfaceSizePreferences(prefs).read(
@@ -270,7 +272,7 @@ internal class KeyboardPreviewView(
             KeyboardType.GOJUON -> binding.gojuonView.apply { style.apply(this); ModeKeySizing.applyGojuon(this); currentInputMode.set(inputMode); resetLayout() }
             KeyboardType.QWERTY, KeyboardType.ROMAJI -> binding.qwertyView.apply {
                 style.apply(this); KeyboardKeyPresentation.qwerty(this)
-                val japanese = bodyType == KeyboardType.ROMAJI && AppPreference.qwerty_romaji_initial_input_mode_preference != "english"
+                val japanese = bodyType == KeyboardType.ROMAJI && previewInputMode != InputMode.ModeEnglish
                 if (japanese) setRomajiKeyboard(EditorEnterPolicy.label(EditorEnterAction.Enter, true))
                 else resetQWERTYKeyboard(EditorEnterPolicy.label(EditorEnterAction.Enter, false))
                 if (numberProxy) setNumberView()
@@ -299,8 +301,8 @@ internal class KeyboardPreviewView(
                 else {
                     val row = data.layouts.firstOrNull(target::matches)
                     renderCustomKeyboardToggles(this, CustomKeyboardShiftState.OFF,
-                        row?.let { KeyboardRestartPresentation.customDirect(it.layoutId, it.stableId, layout.isDirectMode) } ?: layout.isDirectMode,
-                        row?.let { KeyboardRestartPresentation.customRomaji(it.layoutId, it.stableId, layout.isRomaji) } ?: layout.isRomaji)
+                        target.customDirectMode ?: row?.let { KeyboardRestartPresentation.customDirect(it.layoutId, it.stableId, layout.isDirectMode) } ?: layout.isDirectMode,
+                        target.customRomajiMode ?: row?.let { KeyboardRestartPresentation.customRomaji(it.layoutId, it.stableId, layout.isRomaji) } ?: layout.isRomaji)
                 }
             }
             KeyboardType.MORSE -> binding.morseView.apply {

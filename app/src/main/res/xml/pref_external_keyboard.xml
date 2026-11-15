@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference android:key="setting_route_hardware_keyboard_preferences" android:title="@string/hardware_keyboard_category_title" android:summary="@string/setting_route_hardware_keyboard_summary" />
+    <Preference android:key="setting_route_tablet_preferences" android:title="@string/tablet_preference_category_title" android:summary="@string/setting_route_tablet_summary" />
+</PreferenceScreen>
