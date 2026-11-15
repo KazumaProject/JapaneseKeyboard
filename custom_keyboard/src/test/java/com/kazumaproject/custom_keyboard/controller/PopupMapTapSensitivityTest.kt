@@ -115,4 +115,19 @@ class PopupMapTapSensitivityTest {
             assertEquals(listOf("は"),output)
         }
     }
+    @Test fun bothPresentationsCommitDirectionalFlicksFromCenterAndEdgePresses() {
+        for (presentation in PopupMapPresentation.entries) verify(presentation) { key, _, output ->
+            for ((start, end) in listOf(
+                (100f to 50f) to (130f to 66f),
+                (100f to 99f) to (130f to 104f),
+                (100f to 1f) to (130f to -4f),
+            )) {
+                key.event(MotionEvent.ACTION_DOWN, start.first, start.second)
+                key.event(MotionEvent.ACTION_MOVE, end.first, end.second)
+                key.event(MotionEvent.ACTION_UP, end.first, end.second)
+                assertEquals("へ", output.last())
+            }
+        }
+    }
+
 }
