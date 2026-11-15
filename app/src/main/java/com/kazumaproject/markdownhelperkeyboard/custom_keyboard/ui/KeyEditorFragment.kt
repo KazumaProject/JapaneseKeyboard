@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
-import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
+import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
+import com.kazumaproject.custom_keyboard.data.PopupKeyConfigCodec
 import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -107,6 +108,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var _binding: FragmentKeyEditorBinding? = null
     private val binding get() = _binding!!
 
+    private var freeFlickDraft: PopupKeyConfig? = null
+    private var restoredInputStyleId: Int? = null
     private var currentKeyData: KeyData? = null
     private var qwertyDraftInitialized = false
     private var editingKeyIdentifier: String? = null
@@ -188,6 +191,16 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         restoredEditingKeyIdentifier = savedInstanceState?.getString("qwertyEditingKey")
         savedQwertyDraft = QwertyKeyConfigCodec.decode(savedInstanceState?.getString("qwertyDraft"), requireOutput = false)
         binding.qwertyKeyEditor.onChanged = { updateDoneButtonState() }
+        freeFlickDraft = PopupKeyConfigCodec.decode(savedInstanceState?.getString("freeFlickDraft")) ?: freeFlickDraft
+        restoredInputStyleId = savedInstanceState?.getInt("freeFlickInputStyle")?.takeIf { it != View.NO_ID }
+        childFragmentManager.setFragmentResultListener(CustomFreeFlickEditorDialog.RESULT, viewLifecycleOwner) { _, result ->
+            freeFlickDraft = PopupKeyConfigCodec.decode(result.getString(CustomFreeFlickEditorDialog.ARG_CONFIG))
+            updateDoneButtonState()
+        }
+        binding.editFreeFlickMap.setOnClickListener {
+            val config = ensureFreeFlickDraft() ?: return@setOnClickListener
+            CustomFreeFlickEditorDialog.create(PopupKeyConfigCodec.encode(config), binding.keyLabelEdittext.text.toString()).show(childFragmentManager, "freeFlickEditor")
+        }
         setupToolbarAndMenu()
         setupGridEditor()
         setupUIListeners()
@@ -349,6 +362,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             binding.outputModeChipGroup.isVisible = !isSpecialKey
 
             if (isSpecialKey) {
+                binding.editFreeFlickMap.isVisible = false
                 // Default category = single if none selected yet
                 if (binding.specialCategoryChipGroup.checkedChipId == View.NO_ID) {
                     binding.specialCategoryChipGroup.check(R.id.chip_special_single)
@@ -603,8 +617,36 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
     }
 
+    private fun ensureFreeFlickDraft(): PopupKeyConfig? {
+        val key = currentKeyData ?: return null
+        if (freeFlickDraft == null) {
+            val tap = currentFlickItems.firstOrNull { it.direction == FlickDirection.TAP }?.output
+                ?.takeIf { it.isNotEmpty() } ?: textOutputFromAction(key.action).ifEmpty { key.label }
+            freeFlickDraft = key.popupMapConfig ?: PopupKeyConfigCodec.create(key.keyId ?: return null, tap)
+        }
+        return freeFlickDraft
+    }
+
     private fun handleInputStyleUi() {
         val selectedStyle = binding.inputStyleChipGroup.checkedChipId
+        val isFreeFlick = selectedStyle == R.id.chip_free_flick
+        binding.editFreeFlickMap.isVisible = isFreeFlick
+        if (isFreeFlick) {
+            ensureFreeFlickDraft()
+            binding.qwertyKeyEditor.isVisible = false
+            binding.keyLabelLayout.isVisible = true
+            binding.flickGridEditorView.isVisible = false
+            binding.circularFlickEditorGroup.isVisible = false
+            binding.specialFlickEditorGroup.isVisible = false
+            binding.textSelectedDirection.isVisible = false
+            binding.textCharInputLayout.isVisible = false
+            binding.textOutputModeTitle.isVisible = false
+            binding.outputModeChipGroup.isVisible = false
+            binding.customKeyboardTargetLayout.isVisible = false
+            currentCellMode = null
+            updateIconOverrideVisibility()
+            return
+        }
         val isQwerty = selectedStyle == R.id.chip_qwerty
         binding.qwertyKeyEditor.isVisible = isQwerty
         if (isQwerty) {
@@ -1139,6 +1181,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             binding.textCharInputLayout.error = null
         }
         if (binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
+            binding.inputStyleChipGroup.checkedChipId == R.id.chip_free_flick) {
+            binding.buttonDone.isEnabled = ensureFreeFlickDraft()?.let { config ->
+                com.kazumaproject.custom_keyboard.data.PopupMapValidator.conflicts(config).isEmpty() &&
+                    config.maps.any { map -> map.tapText.isNotEmpty() || map.regions.any { it.action.text.isNotEmpty() } }
+            } == true
+            return
+        }
+        if (binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
             binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
             binding.buttonDone.isEnabled = binding.qwertyKeyEditor.isInputValid
             return
@@ -1236,7 +1286,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // legacy KeyData.keyId. selectedKeyIdentifier carries item.id for
             // flexible layouts (so half-cell keys and editor-created keys
             // resolve correctly even when keyData.keyId is null/blank).
-            val selectedId = state.selectedKeyIdentifier ?: restoredEditingKeyIdentifier.takeIf { savedQwertyDraft != null }
+            val selectedId = state.selectedKeyIdentifier ?: restoredEditingKeyIdentifier.takeIf { savedQwertyDraft != null || freeFlickDraft != null }
             editingKeyIdentifier = selectedId
             val selectedKeyItem = selectedId?.let { id ->
                 state.layout.items
@@ -1256,14 +1306,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             val key = currentKeyData!!
-            if (CustomFlickSuspension.isSuspended(key.keyType)) {
-                AlertDialog.Builder(requireContext())
-                    .setMessage(com.kazumaproject.core.R.string.custom_flick_suspended)
-                    .setPositiveButton(android.R.string.ok) { _, _ -> findNavController().popBackStack() }
-                    .setOnCancelListener { findNavController().popBackStack() }
-                    .show()
-                return@launch
-            }
             selectedIconRef = key.icon?.takeIf { it.isOverride() }
             originalIconRef = selectedIconRef
             key.doubleTapBinding
@@ -1361,7 +1403,12 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 outputEditMode = OutputEditMode.NORMAL
 
                 // Restore the supported editor.
-                if (key.keyType == KeyType.QWERTY || savedQwertyDraft != null) {
+                if (freeFlickDraft != null && restoredInputStyleId != null) {
+                    binding.inputStyleChipGroup.check(restoredInputStyleId!!)
+                } else if (key.keyType == KeyType.FREE_FLICK) {
+                    freeFlickDraft = freeFlickDraft ?: key.popupMapConfig
+                    binding.inputStyleChipGroup.check(R.id.chip_free_flick)
+                } else if (key.keyType == KeyType.QWERTY || savedQwertyDraft != null) {
                     binding.inputStyleChipGroup.check(R.id.chip_qwerty)
                 } else if (key.keyType == KeyType.TWO_STEP_FLICK) {
                     binding.inputStyleChipGroup.check(R.id.chip_two_step_flick)
@@ -1831,7 +1878,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun onDone() {
         val originalKey = currentKeyData ?: return
-        if (CustomFlickSuspension.isSuspended(originalKey.keyType)) return
 
         if (
             binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
@@ -1969,7 +2015,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 val isFlickLongPress =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_flick_long_press
 
-                if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
+                if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_free_flick) {
+                    val config = ensureFreeFlickDraft() ?: return
+                    if (!binding.buttonDone.isEnabled) return
+                    newKeyType = KeyType.FREE_FLICK
+                    newLabel = binding.keyLabelEdittext.text.toString().ifEmpty { config.map(config.startMapId)!!.tapText }
+                    newAction = KeyAction.Text(config.map(config.startMapId)!!.tapText)
+                    newLongPressFlickMap = emptyMap()
+                    newTwoStepLongPressMap = emptyMap()
+                } else if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
                     if (!binding.qwertyKeyEditor.isInputValid) return
                     newQwertyConfig = binding.qwertyKeyEditor.config
                     newKeyType = KeyType.QWERTY
@@ -2132,6 +2186,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // IMPORTANT: special flick should still be flickable (KeyType != NORMAL)
             isFlickable = newKeyType !in setOf(KeyType.NORMAL, KeyType.QWERTY),
             qwertyConfig = newQwertyConfig,
+            popupMapConfig = freeFlickDraft?.takeIf { newKeyType == KeyType.FREE_FLICK },
             drawableResId = newDrawableResId,
             icon = savedIconRef,
             rowSpan = if (isFlexibleSizeEditing) {
@@ -2191,6 +2246,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
 
     override fun onSaveInstanceState(outState: Bundle) {
+        freeFlickDraft?.let { outState.putString("freeFlickDraft", PopupKeyConfigCodec.encode(it)) }
+        if (_binding != null && freeFlickDraft != null) {
+            outState.putString("qwertyEditingKey", editingKeyIdentifier)
+            outState.putInt("freeFlickInputStyle", binding.inputStyleChipGroup.checkedChipId)
+        }
         if (_binding != null && binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
             binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
             outState.putString("qwertyDraft", QwertyKeyConfigCodec.encode(binding.qwertyKeyEditor.config))

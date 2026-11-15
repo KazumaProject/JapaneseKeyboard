@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
+import com.kazumaproject.custom_keyboard.data.PopupKeyConfigCodec
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.DoubleTapBinding
 import com.kazumaproject.custom_keyboard.data.FlickAction
@@ -950,6 +951,8 @@ class KeyboardRepository @Inject constructor(
                     specialKeyColorStyle = specialKeyColorStyle,
                     doubleTapBinding = doubleTapBinding,
                     qwertyConfig = QwertyKeyConfigCodec.decode(dbKey.qwertyConfigJson),
+                    popupMapConfig = PopupKeyConfigCodec.decode(dbKey.popupMapConfigJson)
+                        ?.takeIf { dbKey.keyType == KeyType.FREE_FLICK }?.copy(keyId = dbKey.keyIdentifier),
                     textInputBehavior = KeyTextInputBehavior.fromDbValue(dbKey.textInputBehavior)
                 )
             } else {
@@ -969,6 +972,8 @@ class KeyboardRepository @Inject constructor(
                     specialKeyColorStyle = specialKeyColorStyle,
                     doubleTapBinding = doubleTapBinding,
                     qwertyConfig = QwertyKeyConfigCodec.decode(dbKey.qwertyConfigJson),
+                    popupMapConfig = PopupKeyConfigCodec.decode(dbKey.popupMapConfigJson)
+                        ?.takeIf { dbKey.keyType == KeyType.FREE_FLICK }?.copy(keyId = dbKey.keyIdentifier),
                     textInputBehavior = KeyTextInputBehavior.fromDbValue(dbKey.textInputBehavior)
                 )
             }
@@ -1051,11 +1056,6 @@ class KeyboardRepository @Inject constructor(
                     }
                 }
             },
-            preservedFlickDefinitions = dbLayout.keysWithFlicks.mapNotNull { keyWithFlicks ->
-                keyWithFlicks.key.hierarchicalFlickJson?.let { json ->
-                    keyWithFlicks.key.keyIdentifier to json
-                }
-            }.toMap(),
             twoStepFlickKeyMaps = twoStepMaps,
             longPressFlickKeyMaps = longPressFlickMaps,
             twoStepLongPressKeyMaps = twoStepLongPressMaps,
@@ -1249,9 +1249,8 @@ class KeyboardRepository @Inject constructor(
                         doubleTapBinding?.action
                     ),
                     doubleTapPolicy = doubleTapBinding?.policy?.serializedName,
-                    hierarchicalFlickJson = if (keyData.keyType == KeyType.HIERARCHICAL_FLICK) {
-                        uiLayout.preservedFlickDefinitions[keyIdentifier]
-                    } else null,
+                    popupMapConfigJson = keyData.popupMapConfig?.takeIf { keyData.keyType == KeyType.FREE_FLICK }
+                        ?.let(PopupKeyConfigCodec::encode),
                     qwertyConfigJson = keyData.qwertyConfig?.let(QwertyKeyConfigCodec::encode),
                     textInputBehavior = keyData.textInputBehavior.dbValue
                 )

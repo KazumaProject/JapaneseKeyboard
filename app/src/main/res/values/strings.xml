@@ -276,11 +276,6 @@
     <string name="flick_threshold_shape_rectangular">Horizontal and vertical threshold (rectangular)</string>
     <string name="tfbi_diagonal_recognition_mode_title">Two-step diagonal detection</string>
     <string name="sumire_flick_rotation_title">Two-step flick rotation direction</string>
-    <string name="sumire_flick_input_mode_title">Three-step flick input features</string>
-    <string name="sumire_flick_input_mode_contracted">Contracted sounds and long vowels</string>
-    <string name="sumire_flick_input_mode_voiced">Voiced and semi-voiced kana</string>
-    <string name="sumire_flick_input_mode_all">All (default)</string>
-    <string name="sumire_flick_input_mode_summary">Choose contracted sounds such as きょ and きょう, voiced kana such as が and ぱ, or both.</string>
     <string name="sumire_flick_rotation_default">Default (current layout)</string>
     <string name="sumire_flick_rotation_clockwise">Clockwise</string>
     <string name="sumire_flick_rotation_counterclockwise">Counterclockwise</string>
@@ -1213,14 +1208,6 @@
     <string name="circularflicksettingsfragment">Donuts Input</string>
     <string name="sumire_custom_angle_preference_title">Donuts Input</string>
     <string name="sumire_custom_angle_preference_summary">Adjust the flick recognition angle</string>
-    <string name="hierarchical_flick_angle_margin_preference_title">Recognition angle for three-step flick input</string>
-    <string name="hierarchical_flick_angle_margin_preference_summary">Adjusts the boundary angle between neighboring input candidates</string>
-    <string name="hierarchical_flick_angle_margin_heading">I-column dakuten / contracted sounds</string>
-    <string name="hierarchical_flick_angle_margin_reset">Reset</string>
-    <string name="hierarchical_flick_angle_margin_label">Angle difference required for dakuten</string>
-    <string name="hierarchical_flick_angle_margin_description">Adjust this so inputs such as kyo / gyo are recognized as intended.\nIncreasing the angle makes gyo less likely to be recognized by mistake when entering kyo.</string>
-    <string name="hierarchical_flick_angle_margin_value">%1$d°</string>
-    <string name="hierarchical_flick_angle_margin_result">%1$s</string>
     <string name="custom_border_width">Border width</string>
     <string name="qwerty_switch_number_key_without_number_preference_title">Input mode when switching from the number keyboard</string>
     <string name="qwerty_switch_number_key_without_number_preference_sumary">When switching to the Kana keyboard or Sumire keyboard, switch to Japanese input mode instead of the number keyboard.。</string>
@@ -1965,18 +1952,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="gojuon_sizing_icon">Utility key icons</string>
     <string name="gojuon_sizing_special_text">Utility key text</string>
 
-    <string name="input_style_three_stage">3-stage flick</string>
-    <string name="template_three_stage_flick">Kana (3-stage flick)</string>
-    <string name="three_stage_state">Character state</string>
-    <string name="three_stage_normal">Normal</string>
-    <string name="three_stage_dakuten">Voiced</string>
-    <string name="three_stage_handakuten">Semi-voiced</string>
-    <string name="three_stage_path">Stage %1$d / 3  %2$s</string>
-    <string name="three_stage_back">Previous stage</string>
-    <string name="three_stage_open">Open next stage</string>
-    <string name="three_stage_branch_label">Branch label</string>
-    <string name="three_stage_add_branch">Create next stage</string>
-    <string name="three_stage_clear">Remove assignment</string>
     <string name="mushroom_shortcut_summary">Use a Mushroom app to transform or insert text</string>
     <string name="mushroom_choose_app">Choose a Mushroom app</string>
     <string name="mushroom_unavailable">No Mushroom apps are installed</string>
@@ -2038,4 +2013,6 @@ ABC abc 0123456789　ＡＢＣ　１２３４５
     <string name="qwerty_more_columns_description">More popup columns</string>
     <string name="qwerty_display_fallback">Leave empty to show the text to enter.</string>
     <string name="free_flick_choose_key">Tap a keyboard key to edit its popups.</string>
+    <string name="custom_free_flick">Free Flick</string>
+    <string name="custom_free_flick_edit">Edit maps and try input</string>
 </resources>

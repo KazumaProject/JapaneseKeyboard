@@ -23,6 +23,52 @@ import org.junit.runner.RunWith
 class FreeFlickPopupPositionInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
+    @Test fun customFreeFlickTypeCommitsTextSwitchesMapsAndCancelsInBothPresentations() {
+        val intent = Intent(instrumentation.context, SumireFlickRotationTestActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ActivityScenario.launch<SumireFlickRotationTestActivity>(intent).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.configure("default", TfbiFlickRotation.DEFAULT, TfbiPopupPresentationMode.LEGACY_GRID)
+                val config = PopupKeyConfig("custom-key", "base", listOf(
+                    PopupMap("base", "Base", "tap😀", listOf(
+                        PopupRegion("text", PopupBounds(-1.5f, -.5f, -.5f, .5f), PopupAction(text = "left")),
+                        PopupRegion("switch", PopupBounds(.5f, -.5f, 1.5f, .5f), PopupAction(PopupActionType.SWITCH, targetMapId = "next")))),
+                    PopupMap("next", "Next", "nextかな", listOf(
+                        PopupRegion("back", PopupBounds(-.5f, -1.5f, .5f, -.5f), PopupAction(PopupActionType.BACK))))))
+                val base = KeyboardDefaultLayouts.createFinalLayout(KeyboardInputMode.HIRAGANA, emptyMap(), "flick", "default")
+                activity.keyboard.setKeyboard(base.copyWithKeys(base.keys.map {
+                    if (it.label == "か") it.copy(keyId = "custom-key", keyType = KeyType.FREE_FLICK, popupMapConfig = config) else it
+                }), origin = KeyboardLayoutOrigin.CUSTOM)
+            }
+            instrumentation.waitForIdleSync()
+            for (presentation in PopupMapPresentation.entries) {
+                scenario.onActivity { it.keyboard.setPopupMapOptions(PopupMapInputOptions(nearestEnabled = false, presentation = presentation)) }
+                event(scenario, MotionEvent.ACTION_DOWN, 0f, 0f)
+                event(scenario, MotionEvent.ACTION_UP, 0f, 0f)
+                scenario.onActivity { assertEquals(listOf(KeyAction.Text("tap😀")), it.actions) }
+                event(scenario, MotionEvent.ACTION_DOWN, 0f, 0f)
+                event(scenario, MotionEvent.ACTION_MOVE, -1f, 0f)
+                event(scenario, MotionEvent.ACTION_UP, -1f, 0f)
+                scenario.onActivity { assertEquals(listOf(KeyAction.Text("left")), it.actions) }
+                event(scenario, MotionEvent.ACTION_DOWN, 0f, 0f)
+                event(scenario, MotionEvent.ACTION_MOVE, 1f, 0f)
+                event(scenario, MotionEvent.ACTION_MOVE, 0f, 0f)
+                event(scenario, MotionEvent.ACTION_UP, 0f, 0f)
+                scenario.onActivity { assertEquals(listOf(KeyAction.Text("nextかな")), it.actions) }
+                event(scenario, MotionEvent.ACTION_DOWN, 0f, 0f)
+                event(scenario, MotionEvent.ACTION_MOVE, 1f, 0f)
+                event(scenario, MotionEvent.ACTION_MOVE, 0f, -1f)
+                event(scenario, MotionEvent.ACTION_MOVE, 0f, 0f)
+                event(scenario, MotionEvent.ACTION_UP, 0f, 0f)
+                scenario.onActivity { assertEquals(listOf(KeyAction.Text("tap😀")), it.actions) }
+                event(scenario, MotionEvent.ACTION_DOWN, 0f, 0f)
+                event(scenario, MotionEvent.ACTION_MOVE, -1f, 0f)
+                event(scenario, MotionEvent.ACTION_CANCEL, -1f, 0f)
+                scenario.onActivity { assertTrue(it.actions.isEmpty()) }
+            }
+        }
+    }
+
     @Test fun sensitivityKeepsPopupPlacementAndDirectHitsKeyRelative() {
         val intent = Intent(instrumentation.context, SumireFlickRotationTestActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -67,7 +113,9 @@ class FreeFlickPopupPositionInstrumentedTest {
     private fun event(scenario: ActivityScenario<SumireFlickRotationTestActivity>, action: Int, x: Float, y: Float) {
         scenario.onActivity { activity ->
             if (action == MotionEvent.ACTION_DOWN) activity.actions.clear()
-            val key = activity.kaKey()
+            // Free Flick temporarily replaces the displayed text with the active map tap output.
+            val key = (0 until activity.keyboard.childCount).map(activity.keyboard::getChildAt)
+                .single { it.contentDescription?.toString() == "か" }
             val keyLocation = IntArray(2).also(key::getLocationOnScreen)
             val keyboardLocation = IntArray(2).also(activity.keyboard::getLocationOnScreen)
             val event = MotionEvent.obtain(0L, SystemClock.uptimeMillis(), action,

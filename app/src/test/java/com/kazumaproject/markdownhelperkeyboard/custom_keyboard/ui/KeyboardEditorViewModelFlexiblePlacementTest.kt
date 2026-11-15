@@ -1153,10 +1153,6 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
                     "x" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.LEFT to "x")),
                     "y" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.LEFT to "y"))
                 ),
-                preservedFlickDefinitions = mapOf(
-                    "x" to """{"label":"x"}""",
-                    "y" to """{"label":"y"}"""
-                ),
                 columnCount = 2,
                 rowCount = 1,
                 items = listOf(
@@ -1175,13 +1171,11 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertFalse(layout.twoStepFlickKeyMaps.containsKey("x"))
         assertFalse(layout.longPressFlickKeyMaps.containsKey("x"))
         assertFalse(layout.twoStepLongPressKeyMaps.containsKey("x"))
-        assertFalse(layout.preservedFlickDefinitions.containsKey("x"))
         assertTrue(layout.flickKeyMaps.containsKey("y"))
         assertTrue(layout.circularFlickKeyMaps.containsKey("y"))
         assertTrue(layout.twoStepFlickKeyMaps.containsKey("y"))
         assertTrue(layout.longPressFlickKeyMaps.containsKey("y"))
         assertTrue(layout.twoStepLongPressKeyMaps.containsKey("y"))
-        assertTrue(layout.preservedFlickDefinitions.containsKey("y"))
         assertNull(vm.uiState.value.selectedItemId)
     }
 

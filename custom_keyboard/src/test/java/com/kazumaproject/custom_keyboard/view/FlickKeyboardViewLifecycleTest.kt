@@ -46,7 +46,7 @@ class FlickKeyboardViewLifecycleTest {
     @Test fun all54SumireLayoutsKeepEveryKeysTapAfterHideAndReuse() {
         for (mode in KeyboardInputMode.entries) {
             for (method in listOf("toggle", "flick", "switch-mode-effective")) {
-                for (style in listOf("default", "circle", "second-flick", "third-flick", "center-guide-flick", "sumire")) {
+                for (style in listOf("default", "circle", "second-flick", "center-guide-flick", "sumire")) {
                     val scenario = "$mode/$method/$style"
                     val layout = KeyboardDefaultLayouts.createFinalLayout(mode, emptyMap(), method, style)
                     install(layout)
@@ -88,7 +88,7 @@ class FlickKeyboardViewLifecycleTest {
     @Test fun all54SumireLayoutsKeepEveryKeysLongPressAfterHide() {
         for (mode in KeyboardInputMode.entries) {
             for (method in listOf("toggle", "flick", "switch-mode-effective")) {
-                for (style in listOf("default", "circle", "second-flick", "third-flick", "center-guide-flick", "sumire")) {
+                for (style in listOf("default", "circle", "second-flick", "center-guide-flick", "sumire")) {
                     val scenario = "$mode/$method/$style"
                     install(KeyboardDefaultLayouts.createFinalLayout(mode, emptyMap(), method, style))
                     holdAllKeys()

@@ -4,6 +4,13 @@ import android.content.Context
 import android.content.res.AssetFileDescriptor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.InputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,6 +19,40 @@ class DictionarySourceResolver @Inject constructor(
     @ApplicationContext private val context: Context,
     private val store: DictionaryOverrideStore,
 ) {
+    private val mappedDictionaryCache: MappedDictionaryAssetCache? by lazy {
+        val manifest = try {
+            context.assets.open("dictionary-assets.json").bufferedReader().use { it.readText() }
+        } catch (_: FileNotFoundException) {
+            null // Debug builds retain the uncompressed, directly mappable assets.
+        }
+        manifest?.let {
+            MappedDictionaryAssetCache(File(context.noBackupFilesDir, "bundled-dictionaries"), it) { path ->
+                context.assets.open(path)
+            }
+        }
+    }
+
+    internal fun <T> readBundledAssetBuffer(path: String, read: (ByteBuffer) -> T): T {
+        val cache = mappedDictionaryCache
+        if (cache != null && cache.contains(path)) {
+            val file = try {
+                cache.fileFor(path)
+            } catch (error: IOException) {
+                Timber.w(error, "Cannot cache bundled dictionary; decoding in memory: %s", path)
+                null
+            }
+            if (file == null) return read(ByteBuffer.wrap(cache.readBytes(path)))
+            return FileInputStream(file).channel.use { channel ->
+                read(channel.map(FileChannel.MapMode.READ_ONLY, 0, file.length()))
+            }
+        }
+        return openBundledAssetFileDescriptor(path).use { descriptor ->
+            FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
+                read(channel.map(FileChannel.MapMode.READ_ONLY, descriptor.startOffset, descriptor.length))
+            }
+        }
+    }
+
     fun openForKey(key: DictionaryFileKey): InputStream =
         if (shouldUseOverride(key)) openOverrideForKey(key) else openBundledForKey(key)
 

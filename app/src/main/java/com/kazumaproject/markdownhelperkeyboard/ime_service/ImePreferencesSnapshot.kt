@@ -103,7 +103,6 @@ data class ImePreferencesSnapshot(
     val flickThresholdShapePreferenceValue: String,
     val tfbiDiagonalRecognitionModePreferenceValue: String,
     val tfbiFlickRotationPreferenceValue: String,
-    val sumireFlickInputModePreferenceValue: String,
     val sumireModeKeyHighlight: Boolean,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
@@ -263,7 +262,6 @@ data class ImePreferencesSnapshot(
     val learnDictionaryPredictionCandidateLimit: Int,
     val circularFlickWindowScale: Float,
     val circularFlickDirectionCount: Int,
-    val hierarchicalFlickModeSwitchAngleMargin: Int,
     val customKeyBorderWidth: Int,
     val qwertySwitchNumberKeyWithoutNumberPreference: Boolean,
     val customRomajiZenkakuConversionEnablePreference: Boolean,
@@ -453,8 +451,6 @@ data class ImePreferencesSnapshot(
                     appPreference.tfbi_diagonal_recognition_mode_preference.preferenceValue,
                 tfbiFlickRotationPreferenceValue =
                     appPreference.sumire_flick_rotation_preference.preferenceValue,
-                sumireFlickInputModePreferenceValue =
-                    appPreference.sumire_flick_input_mode_preference.preferenceValue,
                 sumireModeKeyHighlight = appPreference.sumire_mode_key_highlight_preference,
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,
@@ -513,10 +509,8 @@ data class ImePreferencesSnapshot(
                 keySoundVolumePercent = appPreference.key_sound_volume_percent_preference ?: 0,
                 sumireInputKeyType =
                     appPreference.sumire_input_selection_preference ?: "flick-default",
-                sumireInputKeyLayoutType = if (appPreference.sumire_keyboard_style == "third-flick") "flick"
-                    else appPreference.sumire_input_method,
-                sumireInputStyle = if (appPreference.sumire_keyboard_style == "third-flick") "default"
-                    else appPreference.sumire_keyboard_style,
+                sumireInputKeyLayoutType = appPreference.sumire_input_method,
+                sumireInputStyle = appPreference.sumire_keyboard_style,
                 candidateColumns = appPreference.candidate_column_preference,
                 candidateColumnsLandscape = appPreference.candidate_column_landscape_preference,
                 candidateTabVisibility = appPreference.candidate_tab_preference,
@@ -783,8 +777,6 @@ data class ImePreferencesSnapshot(
                     appPreference.learn_dictionary_prediction_candidate_limit_preference,
                 circularFlickWindowScale = appPreference.circular_flickWindow_scale,
                 circularFlickDirectionCount = appPreference.circularFlickDirectionCount,
-                hierarchicalFlickModeSwitchAngleMargin =
-                    appPreference.hierarchical_flick_mode_switch_angle_margin_preference,
                 customKeyBorderWidth = appPreference.custom_theme_border_width,
                 qwertySwitchNumberKeyWithoutNumberPreference =
                     appPreference.qwerty_switch_number_key_without_number_preference,

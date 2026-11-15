@@ -25,15 +25,14 @@ internal object SumireLayoutPresentation {
         placementOverrides: List<SumireSpecialKeyPlacementOverrideEntity>,
     ): KeyboardLayout {
         val prefs = AppPreference
-        val layoutType = if (prefs.sumire_keyboard_style == "third-flick") "flick" else prefs.sumire_input_method
-        val style = if (prefs.sumire_keyboard_style == "third-flick") "default" else prefs.sumire_keyboard_style
+        val layoutType = prefs.sumire_input_method
+        val style = prefs.sumire_keyboard_style
         val base = KeyboardDefaultLayouts.createFinalLayout(
             mode = mode, dynamicKeyStates = dynamicStates, inputLayoutType = layoutType,
             inputStyle = style,
             deleteKeyFlickSettings = DeleteKeyFlickSettings(prefs.delete_key_left_flick_preference,
                 prefs.delete_key_up_flick_preference, prefs.delete_key_down_flick_preference),
             tfbiFlickRotation = prefs.sumire_flick_rotation_preference,
-            sumireFlickInputMode = prefs.sumire_flick_input_mode_preference,
             highlightSelectedMode = prefs.sumire_mode_key_highlight_preference,
         )
         val circular = CircularSlotActionApplier.apply(base, mode, prefs.getCircularSlotActionSettings())

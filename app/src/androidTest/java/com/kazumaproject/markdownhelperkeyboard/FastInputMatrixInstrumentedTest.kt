@@ -414,7 +414,6 @@ class FastInputMatrixInstrumentedTest {
                     "default",
                     "circle",
                     "second-flick",
-                    "third-flick",
                     "sumire",
                 )
                 val functionalCases = buildList {

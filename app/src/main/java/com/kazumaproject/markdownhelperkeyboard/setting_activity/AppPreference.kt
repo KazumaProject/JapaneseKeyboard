@@ -15,7 +15,6 @@ import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
-import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
@@ -154,7 +153,6 @@ object AppPreference {
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
     const val TFBI_DIAGONAL_RECOGNITION_MODE_KEY = "tfbi_diagonal_recognition_mode_preference"
     const val SUMIRE_FLICK_ROTATION_KEY = "sumire_flick_rotation_preference"
-    const val SUMIRE_FLICK_INPUT_MODE_KEY = "sumire_flick_input_mode_preference"
     const val SUMIRE_MODE_KEY_HIGHLIGHT_KEY = "sumire_mode_key_highlight_preference"
     const val FLICK_TFBI_POPUP_PRESENTATION_KEY = "flick_tfbi_popup_presentation_preference"
     const val FLICK_TFBI_FLICK_START_POSITION_KEY =
@@ -361,8 +359,6 @@ object AppPreference {
         Pair("flick_guide_text_size_sp_preference", 9)
     private val FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE =
         Pair("flick_guide_max_characters_preference", 1)
-    private val HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN =
-        Pair("hierarchical_flick_mode_switch_angle_margin_preference", 20)
 
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
@@ -1083,6 +1079,7 @@ object AppPreference {
                 migrateSumireKeymapGuideModesIfNeeded()
                 migrateGojuonKeyboardTypeIfNeeded(context)
                 migrateSumirePreferenceIfNeeded()
+                removeRetiredFlickPreferences()
                 initialized = true
                 initialization.complete(Unit)
             } catch (failure: Throwable) {
@@ -1997,14 +1994,6 @@ object AppPreference {
             it.putString(SUMIRE_FLICK_ROTATION_KEY, value.preferenceValue)
         }
 
-    var sumire_flick_input_mode_preference: SumireFlickInputMode
-        get() = SumireFlickInputMode.fromPreferenceValue(
-            preferences.getString(SUMIRE_FLICK_INPUT_MODE_KEY, SumireFlickInputMode.ALL.preferenceValue)
-        )
-        set(value) = preferences.edit {
-            it.putString(SUMIRE_FLICK_INPUT_MODE_KEY, value.preferenceValue)
-        }
-
     val tenkey_show_flick_popup_preference: Boolean
         get() = preferences.getBoolean(TENKEY_SHOW_FLICK_POPUP_KEY, true)
 
@@ -2020,18 +2009,6 @@ object AppPreference {
     var sumire_mode_key_highlight_preference: Boolean
         get() = preferences.getBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, false)
         set(value) = preferences.edit { it.putBoolean(SUMIRE_MODE_KEY_HIGHLIGHT_KEY, value) }
-
-    var hierarchical_flick_mode_switch_angle_margin_preference: Int
-        get() = preferences.getInt(
-            HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.first,
-            HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.second
-        ).coerceIn(0, 34)
-        set(value) = preferences.edit {
-            it.putInt(
-                HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.first,
-                value.coerceIn(0, 34)
-            )
-        }
 
     var independent_multi_touch_preference: Boolean
         get() = preferences.getBoolean(INDEPENDENT_MULTI_TOUCH_KEY, false)
@@ -2946,8 +2923,21 @@ object AppPreference {
             it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "toggle-default")
         }
 
+    /** Remove retired settings on startup, including after restoring an old preferences backup. */
+    private fun removeRetiredFlickPreferences() {
+        val oldMode = "sumire_flick_input_mode_preference"
+        val oldAngle = "hierarchical_flick_mode_switch_angle_margin_preference"
+        val oldStyle = preferences.getString(NEW_SUMIRE_STYLE_KEY, "default") == "third-flick"
+        if (!oldStyle && !preferences.contains(oldMode) && !preferences.contains(oldAngle)) return
+        preferences.edit {
+            it.remove(oldMode).remove(oldAngle)
+            if (oldStyle) it.putString(NEW_SUMIRE_STYLE_KEY, "default").putString(NEW_SUMIRE_METHOD_KEY, "flick")
+        }
+    }
+
     var sumire_keyboard_style: String
-        get() = preferences.getString(NEW_SUMIRE_STYLE_KEY, "default") ?: "default"
+        get() = preferences.getString(NEW_SUMIRE_STYLE_KEY, "default")
+            ?.takeIf { it in setOf("default", "circle", "second-flick", "center-guide-flick", "sumire", "free-popup") } ?: "default"
         set(value) = preferences.edit {
             it.putString(NEW_SUMIRE_STYLE_KEY, value)
         }
