@@ -28,6 +28,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOv
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideValidator
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ClassifiedDictionarySettingsFragment
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CollapsiblePreferenceCategory
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingsListPreferenceDialog
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionarySettingsFragment
@@ -190,6 +191,13 @@ class SettingsDesignRefreshInstrumentedTest {
                 scenario.onActivity { activity ->
                     val owner = host(activity).childFragmentManager.primaryNavigationFragment as CommonPreferenceFragment
                     val preference = owner.findPreference<ListPreference>(key)!!
+                    val headings = generateSequence(preference.parent) { it.parent }
+                        .filterIsInstance<CollapsiblePreferenceCategory>().toList()
+                    assertTrue("The test preference must have a category", headings.isNotEmpty())
+                    headings.forEach { heading ->
+                        assertTrue("New settings headings must stay open", heading.isExpanded)
+                        assertFalse("New settings headings must not collapse on tap", heading.isSelectable)
+                    }
                     selected = preference.entryValues!!.first { it.toString() != preference.value }.toString()
                     owner.onDisplayPreferenceDialog(preference)
                 }

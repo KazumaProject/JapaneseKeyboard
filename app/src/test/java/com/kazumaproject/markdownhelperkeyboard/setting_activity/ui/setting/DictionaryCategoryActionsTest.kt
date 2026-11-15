@@ -33,6 +33,8 @@ class DictionaryCategoryActionsTest {
     private var changedCategories = emptyList<DictionaryCategory>()
 
     @Before fun setUp() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+            .putBoolean("setting_use_new_home_screen_preference", false).commit()
         context.getSharedPreferences(CollapsiblePreferenceCategory.STATE_PREFERENCES, Context.MODE_PRIVATE)
             .edit().clear().commit()
         val prefs = context.getSharedPreferences("category-actions", Context.MODE_PRIVATE)

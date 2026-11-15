@@ -82,7 +82,7 @@ class SettingSearchEntryInstrumentedTest {
                     val list = it.findViewById<RecyclerView>(R.id.setting_search_result_recycler_view)
                     (list?.adapter?.itemCount ?: 0) > 0 && list!!.childCount > 0
                 }
-                if (!newHome) scenario.onActivity { activity ->
+                scenario.onActivity { activity ->
                     val list = activity.findViewById<RecyclerView>(R.id.setting_search_result_recycler_view)
                     for (index in 0 until list.childCount) {
                         assertFalse(list.getChildAt(index).findViewById<View>(R.id.setting_search_result_arrow).isShown)

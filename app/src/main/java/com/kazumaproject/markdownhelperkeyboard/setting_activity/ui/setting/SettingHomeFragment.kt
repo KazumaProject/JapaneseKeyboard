@@ -285,19 +285,6 @@ class SettingHomeFragment : Fragment() {
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
             )
-        } else if (!settingCardEditorController.isDirectEditable(destination)) {
-            headerRow.addView(
-                View(context),
-                LinearLayout.LayoutParams(0, 1, 1f)
-            )
-            headerRow.addView(
-                ImageView(context).apply {
-                    setImageResource(CoreR.drawable.baseline_arrow_right_24)
-                    imageTintList =
-                        ColorStateList.valueOf(resolveColor(MaterialR.attr.colorOnSurfaceVariant))
-                },
-                LinearLayout.LayoutParams(dp(24), dp(24))
-            )
         }
         content.addView(headerRow)
         content.addView(
@@ -413,15 +400,6 @@ class SettingHomeFragment : Fragment() {
                 marginStart = dp(14)
             }
         )
-        row.addView(
-            ImageView(context).apply {
-                setImageResource(CoreR.drawable.baseline_arrow_right_24)
-                imageTintList =
-                    ColorStateList.valueOf(resolveColor(MaterialR.attr.colorOnSurfaceVariant))
-            },
-            LinearLayout.LayoutParams(dp(24), dp(24))
-        )
-
         card.addView(row)
         card.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,

@@ -23,6 +23,8 @@ class CollapsibleDictionarySettingsTest {
     private val context = ContextThemeWrapper(ApplicationProvider.getApplicationContext<Context>(), R.style.Theme_MarkdownKeyboard)
 
     @Before fun clearExpansionState() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+            .putBoolean("setting_use_new_home_screen_preference", false).commit()
         context.getSharedPreferences(CollapsiblePreferenceCategory.STATE_PREFERENCES, Context.MODE_PRIVATE).edit().clear().commit()
     }
 
@@ -122,4 +124,42 @@ class CollapsibleDictionarySettingsTest {
         group.setExpanded(false)
         assertFalse(action.isVisible)
     }
+    @Test fun newSettingsUseNonInteractiveHeadingsWithoutHidingItemsOrChangingValues() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+            .putBoolean("setting_use_new_home_screen_preference", true).commit()
+        val screen = inflate()
+        val groups = descendants(screen).filterIsInstance<CollapsiblePreferenceCategory>()
+        assertTrue(groups.isNotEmpty())
+        groups.forEach { group ->
+            assertTrue(group.key, group.isExpanded)
+            assertFalse(group.key, group.isSelectable)
+            assertEquals(0, group.widgetLayoutResource)
+        }
+        val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
+        shrine.isChecked = true
+        assertTrue(shrine.isVisible)
+        assertTrue(shrine.isEnabled)
+        val facility = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
+        facility.performClick()
+        facility.setExpanded(false)
+        assertTrue(facility.isExpanded)
+        assertTrue(shrine.isVisible)
+        assertTrue(shrine.isChecked)
+        assertTrue(context.getSharedPreferences(CollapsiblePreferenceCategory.STATE_PREFERENCES, Context.MODE_PRIVATE).all.isEmpty())
+    }
+
+    @Test fun newSettingsRespectConditionalVisibilityWhileKeepingGroupsOpen() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+            .putBoolean("setting_use_new_home_screen_preference", true).commit()
+        val screen = inflate()
+        val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility_religious")!!
+        val shrine = screen.findPreference<SwitchPreferenceCompat>("optional_bundled_enabled_CLASSIFIED_FACILITY_RELIGIOUS_SHRINE")!!
+        shrine.conditionVisible = false
+        group.setExpanded(false)
+        assertTrue(group.isExpanded)
+        assertFalse(shrine.isVisible)
+        shrine.conditionVisible = true
+        assertTrue(shrine.isVisible)
+    }
+
 }

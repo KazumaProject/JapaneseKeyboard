@@ -67,17 +67,17 @@ class SettingsPreferenceAdapterTest {
         assertTrue((widget.getChildAt(0) as android.widget.CompoundButton).isChecked)
     }
 
-    @Test fun newSettingsKeepTheirNavigationArrow() {
+    @Test fun newSettingsHaveNoTrailingNavigationArrow() {
         AppPreference.setting_use_new_home_screen_preference = true
         val adapter = adapter(Preference(context))
         val holder = adapter.onCreateViewHolder(parent(), adapter.getItemViewType(0))
         adapter.onBindViewHolder(holder, 0)
         val widget = holder.findViewById(android.R.id.widget_frame) as ViewGroup
-        assertEquals(View.VISIBLE, widget.visibility)
-        assertEquals(1, widget.childCount)
+        assertEquals(View.GONE, widget.visibility)
+        assertEquals(0, widget.childCount)
     }
 
-    @Test fun rebindingANewSettingsRowInConventionalModeHidesItsArrow() {
+    @Test fun rebindingBetweenHomeModesKeepsEmptyWidgetsHidden() {
         AppPreference.setting_use_new_home_screen_preference = true
         val adapter = adapter(Preference(context))
         val holder = adapter.onCreateViewHolder(parent(), adapter.getItemViewType(0))

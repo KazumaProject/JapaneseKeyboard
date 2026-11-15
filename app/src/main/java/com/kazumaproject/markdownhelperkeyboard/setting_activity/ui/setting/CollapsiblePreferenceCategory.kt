@@ -5,15 +5,18 @@ import android.util.AttributeSet
 import android.widget.TextView
 import androidx.preference.PreferenceCategory
 import androidx.preference.Preference
+import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceViewHolder
 import com.kazumaproject.markdownhelperkeyboard.R
 import java.util.IdentityHashMap
 
-/** A heading that hides its children without changing any dictionary selection. */
+/** Conventional settings can collapse groups; new settings use ordinary, always-open headings. */
 class CollapsiblePreferenceCategory @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : PreferenceCategory(context, attrs) {
+    private val collapsible = !PreferenceManager.getDefaultSharedPreferences(context)
+        .getBoolean("setting_use_new_home_screen_preference", true)
     private var expansionInitialized = false
     private val intrinsicVisibility = IdentityHashMap<Preference, Boolean>()
     private var description: CharSequence? = null
@@ -22,43 +25,47 @@ class CollapsiblePreferenceCategory @JvmOverloads constructor(
         private set
 
     init {
-        isSelectable = true
+        isSelectable = collapsible
         isPersistent = false
         isIconSpaceReserved = false
-        layoutResource = androidx.preference.R.layout.preference_material
-        widgetLayoutResource = R.layout.preference_group_expander
+        if (collapsible) {
+            layoutResource = androidx.preference.R.layout.preference_material
+            widgetLayoutResource = R.layout.preference_group_expander
+        }
     }
 
-    override fun isEnabled(): Boolean = true
+    override fun isEnabled(): Boolean = collapsible || super.isEnabled()
 
     override fun onAttached() {
         super.onAttached()
         // AsyncPreferenceFragment can expand a search target before AndroidX binds
         // the screen. Do not overwrite that temporary state during attachment.
-        val expanded = if (expansionInitialized) isExpanded else
+        val expanded = if (!collapsible) true else if (expansionInitialized) isExpanded else
             context.getSharedPreferences(STATE_PREFERENCES, Context.MODE_PRIVATE).getBoolean(key, false)
         setExpanded(expanded, persist = false)
     }
 
     override fun onClick() {
-        setExpanded(!isExpanded)
+        if (collapsible) setExpanded(!isExpanded)
     }
 
     fun setExpanded(expanded: Boolean, persist: Boolean = true) {
         if (!descriptionCaptured) { description = summary; descriptionCaptured = true }
         expansionInitialized = true
-        isExpanded = expanded
-        if (persist) {
+        isExpanded = expanded || !collapsible
+        if (persist && collapsible) {
             context.getSharedPreferences(STATE_PREFERENCES, Context.MODE_PRIVATE)
                 .edit().putBoolean(key, expanded).apply()
         }
         for (index in 0 until preferenceCount) {
             val child = getPreference(index)
             val visibleByCondition = intrinsicVisibility.getOrPut(child) { child.isVisible }
-            child.isVisible = expanded && visibleByCondition
+            child.isVisible = isExpanded && visibleByCondition
         }
-        val state = context.getString(if (expanded) R.string.classified_group_expanded else R.string.classified_group_collapsed)
-        summary = description?.takeIf { it.isNotBlank() }?.let { "$it · $state" } ?: state
+        summary = if (collapsible) {
+            val state = context.getString(if (isExpanded) R.string.classified_group_expanded else R.string.classified_group_collapsed)
+            description?.takeIf { it.isNotBlank() }?.let { "$it · $state" } ?: state
+        } else description
         notifyChanged()
     }
 
@@ -71,9 +78,10 @@ class CollapsiblePreferenceCategory @JvmOverloads constructor(
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
-        (holder.findViewById(R.id.preference_group_expander) as TextView).text = if (isExpanded) "▾" else "▸"
-        // This heading is also an action; its title and summary describe it to TalkBack.
-        holder.itemView.isClickable = true
+        if (collapsible) {
+            (holder.findViewById(R.id.preference_group_expander) as? TextView)?.text = if (isExpanded) "▾" else "▸"
+        }
+        holder.itemView.isClickable = collapsible
     }
 
     companion object {
