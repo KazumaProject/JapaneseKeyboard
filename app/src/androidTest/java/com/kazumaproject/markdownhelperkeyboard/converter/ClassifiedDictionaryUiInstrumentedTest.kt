@@ -136,10 +136,15 @@ class ClassifiedDictionaryUiInstrumentedTest {
         val settingsPrefs = PreferenceManager.getDefaultSharedPreferences(context)
         val oldHomeMode = settingsPrefs.getBoolean("setting_use_new_home_screen_preference", true)
         var activity: MainActivity? = null
+        fun awaitSettingsReady(message: String, condition: () -> Boolean) = await(message) {
+            condition() && activity?.window?.decorView?.let { root ->
+                descendants(root).none { it.id == R.id.settings_loading_overlay && it.isShown }
+            } == true
+        }
         try {
             shell("ime enable $target")
             shell("am start -f 0x10008000 -n ${context.packageName}/com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity")
-            await("Settings not ready") {
+            awaitSettingsReady("Settings not ready") {
                 ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
                     .filterIsInstance<MainActivity>().firstOrNull()?.takeIf { it.isSettingsContentReady }?.let { activity = it; true } == true
             }
@@ -153,7 +158,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     host.navController.navigate(R.id.classifiedDictionarySettingsFragment)
                 }
                 lateinit var page: View
-                await("Dictionary manager not ready") {
+                awaitSettingsReady("Dictionary manager not ready") {
                     host.childFragmentManager.primaryNavigationFragment?.view?.takeIf {
                         (it.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.classified_list)?.adapter?.itemCount ?: 0) == 7
                     }?.let { page = it; true } == true
@@ -171,12 +176,12 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     fun switch(): com.google.android.material.materialswitch.MaterialSwitch? =
                         descendants(list).filterIsInstance<com.google.android.material.materialswitch.MaterialSwitch>()
                             .firstOrNull { it.contentDescription == name }
-                    await("${spec.id} switch not displayed") { list.scrollToPosition(index); switch() != null }
+                    awaitSettingsReady("${spec.id} switch not displayed") { list.scrollToPosition(index); switch() != null }
                     val original = store.isOptionalBundledEnabled(spec.category)
                     main { switch()!!.performClick() }
-                    await("${spec.id} change not saved and displayed") { store.isOptionalBundledEnabled(spec.category) == !original && switch()?.isChecked == !original }
+                    awaitSettingsReady("${spec.id} change not saved and displayed") { store.isOptionalBundledEnabled(spec.category) == !original && switch()?.isChecked == !original }
                     main { switch()!!.performClick() }
-                    await("${spec.id} state not restored") { store.isOptionalBundledEnabled(spec.category) == original && switch()?.isChecked == original }
+                    awaitSettingsReady("${spec.id} state not restored") { store.isOptionalBundledEnabled(spec.category) == original && switch()?.isChecked == original }
                 }
             }
             ClassifiedDictionaries.all.forEach { store.setDisableableCategoryEnabled(it.category, false, true) }
@@ -184,7 +189,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
                 main { host.navController.navigate(R.id.externalDictionarySettingsFragment,
                     Bundle().apply { putString("externalDictionaryCategory", spec.category.name) }) }
                 var externalSwitch: SwitchPreferenceCompat? = null
-                await("External ${spec.id} did not open") {
+                awaitSettingsReady("External ${spec.id} did not open") {
                     val current = host.childFragmentManager.primaryNavigationFragment as? ExternalDictionarySettingsFragment
                     val screen = current?.preferenceScreen
                     val group = screen?.let { (0 until it.preferenceCount).map(it::getPreference) }
@@ -194,7 +199,7 @@ class ClassifiedDictionaryUiInstrumentedTest {
                     externalSwitch?.let { !it.isChecked && it.onPreferenceChangeListener != null } == true
                 }
                 main { val toggle = requireNotNull(externalSwitch); assertTrue(toggle.callChangeListener(true)) }
-                await("External ${spec.id} did not share ON") { store.isOptionalBundledEnabled(spec.category) }
+                awaitSettingsReady("External ${spec.id} did not share ON") { store.isOptionalBundledEnabled(spec.category) }
                 main { assertTrue(host.navController.popBackStack()) }
             }
             assertTrue(ClassifiedDictionaries.all.all { store.isOptionalBundledEnabled(it.category) })

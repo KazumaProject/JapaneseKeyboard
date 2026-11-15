@@ -135,7 +135,11 @@ class SettingsDesignRefreshInstrumentedTest {
                 await(scenario, "Second toggle was not saved") { store.isOptionalBundledEnabled(shrine) }
                 scenario.recreate()
                 scenario.awaitSettingsContentReady()
-                await(scenario, "Query did not survive recreation") { it.findViewById<TextInputEditText>(R.id.classified_search)?.text?.toString() == context.getString(R.string.classified_dictionary_facility_religious_shrine) }
+                await(scenario, "Query and dictionary rows did not survive recreation") { activity ->
+                    activity.findViewById<TextInputEditText>(R.id.classified_search)?.text?.toString() == context.getString(R.string.classified_dictionary_facility_religious_shrine) &&
+                        activity.findViewById<RecyclerView>(R.id.classified_list)?.adapter?.itemCount == 1 &&
+                        descendants(activity.window.decorView).none { it.id == R.id.settings_loading_overlay && it.isShown }
+                }
                 assertTrue(store.isOptionalBundledEnabled(shrine))
                 scenario.onActivity { it.findViewById<Chip>(R.id.classified_filter_disabled).performClick() }
                 await(scenario, "Disabled filter includes an enabled category") { it.findViewById<RecyclerView>(R.id.classified_list).adapter!!.itemCount == 0 }
