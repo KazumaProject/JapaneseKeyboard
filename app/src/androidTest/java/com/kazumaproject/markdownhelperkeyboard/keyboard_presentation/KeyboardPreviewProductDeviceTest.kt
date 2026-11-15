@@ -269,16 +269,16 @@ class KeyboardPreviewProductDeviceTest {
     }
 
     @Test fun settingsPreviewsUseTheCurrentLayoutAndRealConversionCandidates() {
-        assumeTrue(context.packageName.endsWith(".settingsreview"))
+        assumeTrue(context.packageName.endsWith(".settingsreview") || context.packageName.endsWith(".settingsuxreview"))
         val saved = prefs.all.toMap()
         val oldIme = shell("settings get secure default_input_method")
         val ime = "${context.packageName}/com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
         try {
             AppPreference.init(context)
             AppPreference.setting_use_new_home_screen_preference = true
-            prefs.edit().putString("keyboard_order_preference", "[\"TENKEY\",\"QWERTY\"]").commit()
+            prefs.edit().putString("keyboard_order_preference", "[\"TENKEY\"]").commit()
             AppPreference.save_last_used_keyboard_enable_preference = true
-            AppPreference.save_last_used_keyboard_position_preference = 1
+            AppPreference.save_last_used_keyboard_position_preference = 0
             AppPreference.keyboardSkin = KeyboardSkinId.DEFAULT
             shell("ime enable $ime"); shell("ime set $ime")
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
@@ -313,6 +313,8 @@ class KeyboardPreviewProductDeviceTest {
                 val converted = requireNotNull(KeyboardTrialSession.candidates.value).candidates
                 ins.runOnMainSync {
                     (home(activity!!).childFragmentManager.findFragmentByTag("keyboard-trial") as KeyboardTrialDialog).dismiss()
+                    AppPreference.keyboard_order = listOf(KeyboardType.QWERTY)
+                    AppPreference.save_last_used_keyboard_position_preference = 0
                     nav().navigate(R.id.candidateViewHeightSettingFragment)
                 }
                 await("Candidate settings did not display the actual trial result") {
@@ -348,7 +350,7 @@ class KeyboardPreviewProductDeviceTest {
                 }
                 ins.runOnMainSync {
                     assertEquals("Previewing themes changed the selected theme", KeyboardSkinId.DEFAULT, AppPreference.keyboardSkin)
-                    assertEquals("Trial changed the remembered layout", 1, AppPreference.save_last_used_keyboard_position_preference)
+                    assertEquals("Trial changed the remembered layout", 0, AppPreference.save_last_used_keyboard_position_preference)
                     assertTrue(nav().popBackStack())
                 }
                 File(output, "completed.json").writeText(org.json.JSONObject().put("surfaceScreens", true).put("runId", runId).toString())
@@ -365,7 +367,7 @@ class KeyboardPreviewProductDeviceTest {
         }
     }
 
-    @Test fun selectedLayoutsRemainCompactAndTrialDoesNotChangeRememberedSelection() {
+    @Test fun selectedLayoutRemainsCompactAndTrialDoesNotChangeRememberedSelection() {
         assumeTrue(context.packageName.endsWith(".settingsreview") || context.packageName.endsWith(".settingsuxreview"))
         val saved = prefs.all.toMap()
         val oldIme = shell("settings get secure default_input_method")
@@ -379,13 +381,16 @@ class KeyboardPreviewProductDeviceTest {
                         emptyMap(), "flick", style), name, null)
                 }
             }
+            val family = InstrumentationRegistry.getArguments().getString("only_type")
+                ?.let { com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType.valueOf(it) }
+                ?: com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType.QWERTY
             prefs.edit().putBoolean("setting_use_new_home_screen_preference", true)
-                .putString("keyboard_order_preference", "[\"TENKEY\",\"SUMIRE\",\"QWERTY\",\"CUSTOM\",\"GOJUON\",\"ROMAJI\",\"SPLIT\",\"MORSE\"]")
-                .putBoolean("save_last_used_keyboard", true).putInt("save_last_used_keyboard_position_preference", 2)
+                .putString("keyboard_order_preference", org.json.JSONArray().put(family.name).toString())
+                .putBoolean("save_last_used_keyboard", true).putInt("save_last_used_keyboard_position_preference", 0)
                 .putBoolean("clipboard_preview_enable_preference", false).putBoolean("zero_query_suggestion_preference", false).commit()
             AppPreference.init(context)
             AppPreference.save_last_used_keyboard_enable_preference = true
-            AppPreference.save_last_used_keyboard_position_preference = 2
+            AppPreference.save_last_used_keyboard_position_preference = 0
             AppPreference.remember_last_custom_keyboard_preference = true
             shell("ime enable $ime"); shell("ime set $ime")
             val layouts = runBlocking { repo.getLayoutsNotFlow() }
@@ -402,8 +407,7 @@ class KeyboardPreviewProductDeviceTest {
                 }
                 prefs.edit().putString(com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.SplitKeyboardSettings.CANDIDATES, "MAIN").commit()
             }
-            val targets = keyboardPreviewTargets(AppPreference.keyboard_order, layouts)
-            KeyboardPreviewSelection.publish(targets.first())
+            val targets = listOf(runBlocking { currentKeyboardPreviewTarget(context) })
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.awaitSettingsContentReady()
                 var activity: MainActivity? = null
@@ -454,7 +458,6 @@ class KeyboardPreviewProductDeviceTest {
                     if (onlyType != null && target.type.name != onlyType) continue
                     lastVisitedId = target.id
                     ins.runOnMainSync {
-                        KeyboardPreviewSelection.publish(target)
                         (activity!!.findViewById<ViewGroup>(R.id.setting_home_preview).getChildAt(0) as KeyboardPreviewCarousel).reload()
                     }
                     await("Missing native preview ${target.id}") { activePreview(activity!!, target.id) != null }
@@ -536,7 +539,6 @@ class KeyboardPreviewProductDeviceTest {
                 File(output, "completed.json").writeText(org.json.JSONObject().put("matrix", matrix).put("onlyType", onlyType).put("splitFixture", splitFixture).put("runId", runId).toString())
             }
         } finally {
-            KeyboardPreviewSelection.publish(null)
             if (oldIme.isNotBlank() && oldIme != "null") shell("ime set $oldIme")
             runBlocking { created.forEach { repo.deleteLayout(it) } }
             prefs.edit().clear().apply {
