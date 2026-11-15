@@ -62,12 +62,15 @@ class FreeFlickEditorInsetsInstrumentedTest {
         val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
         val bottom = maxOf(bars.bottom, insets.getInsets(WindowInsetsCompat.Type.ime()).bottom)
         val bounds = win.windowManager.currentWindowMetrics.bounds
-        val label = context.getString(if (custom) R.string.popup_apply else R.string.popup_save)
+        val label = activity.getString(if (custom) R.string.popup_apply else R.string.popup_save)
         val apply = descendants(root).filterIsInstance<TextView>().singleOrNull { it.text == label } ?: return false
         val location = IntArray(2); apply.getLocationOnScreen(location)
         val rect = Rect(location[0], location[1], location[0] + apply.width, location[1] + apply.height)
         val maxGap = (32 * root.resources.displayMetrics.density).toInt()
-        lastGeometry = "custom=$custom ime=$ime bounds=$bounds bars=$bars bottom=$bottom action=$rect rootPadding=${root.paddingBottom}"
+        val rootLocation = IntArray(2); root.getLocationOnScreen(rootLocation)
+        lastGeometry = "custom=$custom ime=$ime bounds=$bounds bars=$bars bottom=$bottom action=$rect " +
+            "rootY=${rootLocation[1]} rootHeight=${root.height} rootPadding=${root.paddingBottom} " +
+            "softInputMode=${win.attributes.softInputMode}"
         return apply.isShown && apply.isEnabled && rect.width() > 0 && rect.height() > 0 &&
             rect.left >= bounds.left + bars.left && rect.right <= bounds.right - bars.right &&
             rect.top >= bounds.top + bars.top && rect.bottom <= bounds.bottom - bottom &&
@@ -76,10 +79,21 @@ class FreeFlickEditorInsetsInstrumentedTest {
     @Test fun customEditorKeepsApplyAboveSystemBarsAndImeAfterRecreation() = checkEditor(true)
     @Test fun builtInEditorKeepsSaveAboveSystemBarsAndImeWithoutDoublePadding() = checkEditor(false)
 
-    private fun checkEditor(custom: Boolean) {
+    @Test fun builtInEditorOpensFromSearchWhileTheImeIsAlreadyVisible() = checkEditor(false, true)
+
+    private fun checkEditor(custom: Boolean, visibleImeAtEntry: Boolean = false) {
         assumeTrue("Use an isolated review app", context.packageName.endsWith(".settingsuxreview"))
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             scenario.awaitSettingsContentReady()
+            if (visibleImeAtEntry) {
+                scenario.onActivity { activity ->
+                    (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment)
+                        .navController.navigate(R.id.settingSearchFragment)
+                }
+                await(scenario, "Search did not show the IME") {
+                    ViewCompat.getRootWindowInsets(it.window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+                }
+            }
             scenario.onActivity { activity ->
                 if (custom) CustomFreeFlickEditorDialog.create(PopupKeyConfigCodec.encode(PopupKeyConfigCodec.create("review-key", "tap")))
                     .showNow(activity.supportFragmentManager, "insets-editor")
@@ -87,11 +101,13 @@ class FreeFlickEditorInsetsInstrumentedTest {
                     .navController.navigate(R.id.popupMapEditorFragment)
             }
             await(scenario, "Editor did not open") { editor(it, custom)?.view != null }
-            scenario.onActivity { activity ->
-                val root = editor(activity, custom)!!.requireView()
-                WindowCompat.getInsetsController(window(activity, custom), root).hide(WindowInsetsCompat.Type.ime())
+            if (!visibleImeAtEntry) {
+                scenario.onActivity { activity ->
+                    val root = editor(activity, custom)!!.requireView()
+                    WindowCompat.getInsetsController(window(activity, custom), root).hide(WindowInsetsCompat.Type.ime())
+                }
+                await(scenario, "Actions overlap system bars or have excessive bottom padding") { safeActions(it, custom, false) }
             }
-            await(scenario, "Actions overlap system bars or have excessive bottom padding") { safeActions(it, custom, false) }
             scenario.onActivity { activity ->
                 val field = descendants(editor(activity, custom)!!.requireView()).filterIsInstance<TextInputEditText>().first()
                 field.requestFocus()

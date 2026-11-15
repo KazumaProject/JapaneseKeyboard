@@ -146,17 +146,37 @@ class PopupMapEditorFragment : Fragment() {
         refresh()
         editorReady = true
         return column().apply {
-            ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
+            var currentInsets: WindowInsetsCompat? = null
+            fun applyEditorInsets(view: View, insets: WindowInsetsCompat) {
                 val safeTypes = WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
                 val bars = insets.getInsets(safeTypes)
                 val rootBars = ViewCompat.getRootWindowInsets(view)?.getInsets(safeTypes) ?: bars
-                // MainActivity already applies/consumes system bars; the dialog does not.
-                // Subtract an ancestor's bottom inset from IME padding to apply it once.
-                val ancestorBottom = (rootBars.bottom - bars.bottom).coerceAtLeast(0)
-                val imeBottom = (insets.getInsets(WindowInsetsCompat.Type.ime()).bottom - ancestorBottom).coerceAtLeast(0)
-                view.updatePadding(left = bars.left, top = bars.top, right = bars.right,
-                    bottom = maxOf(bars.bottom, imeBottom))
+                val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                val bottom = if (android.os.Build.VERSION.SDK_INT >= 30 && view.isLaidOut) {
+                    val location = IntArray(2)
+                    view.getLocationOnScreen(location)
+                    val windowBottom = requireActivity().windowManager.currentWindowMetrics.bounds.bottom
+                    // adjustResize may already have removed the IME area from this view.
+                    // Apply only the overlap that remains after the parent's layout/insets.
+                    val overlap = (location[1] + view.height - (windowBottom - ime))
+                        .coerceIn(0, ime)
+                    maxOf(bars.bottom, overlap)
+                } else {
+                    val ancestorBottom = (rootBars.bottom - bars.bottom).coerceAtLeast(0)
+                    maxOf(bars.bottom, (ime - ancestorBottom).coerceAtLeast(0))
+                }
+                view.updatePadding(left = bars.left, top = bars.top, right = bars.right, bottom = bottom)
+            }
+            ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
+                currentInsets = insets
+                applyEditorInsets(view, insets)
                 insets
+            }
+            addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+                // Updating padding inside layout can leave weighted children at their old size.
+                view.post {
+                    if (view.isAttachedToWindow) currentInsets?.let { applyEditorInsets(view, it) }
+                }
             }
             doOnAttach { root -> root.post { ViewCompat.requestApplyInsets(root) } }
             addView(scroll,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
