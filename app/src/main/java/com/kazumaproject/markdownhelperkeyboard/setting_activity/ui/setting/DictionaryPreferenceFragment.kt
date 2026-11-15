@@ -65,13 +65,15 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
             highlight == "classified_dictionaries" ||
                 highlight?.startsWith("optional_bundled_enabled_CLASSIFIED_") == true ||
                 highlight?.startsWith("classified_group_") == true
-        preferenceScreen.addPreference(Preference(requireContext()).apply {
-            key = "classified_dictionary_manager"
-            setTitle(R.string.classified_dictionary_settings_title)
-            order = -100
-            isIconSpaceReserved = false
-            setOnPreferenceClickListener { navigateSafely(R.id.classifiedDictionarySettingsFragment); true }
-        })
+        val manager = findPreference<Preference>("classified_dictionary_manager")
+            ?: Preference(requireContext()).apply {
+                key = "classified_dictionary_manager"
+                setTitle(R.string.classified_dictionary_settings_title)
+                order = -100
+                isIconSpaceReserved = false
+                preferenceScreen.addPreference(this)
+            }
+        manager.setOnPreferenceClickListener { navigateSafely(R.id.classifiedDictionarySettingsFragment); true }
 
         ClassifiedDictionaries.all.forEach { spec ->
             findPreference<SwitchPreferenceCompat>(spec.preferenceKey)?.apply {
