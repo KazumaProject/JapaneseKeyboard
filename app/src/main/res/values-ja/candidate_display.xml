@@ -1,4 +1,11 @@
 <resources>
+    <string name="cursor_inline_candidate_display_title">日本語候補の表示方式</string>
+    <string-array name="cursor_inline_candidate_display_entries">
+        <item>キーボードの候補欄</item>
+        <item>カーソル追従型インライン変換</item>
+    </string-array>
+    <string name="cursor_inline_previous_segment">前の文節</string>
+    <string name="cursor_inline_next_segment">次の文節</string>
     <string name="candidate_display_title">変換候補の表示</string>
     <string name="candidate_display_summary">候補の位置・大きさ・文字・色をプレビューで確認</string>
     <string name="candidate_display_preview_options">プレビュー</string>

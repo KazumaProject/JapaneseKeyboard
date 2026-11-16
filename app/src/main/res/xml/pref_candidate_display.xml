@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <ListPreference
+        android:defaultValue="keyboard"
+        android:dialogTitle="@string/cursor_inline_candidate_display_title"
+        android:entries="@array/cursor_inline_candidate_display_entries"
+        android:entryValues="@array/cursor_inline_candidate_display_values"
+        android:key="japanese_candidate_display_mode"
+        android:title="@string/cursor_inline_candidate_display_title"
+        app:useSimpleSummaryProvider="true" />
+
     <com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_geometry.CandidatePreviewPreference
         android:key="candidate_display_preview" android:selectable="false" />
     <PreferenceCategory android:title="@string/candidate_display_preview_options">

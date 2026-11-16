@@ -30,26 +30,7 @@ internal class PhysicalKeyboardPopupPositionTracker {
         hasComposingText: Boolean,
     ): PhysicalKeyboardPopupAnchors? {
         if (!hasComposingText) resetCandidateAnchor()
-        if (anchorInfo == null) return null
-        val flags = anchorInfo.insertionMarkerFlags
-        if (flags and CursorAnchorInfo.FLAG_HAS_INVISIBLE_REGION != 0 &&
-            flags and CursorAnchorInfo.FLAG_HAS_VISIBLE_REGION == 0
-        ) return null
-
-        val x = anchorInfo.insertionMarkerHorizontal
-        val top = anchorInfo.insertionMarkerTop
-        val bottom = anchorInfo.insertionMarkerBottom.takeIf(Float::isFinite) ?: top
-        val points = floatArrayOf(x, top, x, bottom)
-        if (!points.all(Float::isFinite)) return null
-        anchorInfo.matrix.mapPoints(points)
-        if (!points.all(Float::isFinite)) return null
-
-        val cursor = PhysicalKeyboardCursorAnchor(
-            x = points[0],
-            top = min(points[1], points[3]),
-            bottom = max(points[1], points[3]),
-            isRtl = flags and CursorAnchorInfo.FLAG_IS_RTL != 0,
-        )
+        val cursor = anchorInfo?.insertionMarkerAnchor() ?: return null
         if (hasComposingText) {
             val first = candidateAnchor
             candidateAnchor = cursor.copy(
@@ -65,6 +46,34 @@ internal class PhysicalKeyboardPopupPositionTracker {
     }
 
     fun reset() = resetCandidateAnchor()
+}
+
+internal fun CursorAnchorInfo.insertionMarkerAnchor(): PhysicalKeyboardCursorAnchor? {
+    val top = insertionMarkerTop
+    return screenCursorAnchor(
+        insertionMarkerHorizontal,
+        top,
+        insertionMarkerBottom.takeIf(Float::isFinite) ?: top,
+        insertionMarkerFlags,
+    )
+}
+
+internal fun CursorAnchorInfo.screenCursorAnchor(
+    x: Float, top: Float, bottom: Float, flags: Int,
+): PhysicalKeyboardCursorAnchor? {
+    if (flags and CursorAnchorInfo.FLAG_HAS_INVISIBLE_REGION != 0 &&
+        flags and CursorAnchorInfo.FLAG_HAS_VISIBLE_REGION == 0
+    ) return null
+    val points = floatArrayOf(x, top, x, bottom)
+    if (!points.all(Float::isFinite)) return null
+    matrix.mapPoints(points)
+    if (!points.all(Float::isFinite)) return null
+    return PhysicalKeyboardCursorAnchor(
+        x = points[0],
+        top = min(points[1], points[3]),
+        bottom = max(points[1], points[3]),
+        isRtl = flags and CursorAnchorInfo.FLAG_IS_RTL != 0,
+    )
 }
 
 /** Places a measured popup next to the caret inside the visible window bounds. */

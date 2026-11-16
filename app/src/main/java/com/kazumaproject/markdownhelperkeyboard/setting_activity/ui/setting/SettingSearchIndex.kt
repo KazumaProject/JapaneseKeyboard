@@ -89,6 +89,9 @@ object SettingSearchIndex {
     )
 
     private val extraKeywordsByKey = mapOf(
+        AppPreference.JAPANESE_CANDIDATE_DISPLAY_MODE_KEY to listOf(
+            "カーソル追従型インライン変換", "カーソル追従", "インライン変換", "inline conversion", "cursor-following",
+        ),
         "floating_keyboard_hide_button_position" to listOf(
             "floating", "hide", "arrow", "position", "フローティング", "下向き矢印", "やじるし", "隠す", "位置",
         ),

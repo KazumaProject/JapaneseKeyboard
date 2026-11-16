@@ -5,6 +5,7 @@ import androidx.annotation.ArrayRes
 import androidx.annotation.DrawableRes
 import androidx.annotation.IdRes
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.core.R as CoreR
 
@@ -535,6 +536,7 @@ object SettingDestinations {
         "keyboard_touch_effect_cinematic_wave_quality_preference",
         "round_corner_keyboard_preference",
         "keyboard_corner_radius_dp_preference",
+        AppPreference.JAPANESE_CANDIDATE_DISPLAY_MODE_KEY,
         "candidate_column_preference",
         "candidate_tab_visibility_preference",
         "stabilize_candidate_strip_height_preference",

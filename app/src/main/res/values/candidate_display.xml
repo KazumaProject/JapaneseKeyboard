@@ -1,4 +1,15 @@
 <resources>
+    <string name="cursor_inline_candidate_display_title">Japanese candidate display</string>
+    <string-array name="cursor_inline_candidate_display_entries">
+        <item>Keyboard candidate strip</item>
+        <item>Cursor-following inline conversion</item>
+    </string-array>
+    <string-array name="cursor_inline_candidate_display_values">
+        <item>keyboard</item>
+        <item>cursor_inline</item>
+    </string-array>
+    <string name="cursor_inline_previous_segment">Previous phrase</string>
+    <string name="cursor_inline_next_segment">Next phrase</string>
     <string name="candidate_display_title">Candidate display</string>
     <string name="candidate_display_summary">Preview and adjust candidate placement, size, text and colors</string>
     <string name="candidate_display_preview_options">Preview</string>

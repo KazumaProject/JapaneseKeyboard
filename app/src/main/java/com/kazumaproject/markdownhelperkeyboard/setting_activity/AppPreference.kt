@@ -171,6 +171,7 @@ object AppPreference {
     const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
     const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
+    const val JAPANESE_CANDIDATE_DISPLAY_MODE_KEY = "japanese_candidate_display_mode"
     const val STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY = "stabilize_candidate_strip_height_preference"
     const val CUSTOM_DIRECT_INPUT_REPLACE_COMPOSING_KEY =
         "custom_direct_input_replace_composing_preference"
@@ -3293,6 +3294,9 @@ object AppPreference {
             )
         }
     }
+
+    val cursorInlineConversionEnabled: Boolean
+        get() = preferences.getString(JAPANESE_CANDIDATE_DISPLAY_MODE_KEY, "keyboard") == "cursor_inline"
 
     var candidate_tab_preference: Boolean
         get() = preferences.getBoolean(

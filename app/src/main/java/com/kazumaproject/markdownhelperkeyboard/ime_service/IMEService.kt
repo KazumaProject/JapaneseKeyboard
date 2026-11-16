@@ -541,6 +541,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val activeSplitPatternIndex: Int = 0
     )
 
+    private data class CursorInlineCandidateTarget(
+        val input: String,
+        val candidates: List<Candidate>,
+        val session: BunsetsuConversionSession?,
+    )
+
     private sealed class BunsetsuDisplayedSelection {
         object LoadingZenzSlot : BunsetsuDisplayedSelection()
         data class ZenzResultSlot(val candidate: Candidate) : BunsetsuDisplayedSelection()
@@ -1038,6 +1044,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val runtimeInputPreferenceKeys = setOf(
         AppPreference.LIVE_CONVERSION_CANDIDATE_YOMI_SIZE_KEY,
         AppPreference.INLINE_SUGGESTION_ENABLED_KEY,
+        AppPreference.JAPANESE_CANDIDATE_DISPLAY_MODE_KEY,
         AppPreference.STABILIZE_CANDIDATE_STRIP_HEIGHT_KEY,
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
@@ -1277,6 +1284,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             measureDebugSection("IMEService.setSuggestionAdapterSuggestionsOnMain") {
                 collapseShortcutEntryExpansion(refreshContent = false)
                 currentCandidateStripCandidates = candidates
+                cursorInlineCandidateInput = inputString.value
                 refreshCandidateStripContent()
             }
         }
@@ -1290,6 +1298,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             measureDebugSection("IMEService.setSuggestionAdaptersOnMain") {
                 collapseShortcutEntryExpansion(refreshContent = false)
                 currentCandidateStripCandidates = candidates
+                cursorInlineCandidateInput = inputString.value
                 currentCandidateStripFullCandidates = fullCandidates
                 refreshCandidateStripContent()
             }
@@ -1317,6 +1326,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         collapseShortcutEntryExpansion(refreshContent = false)
         currentCandidateStripCandidates = candidates
         currentCandidateStripFullCandidates = fullCandidates
+        cursorInlineCandidateInput = input
         refreshCandidateStripContent(
             candidatesShown = commitInitialCandidates || shortcutToolbarHiddenForCandidates,
             commitInitialCandidates = commitInitialCandidates,
@@ -1394,6 +1404,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             content = content
         )
         applyCandidateStripPresentation(presentation)
+        refreshCursorInlineCandidates()
         fever.candidatesShown(content is CandidateStripContent.Candidates && content.candidates.isNotEmpty())
     }
 
@@ -2594,6 +2605,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var fullSuggestionsList: List<CandidateItem> = emptyList()
 
     private val physicalKeyboardPopupPositions = PhysicalKeyboardPopupPositionTracker()
+    private var cursorInlineConversionEnabled = false
+    private var cursorInlineEditor: InputConnection? = null
+    private var cursorInlineAnchorInfo: CursorAnchorInfo? = null
+    private var cursorInlineCandidateInput: String? = null
+    private var cursorInlineTarget: CursorInlineCandidateTarget? = null
+    private var cursorInlinePopup: CursorInlineCandidatePopup? = null
+    private var cursorInlineHiddenStrip: RecyclerView? = null
     private var modeSwitchAwaitingCursorPosition = false
 
     private var dismissJob: Job? = null
@@ -4326,6 +4344,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        stopCursorInlineCandidateTracking()
+        cursorInlineCandidateInput = null
         beginKeyboardTrial(attribute)
         clearEnglishCorrection()
         backspaceHistoryCoordinator.cancel()
@@ -4458,6 +4478,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         customDirectInputReplaceComposingPreference =
             appPreference.custom_direct_input_replace_composing_preference
+
+        val inlineEnabled = appPreference.cursorInlineConversionEnabled
+        if (inlineEnabled != cursorInlineConversionEnabled) {
+            if (!inlineEnabled && bunsetsuConversionSession != null &&
+                !(bunsetsuSeparation == true && bunsetsuCursorMove == true)
+            ) {
+                exitBunsetsuCursorMoveSessionToRawInput()
+            }
+            cursorInlineConversionEnabled = inlineEnabled
+            syncCursorInlineCandidateTracking()
+        }
 
         val previousInlineSuggestionEnabled = inlineSuggestionEnabled
         applyInlineSuggestionEnabled(appPreference.inline_suggestion_enabled_preference)
@@ -6625,6 +6656,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listAdapter.setCandidateTextColor(resolveFloatingCandidateTextColor())
         suggestionClickNum = 0
         setCurrentInputType(editorInfo)
+        syncCursorInlineCandidateTracking()
         suggestionAdapter?.setClipboardDescriptionTextVisibility(
             !(clipboardPreviewTapToDelete ?: false)
         )
@@ -6934,6 +6966,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onWindowShown() {
         super.onWindowShown()
         window.window?.decorView?.post {
+            syncCursorInlineCandidateTracking()
             refreshPhysicalToolbar()
             if (isInputViewShown && isKeyboardFloatingMode == true && splitController == null && floatingKeyboardView?.isShowing != true) {
                 applyFloatingModeState(true)
@@ -6945,6 +6978,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInput() {
+        stopCursorInlineCandidateTracking()
         aiVoiceInputController?.cancel()
         beginZenzRerankRequest()
         clearEnglishCorrection()
@@ -6976,6 +7010,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        stopCursorInlineCandidateTracking()
         captureKeyboardPreviewSelection()
         beginZenzRerankRequest()
         clearEnglishCorrection()
@@ -7040,6 +7075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        stopCursorInlineCandidateTracking()
         captureKeyboardPreviewSelection()
         clearEnglishCorrection()
         cancelMorseInputs(clearPattern = true)
@@ -7068,6 +7104,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        stopCursorInlineCandidateTracking()
         com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardPreviewSelection.publish(null)
         com.kazumaproject.markdownhelperkeyboard.keyboard_presentation.KeyboardLayoutInflation.clear(this)
         beginZenzRerankRequest()
@@ -7564,9 +7601,170 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateImeWindowBlurForCurrentMode(win)
     }
 
+    private fun canUseCursorInlineConversion(): Boolean =
+        cursorInlineConversionEnabled && cursorInlineEditor != null &&
+            isInputViewActive && !suppressSuggestions &&
+            currentInputType !in passwordTypesWithOutNumber && currentInputType !in numberTypes &&
+            currentInputModeForSession == InputMode.ModeJapanese && !isFullscreenMode &&
+            physicalKeyboardEnable.replayCache.firstOrNull() != true &&
+            !floatingCandidateSurfaceActive && splitController == null &&
+            dictionaryInputConnection == null && !keyboardSymbolViewState.value.isShown &&
+            !isKeyboardLayoutEditModeActive()
+
+    private fun syncCursorInlineCandidateTracking() {
+        val editor = currentInputConnection
+        if (!cursorInlineConversionEnabled || !isInputViewActive || editor == null ||
+            currentInputType in passwordTypesWithOutNumber || currentInputType in numberTypes ||
+            physicalKeyboardEnable.replayCache.firstOrNull() == true
+        ) {
+            stopCursorInlineCandidateTracking()
+            return
+        }
+        if (cursorInlineEditor === editor) return
+        var mode = InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mode = mode or InputConnection.CURSOR_UPDATE_FILTER_INSERTION_MARKER or
+                InputConnection.CURSOR_UPDATE_FILTER_CHARACTER_BOUNDS
+        }
+        if (requestCursorUpdates(mode)) cursorInlineEditor = editor
+    }
+
+    private fun stopCursorInlineCandidateTracking() {
+        val editor = cursorInlineEditor
+        cursorInlineEditor = null
+        cursorInlineAnchorInfo = null
+        dismissCursorInlineCandidates()
+        if (editor != null && editor === currentInputConnection &&
+            physicalKeyboardEnable.replayCache.firstOrNull() != true
+        ) {
+            requestCursorUpdates(0)
+        }
+    }
+
+    private fun dismissCursorInlineCandidates() {
+        cursorInlinePopup?.dismiss()
+        cursorInlineTarget = null
+        cursorInlineHiddenStrip?.let { if (it.visibility == View.INVISIBLE) it.visibility = View.VISIBLE }
+        cursorInlineHiddenStrip = null
+    }
+
+    private fun refreshCursorInlineCandidates() {
+        if (!cursorInlineConversionEnabled) return
+        if (!positionCursorInlineCandidates()) dismissCursorInlineCandidates()
+    }
+
+    private fun positionCursorInlineCandidates(): Boolean {
+        val input = inputString.value
+        if (!canUseCursorInlineConversion() || cursorInlineEditor !== currentInputConnection ||
+            input.isEmpty() || input != cursorInlineCandidateInput ||
+            isFullCandidateViewVisible() || !suggestionViewStatus.value || composingTextArbiter.isPreviewVisible() ||
+            suggestionAdapter?.isInlineSuggestionStripShown() == true
+        ) return false
+        val candidateContent = currentCandidateStripContent as? CandidateStripContent.Candidates ?: return false
+        val candidates = candidateContent.candidates
+        if (candidates.isEmpty() || candidateContent.inlineSuggestionToggle != null) return false
+        val composingText = cursorWrittenComposing?.text ?: return false
+        val session = bunsetsuConversionSession?.takeIf { isBunsetsuCursorMoveSessionActive() }
+        val segment = session?.segments?.getOrNull(session.focusedIndex)
+        val segmentStart = session?.let { it.segments.take(it.focusedIndex).sumOf { state -> state.displayText.length } }
+        val segmentRange = if (segment != null && segmentStart != null) {
+            segmentStart until segmentStart + segment.displayText.length
+        } else null
+        val anchor = cursorInlineAnchorInfo?.inlineCandidateAnchor(composingText, segmentRange) ?: return false
+        val host = window.window?.decorView?.takeIf { canShowPopupWindow(it) } ?: return false
+        val floating = isKeyboardFloatingMode == true
+        val keyboard = if (floating) floatingKeyboardView?.contentView else mainLayoutBinding?.root
+        if (keyboard == null || !keyboard.isShown || keyboard.width <= 0 || keyboard.height <= 0) return false
+        val strip = getActiveKeyboardSurface()?.suggestionRecyclerView ?: return false
+        if (strip.visibility != View.VISIBLE && cursorInlineHiddenStrip !== strip) return false
+        val location = IntArray(2).also(keyboard::getLocationOnScreen)
+        val bounds = Rect(location[0], location[1], location[0] + keyboard.width, location[1] + keyboard.height)
+        if (cursorInlineHiddenStrip != null && cursorInlineHiddenStrip !== strip) dismissCursorInlineCandidates()
+
+        val popup = cursorInlinePopup ?: CursorInlineCandidatePopup(
+            host.context, ::pickCursorInlineCandidate, ::moveCursorInlineSegment, ::refreshCursorInlineCandidates,
+        ).also { cursorInlinePopup = it }
+        val selectedCandidate = segment?.overrideDisplayCandidate
+            ?: segment?.candidates?.getOrNull(segment.selectedIndex)
+        val colors = resolveCandidatePanelColors().withHighContrastSelection()
+        val previous = cursorInlineTarget
+        popup.submit(
+            CursorInlineCandidatePopup.Content(
+                labels = candidates.map(::displayTextFromCandidate),
+                selected = if (selectedCandidate == null) RecyclerView.NO_POSITION else candidates.indexOf(selectedCandidate),
+                canMoveBack = session != null && session.focusedIndex > 0,
+                canMoveForward = session != null && session.focusedIndex < session.segments.lastIndex,
+                textSize = appPreference.candidate_letter_size ?: 14f,
+                colors = colors,
+            ),
+            resetScroll = previous?.input != input || previous?.session?.focusedIndex != session?.focusedIndex,
+        )
+        if (!popup.position(host, anchor, bounds, floating)) return false
+        cursorInlineTarget = CursorInlineCandidateTarget(input, candidates, session)
+        cursorInlineHiddenStrip = strip
+        strip.visibility = View.INVISIBLE
+        return true
+    }
+
+    private fun currentCursorInlineTarget(): CursorInlineCandidateTarget? =
+        cursorInlineTarget?.takeIf { target ->
+            canUseCursorInlineConversion() && inputString.value == target.input &&
+                target.session === bunsetsuConversionSession &&
+                target.candidates === (currentCandidateStripContent as? CandidateStripContent.Candidates)?.candidates
+        }
+
+    private fun pickCursorInlineCandidate(index: Int) {
+        val target = currentCursorInlineTarget() ?: return
+        val candidate = target.candidates.getOrNull(index) ?: return
+        feverSoftwareOperation {
+            vibrate()
+            setCandidateClick(candidate, target.input, InputMode.ModeJapanese, index, target.candidates,
+                commitBunsetsuPrefix = false)
+        }
+    }
+
+    private fun moveCursorInlineSegment(delta: Int) {
+        if (currentCursorInlineTarget()?.session == null) return
+        vibrate()
+        moveFocusedBunsetsuSegment(delta, floatingKeyboardBinding.takeIf { isKeyboardFloatingMode == true })
+    }
+
+    private fun focusCursorInlineSegmentAtCaret(info: CursorAnchorInfo) {
+        val session = currentCursorInlineTarget()?.session ?: return
+        val start = info.composingTextStart
+        val composingText = cursorWrittenComposing?.text ?: return
+        if (start < 0 || info.composingText?.toString() != composingText ||
+            info.selectionStart != info.selectionEnd
+        ) return
+        val offset = info.selectionStart - start
+        if (offset !in composingText.indices) return
+        var segmentEnd = 0
+        val index = session.segments.indexOfFirst {
+            segmentEnd += it.displayText.length
+            offset < segmentEnd
+        }
+        if (index == -1 || index == session.focusedIndex) return
+        launchBunsetsuOperation { current ->
+            if (current !== session || cursorInlineAnchorInfo?.selectionStart != info.selectionStart) {
+                return@launchBunsetsuOperation
+            }
+            moveFocusedBunsetsuSegmentNow(
+                current, index - current.focusedIndex, floatingKeyboardBinding.takeIf { isKeyboardFloatingMode == true },
+            )
+        }
+    }
+
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorProbe.onUpdate(cursorAnchorInfo)
+        if (cursorInlineEditor != null && cursorInlineEditor === currentInputConnection) {
+            val previousSelection = cursorInlineAnchorInfo?.selectionStart
+            cursorInlineAnchorInfo = cursorAnchorInfo
+            if (cursorAnchorInfo != null && previousSelection != cursorAnchorInfo.selectionStart) {
+                focusCursorInlineSegmentAtCaret(cursorAnchorInfo)
+            }
+            refreshCursorInlineCandidates()
+        }
 
         val positions = physicalKeyboardPopupPositions.update(
             anchorInfo = cursorAnchorInfo,
@@ -7594,6 +7792,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        stopCursorInlineCandidateTracking()
+        cursorInlinePopup = null
         floatingCursor?.stop()
         cancelCursorOperations()
         dismissKeyboardSelectionPopups()
@@ -19120,7 +19320,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun emitZenzLiveRequest(displayInput: String, candidateToken: CandidateRequestToken) {
-        if (isBunsetsuCursorMoveSessionActive() && bunsetsuSeparation == true) {
+        if (isBunsetsuCursorMoveSessionActive()) {
             requestZenzForCurrentBunsetsuSegmentIfNeeded(immediate = false)
             return
         }
@@ -19264,7 +19464,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         displayInput: String,
         source: ZenzRequestSource = ZenzRequestSource.ManualConvertLongPress
     ) {
-        if (isBunsetsuCursorMoveSessionActive() && bunsetsuSeparation == true) {
+        if (isBunsetsuCursorMoveSessionActive()) {
             requestZenzForCurrentBunsetsuSegmentIfNeeded(immediate = true)
             return
         }
@@ -19304,7 +19504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     requestedSession.segments.getOrNull(requestedSession.focusedIndex)?.reading ||
                 context != currentZenzCorrectionContext(CandidateQueryMode.CONVERSION)
             ) return@withLock null
-            if (bunsetsuSeparation != true || !isBunsetsuCursorMoveSessionActive()) return@withLock null
+            if (!isBunsetsuCursorMoveSessionActive()) return@withLock null
             if (session.segments.isEmpty()) return@withLock null
             val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
             val prepared = loadCandidatesForBunsetsuSegment(session, focusedIndex)
@@ -20006,6 +20206,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
                     disableKeyboardLayoutEditMode()
+                    stopCursorInlineCandidateTracking()
                     ensurePhysicalKeyboardPopupWindows()
                     updateImeWindowBlurForCurrentMode()
 
@@ -20038,6 +20239,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingModeSwitchWindow?.dismiss()
                     clearPhysicalCandidateCompositionSession("physical keyboard disabled")
                     requestCursorUpdates(0)
+                    syncCursorInlineCandidateTracking()
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
                     floatingPhysicalToolbarWindow?.dismiss()
@@ -20649,7 +20851,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             return
         }
-        if (bunsetsuSeparation == true) {
+        if (shouldSeparateBunsetsu()) {
             bunsetsuPositionList?.let {
                 if (bunsetusMultipleDetect && it.isNotEmpty()) {
                     handleJapaneseModeSpaceKeyWithBunsetsu(
@@ -21620,6 +21822,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
         val wasExpanded = isFullCandidateViewVisible()
+        if (!isVisible) dismissCursorInlineCandidates()
         if (isVisible) {
             expandedGeometrySideActive = false
             expandedGeometryOriginalBottomPadding.forEach { (view, bottom) ->
@@ -22312,15 +22515,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return SpannableString(text + stringInTail.get())
     }
 
-    private fun shouldUseBunsetsuCursorMoveSession(): Boolean {
-        return bunsetsuSeparation == true && bunsetsuCursorMove == true
-    }
+    private fun shouldUseBunsetsuCursorMoveSession(): Boolean =
+        (bunsetsuSeparation == true && bunsetsuCursorMove == true) || canUseCursorInlineConversion()
 
-    private fun isBunsetsuCursorMoveSessionActive(): Boolean {
-        return shouldUseBunsetsuCursorMoveSession() &&
-                isHenkan.get() &&
-                bunsetsuConversionSession != null
-    }
+    private fun shouldSeparateBunsetsu(): Boolean = bunsetsuSeparation == true || canUseCursorInlineConversion()
+
+    private fun isBunsetsuCursorMoveSessionActive(): Boolean =
+        isHenkan.get() && bunsetsuConversionSession != null
 
     private fun sanitizeSplitPositions(
         input: String,
@@ -22384,7 +22585,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         engineResult: BunsetsuCandidateResult?,
         candidateSegments: Map<String, List<CandidateConversionSegment>>,
     ) {
-        if (bunsetsuSeparation != true || engineResult == null) {
+        if (!shouldSeparateBunsetsu() || engineResult == null) {
             latestBunsetsuConversionSnapshot = null
             bunsetsuSplitPatterns = emptyList()
             bunsetsuPositionList = emptyList()
@@ -22762,6 +22963,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             .sumOf { it.displayText.length }
         val focusedSegment = segments[focusedIndex]
         val highlightEnd = highlightStart + focusedSegment.displayText.length
+        val inlineColors = if (canUseCursorInlineConversion() && cursorInlineAnchorInfo != null) {
+            resolveCandidatePanelColors().withHighContrastSelection()
+        } else null
 
         updateSuggestionViewsForBunsetsuSegment(
             session = session,
@@ -22780,12 +22984,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 inputConversionBackgroundColor
                     ?: getColor(com.kazumaproject.core.R.color.orange)
             } else {
-                getColor(com.kazumaproject.core.R.color.orange)
+                inlineColors?.selection ?: getColor(com.kazumaproject.core.R.color.orange)
             },
             textColor = if (customComposingTextPreference == true) {
                 inputConversionTextColor
             } else {
-                null
+                inlineColors?.selectionText
             }
         )
         updateUIinHenkan(mainView, session.rawInput)
@@ -22852,13 +23056,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        setComposingText(spannableString, 1)
+        val previousText = cursorWrittenComposing?.text
+        val composingStart = cursorInlineAnchorInfo?.composingTextStart?.takeIf {
+            it >= 0 && previousText != null && cursorInlineAnchorInfo?.composingText?.toString() == previousText
+        }
+        if (!canUseCursorInlineConversion() || composingStart == null) {
+            setComposingText(spannableString, 1)
+            return
+        }
+
+        // Keep the focused phrase in view when a long preedit wraps or scrolls.
+        beginBatchEdit()
+        try {
+            if (setComposingText(spannableString, 1)) {
+                val caret = composingStart + safeStart
+                setSelection(caret, caret)
+            }
+        } finally {
+            endBatchEdit()
+        }
     }
 
     private fun clearBunsetsuConversionSession() {
         bunsetsuSessionGeneration++
         bunsetsuConversionSession = null
         bunsetusMultipleDetect = false
+        dismissCursorInlineCandidates()
     }
 
     private fun restoreRawInputFromBunsetsuSession() {
@@ -26355,7 +26578,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         currentInputMode: InputMode,
         position: Int,
-        displayedCandidates: List<Candidate>
+        displayedCandidates: List<Candidate>,
+        commitBunsetsuPrefix: Boolean = true,
     ) {
         Timber.d("setCandidateClick: $candidate")
         if (candidate.isZenzLiveLoadingSlot(insertString)) {
@@ -26378,7 +26602,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             handleBunsetsuCandidateClick(
                 candidate = candidate,
                 position = position,
-                displayedCandidates = displayedCandidates
+                displayedCandidates = displayedCandidates,
+                commitPrefix = commitBunsetsuPrefix,
             )
         ) {
             if (!isBunsetsuCursorMoveSessionActive()) {
@@ -26413,7 +26638,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleBunsetsuCandidateClick(
         candidate: Candidate,
         position: Int,
-        displayedCandidates: List<Candidate>
+        displayedCandidates: List<Candidate>,
+        commitPrefix: Boolean = true,
     ): Boolean {
         val session = bunsetsuConversionSession ?: return false
         if (!isBunsetsuCursorMoveSessionActive()) return false
@@ -26459,7 +26685,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 val updatedSession = session.copy(segments = updatedSegments)
                 bunsetsuConversionSession = updatedSession
-                if (canUseZenzFloatingPanel()) {
+                if (commitPrefix && canUseZenzFloatingPanel()) {
                     commitBunsetsuConversionUntilFocusedSegment(mainView, updatedSession)
                 } else {
                     renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
@@ -26495,11 +26721,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             selectedIndex = segmentIndex,
             overrideDisplayCandidate = null
         )
-        bunsetsuConversionSession = session.copy(segments = updatedSegments)
-        commitBunsetsuConversionUntilFocusedSegment(
-            mainView = mainView,
-            session = session.copy(segments = updatedSegments)
-        )
+        val updatedSession = session.copy(segments = updatedSegments)
+        bunsetsuConversionSession = updatedSession
+        if (commitPrefix) {
+            commitBunsetsuConversionUntilFocusedSegment(mainView, updatedSession)
+        } else {
+            renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+        }
         return true
     }
 
@@ -28473,7 +28701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
-        if (bunsetsuSeparation == true) {
+        if (shouldSeparateBunsetsu()) {
             bunsetsuPositionList?.let {
                 if (bunsetusMultipleDetect && it.isNotEmpty()) {
                     withContext(Dispatchers.Main.immediate) {
@@ -28986,7 +29214,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KanaKanjiQueryRequest(
                 input = input,
                 mode = mode,
-                bunsetsuSeparation = bunsetsuSeparation == true,
+                bunsetsuSeparation = shouldSeparateBunsetsu(),
                 n = nBest ?: 4,
                 enabledDictionaryCategories = enabledDictionaryCategories,
                 userDictionaryRepository = userDictionaryRepository,
@@ -29639,9 +29867,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (isGojuonSurface()) {
                     gojuonView.let { gojuonKey ->
                         when (gojuonKey.currentInputMode.get()) {
-                            InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                this, suggestions, insertString
-                            )
+                            InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) {
+                                if (canUseCursorInlineConversion()) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(this, suggestions, insertString)
+                                } else {
+                                    handleJapaneseModeSpaceKey(this, suggestions, insertString)
+                                }
+                            }
 
                             else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
                         }
@@ -29650,7 +29882,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     keyboardView.let { tenkey ->
                         when (tenkey.currentInputMode.value) {
                             InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) {
-                                if (bunsetsuSeparation == true) {
+                                if (shouldSeparateBunsetsu()) {
                                     handleJapaneseModeSpaceKeyWithBunsetsu(
                                         this, suggestions, insertString
                                     )
@@ -29694,7 +29926,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (currentFloatingKanaInputMode(it)) {
                     InputMode.ModeJapanese -> {
                         if (suggestions.isNotEmpty()) {
-                            if (bunsetsuSeparation == true) {
+                            if (shouldSeparateBunsetsu()) {
                                 handleJapaneseModeSpaceKeyWithBunsetsuFloating(
                                     floatingKeyboardLayoutBinding, suggestions, insertString
                                 )
@@ -29749,7 +29981,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (insertStringEndWithN == null) {
                             _inputString.update { insertString }
                             if (suggestions.isNotEmpty()) {
-                                if (bunsetsuSeparation == true) {
+                                if (shouldSeparateBunsetsu()) {
                                     handleJapaneseModeSpaceKeyWithBunsetsu(
                                         this, suggestions, insertString
                                     )
@@ -29763,7 +29995,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             // Subsequent Space presses cycle the active candidate selection.
                             // Only the first press should wait for candidates for the reading.
                             if (suggestions.isNotEmpty()) {
-                                if (bunsetsuSeparation == true) {
+                                if (shouldSeparateBunsetsu()) {
                                     handleJapaneseModeSpaceKeyWithBunsetsu(mainView, suggestions, insertString)
                                 } else {
                                     handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
@@ -29788,7 +30020,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     inputString.value != insertStringEndWithN || isHenkan.get()) return@launch
                                 val candidates = result?.first?.second.orEmpty()
                                 if (candidates.isNotEmpty()) {
-                                    if (bunsetsuSeparation == true) {
+                                    if (shouldSeparateBunsetsu()) {
                                         handleJapaneseModeSpaceKeyWithBunsetsu(mainView, candidates, insertStringEndWithN)
                                     } else {
                                         handleJapaneseModeSpaceKey(mainView, candidates, insertStringEndWithN)
@@ -29802,7 +30034,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val newSuggestionList =
                                     suggestionAdapter?.suggestions ?: emptyList()
                                 if (newSuggestionList.isNotEmpty()) {
-                                    if (bunsetsuSeparation == true) {
+                                    if (shouldSeparateBunsetsu()) {
                                         handleJapaneseModeSpaceKeyWithBunsetsu(
                                             mainView, newSuggestionList, insertString
                                         )
@@ -29885,7 +30117,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     when (currentFloatingKanaInputMode(it)) {
                         InputMode.ModeJapanese -> {
                             if (suggestions.isNotEmpty()) {
-                                if (bunsetsuSeparation == true) {
+                                if (shouldSeparateBunsetsu()) {
                                     handleJapaneseModeSpaceKeyWithBunsetsuFloating(
                                         floatingKeyboardLayoutBinding, suggestions, insertString
                                     )
@@ -29905,7 +30137,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     when (gojuonKey.currentInputMode.get()) {
                         InputMode.ModeJapanese -> {
                             if (suggestions.isNotEmpty()) {
-                                handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                                if (canUseCursorInlineConversion()) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(mainView, suggestions, insertString)
+                                } else {
+                                    handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                                }
                             }
                         }
 
@@ -29917,7 +30153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     when (tenkey.currentInputMode.value) {
                         InputMode.ModeJapanese -> {
                             if (suggestions.isNotEmpty()) {
-                                if (bunsetsuSeparation == true) {
+                                if (shouldSeparateBunsetsu()) {
                                     handleJapaneseModeSpaceKeyWithBunsetsu(
                                         mainView, suggestions, insertString
                                     )
@@ -32101,6 +32337,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val finished = composingTextArbiter.finishCanonical()
         fever.finished(finished)
         composingGuide?.update(null)
+        runOnMainThread { dismissCursorInlineCandidates() }
         clearPhysicalCandidateCompositionSession("finish composing text")
         return finished
     }
@@ -32123,6 +32360,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             composingGuide?.update(null)
             clearPhysicalCandidateCompositionSession("commit text")
             runOnMainThread {
+                dismissCursorInlineCandidates()
                 clearEnglishCorrection()
                 if (p1 == 1) scheduleEnglishCorrection(connection, p0)
             }
