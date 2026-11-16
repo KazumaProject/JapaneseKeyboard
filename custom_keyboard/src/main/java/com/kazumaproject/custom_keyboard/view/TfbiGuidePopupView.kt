@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.util.TypedValue
@@ -130,14 +131,36 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
+        val inset = dp(1f)
+        val panel = RectF(inset,inset,width-inset,height-inset)
+        drawGuidePanel(canvas,panel)
+        val cellWidth=panel.width()/3f
+        val cellHeight=panel.height()/3f
+
+        val currentRect = rectFor(state.currentSlot, panel, cellWidth, cellHeight)
+        drawActiveLabel(canvas, inputTextTransform(state.currentText), currentRect)
+
+        state.optionLabels.forEach { (direction, label) ->
+            if (label.isEmpty() || direction == state.currentSlot) return@forEach
+            val rect = rectFor(direction, panel, cellWidth, cellHeight)
+            if (direction == state.selectedOption) {
+                drawActiveLabel(canvas, inputTextTransform(label), rect, compact = true)
+            } else {
+                drawPlainLabel(canvas, inputTextTransform(label), rect)
+            }
+        }
+
+        state.fingerPosition?.let { drawFingerMarker(canvas, panel, it) }
+    }
+
+    /** Shared appearance for two-step flick and Free Flick guides. */
+    internal fun drawGuidePanel(canvas: Canvas, panel: RectF, drawGrid: Boolean = true) {
         val skin = KeyboardSkinRegistry.find(popupStyle.skinId)
         if (skin != null) {
             activeColor = skin.palette.selection
             activeTextColor = skin.palette.selectionText
             popupTextColor = skin.palette.text
         }
-        val inset = dp(1f)
-        val panel = RectF(inset, inset, width - inset, height - inset)
         val panelColor = popupBackgroundColor ?: defaultPanelColor
         panelPaint.shader = LinearGradient(
             0f,
@@ -157,27 +180,42 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
 
         val cellWidth = panel.width() / 3f
         val cellHeight = panel.height() / 3f
-        for (index in 1..2) {
+        for (index in if (drawGrid) 1..2 else IntRange.EMPTY) {
             val x = panel.left + cellWidth * index
             val y = panel.top + cellHeight * index
             canvas.drawLine(x, panel.top, x, panel.bottom, gridPaint)
             canvas.drawLine(panel.left, y, panel.right, y, gridPaint)
         }
 
-        val currentRect = rectFor(state.currentSlot, panel, cellWidth, cellHeight)
-        drawActiveLabel(canvas, inputTextTransform(state.currentText), currentRect)
+    }
 
-        state.optionLabels.forEach { (direction, label) ->
-            if (label.isEmpty() || direction == state.currentSlot) return@forEach
-            val rect = rectFor(direction, panel, cellWidth, cellHeight)
-            if (direction == state.selectedOption) {
-                drawActiveLabel(canvas, inputTextTransform(label), rect, compact = true)
-            } else {
-                drawPlainLabel(canvas, inputTextTransform(label), rect)
-            }
+    internal fun drawGuideOutline(canvas: Canvas, path: Path, active: Boolean) {
+        if (active) {
+            activePaint.color = ColorUtils.setAlphaComponent(activeColor, 55)
+            canvas.drawPath(path, activePaint)
         }
+        borderPaint.color = if (active) activeColor else ColorUtils.setAlphaComponent(popupTextColor, 150)
+        canvas.drawPath(path, borderPaint)
+    }
 
-        state.fingerPosition?.let { drawFingerMarker(canvas, panel, it) }
+    /** A contour already carries the selection fill; its label needs no rectangular pill. */
+    internal fun drawGuideContourLabel(canvas: Canvas, text: String, rect: RectF) {
+        if (text.isEmpty() || rect.width() <= 0 || rect.height() <= 0) return
+        textPaint.color = popupTextColor
+        textPaint.textSize = sp(popupStyle.textSizeSp * OPTION_TEXT_SCALE)
+        val scale = minOf(1f, rect.width() / textPaint.measureText(text).coerceAtLeast(1f),
+            rect.height() / (textPaint.descent() - textPaint.ascent()).coerceAtLeast(1f))
+        textPaint.textSize *= scale
+        canvas.drawText(text, rect.centerX(), rect.centerY() - (textPaint.ascent() + textPaint.descent()) / 2, textPaint)
+    }
+
+    internal fun drawGuideLabel(canvas: Canvas, text: String, rect: RectF, active: Boolean, compact: Boolean = true) {
+        if (active) drawActiveLabel(canvas, text, rect, compact, fitHeight = true)
+        else drawGuideContourLabel(canvas, text, rect)
+    }
+
+    internal fun drawGuidePointer(canvas: Canvas, panel: RectF, position: TfbiGuideFingerPosition) {
+        drawFingerMarker(canvas,panel,position)
     }
 
     private fun drawFingerMarker(
@@ -215,18 +253,28 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
         canvas: Canvas,
         text: String,
         rect: RectF,
-        compact: Boolean = false
+        compact: Boolean = false,
+        fitHeight: Boolean = false
     ) {
         if (text.isEmpty()) return
-        val horizontalPadding = if (compact) dp(4f) else dp(8f)
-        val verticalPadding = if (compact) dp(3f) else dp(5f)
-        val maxWidth = rect.width() - dp(4f)
-        val textSize = fitTextSize(
+        // Free Flick contour labels may be smaller than a two-step grid cell.
+        // Keep the existing grid presentation unchanged while fitting its pill to the saved range.
+        val horizontalPadding = (if (compact) dp(4f) else dp(8f)).let {
+            if (fitHeight) minOf(it, rect.width() * .08f) else it
+        }
+        val verticalPadding = (if (compact) dp(3f) else dp(5f)).let {
+            if (fitHeight) minOf(it, rect.height() * .08f) else it
+        }
+        val maxWidth = rect.width() - if (fitHeight) minOf(dp(4f), rect.width() * .05f) else dp(4f)
+        val fittedTextSize = fitTextSize(
             text = text,
             maxWidth = maxWidth - horizontalPadding * 2,
             scale = if (compact) OPTION_TEXT_SCALE else MAIN_TEXT_SCALE,
             minimumSp = if (compact) OPTION_MIN_TEXT_SIZE_SP else MAIN_MIN_TEXT_SIZE_SP
         )
+        val textSize = if (fitHeight) {
+            minOf(fittedTextSize, (rect.height() - verticalPadding * 2).coerceAtLeast(1f))
+        } else fittedTextSize
         activeTextPaint.color = activeTextColor
         activeTextPaint.textSize = textSize
         val textWidth = minOf(
@@ -245,15 +293,18 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
         canvas.drawText(text, pill.centerX(), baseline, activeTextPaint)
     }
 
-    private fun drawPlainLabel(canvas: Canvas, text: String, rect: RectF) {
+    private fun drawPlainLabel(canvas: Canvas, text: String, rect: RectF, fitHeight: Boolean = false) {
         if (text.isEmpty()) return
         textPaint.color = popupTextColor
-        textPaint.textSize = fitTextSize(
+        val fittedTextSize = fitTextSize(
             text = text,
             maxWidth = rect.width() - dp(6f),
             scale = OPTION_TEXT_SCALE,
             minimumSp = OPTION_MIN_TEXT_SIZE_SP
         )
+        textPaint.textSize = if (fitHeight) {
+            minOf(fittedTextSize, (rect.height() - dp(4f)).coerceAtLeast(1f))
+        } else fittedTextSize
         val baseline = rect.centerY() - (textPaint.ascent() + textPaint.descent()) / 2f
         canvas.drawText(text, rect.centerX(), baseline, textPaint)
     }

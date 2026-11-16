@@ -19,6 +19,8 @@ import androidx.test.filters.SdkSuppress
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import androidx.test.platform.app.InstrumentationRegistry
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputLayout
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.custom_keyboard.data.*
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorFragment
@@ -296,7 +298,25 @@ class CustomQwertyKeyDeviceTest {
                 main {
                     val fragment = host().childFragmentManager.primaryNavigationFragment as KeyEditorFragment
                     fragment.requireView().findViewById<View>(R.id.chip_qwerty).performClick()
-                    fragment.requireView().findViewById<QwertyKeyEditorView>(R.id.qwerty_key_editor).setConfig(expected)
+                    val editor = fragment.requireView().findViewById<QwertyKeyEditorView>(R.id.qwerty_key_editor)
+                    fun click(text: Int) = descendants(editor).filterIsInstance<MaterialButton>()
+                        .first { it.text == context.getString(text) }.performClick()
+                    fun edit(hint: Int, value: String) = descendants(editor).filterIsInstance<TextInputLayout>()
+                        .first { it.hint == context.getString(hint) }.editText!!.setText(value)
+                    click(R.string.qwerty_edit_key)
+                    edit(R.string.qwerty_tap_output, "edited")
+                    edit(R.string.qwerty_key_label, "Key label")
+                    edit(R.string.qwerty_preview_label, "Preview")
+                    edit(R.string.qwerty_columns, "2")
+                    click(R.string.qwerty_add_slot)
+                    edit(R.string.qwerty_candidate_output, "one")
+                    edit(R.string.qwerty_candidate_label, "First")
+                    click(R.string.qwerty_add_slot)
+                    click(R.string.qwerty_add_slot)
+                    edit(R.string.qwerty_candidate_output, "👩‍💻")
+                    assertEquals(expected, editor.config)
+                    assertTrue(descendants(editor).filterIsInstance<TextView>().any {
+                        it.text == context.getString(R.string.qwerty_candidate_result, "👩‍💻") })
                     assertTrue(fragment.requireView().findViewById<com.google.android.material.chip.Chip>(R.id.chip_qwerty).isChecked)
                     assertTrue(fragment.requireView().findViewById<View>(R.id.button_done).isEnabled)
                 }
@@ -307,6 +327,10 @@ class CustomQwertyKeyDeviceTest {
                 }
                 main {
                     val fragment = host().childFragmentManager.primaryNavigationFragment as KeyEditorFragment
+                    val editor = fragment.requireView().findViewById<QwertyKeyEditorView>(R.id.qwerty_key_editor)
+                    val candidateInput = descendants(editor).filterIsInstance<TextInputLayout>()
+                        .first { it.hint == context.getString(R.string.qwerty_candidate_output) }.editText!!
+                    assertEquals("👩‍💻", candidateInput.text.toString())
                     val done = fragment.requireView().findViewById<View>(R.id.button_done)
                     assertTrue(done.isEnabled)
                     done.performClick()

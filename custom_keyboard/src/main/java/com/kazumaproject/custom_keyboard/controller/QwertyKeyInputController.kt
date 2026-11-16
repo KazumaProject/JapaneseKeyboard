@@ -134,7 +134,6 @@ class QwertyKeyInputController(
             ellipsize = android.text.TextUtils.TruncateAt.END
             setTextColor(style.textColor ?: skin?.palette?.text ?: ContextCompat.getColor(context,
                 com.kazumaproject.core.R.color.keyboard_icon_color))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSizeSp)
             val location = IntArray(2).also(key::getLocationOnScreen)
             val geometry = skin?.keyPreview(resources, key.width, key.height, location[0],
                 resources.displayMetrics.widthPixels, key.top > 0)
@@ -143,6 +142,7 @@ class QwertyKeyInputController(
                 style.backgroundColor?.let { backgroundTintList = ColorStateList.valueOf(it) }
             }
             skin?.configurePreviewText(this)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSizeSp)
             setPadding(paddingLeft, (6 * resources.displayMetrics.density).toInt(), paddingRight, paddingBottom)
         }
         KeyboardFontApplicator.apply(content, fontProvider())
@@ -190,14 +190,15 @@ class QwertyKeyInputController(
         val previewGeometry = if (choosing) null else KeyboardSkinRegistry.find(style.skinId)?.keyPreview(
             key.resources, key.width, key.height, location[0], size.x, key.top > 0)
         val width = if (choosing) (48 * density * scale * layer.columns).toInt() else
-            previewGeometry?.width ?: (key.width * 2 * scale).toInt()
+            ((previewGeometry?.width ?: (key.width * 2)) * scale).toInt()
         val height = if (choosing) (56 * density * scale * layer.rowCount).toInt() else
-            previewGeometry?.height ?: ((key.height * 2 + 64) * scale).toInt()
+            ((previewGeometry?.height ?: (key.height * 2 + 64)) * scale).toInt()
         val w = width.coerceIn(1, viewport.width().coerceAtLeast(1))
         val h = height.coerceIn(1, viewport.height().coerceAtLeast(1))
-        val desiredX = location[0] + (previewGeometry?.xOffset ?: (key.width / 2 - w / 2))
+        val desiredX = location[0] + (previewGeometry?.let { it.xOffset + (it.width - w) / 2 }
+            ?: (key.width / 2 - w / 2))
         val desiredY = if (choosing) location[1] - h else
-            location[1] + key.height + (previewGeometry?.yOffset ?: -h)
+            location[1] + key.height + (previewGeometry?.let { it.yOffset + it.height - h } ?: -h)
         val x = desiredX.coerceIn(viewport.left, viewport.right - w)
         val y = desiredY.coerceIn(viewport.top, viewport.bottom - h)
         val bounds = Rect(x, y, x + w, y + h)

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="keyboard_preview_unavailable">Preview unavailable. Tap to retry.</string>
+    <string name="keyboard_preview_try">Try typing</string>
+    <string name="keyboard_preview_trial_note">Try the layout you were viewing. Your usual keyboard selection is kept.</string>
+    <string name="keyboard_preview_trial_hint">Type here</string>
+    <string name="keyboard_preview_choose_ime">Select this app as your keyboard to try this layout.</string>
+    <string name="keyboard_preview_choose_keyboard">Choose keyboard</string>
+    <string name="keyboard_preview_position">%1$d layouts · %2$d / %1$d</string>
+    <string name="keyboard_preview_swipe">Swipe to browse layouts</string>
+    <string name="keyboard_preview_info">How to use %1$s</string>
+    <string name="keyboard_preview_appearance">Appearance</string>
+    <string name="keyboard_preview_idle">Appearance before typing</string>
+    <string name="keyboard_preview_tenkey">Flick a key up, down, left or right to enter kana.</string>
+    <string name="keyboard_preview_gojuon">Tap the kana you want in the 50-sound table.</string>
+    <string name="keyboard_preview_sumire">Enter kana with the gestures set for Sumire Input β.</string>
+    <string name="keyboard_preview_qwerty">Type English with a familiar QWERTY layout.</string>
+    <string name="keyboard_preview_romaji">Type Japanese using Latin letters.</string>
+    <string name="keyboard_preview_custom">Type with the keys and gestures you configured.</string>
+    <string name="keyboard_preview_split">Use your two configured keyboard panes together.</string>
+    <string name="keyboard_preview_morse">Combine short and long signals to enter characters.</string>
+    <string name="keyboard_preview_two_step">Two-step flick: change direction without lifting your finger. Available on the two-step keys in this layout.</string>
+    <string name="keyboard_preview_details_note">The preview uses your saved layout, theme and sizes. Use Try typing to check mode changes, conversion candidates and input effects.</string>
+    <string name="keyboard_preview_expand">Enlarge keyboard</string>
+    <string name="keyboard_preview_two_step_short">Change direction without lifting your finger to enter kana.</string>
+    <string name="keyboard_preview_flick_short">Slide your finger from a key to choose a character.</string>
+    <string name="keyboard_preview_circle_short">Move your finger around a key to choose a character.</string>
+    <string name="keyboard_preview_qwerty_help">Number row: %1$s\nCursor keys: %2$s\nGlide typing for English: %3$s</string>
+    <string name="keyboard_preview_enabled">On</string>
+    <string name="keyboard_preview_disabled">Off</string>
+    <string name="keyboard_preview_romaji_help">Use the あa key to switch between Japanese and English.</string>
+    <string name="keyboard_preview_trial_candidate_note">Use Try typing to enter text. Its actual conversion candidates will appear here.</string>
+    <string name="keyboard_preview_showing_layout">Your current settings display the %1$s key layout.</string>
+    <string name="keyboard_preview_english_mode">Showing the saved English input mode.</string>
+    <string name="keyboard_preview_number_mode">Showing the saved number and symbol input mode.</string>
+    <string name="keyboard_preview_close">Close</string>
+</resources>

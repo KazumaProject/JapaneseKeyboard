@@ -16,6 +16,7 @@ internal class DictionaryCategoryActions(
     private val actions = mutableListOf<Pair<Preference, List<DictionaryCategory>>>()
 
     fun bind() {
+        actions.clear()
         val specsByKey = ClassifiedDictionaries.all.associateBy { it.preferenceKey }
         fun visit(group: PreferenceGroup): List<DictionaryCategory> {
             // Snapshot children before inserting the action row.
@@ -25,8 +26,11 @@ internal class DictionaryCategoryActions(
                     else listOfNotNull(specsByKey[child.key]?.category)
                 }
             if (group is CollapsiblePreferenceCategory && categories.isNotEmpty()) {
-                val action = Preference(group.context).apply {
-                    key = "${group.key}_bulk_toggle"
+                val actionKey = "${group.key}_bulk_toggle"
+                val action = (group.findPreference<Preference>(actionKey)
+                    ?: Preference(group.context).apply {
+                        key = actionKey
+                    }).apply {
                     setTitle(R.string.classified_group_bulk_title)
                     isPersistent = false
                     isIconSpaceReserved = false
@@ -46,7 +50,7 @@ internal class DictionaryCategoryActions(
                         true
                     }
                 }
-                group.addPreference(action)
+                if (action.parent == null) group.addPreference(action)
                 action.conditionVisible = true
                 actions += action to categories
             }

@@ -21,6 +21,8 @@ object KeyboardThemeCatalog {
             R.string.keyboard_skin_dark_description),
         KeyboardThemeOption(KeyboardSkinId.CUPERTINO_CLASSIC, R.string.keyboard_skin_cupertino_classic,
             R.string.keyboard_skin_classic_description),
+        KeyboardThemeOption(KeyboardSkinId.FEVER, R.string.keyboard_skin_fever,
+            R.string.keyboard_skin_fever_description),
     )
 
     fun find(id: KeyboardSkinId): KeyboardThemeOption = options.first { it.id == id }

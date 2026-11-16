@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_navigation_title">メニュー</string>
+    <string name="settings_navigation_edit">表示を編集</string>
+    <string name="settings_navigation_done">完了</string>
+    <string name="settings_navigation_add">画面を追加</string>
+    <string name="settings_navigation_reset">初期状態に戻す</string>
+    <string name="settings_navigation_reset_confirm">サイドメニューと画面下のタブを初期状態に戻しますか？</string>
+    <string name="settings_navigation_side">サイドメニュー</string>
+    <string name="settings_navigation_bottom">画面下のタブ</string>
+    <string name="settings_navigation_hint">画面を選んで開きます。「表示を編集」でこのメニューと画面下のタブを変更できます。</string>
+    <string name="settings_navigation_side_hint">このメニューに表示する画面です。ドラッグで並べ替え、×でメニューから外します。変更は自動保存されます。</string>
+    <string name="settings_navigation_bottom_hint">画面下にタブで表示する画面です。最大5項目まで追加できます。下のタブを長押ししてドラッグでも並べ替えられます。</string>
+    <string name="settings_navigation_limit">下部タブは最大5項目です。先に1つ外してから追加してください。</string>
+    <string name="settings_navigation_all_added">追加できる画面はすべて追加済みです。</string>
+    <string name="settings_navigation_drag_handle">≡</string>
+    <string name="settings_navigation_remove_symbol">×</string>
+    <string name="settings_navigation_open">サイドナビゲーションを開く</string>
+    <string name="settings_navigation_appearance">見た目・配置</string>
+    <string name="settings_navigation_home">設定トップ</string>
+    <string name="settings_navigation_remove_item">%1$sを表示から外す</string>
+</resources>

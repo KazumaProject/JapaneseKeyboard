@@ -1,7 +1,7 @@
 package com.kazumaproject.core.data.popup
 
 /**
- * Presentation modes for the two-step/three-step flick popup.
+ * Presentation modes for the two-step flick popup.
  *
  * The legacy mode is intentionally the default so existing installations keep their
  * current popup behavior when the preference is not present yet.

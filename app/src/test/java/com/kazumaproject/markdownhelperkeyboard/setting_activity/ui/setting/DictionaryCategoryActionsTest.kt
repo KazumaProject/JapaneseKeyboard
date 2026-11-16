@@ -5,6 +5,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
+import androidx.preference.PreferenceGroup
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
 import androidx.test.core.app.ApplicationProvider
@@ -33,6 +34,8 @@ class DictionaryCategoryActionsTest {
     private var changedCategories = emptyList<DictionaryCategory>()
 
     @Before fun setUp() {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+            .putBoolean("setting_use_new_home_screen_preference", false).commit()
         context.getSharedPreferences(CollapsiblePreferenceCategory.STATE_PREFERENCES, Context.MODE_PRIVATE)
             .edit().clear().commit()
         val prefs = context.getSharedPreferences("category-actions", Context.MODE_PRIVATE)
@@ -59,11 +62,37 @@ class DictionaryCategoryActionsTest {
         dialog.listView.performItemClick(null, index, index.toLong())
     }
 
+    @Test fun rebindingTheSameHierarchyKeepsOneActionPerGroupAndUsesTheCurrentCallback() {
+        fun keys(group: PreferenceGroup): List<String?> = (0 until group.preferenceCount).flatMap { index ->
+            val child = group.getPreference(index)
+            listOf(child.key) + if (child is PreferenceGroup) keys(child) else emptyList()
+        }
+        val original = keys(screen)
+        repeat(3) {
+            actions.bind()
+            assertEquals("Rebinding must not append bulk actions", original, keys(screen))
+        }
+        var calls = 0
+        val replacement = DictionaryCategoryActions(screen, store::isOptionalBundledEnabled) { categories, enabled ->
+            calls++
+            changedCategories = categories
+            categories.forEach { store.setDisableableCategoryEnabled(it, enabled, true) }
+        }
+        repeat(3) {
+            replacement.bind()
+            assertEquals("A recreated view must reuse the hierarchy's actions", original, keys(screen))
+        }
+        choose("facility_religious", 0)
+        assertEquals(1, calls)
+        assertTrue(changedCategories.contains(DictionaryCategory.CLASSIFIED_FACILITY_RELIGIOUS_SHRINE))
+        changedCategories.forEach { assertTrue(store.isOptionalBundledEnabled(it)) }
+    }
+
     @Test fun parentActionIncludesNestedCategoriesAndPreservesUnrelatedSelections() {
         val unrelated = DictionaryCategory.CLASSIFIED_PERSON_ACTOR
         store.setDisableableCategoryEnabled(unrelated, true, true)
         val group = screen.findPreference<CollapsiblePreferenceCategory>("classified_group_facility")!!
-        assertFalse(action("facility").isVisible)
+        assertTrue(action("facility").isVisible)
         group.setExpanded(true)
         assertTrue(action("facility").isVisible)
         choose("facility", 0)

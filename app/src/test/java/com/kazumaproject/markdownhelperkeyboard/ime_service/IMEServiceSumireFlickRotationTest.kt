@@ -11,7 +11,6 @@ import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
-import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -64,6 +63,7 @@ class IMEServiceSumireFlickRotationTest {
     @Test
     fun rotationPreferenceListenerUpdatesBothBuiltInTfbiStyles() {
         for (style in listOf("second-flick")) {
+            AppPreference.sumire_keyboard_style = style
             ReflectionHelpers.setField(service, "sumireInputStyle", style)
             for ((rotation, direction) in listOf(
                 TfbiFlickRotation.DEFAULT to TfbiFlickDirection.DOWN_LEFT,
@@ -83,6 +83,7 @@ class IMEServiceSumireFlickRotationTest {
 
     @Test
     fun unknownRestoredRotationReturnsRuntimeLayoutToDefault() {
+        AppPreference.sumire_keyboard_style = "second-flick"
         ReflectionHelpers.setField(service, "sumireInputStyle", "second-flick")
         AppPreference.sumire_flick_rotation_preference = TfbiFlickRotation.CLOCKWISE
         notifyPreferenceChanged()
@@ -177,6 +178,7 @@ class IMEServiceSumireFlickRotationTest {
         val floating = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(themed))
         ReflectionHelpers.setField(service, "mainLayoutBinding", main)
         ReflectionHelpers.setField(service, "floatingKeyboardBinding", floating)
+        AppPreference.sumire_keyboard_style = style
         ReflectionHelpers.setField(service, "sumireInputStyle", style)
         setPresentedMode(TenKeyQWERTYMode.Sumire)
         setSumireLayout(main.customLayoutDefault)

@@ -120,72 +120,74 @@ class GeometryPreviewDeviceTest {
                 if (current != last) { last = current; stableAt = SystemClock.uptimeMillis() }
                 current > 0 && SystemClock.uptimeMillis() - stableAt >= 600
             }
-            instrumentation.runOnMainSync {
-                val preview = GeometryPreview(requireNotNull(host), type)
-                assertFalse(preview.isClickable)
-                val config = KeyboardGeometryPreference(
-                    KeyboardGeometry(splitPercent = if (qwerty) 40 else 0, curveDegrees = 25,
-                        hand = hand, autoHeight = autoHeight, curveDirection = direction),
-                    if (qwerty) GeometryCandidatePlacement.TOP else if (hand == KeyboardCurveHand.LEFT) GeometryCandidatePlacement.RIGHT else GeometryCandidatePlacement.LEFT)
-                preview.update(config, landscape = landscape, widthPercent = widthPercent, alignEnd = true)
-                val screenWidth = context.resources.displayMetrics.widthPixels
-                preview.measure(View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-                preview.layout(0, 0, preview.measuredWidth, preview.measuredHeight)
-                val snapshot = preview.snapshotForTesting()
-                val tolerance = 4f * context.resources.displayMetrics.density
-                assertEquals("keyboard width", keyboard.width.toFloat(), snapshot.bodyWidth, tolerance)
-                assertEquals("keyboard height", keyboard.height.toFloat(), snapshot.bodyHeight, tolerance)
-                if (type == GeometryKeyboard.SUMIRE) assertEquals("Sumire key count", (keyboard as ViewGroup).childCount, snapshot.keys.size)
-                val references: List<Pair<View, GeometryPreviewKeyFrame>> = when (type) {
-                    GeometryKeyboard.QWERTY -> listOf(com.kazumaproject.qwerty_keyboard.R.id.key_q,
-                        com.kazumaproject.qwerty_keyboard.R.id.key_t, com.kazumaproject.qwerty_keyboard.R.id.key_y,
-                        com.kazumaproject.qwerty_keyboard.R.id.key_p).map { id ->
-                            keyboard.findViewById<View>(id) to snapshot.keys.first { it.id == id }
+            val config = KeyboardGeometryPreference(
+                KeyboardGeometry(splitPercent = if (qwerty) 40 else 0, curveDegrees = 25,
+                    hand = hand, autoHeight = autoHeight, curveDirection = direction),
+                if (qwerty) GeometryCandidatePlacement.TOP else if (hand == KeyboardCurveHand.LEFT) GeometryCandidatePlacement.RIGHT else GeometryCandidatePlacement.LEFT)
+            NativeGeometryPreviewHarness(requireNotNull(host)) { GeometryPreview(requireNotNull(host), type) }.use { harness ->
+                harness.update { it.update(config, landscape, widthPercent, true) }
+                harness.inspect { preview ->
+                    assertFalse(preview.isClickable)
+                    val snapshot = preview.snapshotForTesting()
+                    val tolerance = 4f * context.resources.displayMetrics.density
+                    assertEquals("keyboard width", keyboard.width.toFloat(), snapshot.bodyWidth, tolerance)
+                    assertEquals("keyboard height", keyboard.height.toFloat(), snapshot.bodyHeight, tolerance)
+                    if (type == GeometryKeyboard.SUMIRE) assertEquals("Sumire key count", (keyboard as ViewGroup).childCount, snapshot.keys.size)
+                    val references: List<Pair<View, GeometryPreviewKeyFrame>> = when (type) {
+                        GeometryKeyboard.QWERTY -> listOf(com.kazumaproject.qwerty_keyboard.R.id.key_q,
+                            com.kazumaproject.qwerty_keyboard.R.id.key_t, com.kazumaproject.qwerty_keyboard.R.id.key_y,
+                            com.kazumaproject.qwerty_keyboard.R.id.key_p).map { id ->
+                                keyboard.findViewById<View>(id) to snapshot.keys.first { it.id == id }
+                            }
+                        GeometryKeyboard.TENKEY -> listOf(com.kazumaproject.tenkey.R.id.key_1,
+                            com.kazumaproject.tenkey.R.id.key_3, com.kazumaproject.tenkey.R.id.key_11,
+                            com.kazumaproject.tenkey.R.id.key_enter).map { id ->
+                                keyboard.findViewById<View>(id) to snapshot.keys.first { it.id == id }
+                            }
+                        GeometryKeyboard.SUMIRE -> listOf("あ", "か", "さ", "わ").map { label ->
+                            findTextView(keyboard, label) to snapshot.keys.first { it.text == label }
                         }
-                    GeometryKeyboard.TENKEY -> listOf(com.kazumaproject.tenkey.R.id.key_1,
-                        com.kazumaproject.tenkey.R.id.key_3, com.kazumaproject.tenkey.R.id.key_11,
-                        com.kazumaproject.tenkey.R.id.key_enter).map { id ->
-                            keyboard.findViewById<View>(id) to snapshot.keys.first { it.id == id }
-                        }
-                    GeometryKeyboard.SUMIRE -> listOf("あ", "か", "さ", "わ").map { label ->
-                        findTextView(keyboard, label) to snapshot.keys.first { it.text == label }
+                    }
+                    references.forEach { (actual, frame) ->
+                        val point = floatArrayOf(actual.width / 2f, actual.height / 2f)
+                        actual.matrix.mapPoints(point)
+                        assertEquals("${frame.text ?: frame.id} x", actual.left + point[0], frame.x, tolerance)
+                        assertEquals("${frame.text ?: frame.id} y", actual.top + point[1], frame.y, tolerance)
+                        assertEquals("${frame.text ?: frame.id} rotation", actual.rotation, frame.angle, 1f)
+                    }
+                    snapshot.keys.forEach { key ->
+                        assertTrue("key extends above preview", key.y - key.halfHeight >= -tolerance)
+                        assertTrue("key extends below preview", key.y + key.halfHeight <= snapshot.bodyHeight + tolerance)
                     }
                 }
-                references.forEach { (actual, frame) ->
-                    val point = floatArrayOf(actual.width / 2f, actual.height / 2f)
-                    actual.matrix.mapPoints(point)
-                    assertEquals("${frame.text ?: frame.id} x", actual.left + point[0], frame.x, tolerance)
-                    assertEquals("${frame.text ?: frame.id} y", actual.top + point[1], frame.y, tolerance)
-                    assertEquals("${frame.text ?: frame.id} rotation", actual.rotation, frame.angle, 1f)
+                // Rebuild the attached native surface after each appearance change.
+                harness.inspect { AppPreference.keyboard_corner_round_preference = false }
+                harness.update { it.update(config, landscape, widthPercent, true) }
+                var square: Bitmap? = null
+                var surfaceLeft = 0
+                var surfaceRight = 0
+                harness.inspect { preview ->
+                    square = draw(preview)
+                    val surface = requireNotNull(preview.adjustmentBounds())
+                    surfaceLeft = surface.left.toInt(); surfaceRight = surface.right.toInt()
+                    AppPreference.keyboard_corner_round_preference = true
+                    AppPreference.keyboard_corner_radius_dp_preference = 64
                 }
-                snapshot.keys.forEach { key ->
-                    assertTrue("key extends above preview", key.y - key.halfHeight >= -tolerance)
-                    assertTrue("key extends below preview", key.y + key.halfHeight <= snapshot.bodyHeight + tolerance)
+                harness.update { it.update(config, landscape, widthPercent, true) }
+                harness.inspect { preview ->
+                    val rounded = draw(preview)
+                    assertTrue("square background should reach corner", (square!!.getPixel(surfaceLeft + 1, 1) ushr 24) != 0)
+                    assertEquals("rounded background should leave corner transparent", 0, rounded.getPixel(surfaceLeft + 1, 1) ushr 24)
+                    rounded.recycle(); square!!.recycle()
+                    AppPreference.keyboard_corner_top_right_preference = false
                 }
-                // Background corners are configurable independently of the key geometry.
-                AppPreference.keyboard_corner_round_preference = false
-                val square = draw(preview)
-                val surface = requireNotNull(preview.adjustmentBounds())
-                val surfaceLeft = surface.left.toInt()
-                val surfaceRight = surface.right.toInt()
-                AppPreference.keyboard_corner_round_preference = true
-                AppPreference.keyboard_corner_radius_dp_preference = 64
-                preview.update(config, landscape, widthPercent, true)
-                preview.measure(View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-                preview.layout(0, 0, preview.measuredWidth, preview.measuredHeight)
-                val rounded = draw(preview)
-                assertTrue("square background should reach corner", (square.getPixel(surfaceLeft + 1, 1) ushr 24) != 0)
-                assertEquals("rounded background should leave corner transparent", 0, rounded.getPixel(surfaceLeft + 1, 1) ushr 24)
-                AppPreference.keyboard_corner_top_right_preference = false
-                preview.update(config, landscape, widthPercent, true)
-                preview.measure(View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-                preview.layout(0, 0, preview.measuredWidth, preview.measuredHeight)
-                val asymmetric = draw(preview)
-                assertEquals("top-left remains rounded", 0, asymmetric.getPixel(surfaceLeft + 1, 1) ushr 24)
-                assertTrue("top-right can remain square", (asymmetric.getPixel(surfaceRight - 2, 1) ushr 24) != 0)
+                harness.update { it.update(config, landscape, widthPercent, true) }
+                harness.inspect { preview ->
+                    val asymmetric = draw(preview)
+                    assertEquals("top-left remains rounded", 0, asymmetric.getPixel(surfaceLeft + 1, 1) ushr 24)
+                    assertTrue("top-right can remain square", (asymmetric.getPixel(surfaceRight - 2, 1) ushr 24) != 0)
+                    asymmetric.recycle()
+                }
             }
         } finally {
             instrumentation.runOnMainSync { host?.finish() }
@@ -201,25 +203,29 @@ class GeometryPreviewDeviceTest {
         val original = prefs.all.toMap()
         try {
             check(prefs.edit().clear().commit())
-            instrumentation.runOnMainSync {
+            androidx.test.core.app.ActivityScenario.launch<FastInputHostActivity>(
+                android.content.Intent(context, FastInputHostActivity::class.java)).use { scenario ->
+                var host: FastInputHostActivity? = null
+                scenario.onActivity { host = it }
                 for (type in listOf(GeometryKeyboard.QWERTY, GeometryKeyboard.SUMIRE)) {
-                    val preview = GeometryPreview(context, type)
-                    fun capture(): Bitmap {
-                        preview.update(KeyboardGeometryPreference(), false, 100, true)
-                        val width = context.resources.displayMetrics.widthPixels
-                        preview.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-                        preview.layout(0, 0, preview.measuredWidth, preview.measuredHeight)
-                        return draw(preview)
+                    NativeGeometryPreviewHarness(requireNotNull(host)) { GeometryPreview(requireNotNull(host), type) }.use { harness ->
+                        harness.update { it.update(KeyboardGeometryPreference(), false, 100, true) }
+                        var without: Bitmap? = null
+                        harness.inspect { preview ->
+                            without = draw(preview)
+                            if (type == GeometryKeyboard.QWERTY) AppPreference.qwerty_show_keymap_symbols = true
+                            else AppPreference.sumire_keymap_guide_japanese = true
+                        }
+                        harness.update { it.update(KeyboardGeometryPreference(), false, 100, true) }
+                        harness.inspect { preview ->
+                            val with = draw(preview)
+                            var changed = 0
+                            for (y in 0 until with.height) for (x in 0 until with.width)
+                                if (with.getPixel(x, y) != without!!.getPixel(x, y)) changed++
+                            assertTrue("$type guide labels should change the rendered keys", changed > 50)
+                            with.recycle(); without!!.recycle()
+                        }
                     }
-                    val without = capture()
-                    if (type == GeometryKeyboard.QWERTY) AppPreference.qwerty_show_keymap_symbols = true
-                    else AppPreference.sumire_keymap_guide_japanese = true
-                    val with = capture()
-                    var changed = 0
-                    for (y in 0 until with.height) for (x in 0 until with.width)
-                        if (with.getPixel(x, y) != without.getPixel(x, y)) changed++
-                    assertTrue("$type guide labels should change the rendered keys", changed > 50)
                 }
             }
         } finally { restore(prefs, original) }

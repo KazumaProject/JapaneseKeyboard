@@ -1,6 +1,5 @@
 package com.kazumaproject.custom_keyboard.view
 
-import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.annotation.SuppressLint
 import android.content.Context
@@ -162,6 +161,21 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val independentTextPreviews = linkedMapOf<KeyData, FlickTextSelection>()
     private val independentLastCoordinates = mutableMapOf<Int, Pair<Float, Float>>()
 
+    private var builtInPopupMapOptions = com.kazumaproject.custom_keyboard.data.PopupMapInputOptions()
+    private var customPopupMapOptions = com.kazumaproject.custom_keyboard.data.PopupMapInputOptions()
+    private val popupMapOptions get() = if (layoutOrigin == KeyboardLayoutOrigin.BUILT_IN)
+        builtInPopupMapOptions else customPopupMapOptions
+
+    @JvmOverloads
+    fun setPopupMapOptions(
+        value: com.kazumaproject.custom_keyboard.data.PopupMapInputOptions,
+        origin: KeyboardLayoutOrigin? = null,
+    ) {
+        if (origin == null || origin == KeyboardLayoutOrigin.BUILT_IN) builtInPopupMapOptions = value
+        if (origin == null || origin == KeyboardLayoutOrigin.CUSTOM) customPopupMapOptions = value
+        if (origin == null || origin == layoutOrigin) popupMapControllers.forEach { it.setOptions(popupMapOptions) }
+    }
+    private val popupMapControllers = mutableListOf<com.kazumaproject.custom_keyboard.controller.PopupMapInputController>()
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val centerGuideFlickControllers = mutableListOf<CenterGuideFlickInputController>()
@@ -253,8 +267,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var currentLayout: KeyboardLayout? = null
     private var layoutOrigin = KeyboardLayoutOrigin.CUSTOM
 
-    private fun isSuspended(key: KeyData): Boolean =
-        CustomFlickSuspension.isSuspended(key.keyType, layoutOrigin)
+    private fun isUnsupported(key: KeyData): Boolean =
+        key.keyType == null
 
     // Used only for the built-in Sumire layout. User-defined layouts keep the legacy path.
     private var geometry = KeyboardGeometry()
@@ -453,6 +467,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         tfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         flickLongPressControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         stickyTfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
+        popupMapControllers.forEach(::applyFreeFlickPopupStyle)
         restoreInputControllersIfNeeded()
     }
 
@@ -665,9 +680,20 @@ class FlickKeyboardView @JvmOverloads constructor(
             keyboardRenderRevision += 1
         }
 
+        popupMapControllers.forEach(::applyFreeFlickPopupStyle)
         if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
         }
+    }
+
+    private fun applyFreeFlickPopupStyle(controller: com.kazumaproject.custom_keyboard.controller.PopupMapInputController) {
+        val style = popupViewStyleSet.tfbi
+        controller.applyPopupViewStyle(
+            style.copy(skinId = keyboardSkinId,
+                backgroundColor = style.backgroundColor ?: customKeyColor.takeIf { themeMode == "custom" },
+                textColor = style.textColor ?: customKeyTextColor.takeIf { themeMode == "custom" }),
+            customSpecialKeyColor.takeIf { themeMode == "custom" },
+            customBorderColor.takeIf { themeMode == "custom" && customBorderEnable })
     }
 
     private fun manipulateColor(color: Int, factor: Float): Int {
@@ -742,6 +768,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             cancelTrackedTouchState()
             doubleTapActionDispatcher.cancel()
             layoutOrigin = origin
+            popupMapControllers.forEach { it.setOptions(popupMapOptions) }
             keyboardRenderRevision += 1
         }
         setKeyHitTestMode(hitTestMode)
@@ -844,11 +871,17 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun applyVisibleKeyFilter(keyView: View, keyData: KeyData) {
-        if (isSuspended(keyData)) {
+        if(keySelection!=null) {
+            keyView.visibility=View.VISIBLE
+            keyView.isEnabled=keyData.label in selectableLabels
+            keyView.alpha=if(keyView.isEnabled) 1f else .4f
+            return
+        }
+        if (isUnsupported(keyData)) {
             keyView.visibility = if (visibleKeyLabels?.contains(keyData.label) != false) View.VISIBLE else View.INVISIBLE
             keyView.isEnabled = false
             keyView.alpha = 0.4f
-            keyView.contentDescription = "${keyData.label}: ${context.getString(com.kazumaproject.core.R.string.custom_flick_suspended)}"
+            keyView.contentDescription = "${keyData.label}: ${context.getString(com.kazumaproject.core.R.string.custom_key_unsupported)}"
             return
         }
         keyView.alpha = 1f
@@ -1517,7 +1550,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val commonCornerRadius = dpToPx(8).toFloat()
         val visualPalette = resolveKeyVisualPalette(keyData)
 
-        val keyView: View = if (shouldRenderKeyAsImage(keyData) && !isSuspended(keyData)) {
+        val keyView: View = if (shouldRenderKeyAsImage(keyData) && !isUnsupported(keyData)) {
             AppCompatImageButton(context).apply {
                 isFocusable = false
                 elevation = 0f
@@ -1700,10 +1733,63 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    private var keySelection: ((String) -> Unit)? = null
+    private var selectableLabels: Set<String> = emptySet()
+    private var selectedLabel: String? = null
+    private var selectionTarget: View? = null
+
+    /** An editor surface: keys can be selected but no input controller is attached. */
+    fun setKeySelectionMode(labels: Set<String>, onSelect: (String) -> Unit) {
+        cancelTrackedTouchState()
+        cancelInputControllers()
+        selectableLabels = labels; keySelection = onSelect
+        keyInfos.forEach { attachKeyBehavior(it.view,it.keyData); applyVisibleKeyFilter(it.view,it.keyData) }
+    }
+    fun selectPreviewKey(label: String) {
+        selectedLabel = label
+        keyInfos.forEach { info ->
+            info.view.isSelected = info.keyData.label == label
+            info.view.isPressed = info.view.isSelected
+        }
+    }
+    private fun handleSelectionTouch(event: MotionEvent): Boolean {
+        when(event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> selectionTarget=findTargetView(event.rawX,event.rawY)?.view
+            MotionEvent.ACTION_UP -> {
+                val target=selectionTarget
+                selectionTarget=null
+                if(target!=null && findTargetView(event.rawX,event.rawY)?.view===target) target.performClick()
+                selectedLabel?.let(::selectPreviewKey)
+            }
+            MotionEvent.ACTION_CANCEL -> {selectionTarget=null;selectedLabel?.let(::selectPreviewKey)}
+        }
+        return true
+    }
+
     private fun attachKeyBehavior(keyView: View, keyData: KeyData): Any? {
-        if (isSuspended(keyData)) return null
+        keySelection?.let { select ->
+            keyView.setOnTouchListener(null)
+            keyView.setOnClickListener { if(keyData.label in selectableLabels) select(keyData.label) }
+            keyView.isSelected=keyData.label==selectedLabel
+            keyView.isPressed=keyView.isSelected
+            return null
+        }
+        if (isUnsupported(keyData)) return null
         val layout = currentLayout ?: return null
 
+        keyData.popupMapConfig?.let { config ->
+            return com.kazumaproject.custom_keyboard.controller.PopupMapInputController(
+                config = config,
+                windowAnchor = { popupWindowAnchorProvider?.invoke() },
+                transform = ::transformInputTextForDisplay,
+                onPress = { notifyTextPress(keyData, it) },
+                onSelection = { text, flick -> updateTextPreview(keyData, text, flick) },
+                onCommit = { text, flick -> dispatchCommittedKeyAction(keyData, KeyAction.Text(text), flick) },
+                onCancel = { cancelTextPreview(keyData) },
+                options = popupMapOptions,
+                gestureConfigSource = gestureSessionConfigSource
+            ).also { applyFreeFlickPopupStyle(it); it.attach(keyView); popupMapControllers.add(it) }
+        }
         when (keyData.keyType) {
             KeyType.QWERTY -> {
                 val config = keyData.qwertyConfig ?: QwertyKeyConfig(QwertyKeyLayer(
@@ -2821,7 +2907,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            KeyType.HIERARCHICAL_FLICK -> return null
+            KeyType.FREE_FLICK -> return null
         }
 
         return null
@@ -2850,7 +2936,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         isFlick: Boolean,
         isLongPress: Boolean = false,
     ) {
-        if (isSuspended(keyData)) return
+        if (isUnsupported(keyData)) return
         val dispatch = dispatch@{
             val toggleValues = if (
                 !isFlick &&
@@ -2976,6 +3062,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun detachKeyBehavior(controller: Any?) {
         when (controller) {
+            is com.kazumaproject.custom_keyboard.controller.PopupMapInputController -> {
+                controller.cancel()
+                popupMapControllers.remove(controller)
+            }
             is CustomAngleFlickController -> {
                 controller.cancel()
                 flickControllers.remove(controller)
@@ -3071,6 +3161,8 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun cancelInputControllers() {
         controllerRebindPending = true
+        popupMapControllers.forEach { it.cancel() }
+        popupMapControllers.clear()
         flickControllers.forEach { it.cancel() }
         flickControllers.clear()
         crossFlickControllers.forEach { it.cancel() }
@@ -3203,7 +3295,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         if (x < 0f || x >= width || y < 0f || y >= height) return null
         val views = keyInfos.filter {
             it.view.visibility == View.VISIBLE && it.view.width > 0 && it.view.height > 0 &&
-                (it.view.isEnabled || isSuspended(it.keyData))
+                (it.view.isEnabled || isUnsupported(it.keyData))
         }.map { it.view }
         val hit = views.firstOrNull { KeyboardViewGeometry.containsParentPoint(it, x, y) }
         val selected = hit ?: if (keyHitTestMode == KeyHitTestMode.NEAREST_KEY) views.minByOrNull { key ->
@@ -3250,7 +3342,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         for (info in keyInfos) {
             val key = info.view
             if (key.visibility != View.VISIBLE || key.width <= 0 || key.height <= 0 ||
-                (!key.isEnabled && !isSuspended(info.keyData))
+                (!key.isEnabled && !isUnsupported(info.keyData))
             ) {
                 continue
             }
@@ -3369,6 +3461,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if(keySelection!=null) return handleSelectionTouch(event)
         return try {
             handleKeyboardTouchEvent(event)
         } finally {

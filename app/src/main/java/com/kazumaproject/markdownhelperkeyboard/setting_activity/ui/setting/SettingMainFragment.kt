@@ -31,7 +31,6 @@ class SettingMainFragment : Fragment() {
     private var _binding: FragmentSettingMainBinding? = null
     private val binding get() = _binding!!
 
-    // リーク対策: Mediatorを変数で保持してonDestroyViewで解放できるようにする
     private var loadingUi: SettingsLoadingUi? = null
     private var initializationJob: kotlinx.coroutines.Job? = null
 
@@ -65,8 +64,6 @@ class SettingMainFragment : Fragment() {
         val adapter = SettingPagerAdapter(this)
         binding.settingViewPager.adapter = adapter
 
-        // タブのタイトル設定
-        // 変数に代入してからattachする
         tabLayoutMediator =
             TabLayoutMediator(binding.settingTabLayout, binding.settingViewPager) { tab, position ->
                 tab.text = adapter.getTitle(position, this)
@@ -153,11 +150,11 @@ class SettingMainFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        // リーク対策: ViewPagerとMediatorの参照を断つ
         tabLayoutMediator?.detach()
         tabLayoutMediator = null
         binding.settingViewPager.adapter = null
 
+        initializationJob?.cancel()
         initializationJob = null
         loadingUi = null
         super.onDestroyView()

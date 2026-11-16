@@ -230,13 +230,13 @@ class DictionaryBinaryReader @Inject constructor(
         )
 
     private fun readBundledEnglishReading(): EnglishReadingTrie =
-        resolver.openBundledAssetFileDescriptor("english/reading.compact").use(BundledEnglishDictionaryReader::readReading)
+        resolver.readBundledAssetBuffer("english/reading.compact", BundledEnglishDictionaryReader::readReading)
 
     private fun readBundledEnglishWord(): EnglishWordTrie =
-        resolver.openBundledAssetFileDescriptor("english/word.compact").use(BundledEnglishDictionaryReader::readWord)
+        resolver.readBundledAssetBuffer("english/word.compact", BundledEnglishDictionaryReader::readWord)
 
     private fun readBundledEnglishToken(): EnglishTokenArray =
-        resolver.openBundledAssetFileDescriptor("english/token.compact").use(BundledEnglishDictionaryReader::readToken)
+        resolver.readBundledAssetBuffer("english/token.compact", BundledEnglishDictionaryReader::readToken)
 
     private fun readEnglishReading(input: InputStream): EnglishReadingTrie =
         openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_READING.name).use {
@@ -346,7 +346,7 @@ class DictionaryBinaryReader @Inject constructor(
             if (compactSystemDictionaryLoadAttempted) return@synchronized null
             compactSystemDictionaryLoadAttempted = true
             runCatching {
-                resolver.openBundledAssetFileDescriptor(COMPACT_SYSTEM_DICTIONARY_ASSET).use(
+                resolver.readBundledAssetBuffer(COMPACT_SYSTEM_DICTIONARY_ASSET,
                     CompactSystemDictionaryReader::read,
                 )
             }.onFailure { error ->
@@ -363,8 +363,7 @@ class DictionaryBinaryReader @Inject constructor(
 
     internal fun loadBundledEnglishGrammar(): GrammarRoles? =
         runCatching {
-            resolver.openBundledAssetFileDescriptor("english/grammar/categories.erol")
-                .use(RuntimeGrammarRoles::read)
+            resolver.readBundledAssetBuffer("english/grammar/categories.erol", RuntimeGrammarRoles::readBundled)
         }.onFailure { error ->
             Timber.w(error, "Bundled English grammar is unavailable")
         }.getOrNull()
@@ -377,7 +376,7 @@ class DictionaryBinaryReader @Inject constructor(
             compactEnglishDictionaryCache?.let { return@synchronized it }
             if (compactEnglishDictionaryLoadAttempted) return@synchronized null
             val loaded = runCatching {
-                resolver.openBundledAssetFileDescriptor(ENGLISH_LOOKUP_INDEX_ASSET).use { index ->
+                resolver.readBundledAssetBuffer(ENGLISH_LOOKUP_INDEX_ASSET) { index ->
                     val reading = readBundledEnglishReading()
                     val word = readBundledEnglishWord()
                     val token = readBundledEnglishToken()

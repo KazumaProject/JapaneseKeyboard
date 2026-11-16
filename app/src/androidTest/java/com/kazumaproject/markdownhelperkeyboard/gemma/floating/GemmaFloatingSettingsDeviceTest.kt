@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.floating
 
 import android.content.Intent
 import android.os.SystemClock
+import com.google.android.material.tabs.TabLayout
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingTabRegistry
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.NavHostFragment
 import androidx.preference.ListPreference
@@ -18,13 +20,11 @@ import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.espresso.matcher.ViewMatchers.withHint
 import androidx.test.espresso.matcher.ViewMatchers.withText
-import androidx.viewpager2.widget.ViewPager2
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.awaitSettingsContentReady
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.GemmaPreferenceFragment
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingTabRegistry
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -125,18 +125,25 @@ class GemmaFloatingSettingsDeviceTest {
                     (activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment)
                         .navController.navigate(R.id.gemmaPreferenceFragment)
                 } else {
-                    val index = SettingTabRegistry.createTabs().indexOfFirst { it.key == SettingTabRegistry.TAB_GEMMA }
-                    assertTrue(index >= 0)
                     val deadline = SystemClock.uptimeMillis() + 30_000
-                    var pagerReady = false
-                    while (!pagerReady && SystemClock.uptimeMillis() < deadline) {
-                        scenario.onActivity { pagerReady = it.findViewById<ViewPager2>(R.id.setting_view_pager) != null }
-                        if (!pagerReady) SystemClock.sleep(50)
+                    var selected = false
+                    while (!selected && SystemClock.uptimeMillis() < deadline) {
+                        scenario.onActivity { activity ->
+                            val host = activity.supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+                            when (val current = host.childFragmentManager.primaryNavigationFragment) {
+                                is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment -> {
+                                    val index = SettingTabRegistry.createTabs().indexOfFirst { it.key == SettingTabRegistry.TAB_GEMMA }
+                                    activity.findViewById<TabLayout>(R.id.setting_tab_layout).getTabAt(index)?.select()
+                                    selected = current.childFragmentManager.fragments.any { it is GemmaPreferenceFragment && it.isResumed }
+                                }
+                                is com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AiConversionPreferenceFragment ->
+                                    current.findPreference<Preference>("setting_route_gemma_preferences")?.performClick()
+                                is GemmaPreferenceFragment -> selected = true
+                            }
+                        }
+                        if (!selected) SystemClock.sleep(50)
                     }
-                    check(pagerReady) { "Legacy settings pager did not load" }
-                    scenario.onActivity { activity ->
-                        activity.findViewById<ViewPager2>(R.id.setting_view_pager).setCurrentItem(index, false)
-                    }
+                    check(selected) { "Conventional AI settings did not load" }
                 }
                 awaitGemma(scenario)
                 scenario.onActivity { activity ->

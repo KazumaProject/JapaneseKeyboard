@@ -60,6 +60,22 @@ class KeyboardFontGlyphDrawableTest {
     )
 
     @Test
+    fun drawingStandardFontIconsDoesNotScheduleAnotherFrame() {
+        val drawable = checkNotNull(KeyboardFontGlyphDrawable.create(context, R.drawable.kana_small, KeyboardFontSnapshot()))
+        drawable.setTint(Color.BLACK)
+        var invalidations = 0
+        drawable.callback = object : android.graphics.drawable.Drawable.Callback {
+            override fun invalidateDrawable(who: android.graphics.drawable.Drawable) { invalidations++ }
+            override fun scheduleDrawable(who: android.graphics.drawable.Drawable, what: Runnable, whenMillis: Long) {}
+            override fun unscheduleDrawable(who: android.graphics.drawable.Drawable, what: Runnable) {}
+        }
+        render(drawable, 96, 96)
+        invalidations = 0
+        repeat(3) { render(drawable, 96, 96) }
+        assertEquals("An unchanged icon must not invalidate itself while drawing", 0, invalidations)
+    }
+
+    @Test
     fun allAffectedResourcesHaveFontAwareWrappersWithoutChangingIntrinsicSize() {
         assertEquals(25, expectedLabels.size)
         val custom = KeyboardFontSnapshot(Typeface.create("monospace", Typeface.NORMAL), 1)

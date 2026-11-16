@@ -58,6 +58,29 @@ private fun FlickAction.toPopupCellContent(): PopupCellContent = when (this) {
 }
 
 class CrossFlickPopupView(context: Context) : FrameLayout(context), KeyboardFontAware {
+    private val fingerTrail = FeverPopupTrail(this)
+
+    fun updateFingerFeedback(rawX: Float, rawY: Float) {
+        if (skinId == KeyboardSkinId.FEVER) fingerTrail.move(rawX, rawY)
+    }
+
+    override fun dispatchDraw(canvas: android.graphics.Canvas) {
+        // OverlayViewGroup has no parent, so View.isShown() is false inside an overlay.
+        // Replacing an attached cell background consequently hides its Drawable. Keep its
+        // visibility tied to this popup's real attachment/window, including after selection.
+        if (skinId == KeyboardSkinId.FEVER) {
+            val visible = isAttachedToWindow && windowVisibility == View.VISIBLE && visibility == View.VISIBLE
+            cells.values.forEach { cell -> cell.background?.setVisible(visible, false) }
+        }
+        super.dispatchDraw(canvas)
+        if (skinId == KeyboardSkinId.FEVER) fingerTrail.draw(canvas)
+    }
+
+    override fun onDetachedFromWindow() {
+        fingerTrail.clear()
+        super.onDetachedFromWindow()
+    }
+
 
     private var keyboardFontSnapshot = KeyboardFontApplicator.processSnapshot
 

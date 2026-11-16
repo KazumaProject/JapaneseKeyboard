@@ -1,46 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="?android:attr/selectableItemBackground"
-    android:padding="16dp">
-
-    <!-- NEW: Delete Icon -->
-    <ImageView
-        android:id="@+id/delete_icon"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:background="@drawable/keyboard_selection_delete_icon_bg"
-        android:contentDescription="@string/delete_key"
-        android:padding="4dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/remove"
-        app:tint="@color/white" />
-
-    <TextView
-        android:id="@+id/keyboard_name"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:textAppearance="?attr/textAppearanceListItem"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/drag_handle"
-        app:layout_constraintStart_toEndOf="@+id/delete_icon"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="日本語 - かな" />
-
-    <ImageView
-        android:id="@+id/drag_handle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@string/drag_handle_description"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_drag_handle" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <TextView android:id="@+id/keyboard_available_heading" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingTop="20dp" android:paddingBottom="8dp" android:paddingStart="4dp"
+        android:text="@string/settings_keyboard_available" android:textAppearance="?attr/textAppearanceTitleSmall" android:visibility="gone" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="72dp" android:gravity="center_vertical" android:paddingVertical="8dp" android:orientation="horizontal">
+        <ImageView android:id="@+id/drag_handle" android:layout_width="48dp" android:layout_height="48dp"
+            android:padding="12dp" android:src="@drawable/ic_drag_handle" android:contentDescription="@string/drag_handle_description" android:visibility="gone" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="4dp">
+            <TextView android:id="@+id/keyboard_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceTitleSmall" />
+            <TextView android:id="@+id/keyboard_selected_badge" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" android:textColor="?attr/colorPrimary" android:textAppearance="?attr/textAppearanceLabelMedium" android:visibility="gone" />
+            <TextView android:id="@+id/keyboard_summary" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+        </LinearLayout>
+        <com.google.android.material.button.MaterialButton android:id="@+id/keyboard_settings"
+            style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:minWidth="56dp" android:minHeight="48dp" android:paddingHorizontal="8dp" android:text="@string/settings_edit_short" />
+        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/keyboard_enabled"
+            android:layout_width="wrap_content" android:layout_height="48dp" android:minWidth="56dp" android:paddingStart="4dp" android:paddingEnd="4dp" />
+    </LinearLayout>
+</LinearLayout>

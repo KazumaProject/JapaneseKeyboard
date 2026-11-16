@@ -1,24 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".setting_activity.ui.keyboard_selection.KeyboardSelectionFragment">
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/keyboard_selection_view"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/add_new_keyboard_dialog_trigger"
-        android:layout_width="match_parent"
-        android:layout_height="?actionBarSize"
-        android:layout_marginTop="32dp"
-        android:background="@drawable/ten_keys_center_bg"
-        android:text="@string/add_new_keyboard_text"
-        android:textAlignment="center"
-        app:layout_constraintTop_toBottomOf="@id/keyboard_selection_view" />
-</androidx.constraintlayout.widget.ConstraintLayout>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:padding="16dp" android:text="@string/settings_keyboard_enabled_help" android:textAppearance="?attr/textAppearanceBodyMedium" />
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/keyboard_selection_view"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:paddingStart="12dp" android:paddingEnd="12dp" android:clipToPadding="false" />
+    <com.google.android.material.button.MaterialButton xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/keyboard_startup_settings" style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="56dp"
+        android:layout_marginHorizontal="12dp" android:text="@string/settings_keyboard_startup_settings" />
+</LinearLayout>

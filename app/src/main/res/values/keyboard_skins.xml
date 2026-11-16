@@ -13,5 +13,5 @@
     <string name="keyboard_skin_light_description">Bright keys on a soft gray background.</string>
     <string name="keyboard_skin_dark_description">Dark keys with clear, light lettering.</string>
     <string name="keyboard_skin_classic_description">Bevelled keys on a cool-toned background.</string>
-    <string name="keyboard_skin_preview_note">Previews illustrate the colors and key shapes.</string>
+    <string name="keyboard_skin_preview_note">Each preview applies the theme to your current keyboard layout.</string>
 </resources>

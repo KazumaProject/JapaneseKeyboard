@@ -126,6 +126,8 @@ object SettingDestinations {
         "ng_word_preference",
         "physical_keyboard_shortcut_setting_preference",
         "sumire_special_key_editor_preference",
+        "sumire_free_flick_settings",
+        "sumire_popup_map_editor_preference",
         "morse_maps",
         "morse_key_layout",
         "gemma_prompt_template_management_preference",
@@ -150,14 +152,7 @@ object SettingDestinations {
 
     private val defaultFrequentKeys = listOf(
         "keyboard_screen_preference",
-        "setting_route_keyboard_theme",
-        "candidate_view_height_setting_fragment_preference",
-        "candidate_view_height_landscape_setting_fragment_preference",
-        "setting_route_input_method",
-        "setting_route_dictionary",
-        "clipboard_history_preference_fragment",
-        "setting_route_zenz_preferences",
-        "setting_route_custom_keyboard_preferences",
+        "key_sound_preference",
     )
 
     fun defaultFrequent(context: Context): List<SettingDestination> =
@@ -167,6 +162,13 @@ object SettingDestinations {
         val candidatesByKey = candidates.associateBy { it.key }
         return defaultFrequentKeys.mapNotNull { candidatesByKey[it] }
     }
+
+    internal fun isFeverSelected(context: Context): Boolean =
+        com.kazumaproject.core.domain.skin.KeyboardSkinId.fromPreference(
+            androidx.preference.PreferenceManager.getDefaultSharedPreferences(context).getString(
+                com.kazumaproject.core.domain.skin.KeyboardSkinId.PREFERENCE_KEY, null
+            )
+        ) == com.kazumaproject.core.domain.skin.KeyboardSkinId.FEVER
 
     fun frequentCandidates(context: Context): List<SettingDestination> {
         val manualDestinations = buildList {
@@ -192,6 +194,15 @@ object SettingDestinations {
                 iconRes = CoreR.drawable.keyboard_24px,
             )
         )
+        if (isFeverSelected(context)) add(destination(
+            key = "fever_settings",
+            title = context.getString(R.string.fever_settings_title),
+            summary = context.getString(R.string.fever_settings_summary),
+            category = SettingCategory.KEYBOARD_DISPLAY,
+            keywords = listOf("fever", "pachinko", "combo", "jackpot", "パチンコ", "コンボ", "演出", "抽選", "反応語", "フィーバー"),
+            destinationId = R.id.feverSettingsFragment,
+            iconRes = CoreR.drawable.table_lamp_24px,
+        ))
         add(
             destination(
                 key = "setting_route_keyboard_theme",
@@ -470,12 +481,20 @@ object SettingDestinations {
             context = context,
             keys = (manualDestinations.map { it.key } + frequentCandidatePreferenceKeys).distinct(),
         )
-        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
+        val officialIds = setOf(R.id.legacyCommonSectionFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
         val officialByKey = xmlDestinations.filter { destinationId(it.destination) in officialIds }.associateBy { it.key }
         val resolvedManual = manualDestinations.map { old ->
             officialByKey[old.key]?.copy(category = old.category, iconRes = old.iconRes, keywords = old.keywords + officialByKey.getValue(old.key).keywords) ?: old
         }
-        return (resolvedManual + xmlDestinations).distinctBy { it.key }
+        return (resolvedManual + xmlDestinations).distinctBy { it.key }.map { item ->
+            // This independent boolean has no dependent editor or custom persistence handler.
+            if (item.key == "key_sound_preference") item.copy(
+                title = context.getString(R.string.settings_key_sound), summary = "",
+                destination = SettingDestinationType.SwitchPreference("key_sound_preference", false,
+                    R.id.legacyCommonSectionFragment, "key_sound_preference"))
+            else if (item.key == "keyboard_screen_preference") item.copy(title = context.getString(R.string.settings_size_position))
+            else item
+        }
     }
 
     private val frequentCandidatePreferenceKeys = listOf(
@@ -720,6 +739,33 @@ object SettingDestinations {
         ),
     )
 
+    fun homeCategories(context: Context): List<SettingDestination> {
+        val existing = categories(context).associateBy { it.key }
+        fun route(key: String, title: Int, summary: Int, id: Int, icon: Int, category: SettingCategory) =
+            destination(key, context.getString(title), context.getString(summary), category, emptyList(), id, icon)
+        return listOf(
+            route("settings_home_keyboard_list", R.string.settings_keyboard_list, R.string.settings_keyboard_list_summary,
+                R.id.keyboardSelectionFragment, CoreR.drawable.keyboard_24px, SettingCategory.INPUT_METHOD),
+            existing.getValue("setting_route_keyboard_display").copy(title = context.getString(R.string.settings_appearance_title), summary = context.getString(R.string.settings_appearance_summary)),
+            route("settings_home_input_flick", R.string.settings_input_flick_title, R.string.settings_input_flick_summary,
+                R.id.inputFlickPreferenceFragment, CoreR.drawable.input_24px, SettingCategory.INPUT_METHOD),
+            existing.getValue("setting_route_candidate_conversion"),
+            existing.getValue("setting_route_operation_feedback").copy(title = context.getString(R.string.settings_sound_title), summary = context.getString(R.string.settings_sound_summary),
+                destination = SettingDestinationType.NavDestination(R.id.legacyCommonSectionFragment, "settings_common_feedback")),
+            existing.getValue("setting_route_dictionary").copy(title = context.getString(R.string.settings_dictionary_title), summary = context.getString(R.string.settings_dictionary_summary)),
+            existing.getValue("setting_route_clipboard_shortcut"),
+            route("settings_home_ai_voice", if (AppVariantConfig.hasZenz || AppVariantConfig.hasGemma) R.string.settings_ai_voice_title else R.string.setting_category_voice_input_title,
+                if (AppVariantConfig.hasZenz || AppVariantConfig.hasGemma) R.string.settings_ai_voice_summary else R.string.setting_category_voice_input_summary,
+                R.id.aiVoicePreferenceFragment, CoreR.drawable.settings_voice_24px, SettingCategory.VOICE_INPUT),
+            route("settings_home_external", R.string.settings_external_title, R.string.settings_external_summary,
+                R.id.externalKeyboardPreferenceFragment, CoreR.drawable.keyboard_24px, SettingCategory.INPUT_METHOD),
+            existing.getValue("setting_route_conversion_engine"),
+            existing.getValue("setting_route_advanced"),
+            existing.getValue("setting_route_backup"),
+            existing.getValue("setting_route_app_info"),
+        )
+    }
+
     fun management(context: Context): List<SettingDestination> = listOf(
         destination(
             key = "setting_management_learn_dictionary",
@@ -911,6 +957,7 @@ object SettingDestinations {
             "tenkey_popup_view_style_preference" -> R.id.tenKeyPopupStyleSettingFragment
             "qwerty_button_size_preference" -> R.id.qwertyMarginSettingFragment
             "qwerty_popup_view_style_preference" -> R.id.qwertyPopupStyleSettingFragment
+            "custom_qwerty_popup_style" -> R.id.customQwertyPopupStyleSettingFragment
             "qwerty_number_key_flick_setting_preference" -> R.id.qwertyNumberKeyFlickSettingFragment
             "sumire_keyboard_size_preference" -> R.id.flickKeyboardSizeSettingsFragment
             "custom_keyboard_size_preference" -> R.id.flickKeyboardSizeSettingsFragment
@@ -918,6 +965,8 @@ object SettingDestinations {
             "sumire_custom_angle_preference" -> R.id.circularFlickSettingsFragment
             "circular_slot_action_setting_preference" -> R.id.circularSlotActionSettingFragment
             "sumire_special_key_editor_preference" -> R.id.sumireSpecialKeyEditorFragment
+            "sumire_free_flick_settings" -> R.id.freeFlickSettingsFragment
+            "sumire_popup_map_editor_preference" -> R.id.popupMapEditorFragment
             "physical_keyboard_shortcut_setting_preference" -> R.id.physicalKeyboardShortcutListFragment
             else -> null
         }

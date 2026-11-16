@@ -7,6 +7,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.os.bundleOf
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -69,6 +71,18 @@ class SettingSearchFragment : Fragment() {
             }
         )
         loadSearchIndex()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val input = binding.settingSearchInput
+        input.post {
+            if (_binding?.settingSearchInput === input && isResumed) {
+                input.requestFocus()
+                WindowCompat.getInsetsController(requireActivity().window, input)
+                    .show(WindowInsetsCompat.Type.ime())
+            }
+        }
     }
 
     private fun loadSearchIndex() {

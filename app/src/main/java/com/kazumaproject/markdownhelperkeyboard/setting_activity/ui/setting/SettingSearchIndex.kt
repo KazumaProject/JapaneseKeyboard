@@ -165,7 +165,7 @@ object SettingSearchIndex {
         R.id.advancedPreferenceFragment,
         R.id.zenzPreferenceFragment,
         R.id.gemmaPreferenceFragment,
-        R.id.legacyCommonPreferenceFragment,
+        R.id.legacyCommonSectionFragment,
         R.id.keyboardThemeFragment,
     )
 
@@ -174,7 +174,7 @@ object SettingSearchIndex {
             SettingDestinations.management(context) +
             SettingDestinations.frequentCandidates(context)
         val xmlItems = preferenceXmlDestinations(context)
-        val officialIds = setOf(R.id.legacyCommonPreferenceFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
+        val officialIds = setOf(R.id.legacyCommonSectionFragment, R.id.keyboardThemeFragment, R.id.conversionEnginePreferenceFragment, R.id.candidateDisplayPreferenceFragment)
         val official = xmlItems.filter { SettingDestinations.destinationId(it.destination) in officialIds }
         return (official + topLevel + xmlItems).distinctBy { it.key }
     }
@@ -243,13 +243,28 @@ object SettingSearchIndex {
         val xmlItems = legacySources(context).flatMap { source ->
             readLegacyPreferenceXml(context, source)
         }
+        val feverItem = if (SettingDestinations.isFeverSelected(context)) SettingDestinations.destination(
+            key = "fever_settings",
+            title = context.getString(R.string.fever_settings_title),
+            summary = context.getString(R.string.fever_settings_summary),
+            category = SettingCategory.KEYBOARD_DISPLAY,
+            keywords = listOf("fever", "pachinko", "combo", "jackpot", "パチンコ", "コンボ", "演出", "抽選", "反応語", "フィーバー"),
+            destinationId = com.kazumaproject.markdownhelperkeyboard.R.id.feverSettingsFragment,
+            iconRes = SettingDestinations.defaultIconForCategory(SettingCategory.KEYBOARD_DISPLAY),
+            legacyTarget = LegacySettingTarget(
+                tabKey = SettingTabRegistry.TAB_THEME, xmlRes = null,
+                destinationId = com.kazumaproject.markdownhelperkeyboard.R.id.feverSettingsFragment,
+                preferenceKey = "fever_settings", filterResultMode = false,
+            ),
+            searchScope = SettingSearchScope.LEGACY_TABS,
+        ) else null
         val candidateItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_display, R.id.candidateDisplayPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
         val indicatorItems = readPreferenceXml(context, PreferenceXmlSource(
             R.xml.pref_candidate_indicator_styles, R.id.candidateIndicatorPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION
         )).map { it.copy(searchScope = SettingSearchScope.LEGACY_TABS) }
-        return (candidateItems + listOfNotNull(themeItem, textMacroItem) + xmlItems + indicatorItems).distinctBy { it.key }
+        return (candidateItems + listOfNotNull(themeItem, textMacroItem, feverItem) + xmlItems + indicatorItems).distinctBy { it.key }
     }
 
     fun search(
@@ -413,7 +428,7 @@ object SettingSearchIndex {
         }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
-        add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
+        add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonSectionFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_theme, R.id.keyboardThemeFragment, SettingCategory.KEYBOARD_DISPLAY))
         add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_common, R.id.commonPreferenceFragment, SettingCategory.ADVANCED))
@@ -443,6 +458,7 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_qwerty, R.id.qwertyPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty_english, R.id.qwertyEnglishPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_qwerty_romaji, R.id.qwertyRomajiPreferenceFragment, SettingCategory.INPUT_METHOD))
+        add(PreferenceXmlSource(R.xml.pref_free_flick, R.id.freeFlickSettingsFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_sumire, R.id.sumirePreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_custom, R.id.customKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_tablet, R.id.tabletPreferenceFragment, SettingCategory.INPUT_METHOD))
@@ -456,7 +472,7 @@ object SettingSearchIndex {
                 tabKey = tab.key,
                 tabTitle = tab.title(context),
                 xmlRes = xmlRes,
-                destinationId = tab.destinationId,
+                destinationId = if (tab.key == SettingTabRegistry.TAB_COMMON) R.id.legacyCommonSectionFragment else tab.destinationId,
                 category = legacyCategoryForTab(tab.key),
             )
         }
@@ -490,6 +506,7 @@ object SettingSearchIndex {
                             !key.isNullOrBlank() &&
                             isVisibleInCurrentVariant(key) &&
                             key != "candidate_display_preview" &&
+                            key != "sumire_free_flick_preview" &&
                             !key.startsWith("setting_route_canonical_") &&
                             !key.startsWith("settings_theme_enable_") &&
                             !key.startsWith("settings_theme_unavailable_") &&
@@ -500,12 +517,13 @@ object SettingSearchIndex {
                                 .ifBlank { key }
                             val summary = readSummary(context, parser)
                             val isOfficial = source.xmlRes in setOf(R.xml.pref_common_legacy, R.xml.pref_theme, R.xml.pref_conversion_engine, R.xml.pref_candidate_display)
-                            val destinationId = if (isOfficial) source.destinationId else
+                            val classified = key.startsWith("optional_bundled_enabled_CLASSIFIED_")
+                            val destinationId = if (classified) R.id.classifiedDictionarySettingsFragment else if (isOfficial) source.destinationId else
                                 SettingDestinations.routeDestinationId(key) ?: source.destinationId
                             val highlightKey =
                                 key.takeIf {
-                                    destinationId == source.destinationId &&
-                                        source.destinationId in highlightableDestinations
+                                    classified || (destinationId == source.destinationId &&
+                                        source.destinationId in highlightableDestinations)
                                 }
                             add(
                                 SettingDestinations.destination(
@@ -518,7 +536,7 @@ object SettingSearchIndex {
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = highlightKey,
-                                    destinationType = if (isOfficial) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
+                                    destinationType = if (classified || isOfficial || source.xmlRes == R.xml.pref_free_flick) SettingDestinationType.NavDestination(destinationId, highlightKey) else readDestinationType(
                                         context = context,
                                         parser = parser,
                                         key = key,
@@ -564,10 +582,12 @@ object SettingSearchIndex {
                             val summary = readSummary(context, parser)
                             val dependencyKey = readDependency(parser)
                             val relatedKeys = legacyRelatedKeys(key, dependencyKey)
+                            val destinationId = if (key.startsWith("optional_bundled_enabled_CLASSIFIED_"))
+                                R.id.classifiedDictionarySettingsFragment else source.destinationId
                             val legacyTarget = LegacySettingTarget(
                                 tabKey = source.tabKey,
                                 xmlRes = source.xmlRes,
-                                destinationId = source.destinationId,
+                                destinationId = destinationId,
                                 preferenceKey = key,
                                 relatedPreferenceKeys = relatedKeys,
                             )
@@ -578,12 +598,12 @@ object SettingSearchIndex {
                                     summary = summary,
                                     category = source.category,
                                     keywords = buildKeywords(key, title, summary) + headings,
-                                    destinationId = source.destinationId,
+                                    destinationId = destinationId,
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = key,
                                     destinationType = SettingDestinationType.NavDestination(
-                                        destinationId = source.destinationId,
+                                        destinationId = destinationId,
                                         highlightPreferenceKey = key,
                                     ),
                                     legacyTarget = legacyTarget,

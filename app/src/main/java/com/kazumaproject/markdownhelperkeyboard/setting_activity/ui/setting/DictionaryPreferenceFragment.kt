@@ -59,6 +59,22 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
 
     override fun onPreferencesReady(savedInstanceState: Bundle?, rootKey: String?) {
 
+        // Keep legacy keys available for saved highlight links, but give browsing its own screen.
+        val highlight = arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
+        findPreference<Preference>("classified_dictionaries")?.isVisible =
+            highlight == "classified_dictionaries" ||
+                highlight?.startsWith("optional_bundled_enabled_CLASSIFIED_") == true ||
+                highlight?.startsWith("classified_group_") == true
+        val manager = findPreference<Preference>("classified_dictionary_manager")
+            ?: Preference(requireContext()).apply {
+                key = "classified_dictionary_manager"
+                setTitle(R.string.classified_dictionary_settings_title)
+                order = -100
+                isIconSpaceReserved = false
+                preferenceScreen.addPreference(this)
+            }
+        manager.setOnPreferenceClickListener { navigateSafely(R.id.classifiedDictionarySettingsFragment); true }
+
         ClassifiedDictionaries.all.forEach { spec ->
             findPreference<SwitchPreferenceCompat>(spec.preferenceKey)?.apply {
                 isPersistent = false
@@ -75,6 +91,7 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
             store::isOptionalBundledEnabled,
             ::updateDictionarySelections,
         ).also { it.bind() }
+        refreshDictionarySelections()
 
         val ngWordSwitchPreference =
             findPreference<SwitchPreferenceCompat>("ng_word_enable_preference")
@@ -154,6 +171,11 @@ class DictionaryPreferenceFragment : AsyncPreferenceFragment() {
     }
 
     private fun refreshDictionarySelections() {
+        findPreference<Preference>("classified_dictionary_manager")?.summary = getString(
+            R.string.classified_group_enabled_count,
+            ClassifiedDictionaries.all.count { store.isOptionalBundledEnabled(it.category) },
+            ClassifiedDictionaries.all.size,
+        )
         ClassifiedDictionaries.all.forEach { spec ->
             findPreference<SwitchPreferenceCompat>(spec.preferenceKey)?.isChecked =
                 store.isOptionalBundledEnabled(spec.category)

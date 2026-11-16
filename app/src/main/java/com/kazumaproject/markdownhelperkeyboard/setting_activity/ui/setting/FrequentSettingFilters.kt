@@ -89,6 +89,7 @@ internal object FrequentSettingFilters {
             R.id.qwertyMarginSettingFragment,
             R.id.qwertyNumberKeyFlickSettingFragment,
             R.id.qwertyPopupStyleSettingFragment,
+            R.id.customQwertyPopupStyleSettingFragment,
             R.id.flickKeyboardPopupStyleListFragment,
             R.id.flickKeyboardSizeSettingsFragment,
             R.id.circularFlickSettingsFragment,

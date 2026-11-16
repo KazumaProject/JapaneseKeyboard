@@ -47,7 +47,6 @@ class SettingSearchAdapter(
                     ?.let { context.getString(R.string.setting_frequent_type_management) }
             val switchTarget = destination.destination as? SettingDestinationType.SwitchPreference
             val isLegacyResult = destination.legacyTarget != null
-            val isDirectEditable = !isLegacyResult && editorController.isDirectEditable(destination)
 
             binding.settingSearchResultIcon.setImageResource(destination.iconRes)
             binding.settingSearchResultTitle.text = destination.title
@@ -69,7 +68,7 @@ class SettingSearchAdapter(
                     contentDescription = destination.title
                 }
             }
-            binding.settingSearchResultArrow.isVisible = !isDirectEditable
+            binding.settingSearchResultArrow.isVisible = false
             binding.root.apply {
                 contentDescription = context.getString(
                     R.string.setting_search_result_content_description,

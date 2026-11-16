@@ -6,6 +6,14 @@
     app:startDestination="@+id/navigation_setting">
 
     <fragment
+        android:id="@+id/classifiedDictionarySettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ClassifiedDictionarySettingsFragment"
+        android:label="@string/classified_dictionary_settings_title">
+        <action android:id="@+id/action_classified_dictionary_group"
+            app:destination="@id/classifiedDictionarySettingsFragment" />
+    </fragment>
+
+    <fragment
         android:id="@+id/navigation_setting"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingHomeFragment"
         android:label="@string/setting_fragment_title"
@@ -136,9 +144,20 @@
         android:label="@string/category_common" />
 
     <fragment
+        android:id="@+id/legacyCommonSectionFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.LegacyCommonPreferenceFragment"
+        android:label="@string/category_common" />
+
+    <fragment
         android:id="@+id/keyboardDisplayPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.KeyboardDisplayPreferenceFragment"
         android:label="@string/setting_category_keyboard_display_title" />
+
+    <fragment android:id="@+id/inputFlickPreferenceFragment" android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.InputFlickPreferenceFragment" android:label="@string/settings_input_flick_title" />
+
+    <fragment android:id="@+id/aiVoicePreferenceFragment" android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AiVoicePreferenceFragment" android:label="@string/settings_ai_voice_title" />
+
+    <fragment android:id="@+id/externalKeyboardPreferenceFragment" android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ExternalKeyboardPreferenceFragment" android:label="@string/settings_external_title" />
 
     <fragment
         android:id="@+id/inputMethodPreferenceFragment"
@@ -251,6 +270,21 @@
         android:id="@+id/qwertyRomajiPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.QwertyRomajiPreferenceFragment"
         android:label="@string/qwerty_romaji_category_title" />
+
+    <fragment
+        android:id="@+id/freeFlickSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickSettingsFragment"
+        android:label="@string/free_flick_settings" />
+
+    <fragment
+        android:id="@+id/freeFlickLayoutsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.FreeFlickLayoutsFragment"
+        android:label="@string/free_flick_layouts" />
+
+    <fragment
+        android:id="@+id/popupMapEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment"
+        android:label="@string/popup_editor_title" />
 
     <fragment
         android:id="@+id/sumirePreferenceFragment"
@@ -478,6 +512,10 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment"
         android:label="@string/keyboardthemefragment" />
     <fragment
+        android:id="@+id/feverSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.FeverSettingsFragment"
+        android:label="@string/fever_settings_title" />
+    <fragment
         android:id="@+id/keyboardSkinSelectionFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardSkinSelectionFragment"
         android:label="@string/keyboard_skin_choose" />
@@ -502,6 +540,10 @@
         android:id="@+id/qwertyPopupStyleSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.QwertyPopupStyleSettingFragment"
         android:label="@string/qwerty_popup_view_style_preference_title" />
+    <fragment
+        android:id="@+id/customQwertyPopupStyleSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.CustomQwertyPopupStyleSettingFragment"
+        android:label="@string/custom_qwerty_popup_style_title" />
     <fragment
         android:id="@+id/flickKeyboardPopupStyleListFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.FlickKeyboardPopupStyleListFragment"
@@ -563,7 +605,10 @@
     <fragment
         android:id="@+id/externalDictionarySettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionarySettingsFragment"
-        android:label="@string/external_dictionary_settings_title" />
+        android:label="@string/external_dictionary_settings_title">
+        <action android:id="@+id/action_external_dictionary_category"
+            app:destination="@id/externalDictionarySettingsFragment" />
+    </fragment>
     <fragment
         android:id="@+id/ngramRuleFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NgramRuleFragment"

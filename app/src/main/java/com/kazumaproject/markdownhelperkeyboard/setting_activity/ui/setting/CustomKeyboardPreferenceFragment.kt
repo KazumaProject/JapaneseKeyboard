@@ -34,7 +34,7 @@ class CustomKeyboardPreferenceFragment : AsyncPreferenceFragment() {
         }
 
         findPreference<Preference>("custom_qwerty_popup_style")?.setOnPreferenceClickListener {
-            navigateSafely(R.id.qwertyPopupStyleSettingFragment)
+            navigateSafely(R.id.customQwertyPopupStyleSettingFragment)
             true
         }
         applyLegacySearchResultFilterIfNeeded()

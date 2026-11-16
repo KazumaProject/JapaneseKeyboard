@@ -461,6 +461,7 @@ class SuggestionAdapter internal constructor(
 
     private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
+    private var feverCandidateBorders = false
 
     private var candidateEmptyDrawableColor: Int? = null
     private var candidateEmptyDrawableTextColor: Int? = null
@@ -493,6 +494,7 @@ class SuggestionAdapter internal constructor(
         candidateYomiMode = source.candidateYomiMode
         candidateTextSize = source.candidateTextSize
         candidateTextColor = source.candidateTextColor
+        feverCandidateBorders = source.feverCandidateBorders
         candidateDividerColor = source.candidateDividerColor
         candidateDividerVerticalMarginDp = source.candidateDividerVerticalMarginDp
         showCandidateYomiForLiveConversion = source.showCandidateYomiForLiveConversion
@@ -2335,6 +2337,12 @@ class SuggestionAdapter internal constructor(
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setFeverCandidateBorders(enabled: Boolean) {
+        if (feverCandidateBorders == enabled) return
+        feverCandidateBorders = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setCandidateItemColors(backgroundColor: Int?, pressedColor: Int?, cornerRadiusDp: Float = 16f) {
         if (!candidateItemColorState.setColors(backgroundColor, pressedColor, cornerRadiusDp)) return
         notifyItemRangeChanged(0, itemCount)
@@ -2621,6 +2629,11 @@ class SuggestionAdapter internal constructor(
                     divider.layoutParams = params
                 }
             }
+        }
+        if (feverCandidateBorders) {
+            itemView.background = com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
+                .find(com.kazumaproject.core.domain.skin.KeyboardSkinId.FEVER)?.keyDrawable(itemView.resources)
+            return
         }
         if (backgroundColor == null && pressedColor == null) {
             itemView.setBackgroundResource(defaultCandidateItemBackgroundRes())

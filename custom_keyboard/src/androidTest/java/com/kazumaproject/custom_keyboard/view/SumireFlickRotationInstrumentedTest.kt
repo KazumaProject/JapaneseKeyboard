@@ -19,7 +19,6 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
-import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
@@ -48,8 +47,7 @@ class SumireFlickRotationTestActivity : Activity() {
     fun configure(
         style: String,
         rotation: TfbiFlickRotation,
-        popup: TfbiPopupPresentationMode,
-        mode: SumireFlickInputMode = SumireFlickInputMode.ALL
+        popup: TfbiPopupPresentationMode
     ) {
         root.removeAllViews()
         actions.clear()
@@ -62,8 +60,7 @@ class SumireFlickRotationTestActivity : Activity() {
                 dynamicKeyStates = emptyMap(),
                 inputLayoutType = "flick",
                 inputStyle = style,
-                tfbiFlickRotation = rotation,
-                sumireFlickInputMode = mode
+                tfbiFlickRotation = rotation
             ), origin = KeyboardLayoutOrigin.BUILT_IN)
             setOnKeyboardActionListener(object : FlickKeyboardView.OnKeyboardActionListener {
                 override fun onPress(action: KeyAction) = Unit
@@ -160,10 +157,9 @@ class SumireFlickRotationInstrumentedTest {
         scenario: ActivityScenario<SumireFlickRotationTestActivity>,
         style: String,
         rotation: TfbiFlickRotation,
-        popup: TfbiPopupPresentationMode,
-        mode: SumireFlickInputMode = SumireFlickInputMode.ALL
+        popup: TfbiPopupPresentationMode
     ) {
-        scenario.onActivity { it.configure(style, rotation, popup, mode) }
+        scenario.onActivity { it.configure(style, rotation, popup) }
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         scenario.onActivity {
             assertTrue("Keyboard must be attached and laid out", it.keyboard.isAttachedToWindow)

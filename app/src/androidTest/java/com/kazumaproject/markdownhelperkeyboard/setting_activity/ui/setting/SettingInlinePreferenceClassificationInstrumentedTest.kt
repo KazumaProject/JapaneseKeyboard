@@ -39,7 +39,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
 
         assertEquals("keyboard_floating_preference", target.preferenceKey)
         assertFalse(target.defaultValue)
-        assertEquals(R.id.legacyCommonPreferenceFragment, target.destinationId)
+        assertEquals(R.id.legacyCommonSectionFragment, target.destinationId)
     }
 
     @Test
@@ -125,7 +125,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
         assertEquals("flick_threshold_shape_preference", target.preferenceKey)
         assertEquals("radial", target.defaultValue)
         assertEquals(listOf("radial", "rectangular"), entryValues.toList())
-        assertEquals(R.id.legacyCommonPreferenceFragment, target.destinationId)
+        assertEquals(R.id.legacyCommonSectionFragment, target.destinationId)
     }
 
     @Test
@@ -247,7 +247,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
         assertNotNull(target)
         requireNotNull(target)
         assertEquals(SettingTabRegistry.TAB_COMMON, target.tabKey)
-        assertEquals(R.id.legacyCommonPreferenceFragment, target.destinationId)
+        assertEquals(R.id.legacyCommonSectionFragment, target.destinationId)
         assertEquals(
             "shortcut_toolbar_integrated_in_suggestion_preference",
             target.preferenceKey,

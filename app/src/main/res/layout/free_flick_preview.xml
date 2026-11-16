@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingHorizontal="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/free_flick_preview_hint" android:textAppearance="?android:attr/textAppearanceSmall" />
+    <FrameLayout android:id="@+id/free_flick_preview_canvas" android:layout_width="match_parent" android:layout_height="280dp" />
+    <TextView android:id="@+id/free_flick_preview_result" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="8dp" android:textAppearance="?android:attr/textAppearanceMedium" />
+</LinearLayout>

@@ -30,6 +30,12 @@
             android:defaultValue="false"
             android:title="@string/zenz_floating_title"
             android:summary="@string/zenz_floating_summary" />
+        <SwitchPreferenceCompat
+            android:key="zenz_floating_live_conversion_enabled"
+            android:dependency="zenz_floating_candidates_enabled"
+            android:defaultValue="false"
+            android:title="@string/zenz_floating_live_conversion_title"
+            android:summary="@string/zenz_floating_live_conversion_summary" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/zenz_generation_category">
         <Preference

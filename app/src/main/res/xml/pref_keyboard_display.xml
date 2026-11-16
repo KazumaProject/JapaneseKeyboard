@@ -2,7 +2,9 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="@string/setting_category_keyboard_display_title">
+    <PreferenceCategory android:title="@string/settings_appearance_title">
+        <Preference android:key="keyboard_screen_preference" android:title="@string/keyboard_screen_size_preference_title" android:summary="@string/keyboard_screen_preference_summary" />
+        <Preference android:key="keyboard_screen_landscape_preference" android:title="@string/keyboard_screen_landscape_size_preference_title" android:summary="@string/keyboard_screen_landscape_preference_summary" />
 
         <Preference
             android:key="setting_route_keyboard_theme"

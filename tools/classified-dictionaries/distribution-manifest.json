@@ -8,7 +8,7 @@
       ],
       "id": "character",
       "label": "架空キャラクター",
-      "recordCount": 6856
+      "recordCount": 6858
     },
     {
       "assetPaths": [
@@ -28,7 +28,7 @@
       ],
       "id": "place",
       "label": "地名",
-      "recordCount": 45092
+      "recordCount": 45094
     },
     {
       "assetPaths": [
@@ -218,7 +218,7 @@
       ],
       "id": "facility/cultural/art_museum",
       "label": "美術館・ギャラリー",
-      "recordCount": 380
+      "recordCount": 381
     },
     {
       "assetPaths": [
@@ -338,7 +338,7 @@
       ],
       "id": "facility/commercial/shopping",
       "label": "商業施設・百貨店",
-      "recordCount": 1302
+      "recordCount": 1303
     },
     {
       "assetPaths": [
@@ -608,7 +608,7 @@
       ],
       "id": "facility/residential/mixed_use_building",
       "label": "複合建築物",
-      "recordCount": 95
+      "recordCount": 98
     },
     {
       "assetPaths": [
@@ -658,7 +658,7 @@
       ],
       "id": "organization",
       "label": "組織",
-      "recordCount": 47519
+      "recordCount": 47525
     },
     {
       "assetPaths": [
@@ -678,7 +678,7 @@
       ],
       "id": "product",
       "label": "商品・サービス",
-      "recordCount": 10198
+      "recordCount": 10220
     },
     {
       "assetPaths": [
@@ -808,7 +808,7 @@
       ],
       "id": "term/general/internet_slang_culture",
       "label": "ネットスラング・ネット文化",
-      "recordCount": 579
+      "recordCount": 580
     },
     {
       "assetPaths": [
@@ -838,7 +838,7 @@
       ],
       "id": "term/specialist/information_communications",
       "label": "情報・通信",
-      "recordCount": 6092
+      "recordCount": 6095
     },
     {
       "assetPaths": [
@@ -858,7 +858,7 @@
       ],
       "id": "term/specialist/chemistry_life_sciences",
       "label": "化学・生命科学",
-      "recordCount": 27574
+      "recordCount": 27577
     },
     {
       "assetPaths": [
@@ -878,7 +878,7 @@
       ],
       "id": "term/specialist/earth_environment_resources",
       "label": "地球・環境・資源",
-      "recordCount": 2117
+      "recordCount": 2118
     },
     {
       "assetPaths": [
@@ -888,7 +888,7 @@
       ],
       "id": "term/specialist/economics_management",
       "label": "経済・経営",
-      "recordCount": 5911
+      "recordCount": 5913
     },
     {
       "assetPaths": [
@@ -898,7 +898,7 @@
       ],
       "id": "term/specialist/law_politics",
       "label": "法律・政治",
-      "recordCount": 5721
+      "recordCount": 5726
     },
     {
       "assetPaths": [
@@ -958,7 +958,7 @@
       ],
       "id": "work_anime",
       "label": "アニメ作品",
-      "recordCount": 1093
+      "recordCount": 1094
     },
     {
       "assetPaths": [
@@ -1028,7 +1028,7 @@
       ],
       "id": "media_demographic/audience/unspecified",
       "label": "対象層の指定なし・一般向け",
-      "recordCount": 5106
+      "recordCount": 5109
     },
     {
       "assetPaths": [
@@ -1078,7 +1078,7 @@
       ],
       "id": "work_game",
       "label": "ゲーム作品",
-      "recordCount": 3179
+      "recordCount": 3182
     },
     {
       "assetPaths": [
@@ -1088,7 +1088,7 @@
       ],
       "id": "work_music",
       "label": "音楽作品",
-      "recordCount": 10353
+      "recordCount": 10355
     },
     {
       "assetPaths": [
@@ -1520,27 +1520,33 @@
   ],
   "categoryCount": 143,
   "dictionaryUpdates": {
-    "addedDictionaryRows": 69,
-    "addedPairs": 66,
-    "alreadyConvertedPairs": 7,
-    "alreadyRegisteredPairs": 17,
+    "addedDictionaryRows": 61,
+    "addedPairs": 58,
+    "alreadyRegisteredPairs": 2,
     "audienceAssignments": 3,
-    "baseArchiveSha256": "76a2a8f029260dfb865eabe4f25beb56172c627b271736411d616d15248a44ae",
-    "baseRelease": "english-dictionary-preview.3",
-    "builderRevision": "b5a9e49560f7e83814adfeec3ded023b2557ebd8",
-    "classificationManifestSha256": "1450e01f71e8e6655f4996b22a7bea4a584a746f7d13f6995090fc860c7ee93b",
-    "reviewPath": "src/main/classification/reviews/2026-11-08-open-candidate-issues.jsonl",
-    "reviewSha256": "7f3d5e964a451123355610de7b5e291a5db9501b0f743fe13e2fad2c1dd94a00",
-    "reviewedCandidates": 91,
-    "reviewedIssues": 39,
-    "verificationScope": "Shipped-binary readback and JVM CLI checks; application-wide ranking and Android behavior unverified",
-    "withheldPairs": 1
+    "baseArchiveSha256": "8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69",
+    "baseRelease": "v1.7.285",
+    "builderRevision": "040b4d7bad800eb63ad589e7cf5c25e605d18d13",
+    "classificationManifestSha256": "3386751965665a38e3ff2f951e88e0733e2dbf8b8410240791b5c1a4d427e3e3",
+    "reviewPath": "src/main/classification/reviews/2026-11-14-open-candidate-issues.jsonl",
+    "reviewSha256": "706f63b87249d509ad5881f23cc85a63ae94554104e8911e0b4590912eb00c28",
+    "reviewedCandidates": 60,
+    "reviewedIssues": 31,
+    "systemAddedPairs": 1,
+    "systemPreferences": [
+      {
+        "cost": 7000,
+        "reading": "すわいぷ",
+        "surface": "スワイプ"
+      }
+    ],
+    "verificationScope": "Shipped-binary readback and JVM CLI checks; application-wide ranking and Android behavior unverified"
   },
   "distributionType": "person_category_replacement",
   "englishDictionary": {
-    "version": "v1.7.285",
+    "version": "v1.7.286",
     "revision": "f4c7151ac69d41586135037e658364bf48dae7a8",
-    "archiveSha256": "8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69",
+    "archiveSha256": "1ebcf5520b83ce4c1d36a4a4d3db24bf5daa2bc0b9d29c64a6d6d2286c143b48",
     "supportArchiveSha256": "4d8109de90d2afff02fbf96380110edcaa15f93a1cef004a36473600357fd435",
     "catalogUrl": "https://github.com/KazumaProject/kotlin-kana-kanji-converter/blob/f4c7151ac69d41586135037e658364bf48dae7a8/english-ime/data/catalog/NAMED-VOCABULARY.md",
     "reviewedGrammarSourceUrl": "https://raw.githubusercontent.com/KazumaProject/kotlin-kana-kanji-converter/dbbb97fc9b7cdd32441d3719b76eb0493fa787a2/english-ime/data/reviewed/reviewed-source.tar.gz",
@@ -1550,7 +1556,7 @@
       "app/src/main/assets/english/token.dat.zip": "d6a3d0ec90a4f126262cd4175aa555b500240cbaaa745f7bf44b38039f82df23",
       "app/src/main/assets/english/qwerty_glide_index.dat": "76882e4be7b0ea3ce4cdbdc74315fc40954fff2998d97521bf2dc3fbb0f9afe3",
       "app/src/main/assets/english/grammar/categories.erol": "de5d9a15c9b4a67a4c35cdf4a11e80736042a3945ac80b78b50de9619af7794d",
-      "app/src/main/assets/licenses/english.html": "a96f003b6d5b43dbd08fbd866918705408d0599f70832924ab07d2b2612eec9c",
+      "app/src/main/assets/licenses/english.html": "3eedbb0ad95b780b92468beb2f4a72628913f7354aa085201a1599df77226e64",
       "app/src/main/assets/english/grammar/verb-forms.tsv": "fc767d5e091304fb4fabcd86e5eb4b60be125a2c88191b5251d51bb8f2a1d77b"
     }
   },
@@ -1598,10 +1604,10 @@
   "restrictedPersonRecordsIncluded": false,
   "schemaVersion": 1,
   "unclassifiedPersonRecordsIncluded": false,
-  "revision": "f14e2793ef07c93f0d7136f14bbd5270eb3e0c07",
-  "version": "v1.7.285",
-  "archiveSha256": "8099e9901ae6b9f2f0c27b1b643e97fc78e1da46a94c807d761a09ae44780d69",
-  "upstreamManifestSha256": "3afc7fc9dfd1523150c82f4e39a0a5686ced86bd0e1b3d397c078617c906c2de",
+  "revision": "040b4d7bad800eb63ad589e7cf5c25e605d18d13",
+  "version": "v1.7.286",
+  "archiveSha256": "1ebcf5520b83ce4c1d36a4a4d3db24bf5daa2bc0b9d29c64a6d6d2286c143b48",
+  "upstreamManifestSha256": "f7106f1b729850762a5cf1301198c2aae5d375d7b739e5a6201a2fc9610f9146",
   "licensesSha256": "38d0c6acb59eec1f6daf4bbaf5721960bd86d3edc67e9cd85554887cb4ce810d",
   "assets": {
     "app/src/main/assets/categories/address/tango.dat.zip": "a993dfb162e60eac9418d18a90fa34f18788ad7428cc0eaa2ec88005796286ff",
@@ -1613,9 +1619,9 @@
     "app/src/main/assets/categories/award/tango.dat.zip": "f8c28fafd89e2f03f5d56da5f11f6b92ec99a90f432b20af079eaeccbeb17eee",
     "app/src/main/assets/categories/award/token.dat.zip": "42454684dfc2f423ffdfb99443d03ef4fa3efc437ec0043760f8894fa5012e3b",
     "app/src/main/assets/categories/award/yomi.dat.zip": "dd553cf32f23832d5f6de7f57b81170be30b2b6dd6e08ae6cf000724337169ef",
-    "app/src/main/assets/categories/character/tango.dat.zip": "9f527b5b88623c875438b6d8210c68b54113a2c6799d427835774bec3631e4f8",
-    "app/src/main/assets/categories/character/token.dat.zip": "a107e66d71fe5ff18646c7ca6c73df00e54cbb283407fc57b2593dd399be2fb3",
-    "app/src/main/assets/categories/character/yomi.dat.zip": "099c5e2271cd2a91fc32e9ea0d3a96b58464e48963cb4411417d2f297ed6f925",
+    "app/src/main/assets/categories/character/tango.dat.zip": "87356a73bcd2c2754d78b3690053c01efb4b1048c46383c975b5f3d3126dcfe1",
+    "app/src/main/assets/categories/character/token.dat.zip": "e2cd30b76942656c5f03a7531f9f093cd0535786a443f632faacd3e4491eb073",
+    "app/src/main/assets/categories/character/yomi.dat.zip": "6da310706e9e77d850c4741b57cf2111212e912393ce1526733dcf51b25ca7d6",
     "app/src/main/assets/categories/event/history/conflict/tango.dat.zip": "58689f0d61bee81b3c811ea53ee5b2cd37222c67925b6b89fccd1d4c016afd6c",
     "app/src/main/assets/categories/event/history/conflict/token.dat.zip": "919318176d7e3cf8ef5b35b5e5294b9ca54baa9fc43100a18b05b69db7e4dbe0",
     "app/src/main/assets/categories/event/history/conflict/yomi.dat.zip": "e8598528c5c20ef39642d68a0112646b2a5dc83b40efc1d0e8a2876c8c677d38",
@@ -1640,18 +1646,18 @@
     "app/src/main/assets/categories/facility/commercial/restaurant/tango.dat.zip": "a3aaf3c4cb884a99ae15ddbb26578eacb6ca240d986b8866609a4cb2c6c5d40e",
     "app/src/main/assets/categories/facility/commercial/restaurant/token.dat.zip": "fce2b320cdd56057842603a0658c2db331e0ee38ff52b2f0f05a817c7997f1aa",
     "app/src/main/assets/categories/facility/commercial/restaurant/yomi.dat.zip": "f67fb64c4f21f5f976f78f6b7f814d3366d88341b70418b3cca6a8a80a9ae9db",
-    "app/src/main/assets/categories/facility/commercial/shopping/tango.dat.zip": "266c356adcaf30bf0adf9092721c94e10fd123e46cdbd9950247db120ded0f1a",
-    "app/src/main/assets/categories/facility/commercial/shopping/token.dat.zip": "8df99a026a5a13b67f3a3d54908500cba0e9e0bcf92d8a620c23a34cf1eba96c",
-    "app/src/main/assets/categories/facility/commercial/shopping/yomi.dat.zip": "1ea5fdc2defb94f584e693726f6954a2ec3010955df5ef8731e6243480d6da8b",
-    "app/src/main/assets/categories/facility/cultural/art_museum/tango.dat.zip": "090af7fe98f15f9c0a0af6cd0e884b5687dcd5fc8a2f59212b6dec14216fbb8c",
-    "app/src/main/assets/categories/facility/cultural/art_museum/token.dat.zip": "9f27162351e244db8caa5ba1f00255964174321df4c2c830c977a55c7d547509",
-    "app/src/main/assets/categories/facility/cultural/art_museum/yomi.dat.zip": "bafb93cea85bb39dc1a116c53b41f5d8fa35e72664f2a10d7f4929acebc57a1a",
+    "app/src/main/assets/categories/facility/commercial/shopping/tango.dat.zip": "0ed51e2c529dd35319bbca5a8bbf07ba6d6e83f411b4b9fef20e3cbb27cfdb04",
+    "app/src/main/assets/categories/facility/commercial/shopping/token.dat.zip": "7e9c1d394c717a686fb8d6b3288fcf46ca16827517965c56b9587735cdfe8526",
+    "app/src/main/assets/categories/facility/commercial/shopping/yomi.dat.zip": "77214e5a97490ca091892f863803f89568fc4a77e35a7270cda1693bb2d147f6",
+    "app/src/main/assets/categories/facility/cultural/art_museum/tango.dat.zip": "81492f9769b0e2d2bae529fab2d575724fd7e499ee3d28aa2f19cab2faa1de2e",
+    "app/src/main/assets/categories/facility/cultural/art_museum/token.dat.zip": "28a5d101d3e9cb8095cb2057618b7405eae676d8d432ebf654cfefffa29869ac",
+    "app/src/main/assets/categories/facility/cultural/art_museum/yomi.dat.zip": "842331fb7b301a8ae79f07d918653a7faf33361fea088f6c36bbdfd5bf643725",
     "app/src/main/assets/categories/facility/cultural/library/tango.dat.zip": "0ce1469a5079ae92372ba7e35c8bb5049417fb5cd22d028756dda95e0ae315f2",
     "app/src/main/assets/categories/facility/cultural/library/token.dat.zip": "220597f250f47f8780d2e079ae28c6b34ee764685a1e686a1c37dc52aec3a95a",
     "app/src/main/assets/categories/facility/cultural/library/yomi.dat.zip": "d6f0cbd3e1ea68ea9fcfa777993e40fe2390b4655c7a87f9e049786c238cc205",
-    "app/src/main/assets/categories/facility/cultural/memorial/tango.dat.zip": "19a9853f2772a20940701aa73c7afa1cbb1a115c5782b17135947cc805bb3377",
-    "app/src/main/assets/categories/facility/cultural/memorial/token.dat.zip": "16957b7c0bbcc7b16c35f11fb10049778cd108a4170e8d665a0892dbc38241c5",
-    "app/src/main/assets/categories/facility/cultural/memorial/yomi.dat.zip": "98210796ebc6f09d7e617aaa25410b261b77158ad00c63ba4b94342f70fcea68",
+    "app/src/main/assets/categories/facility/cultural/memorial/tango.dat.zip": "0587507d0706955407c787bbeb1fbb6759c4a4f65749cf37faf70b06da6d3eff",
+    "app/src/main/assets/categories/facility/cultural/memorial/token.dat.zip": "fbc06d63622653abcf2e57eb492f5fc21f21e6908c99ce30cae634217d0c508d",
+    "app/src/main/assets/categories/facility/cultural/memorial/yomi.dat.zip": "4b103bca31188e67c0df54c7b89a99299ee53d389653dc819f9c0ac92842df1b",
     "app/src/main/assets/categories/facility/cultural/museum/tango.dat.zip": "087ff1cfd5830c3addacaf6d2431a3c6e2bdcea27efa774b5184ff313e05f75d",
     "app/src/main/assets/categories/facility/cultural/museum/token.dat.zip": "110d125179091ec3514e951018e20899a6287495edc7850b1c0877d47d2b7630",
     "app/src/main/assets/categories/facility/cultural/museum/yomi.dat.zip": "14c9f06e9e679aa1cbc6d9d642b07137c105caa2351ec01b707323685f18642b",
@@ -1667,15 +1673,15 @@
     "app/src/main/assets/categories/facility/education/university/tango.dat.zip": "367b281ae0062123397e19aa38e23f722c9a3bf2cafe9d70029db3d757593ce4",
     "app/src/main/assets/categories/facility/education/university/token.dat.zip": "7bc89a57ee4cf1f4af1aa9637107ad1fa82424df1d22a7466f415cbf00e8940a",
     "app/src/main/assets/categories/facility/education/university/yomi.dat.zip": "a942ab07d857b86d289f7ca05265bfc325e5c65a25194f58cc1cdfd3793fd1e4",
-    "app/src/main/assets/categories/facility/entertainment/amusement/tango.dat.zip": "d8efab916f96e08115ab880a95ec85c21da26b07113157424784b4683232b9c7",
-    "app/src/main/assets/categories/facility/entertainment/amusement/token.dat.zip": "7aa90e646d69752320a7e9439d5d10842e204c6b01d3a83ea2ab97a7db1cb927",
-    "app/src/main/assets/categories/facility/entertainment/amusement/yomi.dat.zip": "df7a78562be8ae268a1058d97fadda5a9019f537986164c53a9874c8680a88bf",
+    "app/src/main/assets/categories/facility/entertainment/amusement/tango.dat.zip": "d560940e02b960850aaf46b4f99607406a3926ff55cb61a7b4b1c7f0e676721d",
+    "app/src/main/assets/categories/facility/entertainment/amusement/token.dat.zip": "a5f81229a4b64d6b386ecf069dbe135116d2e730f087b05b9608f7cede9b6531",
+    "app/src/main/assets/categories/facility/entertainment/amusement/yomi.dat.zip": "c559e2cc65eac4647128f3ed73b1b31c679c1f434f12a4f1518aee064ae1fd97",
     "app/src/main/assets/categories/facility/entertainment/cinema/tango.dat.zip": "462493c1158f770bc670f25dd83cea46177cfc9c097d4168e9d8be88a1cb94a6",
     "app/src/main/assets/categories/facility/entertainment/cinema/token.dat.zip": "560715d8c8160f067b235dbbadd2459c24e5b7a9dad64395842065665d68b303",
     "app/src/main/assets/categories/facility/entertainment/cinema/yomi.dat.zip": "02ffd09c6695883ff21916964ae3617cc7d9967dd6871358b855b9353ccd19c4",
-    "app/src/main/assets/categories/facility/entertainment/live_venue/tango.dat.zip": "f524777716129c2e8f2ec98944cbcb795edba901780c453499c612f78bc262f3",
-    "app/src/main/assets/categories/facility/entertainment/live_venue/token.dat.zip": "11f44357835774a1e04ffddfc2ef0d1483b28354526c34b1fb208ec2512bb299",
-    "app/src/main/assets/categories/facility/entertainment/live_venue/yomi.dat.zip": "9d5eb18e2b175b84f34bbb1b350ae0f512c7e235c6b7699551635deb8542a9df",
+    "app/src/main/assets/categories/facility/entertainment/live_venue/tango.dat.zip": "900bb355a3df38e1e645dafcfb68af4a1893bda3eb5f6a3487a015e926457b88",
+    "app/src/main/assets/categories/facility/entertainment/live_venue/token.dat.zip": "75b5ad5a1c11fee03b6be18eb678861717d9303d965de393f653c949328d7742",
+    "app/src/main/assets/categories/facility/entertainment/live_venue/yomi.dat.zip": "3b22a17edc2e3f67befe01d38077a21bb7bb10ede927ecc4e55ef2d1b8250947",
     "app/src/main/assets/categories/facility/entertainment/theater/tango.dat.zip": "9c57561a72b6b63d07639b08aa10ae64db8bd6468c4da3c665055ffaa63a27e9",
     "app/src/main/assets/categories/facility/entertainment/theater/token.dat.zip": "30d6cba76f55a2400aaf8239ece3d0c594586e3faa855fe19461da6868f5dba4",
     "app/src/main/assets/categories/facility/entertainment/theater/yomi.dat.zip": "e8c09fb3e778056e05b2bf9bdedf82d8980863f739fedeff2e26d8167aa81529",
@@ -1778,9 +1784,9 @@
     "app/src/main/assets/categories/facility/residential/housing_complex/tango.dat.zip": "966bea7d520811cb496809e1e30aa7016fe1ffde0119e72eb48a498c23cae230",
     "app/src/main/assets/categories/facility/residential/housing_complex/token.dat.zip": "4597255177f928c7efe5b1d6930f323107358dc67a5e8c21220bbde55e5a6763",
     "app/src/main/assets/categories/facility/residential/housing_complex/yomi.dat.zip": "fbcb10bcb712f285adcde18ce427597b7cd39bc5cdab930e3ff42d06bfd650ed",
-    "app/src/main/assets/categories/facility/residential/mixed_use_building/tango.dat.zip": "699c56cc612f4107a9741257e8a9cba4bb2e8ed0461ad6ce0aa5e0aab17be616",
-    "app/src/main/assets/categories/facility/residential/mixed_use_building/token.dat.zip": "a14566f787272c566e5bab2162d130987610583f4598b85731a82057235873eb",
-    "app/src/main/assets/categories/facility/residential/mixed_use_building/yomi.dat.zip": "b429f932dcb5e52141d73416f28077066525077f48bc65db5d439c26a430fbd1",
+    "app/src/main/assets/categories/facility/residential/mixed_use_building/tango.dat.zip": "2e1704ad6bff9fd203b122778bf2ae681aaf0b86db041e96088598a20f3a99cd",
+    "app/src/main/assets/categories/facility/residential/mixed_use_building/token.dat.zip": "1969791f9724944a76f74166576d1c05bf4400165d63263d0fc1c7e256150181",
+    "app/src/main/assets/categories/facility/residential/mixed_use_building/yomi.dat.zip": "7445abdff41da748fb1c74b695599b955966aff2e92cdc7b217e0e0b5a65d4a1",
     "app/src/main/assets/categories/facility/sports/aquatic/tango.dat.zip": "d1c1b101ccad73ebf767173fdacd98f037e51269ad6378b24454efaa29a7c7da",
     "app/src/main/assets/categories/facility/sports/aquatic/token.dat.zip": "5d3d9b42b463a5f331b3726c9666a3102f83ce91f79c6ddff4d0070e289576b5",
     "app/src/main/assets/categories/facility/sports/aquatic/yomi.dat.zip": "ca14dca09d83613585d48975c3f4173fdf4b6777487230859655f13118205741",
@@ -1832,15 +1838,15 @@
     "app/src/main/assets/categories/media_demographic/audience/seinen/tango.dat.zip": "3998050edb8222fd36bfd75a38d5e29d58b1b870c67664ec1369181667dfdde9",
     "app/src/main/assets/categories/media_demographic/audience/seinen/token.dat.zip": "86854df12f089481f5c4115a1e8bb4c9bd5065faacc2e29e4ac9951888e26a61",
     "app/src/main/assets/categories/media_demographic/audience/seinen/yomi.dat.zip": "6ad00adbe0b8b9c01149da8b584c66890f6f0a3819ef7b3b4d429ed022933837",
-    "app/src/main/assets/categories/media_demographic/audience/shojo/tango.dat.zip": "6ac58e52aac3a96ac0f2a816f83b9422c12077504ecfece46e984ac5ad6e8d3a",
-    "app/src/main/assets/categories/media_demographic/audience/shojo/token.dat.zip": "3863ff1c6b6be782ddd29c016aa788e23642a3481f2ea8345a63219542728eaf",
-    "app/src/main/assets/categories/media_demographic/audience/shojo/yomi.dat.zip": "6032b7adba0a5d29bfcc72e4a1b1daab495cf00383575cb8c8c0fcb090277414",
-    "app/src/main/assets/categories/media_demographic/audience/shonen/tango.dat.zip": "56b88f615fbbd3c450e2109186775472d572b1a4e6f8fb72a2df6aaf99a596ff",
-    "app/src/main/assets/categories/media_demographic/audience/shonen/token.dat.zip": "51604f785a3a8fbb6891bbc99d03e8a2bedd1d7f56b987bcfe568469391803c8",
-    "app/src/main/assets/categories/media_demographic/audience/shonen/yomi.dat.zip": "bb6caca1f521160335c22722c7871a2a41c2b54259102d40033160f5495eed51",
-    "app/src/main/assets/categories/media_demographic/audience/unspecified/tango.dat.zip": "4a800f3a947badde5e761cc5109fe4e297bcc7f467c7a64699466dfed3195620",
-    "app/src/main/assets/categories/media_demographic/audience/unspecified/token.dat.zip": "a80c368eebcf53cb040fa2ca440ec84bbe9fd2b3eb6e9c5648e1ca3a7e9dd80f",
-    "app/src/main/assets/categories/media_demographic/audience/unspecified/yomi.dat.zip": "92aa97d5f8716e69b8d927e6c7062d43a31ec3bb6a8276d4d9b0b818af159d8a",
+    "app/src/main/assets/categories/media_demographic/audience/shojo/tango.dat.zip": "ffe0a667d1ffa5cf8080fe3218b024169759acc6964be4c27a28f21e9e885790",
+    "app/src/main/assets/categories/media_demographic/audience/shojo/token.dat.zip": "a7f9de3e8da8bec969a61cee5f293bf58dfd94d84d9ae0c41b7fd79b5bf6ac0b",
+    "app/src/main/assets/categories/media_demographic/audience/shojo/yomi.dat.zip": "4105db4b89560e3985b103b2b293311aaa7f1f707dec35a56f6c2afc795bcc5d",
+    "app/src/main/assets/categories/media_demographic/audience/shonen/tango.dat.zip": "f6e617076f59f7c079db42a020dd0c1c72a2677cc00fbe20f6df802ffec094bb",
+    "app/src/main/assets/categories/media_demographic/audience/shonen/token.dat.zip": "20e5095b6ac4f060625f307331ac4f423e72db20ed840d059adaf4b8c93e5e61",
+    "app/src/main/assets/categories/media_demographic/audience/shonen/yomi.dat.zip": "b653a841413d6af77dfdfcb034fea03ae9238a3498b1b1535fa179c7a0314396",
+    "app/src/main/assets/categories/media_demographic/audience/unspecified/tango.dat.zip": "794e6b4c3cdf2caa728a915e0658db32f315bcf2f3533c49e95a564acb5df612",
+    "app/src/main/assets/categories/media_demographic/audience/unspecified/token.dat.zip": "32c84ebc9032241cdf220f0e70f862060744c23e71d805e153147885f064351c",
+    "app/src/main/assets/categories/media_demographic/audience/unspecified/yomi.dat.zip": "e74f804e99d0899af66d4ff07af9c1c4b8732aaa97e8cef0d49674ff2061ebe9",
     "app/src/main/assets/categories/media_demographic/resolution/source_unverified/tango.dat.zip": "9acec50ab00d4dd7e92f3eb886ee19240c91a52e1a1dbd0099debe155d8604de",
     "app/src/main/assets/categories/media_demographic/resolution/source_unverified/token.dat.zip": "f33fd5b3000a8061997ccd917b56d671a851c8c3c7e6dffdb337a11ed206b2b9",
     "app/src/main/assets/categories/media_demographic/resolution/source_unverified/yomi.dat.zip": "ecaacb6dbcd3513700705c4210be7a8b334b7de390cfb135b634236e2a8a1d17",
@@ -1850,9 +1856,9 @@
     "app/src/main/assets/categories/mythological_figure/tango.dat.zip": "47ade803884e04687f7ee006d67fed5cebb6513242a7c773edaab0fe6ff6d7a7",
     "app/src/main/assets/categories/mythological_figure/token.dat.zip": "c13a53f49e15ebf6333640302cbd1036b463373d9a7470a8296254e5b412db74",
     "app/src/main/assets/categories/mythological_figure/yomi.dat.zip": "36662b53920318bd45b4977fafa765739210c09c1567b224ce151bbe815c8c99",
-    "app/src/main/assets/categories/organization/tango.dat.zip": "2ebfa92415faf8739d39cb76429e66946323663dfdb057910e8db4623c4c9c32",
-    "app/src/main/assets/categories/organization/token.dat.zip": "4d9c5793d4ef55cfe1126a06cc5b12609ccef06d344eb7b4717549f8509a4c7a",
-    "app/src/main/assets/categories/organization/yomi.dat.zip": "fe2ba91544c5524d157f0c4c8b23bdb16f4002c09a659580c0c3583ccfa5b345",
+    "app/src/main/assets/categories/organization/tango.dat.zip": "10683a14a0d212d5cc135956525a62bec071f92836828e3bea0f419293009964",
+    "app/src/main/assets/categories/organization/token.dat.zip": "c49d17bf121a3ed718f2ca5f8d1eed19c7b6907783cc2e2f7cd89b24344b60c7",
+    "app/src/main/assets/categories/organization/yomi.dat.zip": "652987c1c3e0887c5fa43b3e083b47443a53d7380ccf2c60be78a7cb505941a2",
     "app/src/main/assets/categories/person/actor/tango.dat.zip": "f3d176a0f0af03f583ce68b6605a46108d1c805b26c0a80ca7b322e53dee5bb8",
     "app/src/main/assets/categories/person/actor/token.dat.zip": "48e566562624d199c17399dfb2a763c14bda021fff1e538968324dd94e0b42db",
     "app/src/main/assets/categories/person/actor/yomi.dat.zip": "85b8533d6ef00d07e6ec79c2cca47913b8685aa7376ff9778117524007e214a7",
@@ -1940,21 +1946,21 @@
     "app/src/main/assets/categories/person/writer/tango.dat.zip": "3e71f589c94ace8fa25cf5bce916fb240432df8113a771176f88942d8c56157e",
     "app/src/main/assets/categories/person/writer/token.dat.zip": "514c4d22fdbc4cba71a01beed36f9174ab7a4563155de24159d29221e041fe06",
     "app/src/main/assets/categories/person/writer/yomi.dat.zip": "595a1cae0fe75d3cd18e7c406fbecceb2df77f61c1035b8fba5727934618a87c",
-    "app/src/main/assets/categories/place/tango.dat.zip": "35f060d46f2536a6959d1f9f9d428455ca5f155c4b3ac83c9118d7472c965e5c",
-    "app/src/main/assets/categories/place/token.dat.zip": "2aebdea22691454b43e624cef930909ed3395c5c453bd9e9d15148effcce5a23",
-    "app/src/main/assets/categories/place/yomi.dat.zip": "646d6326c1563d67a66c2d5968e28b284af83b2ab2cdbee6a43bff503a519f26",
-    "app/src/main/assets/categories/product/tango.dat.zip": "e7981b7384fb55a3996d643196fe34ad7a99e57b6c95bc9fb5cd1938e1637d3e",
-    "app/src/main/assets/categories/product/token.dat.zip": "fbff16c4d36d80576da2650eed3abd228699b95ddf935fcd9a3edf51d60209f5",
-    "app/src/main/assets/categories/product/yomi.dat.zip": "6b4d1d76a28eaa98cdbefdf48e6b22f89e03e26bac252086064632f28068eaa4",
+    "app/src/main/assets/categories/place/tango.dat.zip": "8bb209843621ba6c16cf5b0848f945676b2e8605116ba6296c002e53c3d3f296",
+    "app/src/main/assets/categories/place/token.dat.zip": "233ae11b716249a2c854922e2cc6b70e3f718240d82259f6101852bcd66a314b",
+    "app/src/main/assets/categories/place/yomi.dat.zip": "72cf04bff0c316dba1694941791e3755577119cace95ea843afed76ae322d649",
+    "app/src/main/assets/categories/product/tango.dat.zip": "4b5301d32f0826e77cd4b5e35a259f579e684417d2598a1133b7eacb5ca65b93",
+    "app/src/main/assets/categories/product/token.dat.zip": "5158294c68c59c28ecd13e13dfee41e31915dbb029f6f67e029627c1ebbed50a",
+    "app/src/main/assets/categories/product/yomi.dat.zip": "7c6372652c9fd62b0c310d5125d93e66ac92f202c8320ed8274d77410890f89b",
     "app/src/main/assets/categories/station/tango.dat.zip": "d97fb9d1f0963a2a35a9359af5bb08bff2a3d80f4153cc5df165a335c0c977c3",
     "app/src/main/assets/categories/station/token.dat.zip": "e13b95b077912558ee1098b64f2097934af1cf0bcd9b32daa77ac6d53aa384bf",
     "app/src/main/assets/categories/station/yomi.dat.zip": "8307e544760dca94f9f1c05e9258686cb4e77ff48ed42739378ff7f0b9f2c0dd",
     "app/src/main/assets/categories/term/general/food_drink_cooking/tango.dat.zip": "7acae9b1ac357085d15cb9d75893e6862763c0f747b9ce96b506e3cd84286174",
     "app/src/main/assets/categories/term/general/food_drink_cooking/token.dat.zip": "2b7f0a52828955beec59c6661f015047e339c3b6dd7b56015bebcd5639c98b2d",
     "app/src/main/assets/categories/term/general/food_drink_cooking/yomi.dat.zip": "c53a1e0074973a02235918ad1822a7eb12e817d48570d684a8ba7b071788f2b7",
-    "app/src/main/assets/categories/term/general/internet_slang_culture/tango.dat.zip": "3f79da305740736c788e839a57e4844374d7534f74e2e8c89a3ef88ad7dc62dd",
-    "app/src/main/assets/categories/term/general/internet_slang_culture/token.dat.zip": "7de25fdd26bed750dce14d016b21ac68129a3f5ea58ac49afa840debbb6be0af",
-    "app/src/main/assets/categories/term/general/internet_slang_culture/yomi.dat.zip": "de1529580f06cd3caa92e502a6ced34dce1c026ce12387c5e6f622b5a5805c0f",
+    "app/src/main/assets/categories/term/general/internet_slang_culture/tango.dat.zip": "18f12cb778a48ac365da50b57f8d07b7e0c3bfd1cf75c3c61f23eb1bca1c736c",
+    "app/src/main/assets/categories/term/general/internet_slang_culture/token.dat.zip": "247682ad2c9fdfd90e3aaf4b669e9a83fc41ed48f390a3a6f68617f0b38b29e1",
+    "app/src/main/assets/categories/term/general/internet_slang_culture/yomi.dat.zip": "3d12df66ea1fa51f762f8f895d6ee4b8f1dc5a57830d7adcc119799448aeb84d",
     "app/src/main/assets/categories/term/general/neologisms_trends_youth_language/tango.dat.zip": "4167eb886cc3609b0f3595f961b56114a2a74112622a485b189cb4e276496376",
     "app/src/main/assets/categories/term/general/neologisms_trends_youth_language/token.dat.zip": "34342a1588675ac662e43e50a30f048560c800521230d03a9ac14a1b42c5ee3e",
     "app/src/main/assets/categories/term/general/neologisms_trends_youth_language/yomi.dat.zip": "12915e70ab123305f887869b3c4ef8fdc400242c9d5e0f8915b2519d5cb6937f",
@@ -1964,30 +1970,30 @@
     "app/src/main/assets/categories/term/general/products_daily_goods/tango.dat.zip": "21ab64983bda8bad88113c3b3cd3ebf7aab2feee67972814d18a1629a9e7a80c",
     "app/src/main/assets/categories/term/general/products_daily_goods/token.dat.zip": "92c60f2c5535b13cee290ffee1b2b6425e53c4f58c50a08a7d5ff2c56d1880b9",
     "app/src/main/assets/categories/term/general/products_daily_goods/yomi.dat.zip": "c5f50080d27949f7ae268b2f0b6759e8a7d40820c6b75858a087b7f29660aa4e",
-    "app/src/main/assets/categories/term/specialist/chemistry_life_sciences/tango.dat.zip": "f4883b92d6e97e14c5f1a714dd47da8a0ab4b9f993b33cc4eb825bdd113ba1f2",
-    "app/src/main/assets/categories/term/specialist/chemistry_life_sciences/token.dat.zip": "00454ff06c20080c855874374fbf97089dd7d047c91364e1418475127acda7d1",
-    "app/src/main/assets/categories/term/specialist/chemistry_life_sciences/yomi.dat.zip": "33c6d6f2be35378de1e39ebfe70b3d6d8576225f5720d54b3883e968daa8c200",
+    "app/src/main/assets/categories/term/specialist/chemistry_life_sciences/tango.dat.zip": "64e64b15ec6853008cd5e879f761b6a1f81131cfacf11a7342a9a8062032acb2",
+    "app/src/main/assets/categories/term/specialist/chemistry_life_sciences/token.dat.zip": "08921ad27d1dd0b279c76eb9e9156dd4a1ea0efe770e2a9e082f49eb5ee68399",
+    "app/src/main/assets/categories/term/specialist/chemistry_life_sciences/yomi.dat.zip": "e7b9d2c37ab321f27f6195cfd227a6b39894f9ce5b06be479c8c4344bc7452cc",
     "app/src/main/assets/categories/term/specialist/culture_arts_sports/tango.dat.zip": "e5049a533a667de26685fe5b56b774beec6f3e095408a20b072b550371785737",
     "app/src/main/assets/categories/term/specialist/culture_arts_sports/token.dat.zip": "cf3e71131e41fa44a5ae322e4df7cba45d1d46a61eb57b50b7696b9a630cab1f",
     "app/src/main/assets/categories/term/specialist/culture_arts_sports/yomi.dat.zip": "1eacd17e4831d67f5768a7f8db62da8cde69b79b2feed0649a76b1b1f1d25da7",
-    "app/src/main/assets/categories/term/specialist/earth_environment_resources/tango.dat.zip": "75236e7e6497983be077c8fc16d41e9b24ab0e6936fdc783454cabcf4cfdaa94",
-    "app/src/main/assets/categories/term/specialist/earth_environment_resources/token.dat.zip": "df79b7f0674d0d30ad9314b795ae4446140eddf52206429c56b41d4c9d8bad76",
-    "app/src/main/assets/categories/term/specialist/earth_environment_resources/yomi.dat.zip": "2968f75d51333718a5c61bd08a3c9043c5c5b58fdf1babef92eb2cd3b502290e",
-    "app/src/main/assets/categories/term/specialist/economics_management/tango.dat.zip": "5a6d2e5750839a3e68dfda431063d733f442f8818947f9ee1f94bc5778cfc3ec",
-    "app/src/main/assets/categories/term/specialist/economics_management/token.dat.zip": "e7cf62c688bac4ec80bfb84ff7486815510f2baa767c20ca361770ba2db2b5d2",
-    "app/src/main/assets/categories/term/specialist/economics_management/yomi.dat.zip": "93a163c666121bad3090a8feaae198576fc3f88c46904c5db94553a50ddcf270",
+    "app/src/main/assets/categories/term/specialist/earth_environment_resources/tango.dat.zip": "1f011e6494f7cef7c0fd2d561dacfe02cd4a58dd84ad79141c42fa8dd754502b",
+    "app/src/main/assets/categories/term/specialist/earth_environment_resources/token.dat.zip": "902f2e2864b469cd9b4a2b972c148e51a0630a11eddb405391bb7edc913b953f",
+    "app/src/main/assets/categories/term/specialist/earth_environment_resources/yomi.dat.zip": "a460c3a4fcdbf82b43bee832201903055ad1b3c74c79f8509be5b53b9c5bf522",
+    "app/src/main/assets/categories/term/specialist/economics_management/tango.dat.zip": "144af4272adbfbbc83541569948acd3ddfe2f04f6d85e8fdbeb8e57a5d432417",
+    "app/src/main/assets/categories/term/specialist/economics_management/token.dat.zip": "c8608ea19d3d9207564d8ef73e14bcf056de9d2d9c8090f73a6112edd08ac3c4",
+    "app/src/main/assets/categories/term/specialist/economics_management/yomi.dat.zip": "848b83ba1920ff4fdfea858d53884dbbecbd28a5ccc8e927f7793191582f2a77",
     "app/src/main/assets/categories/term/specialist/engineering_technology/tango.dat.zip": "922d13845af04e9bfc33a9e9a506da9eab2561e657d3ff449f3b1ffe5921eb91",
     "app/src/main/assets/categories/term/specialist/engineering_technology/token.dat.zip": "8f838655d0a519ffd1b681fa50620ba2d9ac81d15a0ff70bd0e1e0a083d1f389",
     "app/src/main/assets/categories/term/specialist/engineering_technology/yomi.dat.zip": "55dbcdf75eb9e6749151c55fa97c95a46b4746725bd97fc6961c1992b5c4d551",
     "app/src/main/assets/categories/term/specialist/humanities_social_sciences/tango.dat.zip": "bc852f6166ba1dbdf7ab10f51cc1c5e2594fee19dbadff8a3eea89cac2bca5fb",
     "app/src/main/assets/categories/term/specialist/humanities_social_sciences/token.dat.zip": "511413f0f9d66095dd8251f399e275c5c685b7484a4e2692a5c9726f64024548",
     "app/src/main/assets/categories/term/specialist/humanities_social_sciences/yomi.dat.zip": "6763cd8e9930f999c9c8ee8bb4317b5f6a7b836c57002643412daaab1ec8f99a",
-    "app/src/main/assets/categories/term/specialist/information_communications/tango.dat.zip": "fcacd4412d87b530b646ad24d7e01b9e174d2084076fa3371cd4ce4e5ed3e302",
-    "app/src/main/assets/categories/term/specialist/information_communications/token.dat.zip": "6bd576500e5bb44d27a3ed5b784c8454be29d6fb291877b3157ac50ec82c519d",
-    "app/src/main/assets/categories/term/specialist/information_communications/yomi.dat.zip": "90ed61b151ebafd04a0bb06fd235451c8ca9ceda4ad63d8d531e5fc58b57cabe",
-    "app/src/main/assets/categories/term/specialist/law_politics/tango.dat.zip": "5cc0006a8041d61ee9c8b24935a7f4b9fa84b71ee45171f7652b915bd708d4fe",
-    "app/src/main/assets/categories/term/specialist/law_politics/token.dat.zip": "c779b32ad4a5ade86262b017d3211cd35c7fae3ce7b73dba0932144237db432f",
-    "app/src/main/assets/categories/term/specialist/law_politics/yomi.dat.zip": "98d5ff92edf23a20577faa67383d5368b0ad14a0d698ce506d1f591b61206eab",
+    "app/src/main/assets/categories/term/specialist/information_communications/tango.dat.zip": "3d4b8f6e51441bcce26cd29be5eb0c0afebcf99f07325d20585d03ce409a5048",
+    "app/src/main/assets/categories/term/specialist/information_communications/token.dat.zip": "448e10783c770312fc1d83490e9e425005bb8de86a5053fe5e5e3c34f7b9db28",
+    "app/src/main/assets/categories/term/specialist/information_communications/yomi.dat.zip": "cc60355f822a885ed171459703f9cff45252a372a0655d3766a17307afbee60a",
+    "app/src/main/assets/categories/term/specialist/law_politics/tango.dat.zip": "0544c2934cbc54dd2b186c7c920e340eb9526aedb51cee5fcf7129adf427ade8",
+    "app/src/main/assets/categories/term/specialist/law_politics/token.dat.zip": "251000886b1f46c4cfdb5859feddd3d54bbf08d5b26242c7bdff73d72599bf09",
+    "app/src/main/assets/categories/term/specialist/law_politics/yomi.dat.zip": "f5443c12d6f947521a54dbe29ea7dea9d595b5845cf990850aa5cc718cb308eb",
     "app/src/main/assets/categories/term/specialist/mathematics_physics/tango.dat.zip": "8156b1860aa600ffd76b098c9e3125c30d7f7ebb97309147f7144ad38adbd4fc",
     "app/src/main/assets/categories/term/specialist/mathematics_physics/token.dat.zip": "cb44db5834fc861e75d87447ec421e1b5dde28ac4ff8f7a8366142324a90da5a",
     "app/src/main/assets/categories/term/specialist/mathematics_physics/yomi.dat.zip": "6c76d3f0a0f505195f1641c8f68a8c5e85a9435b53a581d6b204dd1f081cadfe",
@@ -1997,30 +2003,30 @@
     "app/src/main/assets/categories/transport_route/tango.dat.zip": "de29bf624329d6c74b8f40aba495ad5e81d0bf7477afae5f572f15c04dbd0d01",
     "app/src/main/assets/categories/transport_route/token.dat.zip": "63562c44489e3cde2dac9e80659c20799bdac7b5b67e81358b2be5289b1bce17",
     "app/src/main/assets/categories/transport_route/yomi.dat.zip": "6b1702f28eeddfc448c17fed341511dfac6e908fab74a76512683e05cec2c3ac",
-    "app/src/main/assets/categories/vehicle/tango.dat.zip": "84fa99707f181805be353a012093ac827b6cc00f31ad2463582e142abb0a9e9d",
-    "app/src/main/assets/categories/vehicle/token.dat.zip": "a1e00f29f43444bbd10ec975ed6432588a74aa5eea997559e56b1ae64c994c2d",
-    "app/src/main/assets/categories/vehicle/yomi.dat.zip": "a3a4f296afab97656506490277c3fa22222cbc17c812ad2057451fc74b633e40",
-    "app/src/main/assets/categories/work_anime/tango.dat.zip": "00ce8e942622793915d2370b0e47af622e7e320b1869e3246277b9839d912bf3",
-    "app/src/main/assets/categories/work_anime/token.dat.zip": "93747ddcd72cfb14352e220a8a522d5281581527d79c7ed7e8053e293dc040b0",
-    "app/src/main/assets/categories/work_anime/yomi.dat.zip": "f513287f235e5a63f43ae39aac35c9b75fe00aaed4a032540877a7dc89c3ed17",
+    "app/src/main/assets/categories/vehicle/tango.dat.zip": "ce9a35837583554c76986073486d7bf700849f0c3991d702d14d626074af6dac",
+    "app/src/main/assets/categories/vehicle/token.dat.zip": "3510ef32db40a61f9037b19c62e411f6d91efc5d6fda3de7fed1f3c64c87a3b1",
+    "app/src/main/assets/categories/vehicle/yomi.dat.zip": "385bec400764aebb561e338ea3f564adf8b592ec49b21dc22ddef3d7bf4d837c",
+    "app/src/main/assets/categories/work_anime/tango.dat.zip": "424e18bc2f9803423b1c3a72bbfcc02cae0ac309f3f83c770c6dde41f1d30cc3",
+    "app/src/main/assets/categories/work_anime/token.dat.zip": "d551e81e3c0960623105d6d44dbad65a34d403742f7cc3235f04b01a34856724",
+    "app/src/main/assets/categories/work_anime/yomi.dat.zip": "7d3c5aa3ad6b23850e9932f49403ca03b882dd79e0ad50c5044a050090fe0739",
     "app/src/main/assets/categories/work_book/tango.dat.zip": "7ea02563ae94b2db4dc14ce03c7351cfc270c1c0d5160a4ea1ae6f135e4bfd69",
     "app/src/main/assets/categories/work_book/token.dat.zip": "c780eb6d240d6e026b414bfe8ea4dc952a8dfb7a383e1e10fbf3b0a178a067b7",
     "app/src/main/assets/categories/work_book/yomi.dat.zip": "8a9d867eb684ebad880413bcb03a7e85e10239e69f208bcb3ee7a544d0f31e74",
-    "app/src/main/assets/categories/work_film/tango.dat.zip": "d8dd3b9a4db55ee0b92fae0a663d2a007298f9e1c15bd2cb46899eb0ed1a5da4",
-    "app/src/main/assets/categories/work_film/token.dat.zip": "2ea6040c1cf371048cabd256a6152496d43b990bb7989b981ffb309a7de3f9f7",
-    "app/src/main/assets/categories/work_film/yomi.dat.zip": "99de664c50682d7768251e1e438a7880c428f964415b09b6957cf8758fc00c14",
+    "app/src/main/assets/categories/work_film/tango.dat.zip": "bdb210607242b25c9bb83a0885785aa6e279a292e781fc3e4d16fb53402072c2",
+    "app/src/main/assets/categories/work_film/token.dat.zip": "fa3c4ff5705bd48d02e601b6d657f1b0e1c7a6263e6115082a070e552cd00fdd",
+    "app/src/main/assets/categories/work_film/yomi.dat.zip": "c511ab94e0d1f40e3a549f8c617b9de6fcef0389be0819070dea0d513902fbf1",
     "app/src/main/assets/categories/work_franchise/tango.dat.zip": "21f2b656d34aeac07dcf0c6078ed2e01c08a3d69cb7e150af94ee29c4844ae39",
     "app/src/main/assets/categories/work_franchise/token.dat.zip": "6110124715263b543df9823c1e5e854c301955c6d3b72dbc554a859c0e050654",
     "app/src/main/assets/categories/work_franchise/yomi.dat.zip": "59acfb78ae23ebbc47b3189aa619a80139d8ec08ecb62fde172490819f571b97",
-    "app/src/main/assets/categories/work_game/tango.dat.zip": "0ca3f2f8d5e66ea619d2536271ad14cfc826b76697c80ca7add53d66af7d490f",
-    "app/src/main/assets/categories/work_game/token.dat.zip": "00e95725b9cd1f3134e8eb4be50934314e960cc9768185e5dc03520c8bca0ad5",
-    "app/src/main/assets/categories/work_game/yomi.dat.zip": "49b3b24e20a9a9914f7dd2358952e7fc31ea1af47556c3066e49646c549c612f",
-    "app/src/main/assets/categories/work_manga/tango.dat.zip": "0becb17881b773b986f6eb6f7d2ad3f5abb631665f6913af1e5510a17e5a8654",
-    "app/src/main/assets/categories/work_manga/token.dat.zip": "d954cd15795c239ccd6b2e353472d772b8abb4a6e8d1138800484795ccd461cc",
-    "app/src/main/assets/categories/work_manga/yomi.dat.zip": "2cac46946c0e21931ea71612a326536445db968de71fa179e2da48b1f0886042",
-    "app/src/main/assets/categories/work_music/tango.dat.zip": "842cc8364c1a7bf58f6edd03b260226fc92e59964837e8433cfe3452d4d10639",
-    "app/src/main/assets/categories/work_music/token.dat.zip": "c2b529afe619ccb5a53f64b1e3b0d97c4b8ae0038001e0dde927be933c3084ff",
-    "app/src/main/assets/categories/work_music/yomi.dat.zip": "c9164f9938865d65e8def2234ce0498a7d8c70683738f9f52e54eca769a9026a",
+    "app/src/main/assets/categories/work_game/tango.dat.zip": "056e7ad7a48ee265bdac99d92ec892bcfe9d9d6886119cbdd317c56aedf30095",
+    "app/src/main/assets/categories/work_game/token.dat.zip": "b3df269e3b2013faf7c1bfe49d02519b00cbbe7fd216df5767371a49bf614269",
+    "app/src/main/assets/categories/work_game/yomi.dat.zip": "9811f62d32d12d404ff0570dddbcf2e139beb1a91fd62bdaaad5f6b0670fdf8f",
+    "app/src/main/assets/categories/work_manga/tango.dat.zip": "9ccdbd129d2336bc7619d1c5d61da13923526a7dfc06964d9b2481f672b903e3",
+    "app/src/main/assets/categories/work_manga/token.dat.zip": "209ccad206d8f54f9ff057212743781e0dad789acfd801b844a441b70a980d88",
+    "app/src/main/assets/categories/work_manga/yomi.dat.zip": "2f0059b68272c853761e4f7fda43516dbe3669bf029b0af4c6c21973c0f52d4b",
+    "app/src/main/assets/categories/work_music/tango.dat.zip": "d9c5afc10420f5d9eef615164951d1b1eb731231db44dccee6fdd9cac675d427",
+    "app/src/main/assets/categories/work_music/token.dat.zip": "53508b58bd633fefd122a815182b09bde22469baa28da11e168123ad8f147089",
+    "app/src/main/assets/categories/work_music/yomi.dat.zip": "f3b0e32700a65fae027de5e3fe07f9160dc06231c3ea9b1025957aef29a24f64",
     "app/src/main/assets/categories/work_other/tango.dat.zip": "53d06413bb2f80ef6183be29299e8e1a7411470b31e5a9c7566d1d2c605c10d8",
     "app/src/main/assets/categories/work_other/token.dat.zip": "16466563b99121f97c863f26263bcf966480c276228f3ad6ed6846eb1c1377f4",
     "app/src/main/assets/categories/work_other/yomi.dat.zip": "1ddda38f08530eacda1faf2756f75b3e0a4134d27a94936ca7bf559dcca1b6bb",
@@ -2065,8 +2071,8 @@
     "app/src/main/assets/symbol/token_symbol.dat": "22a13bdf86a6e88cb270e6f6dbadf444efd57bf451ed0d250b9c370bc1e31dcb",
     "app/src/main/assets/symbol/yomi_symbol.dat": "7ac99f6184ba6c20b8bad0bcf1f2386d10b45ff60138f166731b091459a93482",
     "app/src/main/assets/system/tango.dat.zip": "5fbaf9bbd620d2766b46cd247d1d862f83bf012d988900361970e988b7d62965",
-    "app/src/main/assets/system/token.dat.zip": "02c560fb0e1a39bfa9bba09d4453416c3d0232a0e8380466351cd0401d44945f",
-    "app/src/main/assets/system/yomi.dat.zip": "716297c927aaeeb6630f50b371953ae0343b5126bfdd512240e5310e1cbfa74a"
+    "app/src/main/assets/system/token.dat.zip": "55fc3a6b99f72df4f4cea039d5aefc3c58046c439184da160d59165eb437244e",
+    "app/src/main/assets/system/yomi.dat.zip": "e76979b49d4f1719128b9550f4d697eddd44f032ad8dd7517e6cb86ac7fe0c0c"
   },
-  "licensePagesSha256": "7c577b48537c47bbb91258c1db25756c52169fe2c4229e5e43da427da5ac70c3"
+  "licensePagesSha256": "a48cda679eb51479f88b72034dd62c8391ceb004bd448dc46494a3fa709839b0"
 }

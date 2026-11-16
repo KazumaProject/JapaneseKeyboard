@@ -27,6 +27,7 @@ import androidx.annotation.ColorInt
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
+import androidx.core.view.doOnLayout
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.Pager
@@ -851,6 +852,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                         .setTextColor(normalColor)
                 }
             }
+        }
+
+        // Recycled tabs retain old bounds until layout; align the selected tab using its new bounds.
+        categoryTab.doOnLayout {
+            categoryTab.setScrollPosition(categoryTab.selectedTabPosition, 0f, true)
         }
 
         // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用

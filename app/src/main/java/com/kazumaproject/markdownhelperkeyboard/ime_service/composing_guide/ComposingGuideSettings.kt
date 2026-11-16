@@ -65,6 +65,7 @@ internal class ComposingGuideSettings(private val preferences: SharedPreferences
 
     companion object {
         const val ZENZ_ENABLED = "zenz_floating_candidates_enabled"
+        const val ZENZ_LIVE_CONVERSION = "zenz_floating_live_conversion_enabled"
         const val ZENZ_RESET = "zenz_floating_candidates_reset"
         const val SHOW_READING = "composing_guide_show_live_reading"
         const val SHOW_COMPOSING = "composing_guide_show_composing" // Legacy migration only.

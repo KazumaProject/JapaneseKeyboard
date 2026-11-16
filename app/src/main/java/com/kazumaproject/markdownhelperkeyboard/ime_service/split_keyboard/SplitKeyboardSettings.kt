@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard
 
 import android.content.SharedPreferences
+import kotlin.math.roundToInt
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 
 enum class SplitSlot { MAIN, SUB }
@@ -58,4 +59,15 @@ class SplitKeyboardSettings(private val prefs: SharedPreferences) {
         private fun geometryKey(slot: SplitSlot, landscape: Boolean) =
             "split_keyboard_${slot.name.lowercase()}_${if (landscape) "landscape" else "portrait"}"
     }
+}
+
+/** Window geometry shared with the read-only product preview. */
+internal fun splitPaneBounds(area: android.graphics.Rect, placement: SplitPlacement, density: Float,
+    horizontalChrome: Int, verticalChrome: Int): android.graphics.Rect {
+    fun px(value: Float) = (value * density).roundToInt()
+    val width = (px(placement.widthDp).coerceAtLeast(px(120f)) + horizontalChrome).coerceAtMost(area.width())
+    val height = (px(placement.heightDp).coerceAtLeast(px(80f)) + verticalChrome).coerceAtMost(area.height())
+    val x = area.left + ((area.width() - width) * placement.x).roundToInt()
+    val y = area.top + ((area.height() - height) * placement.y).roundToInt()
+    return android.graphics.Rect(x, y, x + width, y + height)
 }

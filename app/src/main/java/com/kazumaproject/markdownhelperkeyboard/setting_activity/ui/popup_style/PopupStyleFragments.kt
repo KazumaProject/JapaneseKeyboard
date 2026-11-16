@@ -25,6 +25,7 @@ import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 
 class TenKeyPopupStyleSettingFragment : Fragment() {
 
@@ -75,7 +76,8 @@ class TenKeyPopupStyleSettingFragment : Fragment() {
     }
 }
 
-class QwertyPopupStyleSettingFragment : Fragment() {
+open class QwertyPopupStyleSettingFragment : Fragment() {
+    protected open val useCustomKeyboardSettings = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -84,35 +86,51 @@ class QwertyPopupStyleSettingFragment : Fragment() {
     ): View {
         // MainActivity completes preference initialization before opening settings destinations.
         val root = editorRoot()
-        root.addView(sectionTitle("Key preview popup"))
+        val customPreferences = if (useCustomKeyboardSettings) AppPreference.custom_qwerty_popup_preferences else null
+        if (useCustomKeyboardSettings) {
+            root.addView(sectionTitle(getString(R.string.custom_qwerty_normal_key_size)))
+            root.addView(TextView(requireContext()).apply { setText(R.string.custom_qwerty_normal_key_size_summary) })
+            root.addView(Button(requireContext()).apply {
+                setText(R.string.custom_qwerty_normal_key_size)
+                setOnClickListener {
+                    navigateSafely(R.id.flickKeyboardSizeSettingsFragment, bundleOf("sizingSurface" to "custom"))
+                }
+            })
+            root.addView(TextView(requireContext()).apply { setText(R.string.custom_qwerty_popup_scope) })
+        }
+        root.addView(sectionTitle(getString(R.string.qwerty_tap_popup_section)))
         root.addView(
             styleEditorSection(
                 preview = PopupStylePreviewView(requireContext()).apply { previewText = "A" },
-                initialStyle = PopupViewStyle(
+                initialStyle = customPreferences?.keyPreview ?: PopupViewStyle(
                     AppPreference.qwerty_key_preview_popup_size_scale_percent ?: DEFAULT_SIZE,
                     AppPreference.qwerty_key_preview_popup_text_size_sp
                         ?: DEFAULT_QWERTY_PREVIEW_TEXT
                 ),
                 defaultTextSize = DEFAULT_QWERTY_PREVIEW_TEXT,
                 onChanged = {
-                    AppPreference.qwerty_key_preview_popup_size_scale_percent = it.sizeScalePercent
-                    AppPreference.qwerty_key_preview_popup_text_size_sp = it.textSizeSp
+                    if (customPreferences != null) customPreferences.keyPreview = it else {
+                        AppPreference.qwerty_key_preview_popup_size_scale_percent = it.sizeScalePercent
+                        AppPreference.qwerty_key_preview_popup_text_size_sp = it.textSizeSp
+                    }
                 }
             )
         )
-        root.addView(sectionTitle("Long-press variation popup"))
+        root.addView(sectionTitle(getString(R.string.qwerty_long_press_popup_section)))
         root.addView(
             styleEditorSection(
                 preview = PopupStylePreviewView(requireContext()).apply { previewText = "á" },
-                initialStyle = PopupViewStyle(
+                initialStyle = customPreferences?.variation ?: PopupViewStyle(
                     AppPreference.qwerty_variation_popup_size_scale_percent ?: DEFAULT_SIZE,
                     AppPreference.qwerty_variation_popup_text_size_sp
                         ?: DEFAULT_QWERTY_VARIATION_TEXT
                 ),
                 defaultTextSize = DEFAULT_QWERTY_VARIATION_TEXT,
                 onChanged = {
-                    AppPreference.qwerty_variation_popup_size_scale_percent = it.sizeScalePercent
-                    AppPreference.qwerty_variation_popup_text_size_sp = it.textSizeSp
+                    if (customPreferences != null) customPreferences.variation = it else {
+                        AppPreference.qwerty_variation_popup_size_scale_percent = it.sizeScalePercent
+                        AppPreference.qwerty_variation_popup_text_size_sp = it.textSizeSp
+                    }
                 }
             )
         )
@@ -146,6 +164,10 @@ class QwertyPopupStyleSettingFragment : Fragment() {
     }
 }
 
+class CustomQwertyPopupStyleSettingFragment : QwertyPopupStyleSettingFragment() {
+    override val useCustomKeyboardSettings = true
+}
+
 class FlickKeyboardPopupStyleListFragment : Fragment() {
 
     override fun onCreateView(
@@ -158,7 +180,7 @@ class FlickKeyboardPopupStyleListFragment : Fragment() {
             FlickTarget.DIRECTIONAL to ("通常入力" to "通常入力の方向別ポップアップ"),
             FlickTarget.CROSS to ("長押し、特殊キー" to "キーを長押し、特殊なキーをフリックしたときに表示されるポップアップ"),
             FlickTarget.STANDARD to ("サークル入力" to "サークル入力のポップアップ"),
-            FlickTarget.TFBI to ("２段 / ３段フリック入力" to "２段フリック入力・３段フリック入力のポップアップ"),
+            FlickTarget.TFBI to (getString(R.string.two_step_popup_title) to getString(R.string.two_step_popup_summary)),
         ).forEach { (target, texts) ->
             root.addView(listRow(texts.first, texts.second) {
                 findNavController().navigate(
@@ -167,6 +189,9 @@ class FlickKeyboardPopupStyleListFragment : Fragment() {
                 )
             })
         }
+        root.addView(listRow(getString(R.string.popup_style),getString(R.string.free_flick_settings_summary)) {
+            findNavController().navigate(R.id.freeFlickSettingsFragment)
+        })
         return scroll(root)
     }
 

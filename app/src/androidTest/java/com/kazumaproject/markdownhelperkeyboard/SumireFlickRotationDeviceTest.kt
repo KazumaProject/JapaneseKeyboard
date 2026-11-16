@@ -19,7 +19,6 @@ import androidx.test.runner.lifecycle.Stage
 import com.kazumaproject.custom_keyboard.data.TfbiFlickRotation
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
-import com.kazumaproject.custom_keyboard.data.SumireFlickInputMode
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection.*
@@ -62,7 +61,6 @@ class SumireFlickRotationDeviceTest {
                 .putString("sumire_input_method_preference", "flick")
                 .putString("sumire_keyboard_style_preference", "second-flick")
                 .putString(AppPreference.SUMIRE_FLICK_ROTATION_KEY, "default")
-                .putString(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY, "all")
                 .putString(AppPreference.FLICK_TFBI_POPUP_PRESENTATION_KEY, "legacy_grid")
                 .putString(AppPreference.TFBI_DIAGONAL_RECOGNITION_MODE_KEY, "legacy")
                 .putInt(AppPreference.FLICK_SENSITIVITY_KEY, 1)
@@ -104,25 +102,6 @@ class SumireFlickRotationDeviceTest {
                         flick(key("か"), style, first, second)
                         expected += output
                         awaitText(expected, "$style $rotation $first/$second")
-                    }
-                }
-                if (style == "third-flick") {
-                    for (mode in listOf(SumireFlickInputMode.CONTRACTED, SumireFlickInputMode.VOICED,
-                        SumireFlickInputMode.ALL)) {
-                        instrumentation.runOnMainSync {
-                            check(preferences.edit().putString(AppPreference.SUMIRE_FLICK_INPUT_MODE_KEY,
-                                mode.preferenceValue).commit())
-                        }
-                        awaitLayout(style, TfbiFlickRotation.COUNTERCLOCKWISE, mode)
-                        val output = if (mode == SumireFlickInputMode.VOICED) {
-                            flick(key("か"), style, LEFT, DOWN_LEFT)
-                            "ぎ"
-                        } else {
-                            flick(key("か"), style, LEFT, UP, UP_LEFT)
-                            "きゅう"
-                        }
-                        expected += output
-                        awaitText(expected, "Active three-step input mode $mode")
                     }
                 }
             }
@@ -210,8 +189,7 @@ class SumireFlickRotationDeviceTest {
         error("Sumire key $label did not become visible with stable screen bounds")
     }
 
-    private fun awaitLayout(style: String, rotation: TfbiFlickRotation,
-        mode: SumireFlickInputMode = SumireFlickInputMode.ALL) {
+    private fun awaitLayout(style: String, rotation: TfbiFlickRotation) {
         val deadline = SystemClock.uptimeMillis() + 15000
         var ready = false
         while (!ready && SystemClock.uptimeMillis() < deadline) {
@@ -229,7 +207,7 @@ class SumireFlickRotationDeviceTest {
             }
             if (!ready) SystemClock.sleep(50)
         }
-        assertTrue("Visible IME did not load $style / $rotation / $mode", ready)
+        assertTrue("Visible IME did not load $style / $rotation", ready)
     }
 
     private fun withHost(action: (FastInputHostActivity) -> Unit) {
