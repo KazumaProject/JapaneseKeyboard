@@ -598,12 +598,12 @@
     {
       "group": "androidx.drawerlayout",
       "name": "drawerlayout",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "configurations": [
         "liteStandardDebugRuntimeClasspath",
         "fullStandardDebugRuntimeClasspath"
       ],
-      "pomUrl": "https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.1.1/drawerlayout-1.1.1.pom",
+      "pomUrl": "https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.2.0/drawerlayout-1.2.0.pom",
       "licenses": [
         {
           "name": "The Apache Software License, Version 2.0",
@@ -612,8 +612,8 @@
       ],
       "evidence": [
         {
-          "url": "https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.1.1/drawerlayout-1.1.1.pom",
-          "sha256": "c12fa903ba53005962a72405f37896608718f41673fc4a62312e4536132f6f45"
+          "url": "https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.2.0/drawerlayout-1.2.0.pom",
+          "sha256": "77811b3a60b1891b8edac4c4f970b11247e259a5c4a399fecad953a3df408fc1"
         }
       ]
     },
