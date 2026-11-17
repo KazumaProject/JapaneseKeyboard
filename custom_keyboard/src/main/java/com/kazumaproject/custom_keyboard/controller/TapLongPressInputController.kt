@@ -22,7 +22,7 @@ class TapLongPressInputController(
         fun onPress()
         fun onTap()
         fun onLongPress()
-        fun onUpAfterLongPress()
+        fun onUpAfterLongPress(tapCanceled: Boolean)
         fun onLongPressCanceled()
     }
 
@@ -114,12 +114,13 @@ class TapLongPressInputController(
             MotionEvent.ACTION_UP -> {
                 view.removeCallbacks(longPressRunnable)
                 view.isPressed = false
-                isTouchActive = false
-                when {
-                    isLongPressTriggered -> listener?.onUpAfterLongPress()
-                    !isTapCanceled -> view.performClick()
-                }
+                val wasLongPress = isLongPressTriggered
+                val tapCanceled = isTapCanceled
                 clearGesture()
+                when {
+                    wasLongPress -> listener?.onUpAfterLongPress(tapCanceled)
+                    !tapCanceled -> view.performClick()
+                }
                 return true
             }
 

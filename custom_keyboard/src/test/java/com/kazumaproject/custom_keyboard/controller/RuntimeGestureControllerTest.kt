@@ -94,7 +94,7 @@ class RuntimeGestureControllerTest {
                     events += "long"
                 }
 
-                override fun onUpAfterLongPress() {
+                override fun onUpAfterLongPress(tapCanceled: Boolean) {
                     events += "upAfterLong"
                 }
 

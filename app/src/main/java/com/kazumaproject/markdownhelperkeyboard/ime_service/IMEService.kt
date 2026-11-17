@@ -15803,6 +15803,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 cancelOngoingLongPressForAction(action)
             }
 
+            override fun usesDefaultActionAfterLongPress(action: KeyAction): Boolean = when (action) {
+                KeyAction.Delete,
+                KeyAction.MoveCursorLeft,
+                KeyAction.MoveCursorRight,
+                KeyAction.Space,
+                KeyAction.Convert,
+                KeyAction.SwitchToNextIme,
+                KeyAction.Cancel,
+                KeyAction.DoNothing,
+                KeyAction.Backspace,
+                is KeyAction.Text -> false
+                else -> true
+            }
+
             override fun onActionLongPress(action: KeyAction) {
                 if (deferCursorInput { onActionLongPress(action) }) return
                 flushPendingBackspacesBefore(action)
