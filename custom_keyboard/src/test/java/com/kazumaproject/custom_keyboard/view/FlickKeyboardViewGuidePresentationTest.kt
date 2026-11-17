@@ -3,16 +3,27 @@ package com.kazumaproject.custom_keyboard.view
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutOrigin
 import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyItem
+import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.PopupAction
+import com.kazumaproject.custom_keyboard.data.PopupActionType
+import com.kazumaproject.custom_keyboard.data.PopupBounds
+import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
+import com.kazumaproject.custom_keyboard.data.PopupMap
+import com.kazumaproject.custom_keyboard.data.PopupRegion
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.util.ReflectionHelpers
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -57,6 +68,37 @@ class FlickKeyboardViewGuidePresentationTest {
 
         assertNotNull(view.findInputButtonWithText("ABC", layout))
         assertNull(view.findInputButtonWithText("a", layout))
+    }
+
+    @Test
+    fun customFreeFlickShowsStartMapGuidesWhenEnabled() {
+        val start = PopupMap("start", "Start", "タップ", listOf(
+            PopupRegion("far", PopupBounds(1.5f, -.5f, 2.5f, .5f), PopupAction(text = "遠い")),
+            PopupRegion("switch", PopupBounds(.5f, -.5f, 1.5f, .5f),
+                PopupAction(PopupActionType.SWITCH, targetMapId = "next"), label = "切り替え"),
+            PopupRegion("diagonal", PopupBounds(-1.5f, -1.5f, -.5f, -.5f), PopupAction(text = "😀入力")),
+            PopupRegion("empty", PopupBounds(-.5f, -1.5f, .5f, -.5f), PopupAction(), label = "未設定"),
+            PopupRegion("back", PopupBounds(-.5f, .5f, .5f, 1.5f), PopupAction(PopupActionType.BACK))
+        ))
+        val next = PopupMap("next", "Next", "次", listOf(
+            PopupRegion("text", PopupBounds(-1.5f, -.5f, -.5f, .5f), PopupAction(text = "左"))
+        ))
+        val key = KeyData("FREE", 0, 0, true, KeyAction.Text(start.tapText),
+            keyType = KeyType.FREE_FLICK, popupMapConfig = PopupKeyConfig("free", start.id, listOf(start, next)))
+        val layout = KeyboardLayout(listOf(key), emptyMap(), columnCount = 1, rowCount = 1)
+        val view = createView()
+        view.setKeyboard(layout, origin = KeyboardLayoutOrigin.CUSTOM)
+
+        fun guides(): AutoSizeButton.FlickGuideLabels? = ReflectionHelpers.getField(
+            requireNotNull(view.findInputButtonWithText("FREE", layout)), "flickGuideLabels"
+        )
+
+        assertNull(guides())
+        view.setFlickGuideMaxCodePoints(2)
+        view.setFlickGuideEnabled(true)
+        assertEquals(AutoSizeButton.FlickGuideLabels(tap = "タッ", right = "切り", upLeft = "😀入"), guides())
+        view.setFlickGuideEnabled(false)
+        assertNull(guides())
     }
 
     private fun createView(): FlickKeyboardView {

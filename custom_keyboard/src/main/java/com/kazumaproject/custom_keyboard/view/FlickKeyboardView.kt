@@ -1485,7 +1485,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     ) {
         val singleCharacterLabel = isSingleGuideCharacter(keyData.label)
         val eligibleMultiCharacterLabel =
-            flickGuideAllowsMultiCharacterLabels && !keyData.isSpecialKey
+            (flickGuideAllowsMultiCharacterLabels || keyData.popupMapConfig != null) && !keyData.isSpecialKey
         if (
             !flickGuideEnabled ||
             (!singleCharacterLabel && !eligibleMultiCharacterLabel) ||
@@ -1778,6 +1778,15 @@ class FlickKeyboardView @JvmOverloads constructor(
         val layout = currentLayout ?: return null
 
         keyData.popupMapConfig?.let { config ->
+            if (flickGuideEnabled && keyView is AutoSizeButton) {
+                config.map(config.startMapId)?.let { startMap ->
+                    applyResolvedGuideLabels(
+                        keyView,
+                        keyData,
+                        FlickGuideLabelMapper.buildFreeFlickRootGuideLabels(startMap, flickGuideMaxCodePoints)
+                    )
+                }
+            }
             return com.kazumaproject.custom_keyboard.controller.PopupMapInputController(
                 config = config,
                 windowAnchor = { popupWindowAnchorProvider?.invoke() },
