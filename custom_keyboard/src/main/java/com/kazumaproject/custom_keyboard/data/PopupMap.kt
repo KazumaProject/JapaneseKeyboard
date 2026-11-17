@@ -147,6 +147,7 @@ class PopupMapSession(
     private val history = mutableListOf(config.startMapId)
     val currentMap get() = requireNotNull(config.map(history.last()))
     val mapPath get() = history.toList()
+    internal val canGoBack get() = history.size > 1
     var selectedRegionId: String? = null; private set
     var selectedText: String? = null; private set
     var isTap = true; private set
@@ -160,7 +161,7 @@ class PopupMapSession(
             val before = history.toList()
             when (region.action.type) {
                 PopupActionType.SWITCH -> history += requireNotNull(region.action.targetMapId)
-                PopupActionType.BACK -> if (history.size > 1) history.removeAt(history.lastIndex)
+                PopupActionType.BACK -> if (canGoBack) history.removeAt(history.lastIndex)
                 else -> Unit
             }
             if (history != before) {
@@ -187,7 +188,7 @@ class PopupMapSession(
             return cardinalRegions[index]
         }
         currentMap.regions.firstOrNull { it.contains(x, y, keyWidth, keyHeight) }?.let { return it }
-        val candidates = currentMap.regions.filter { options.includes(it, history.size > 1) }
+        val candidates = currentMap.regions.filter { options.includes(it, canGoBack) }
         // The sensitivity box can leave a gap inside the reserved key. Project that motion
         // to the key's edge, so a short horizontal flick does not pick a nearer top/bottom
         // popup simply because the physical key is wider than it is tall.
