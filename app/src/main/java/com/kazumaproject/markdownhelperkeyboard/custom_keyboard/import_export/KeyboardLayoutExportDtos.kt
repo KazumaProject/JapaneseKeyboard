@@ -116,7 +116,9 @@ data class KeyDefinitionDto(
     @SerializedName("freeFlick")
     val freeFlick: JsonElement? = null,
     @SerializedName("qwerty")
-    val qwerty: JsonElement? = null
+    val qwerty: JsonElement? = null,
+    @SerializedName("longPressAction")
+    val longPressAction: String? = null
 )
 
 data class FlickMappingDto(

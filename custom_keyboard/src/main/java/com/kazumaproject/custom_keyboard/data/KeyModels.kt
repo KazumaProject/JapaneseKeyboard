@@ -164,7 +164,8 @@ data class KeyData(
     val doubleTapBinding: DoubleTapBinding? = null,
     val textInputBehavior: KeyTextInputBehavior = KeyTextInputBehavior.NORMAL,
     val qwertyConfig: QwertyKeyConfig? = null,
-    val popupMapConfig: PopupKeyConfig? = null
+    val popupMapConfig: PopupKeyConfig? = null,
+    val longPressAction: KeyAction? = null
 )
 
 data class GridPlacement(

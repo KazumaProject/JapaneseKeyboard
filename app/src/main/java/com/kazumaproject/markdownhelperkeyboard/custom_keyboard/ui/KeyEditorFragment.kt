@@ -97,6 +97,11 @@ private data class CustomKeyboardTargetOption(
 @AndroidEntryPoint
 class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
+    private companion object {
+        const val STATE_EDITING_KEY = "editingKeyIdentifier"
+        const val STATE_LONG_PRESS_ACTION = "longPressAction"
+    }
+
     @Inject
     lateinit var keyboardRepository: KeyboardRepository
 
@@ -137,6 +142,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private lateinit var specialFlickActionOptions: List<SpecialKeyActionOption>
     private lateinit var customKeyboardTargetAdapter: ArrayAdapter<String>
     private lateinit var doubleTapTargetAdapter: ArrayAdapter<String>
+    private lateinit var longPressTargetAdapter: ArrayAdapter<String>
     private lateinit var circularFlickAdapter: CircularFlickMappingAdapter
     private lateinit var circularMapAdapter: ArrayAdapter<String>
 
@@ -147,6 +153,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var customKeyboardTargetOptions: List<CustomKeyboardTargetOption> = emptyList()
     private var selectedTargetCustomKeyboardStableId: String? = null
     private var selectedDoubleTapTargetStableId: String? = null
+    private var longPressAction: KeyAction? = null
     private var selectedIconRef: KeyIconRef? = null
     private var originalIconRef: KeyIconRef? = null
     private val pendingUserIconPaths = mutableSetOf<String>()
@@ -188,7 +195,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         _binding = FragmentKeyEditorBinding.bind(view)
 
         binding.buttonDone.isEnabled = false
-        restoredEditingKeyIdentifier = savedInstanceState?.getString("qwertyEditingKey")
+        restoredEditingKeyIdentifier = savedInstanceState?.getString(STATE_EDITING_KEY)
         savedQwertyDraft = QwertyKeyConfigCodec.decode(savedInstanceState?.getString("qwertyDraft"), requireOutput = false)
         binding.qwertyKeyEditor.onChanged = { updateDoneButtonState() }
         freeFlickDraft = PopupKeyConfigCodec.decode(savedInstanceState?.getString("freeFlickDraft")) ?: freeFlickDraft
@@ -204,7 +211,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         setupToolbarAndMenu()
         setupGridEditor()
         setupUIListeners()
-        setupInitialState()
+        setupInitialState(savedInstanceState)
     }
 
     private fun setupGridEditor() {
@@ -232,6 +239,24 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             false
         )
 
+        val longPressActionOptions =
+            listOf(SpecialKeyActionOption(getString(R.string.custom_key_long_press_disabled))) + keyActionOptions
+        binding.longPressActionSpinner.setAdapter(
+            SpecialKeyActionDropdownAdapter(requireContext(), longPressActionOptions)
+        )
+        binding.longPressActionSpinner.setOnItemClickListener { _, _, position, _ ->
+            val option = longPressActionOptions.getOrNull(position) ?: return@setOnItemClickListener
+            val selectedAction = option.action?.action
+            updateLongPressAction(
+                if (selectedAction is KeyAction.MoveToCustomKeyboard) {
+                    longPressAction as? KeyAction.MoveToCustomKeyboard
+                        ?: KeyAction.MoveToCustomKeyboard(customKeyboardTargets.firstOrNull()?.stableId.orEmpty())
+                } else {
+                    selectedAction
+                }
+            )
+        }
+
         // 特殊フリック用アクションスピナー（セル選択後に表示）
         binding.specialFlickMappingsRecyclerView.setAdapter(
             SpecialKeyActionDropdownAdapter(requireContext(), specialFlickActionOptions)
@@ -249,6 +274,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             mutableListOf<String>()
         )
         binding.doubleTapTargetSpinner.setAdapter(doubleTapTargetAdapter)
+        longPressTargetAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            mutableListOf<String>()
+        )
+        binding.longPressTargetSpinner.setAdapter(longPressTargetAdapter)
+        binding.longPressTargetSpinner.setOnItemClickListener { _, _, position, _ ->
+            customKeyboardTargets.getOrNull(position)?.let { target ->
+                updateLongPressAction(KeyAction.MoveToCustomKeyboard(target.stableId))
+            }
+        }
 
         circularFlickAdapter = CircularFlickMappingAdapter { updated ->
             val currentMap = currentCircularFlickMaps.getOrNull(currentCircularMapIndex)
@@ -1056,16 +1092,38 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private suspend fun loadCustomKeyboardTargets() {
         customKeyboardTargets = keyboardRepository.getLayoutsNotFlowEnsuringStableIds()
         refreshCustomKeyboardTargetOptions()
+        longPressTargetAdapter.addAll(customKeyboardTargetOptions.map { it.label })
     }
 
     private fun refreshCustomKeyboardTargetOptions(deletedStableId: String? = null) {
         customKeyboardTargetOptions = buildTargetOptions(customKeyboardTargets, deletedStableId)
-        customKeyboardTargetAdapter.clear()
-        customKeyboardTargetAdapter.addAll(customKeyboardTargetOptions.map { it.label })
-        customKeyboardTargetAdapter.notifyDataSetChanged()
-        doubleTapTargetAdapter.clear()
-        doubleTapTargetAdapter.addAll(customKeyboardTargetOptions.map { it.label })
-        doubleTapTargetAdapter.notifyDataSetChanged()
+        val labels = customKeyboardTargetOptions.map { it.label }
+        for (adapter in listOf(customKeyboardTargetAdapter, doubleTapTargetAdapter)) {
+            adapter.clear()
+            adapter.addAll(labels)
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun updateLongPressAction(action: KeyAction?) {
+        longPressAction = action
+        val actionLabel = action?.let {
+            displayActionForAction(it)?.displayName ?: KeyActionMapper.fromKeyAction(it)
+        }
+        binding.longPressActionSpinner.setText(
+            actionLabel ?: getString(R.string.custom_key_long_press_disabled), false
+        )
+        binding.longPressActionLayout.helperText = action?.let {
+            getString(R.string.custom_key_long_press_priority)
+        }
+        val targetId = (action as? KeyAction.MoveToCustomKeyboard)?.stableId
+        binding.longPressTargetLayout.isVisible = targetId != null
+        val targetLabel = targetId?.takeIf { it.isNotBlank() }?.let { id ->
+            customKeyboardTargetOptions.firstOrNull { it.stableId == id }?.label
+                ?: getString(R.string.deleted_custom_keyboard_target)
+        }
+        binding.longPressTargetSpinner.setText(targetLabel.orEmpty(), false)
+        updateDoneButtonState()
     }
 
     private fun selectTargetCustomKeyboard(stableId: String?) {
@@ -1180,6 +1238,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         if (outputEditMode != OutputEditMode.TOGGLE) {
             binding.textCharInputLayout.error = null
         }
+        if (!longPressAction.isValidMoveToCustomKeyboardTarget(validTargetStableIds())) {
+            binding.buttonDone.isEnabled = false
+            return
+        }
         if (binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
             binding.inputStyleChipGroup.checkedChipId == R.id.chip_free_flick) {
             binding.buttonDone.isEnabled = ensureFreeFlickDraft()?.let { config ->
@@ -1277,7 +1339,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.buttonDone.isEnabled = isEnabled && isDoubleTapValid
     }
 
-    private fun setupInitialState() {
+    private fun setupInitialState(savedInstanceState: Bundle?) {
         viewLifecycleOwner.lifecycleScope.launch {
             loadCustomKeyboardTargets()
             val state = viewModel.uiState.filterNotNull().first()
@@ -1286,7 +1348,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // legacy KeyData.keyId. selectedKeyIdentifier carries item.id for
             // flexible layouts (so half-cell keys and editor-created keys
             // resolve correctly even when keyData.keyId is null/blank).
-            val selectedId = state.selectedKeyIdentifier ?: restoredEditingKeyIdentifier.takeIf { savedQwertyDraft != null || freeFlickDraft != null }
+            val selectedId = state.selectedKeyIdentifier ?: restoredEditingKeyIdentifier
             editingKeyIdentifier = selectedId
             val selectedKeyItem = selectedId?.let { id ->
                 state.layout.items
@@ -1306,6 +1368,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             val key = currentKeyData!!
+            val savedLongPress = savedInstanceState?.takeIf {
+                selectedId == restoredEditingKeyIdentifier && it.containsKey(STATE_LONG_PRESS_ACTION)
+            }
+            val savedAction = savedLongPress?.getString(STATE_LONG_PRESS_ACTION)
+            updateLongPressAction(
+                when {
+                    savedLongPress == null -> key.longPressAction
+                    savedAction == "" -> KeyAction.MoveToCustomKeyboard("")
+                    else -> KeyActionMapper.toKeyAction(savedAction)
+                }
+            )
             selectedIconRef = key.icon?.takeIf { it.isOverride() }
             originalIconRef = selectedIconRef
             key.doubleTapBinding
@@ -1878,6 +1951,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun onDone() {
         val originalKey = currentKeyData ?: return
+        if (!longPressAction.isValidMoveToCustomKeyboardTarget(validTargetStableIds())) return
 
         if (
             binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
@@ -1928,18 +2002,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                         if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
                             ?: "ACTION"
 
-                    if (newAction == KeyAction.VoiceInput) {
-                        val context = requireContext()
-                        val hasPermission = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.RECORD_AUDIO
-                        ) == PackageManager.PERMISSION_GRANTED
-
-                        if (!hasPermission) {
-                            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-                        }
-                    }
-
                     newFlickMap = emptyMap()
                     newTwoStepMap = emptyMap()
                     newLongPressFlickMap = emptyMap()
@@ -1985,18 +2047,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                             )
                         }
                         .toMap()
-
-                    if (newAction == KeyAction.VoiceInput) {
-                        val context = requireContext()
-                        val hasPermission = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.RECORD_AUDIO
-                        ) == PackageManager.PERMISSION_GRANTED
-
-                        if (!hasPermission) {
-                            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-                        }
-                    }
 
                     newTwoStepMap = emptyMap()
                     newLongPressFlickMap = emptyMap()
@@ -2167,7 +2217,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 )
             )
         }
-        if (newDoubleTapBinding?.action == KeyAction.VoiceInput) {
+        if (newAction == KeyAction.VoiceInput || newDoubleTapBinding?.action == KeyAction.VoiceInput ||
+            longPressAction == KeyAction.VoiceInput
+        ) {
             val hasPermission = ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.RECORD_AUDIO
@@ -2205,6 +2257,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 SpecialKeyColorStyle.SPECIAL
             },
             doubleTapBinding = newDoubleTapBinding,
+            longPressAction = longPressAction,
             textInputBehavior = if (
                 !isSpecial &&
                 newKeyType == KeyType.PETAL_FLICK &&
@@ -2246,15 +2299,21 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
 
     override fun onSaveInstanceState(outState: Bundle) {
+        editingKeyIdentifier?.let {
+            outState.putString(STATE_EDITING_KEY, it)
+            outState.putString(
+                STATE_LONG_PRESS_ACTION,
+                KeyActionMapper.fromKeyAction(longPressAction)
+                    ?: (longPressAction as? KeyAction.MoveToCustomKeyboard)?.stableId
+            )
+        }
         freeFlickDraft?.let { outState.putString("freeFlickDraft", PopupKeyConfigCodec.encode(it)) }
         if (_binding != null && freeFlickDraft != null) {
-            outState.putString("qwertyEditingKey", editingKeyIdentifier)
             outState.putInt("freeFlickInputStyle", binding.inputStyleChipGroup.checkedChipId)
         }
         if (_binding != null && binding.keyTypeChipGroup.checkedChipId == R.id.chip_normal &&
             binding.inputStyleChipGroup.checkedChipId == R.id.chip_qwerty) {
             outState.putString("qwertyDraft", QwertyKeyConfigCodec.encode(binding.qwertyKeyEditor.config))
-            outState.putString("qwertyEditingKey", editingKeyIdentifier)
         }
         super.onSaveInstanceState(outState)
     }

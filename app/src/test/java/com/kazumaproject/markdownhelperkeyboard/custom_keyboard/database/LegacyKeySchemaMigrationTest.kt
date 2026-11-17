@@ -26,11 +26,13 @@ class LegacyKeySchemaMigrationTest {
                 val db = initial.openHelper.writableDatabase
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN qwertyConfigJson")
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN popupMapConfigJson")
+                db.execSQL("ALTER TABLE key_definitions DROP COLUMN longPressAction")
                 db.execSQL("PRAGMA user_version = 48")
             } finally { initial.close() }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_48_49, AppDatabase.MIGRATION_49_50, AppDatabase.MIGRATION_50_51).allowMainThreadQueries().build()
-            try { assertEquals(51, migrated.openHelper.writableDatabase.version) }
+                .addMigrations(AppDatabase.MIGRATION_48_49, AppDatabase.MIGRATION_49_50,
+                    AppDatabase.MIGRATION_50_51, AppDatabase.MIGRATION_51_52).allowMainThreadQueries().build()
+            try { assertEquals(52, migrated.openHelper.writableDatabase.version) }
             finally { migrated.close() }
         } finally { context.deleteDatabase(name) }
     }

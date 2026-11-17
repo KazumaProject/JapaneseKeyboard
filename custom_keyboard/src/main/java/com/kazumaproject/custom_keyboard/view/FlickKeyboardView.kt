@@ -11,6 +11,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
 import android.os.Build
+import android.os.Looper
 import android.os.SystemClock
 import android.text.Spannable
 import android.text.SpannableString
@@ -31,6 +32,7 @@ import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
+import androidx.core.os.HandlerCompat
 import com.google.android.material.R
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.ui.skin.KeyboardSkinRegistry
@@ -590,6 +592,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
+        if (enabled) motionTargets.values.forEach(::cancelAssignedLongPress)
         if (enabled && independentMultiTouchForCurrentGesture) {
             val ownerView = dynamicKeyMap.values.firstOrNull { it.keyData == longPressOwnerKeyData }?.view
             val owner = motionTargets.entries.firstOrNull { it.value.view === ownerView } ?: motionTargets.entries.firstOrNull()
@@ -599,8 +602,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 motionTargets.toList().filter { target -> target.first != it.key }.forEach { (id, target) ->
                     motionTargets.remove(id)
                     val time = pointerDownTime.remove(id) ?: SystemClock.uptimeMillis()
-                    val cancel = MotionEvent.obtain(time, SystemClock.uptimeMillis(), MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
-                    try { target.view.dispatchTouchEvent(cancel) } finally { cancel.recycle() }
+                    cancelPointerTarget(target, time)
                     target.view.isPressed = false
                     independentLastCoordinates.remove(id)
                 }
@@ -3153,8 +3155,25 @@ class FlickKeyboardView @JvmOverloads constructor(
         val ownerScaleY: Float = 1f,
         val keyLeft: Int = 0,
         val keyTop: Int = 0,
-    )
+    ) {
+        var pendingLongPress: PendingLongPress? = null
+    }
 
+    private class PendingLongPress(
+        val displayX: Float,
+        val displayY: Float,
+        val config: GestureSessionConfig,
+        val task: Runnable,
+    ) {
+        fun movedTo(x: Float, y: Float): Boolean = FlickGestureMath.isThresholdCrossed(
+            deltaX = x - displayX,
+            deltaY = y - displayY,
+            thresholdPx = config.flickThresholdPx,
+            thresholdShape = config.flickThresholdShape
+        )
+    }
+
+    private val longPressHandler = HandlerCompat.createAsync(Looper.getMainLooper())
     private val motionTargets = mutableMapOf<Int, MotionTarget>()
     private val pointerDownTime = mutableMapOf<Int, Long>()
     private val TAG = "FlickKeyboardViewTouch"
@@ -3210,21 +3229,11 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         val eventTime = SystemClock.uptimeMillis()
         motionTargets.toList().forEach { (trackedPointerId, target) ->
-            var cancelEvent: MotionEvent? = null
+            cancelAssignedLongPress(target)
             try {
-                cancelEvent = MotionEvent.obtain(
-                    pointerDownTime[trackedPointerId] ?: eventTime,
-                    eventTime,
-                    MotionEvent.ACTION_CANCEL,
-                    target.view.width / 2f,
-                    target.view.height / 2f,
-                    0
-                )
-                target.view.dispatchTouchEvent(cancelEvent)
+                cancelPointerTarget(target, pointerDownTime[trackedPointerId] ?: eventTime, eventTime)
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to dispatch ACTION_CANCEL while clearing touch state", e)
-            } finally {
-                cancelEvent?.recycle()
             }
 
             try {
@@ -3237,9 +3246,69 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
 
+        clearMotionTargets()
+        restorePersistentKeyHighlights()
+    }
+
+    private fun clearMotionTargets() {
+        motionTargets.values.forEach(::cancelAssignedLongPress)
         motionTargets.clear()
         pointerDownTime.clear()
-        restorePersistentKeyHighlights()
+    }
+
+    private fun cancelPointerTarget(
+        target: MotionTarget,
+        downTime: Long,
+        eventTime: Long = SystemClock.uptimeMillis(),
+    ) {
+        val event = MotionEvent.obtain(
+            downTime, eventTime, MotionEvent.ACTION_CANCEL,
+            target.view.width / 2f, target.view.height / 2f, 0
+        )
+        try {
+            target.view.dispatchTouchEvent(event)
+        } finally {
+            event.recycle()
+        }
+    }
+
+    private fun scheduleAssignedLongPress(
+        pointerId: Int,
+        target: MotionTarget,
+        displayX: Float,
+        displayY: Float,
+        downTime: Long,
+    ) {
+        if (layoutOrigin != KeyboardLayoutOrigin.CUSTOM) return
+        val keyData = keyInfos.firstOrNull { it.view === target.view }?.keyData ?: return
+        val action = keyData.longPressAction ?: return
+        val config = gestureSessionConfigSource.snapshot()
+        val task = Runnable {
+            target.pendingLongPress = null
+            if (motionTargets[pointerId] !== target || target.view.parent !== this ||
+                !target.view.isShown || !target.view.isEnabled
+            ) {
+                return@Runnable
+            }
+
+            motionTargets.remove(pointerId)
+            pointerDownTime.remove(pointerId)
+            independentLastCoordinates.remove(pointerId)
+            cancelPointerTarget(target, downTime)
+            target.view.isPressed = false
+            restorePersistentKeyHighlights()
+            independentTextPreviews.remove(keyData)
+            dispatchNonTapAction(action, isFlick = false)
+            restoreIndependentTextPreview()
+        }
+        target.pendingLongPress = PendingLongPress(displayX, displayY, config, task)
+        // Schedule before forwarding DOWN so this hold wins over the key controller's hold.
+        longPressHandler.postDelayed(task, config.longPressTimeoutMillis)
+    }
+
+    private fun cancelAssignedLongPress(target: MotionTarget) {
+        target.pendingLongPress?.let { longPressHandler.removeCallbacks(it.task) }
+        target.pendingLongPress = null
     }
 
     private fun View.displayScale(): Pair<Float, Float> {
@@ -3414,6 +3483,24 @@ class FlickKeyboardView @JvmOverloads constructor(
     ) {
         val displayX = source.displayX(pointerIndex)
         val displayY = source.displayY(pointerIndex)
+        when (action) {
+            MotionEvent.ACTION_DOWN ->
+                scheduleAssignedLongPress(source.getPointerId(pointerIndex), target, displayX, displayY, downTime)
+            MotionEvent.ACTION_MOVE -> target.pendingLongPress?.let { press ->
+                val offsetX = displayX - source.getX(pointerIndex)
+                val offsetY = displayY - source.getY(pointerIndex)
+                if (press.movedTo(displayX, displayY) || (0 until source.historySize).any { sample ->
+                        press.movedTo(
+                            source.getHistoricalX(pointerIndex, sample) + offsetX,
+                            source.getHistoricalY(pointerIndex, sample) + offsetY
+                        )
+                    }
+                ) {
+                    cancelAssignedLongPress(target)
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> cancelAssignedLongPress(target)
+        }
         val childEvent = MotionEvent.obtain(
             downTime,
             eventTime,
@@ -3535,8 +3622,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     crossFlickControllers.forEach { it.dismissAllPopups() }
                     clearSpaceKeyPressedState()
 
-                    motionTargets.clear()
-                    pointerDownTime.clear()
+                    clearMotionTargets()
 
                     return true
                 }
@@ -3545,8 +3631,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         when (action) {
             MotionEvent.ACTION_DOWN -> {
-                motionTargets.clear()
-                pointerDownTime.clear()
+                clearMotionTargets()
 
                 pointerDownTime[pointerId] = event.downTime
                 val targetView = findTargetView(
@@ -3617,8 +3702,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
 
-                motionTargets.clear()
-                pointerDownTime.clear()
+                clearMotionTargets()
 
                 val newPointerId = event.getPointerId(pointerIndex)
 
@@ -3713,8 +3797,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     listener?.onLongPressActionCanceled(KeyAction.Cancel)
                 }
 
-                motionTargets.clear()
-                pointerDownTime.clear()
+                clearMotionTargets()
                 return true
             }
         }
@@ -3750,7 +3833,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 setCursorMode(false)
                 crossFlickControllers.forEach { it.dismissAllPopups() }
                 clearSpaceKeyPressedState()
-                motionTargets.clear(); pointerDownTime.clear()
+                clearMotionTargets()
                 independentLastCoordinates.clear(); independentTextPreviews.clear()
             }
         }
@@ -3789,7 +3872,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val pointerIndex = event.findPointerIndex(id)
                     if (pointerIndex >= 0 && motionTargets[id] === target) {
                         val coordinates = event.displayX(pointerIndex) to event.displayY(pointerIndex)
-                        if (independentLastCoordinates.put(id, coordinates) != coordinates) {
+                        if (independentLastCoordinates.put(id, coordinates) != coordinates ||
+                            (event.historySize > 0 && target.pendingLongPress != null)
+                        ) {
                             dispatchPointerEvent(event, pointerIndex, target, MotionEvent.ACTION_MOVE,
                                 pointerDownTime[id] ?: event.downTime)
                         }
