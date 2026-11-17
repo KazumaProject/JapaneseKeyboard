@@ -1196,6 +1196,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 finalTwoStepLongPressMaps.remove(keyId)
             }
 
+            KeyType.TWO_STEP_FLICK,
             KeyType.FLICK_LONG_PRESS -> {
                 finalFlickMaps.remove(keyId)
                 finalCircularFlickMaps.remove(keyId)
