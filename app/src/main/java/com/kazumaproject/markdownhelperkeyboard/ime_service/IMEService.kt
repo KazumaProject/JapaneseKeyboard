@@ -7686,7 +7686,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ).also { cursorInlinePopup = it }
         val selectedCandidate = segment?.overrideDisplayCandidate
             ?: segment?.candidates?.getOrNull(segment.selectedIndex)
-        val colors = resolveCandidatePanelColors().withHighContrastSelection()
+        val colors = resolveCandidatePanelColors().withReadableSelectionText()
         val previous = cursorInlineTarget
         popup.submit(
             CursorInlineCandidatePopup.Content(
@@ -22964,7 +22964,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val focusedSegment = segments[focusedIndex]
         val highlightEnd = highlightStart + focusedSegment.displayText.length
         val inlineColors = if (canUseCursorInlineConversion() && cursorInlineAnchorInfo != null) {
-            resolveCandidatePanelColors().withHighContrastSelection()
+            resolveCandidatePanelColors().withReadableSelectionText()
         } else null
 
         updateSuggestionViewsForBunsetsuSegment(

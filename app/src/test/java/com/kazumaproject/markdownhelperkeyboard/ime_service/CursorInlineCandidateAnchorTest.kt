@@ -37,18 +37,22 @@ class CursorInlineCandidateAnchorTest {
         assertNull(anchor.inlineCandidateAnchor(TEXT, 0..2))
     }
 
-    @Test fun selectionIsReadableWithLightAndDarkCandidatePanels() {
+    @Test fun selectionKeepsTheThemeAccentAndUsesReadableText() {
         for ((background, foreground) in listOf(Color.WHITE to Color.BLACK, Color.BLACK to Color.WHITE)) {
-            val colors = CandidatePanelColors(
+            val theme = CandidatePanelColors(
                 background = background,
                 candidate = background,
                 text = foreground,
                 pressed = foreground,
                 selection = ColorUtils.blendARGB(background, foreground, 0.08f),
                 selectionText = background,
-            ).withHighContrastSelection()
-            assertTrue(ColorUtils.calculateContrast(colors.selection, background) >= 3.0)
+            )
+            val colors = theme.withReadableSelectionText()
+            assertEquals(theme.selection, colors.selection)
             assertTrue(ColorUtils.calculateContrast(colors.selectionText, colors.selection) >= 4.5)
+
+            val readableTheme = theme.copy(selectionText = foreground)
+            assertEquals(readableTheme, readableTheme.withReadableSelectionText())
         }
     }
 

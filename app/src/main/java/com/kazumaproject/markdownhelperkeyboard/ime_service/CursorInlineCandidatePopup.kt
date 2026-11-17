@@ -45,22 +45,17 @@ internal fun CursorAnchorInfo.inlineCandidateAnchor(
     return insertionMarkerAnchor().takeIf { selectionStart == composingTextStart + focusedSegment.first }
 }
 
-internal fun CandidatePanelColors.withHighContrastSelection(): CandidatePanelColors {
+internal fun CandidatePanelColors.withReadableSelectionText(): CandidatePanelColors {
     val panel = ColorUtils.setAlphaComponent(background, 255)
-    val accent = ColorUtils.compositeColors(selection, panel)
-    val panelText = ColorUtils.compositeColors(text, panel)
-    val fill = when {
-        ColorUtils.calculateContrast(accent, panel) >= 3.0 -> accent
-        ColorUtils.calculateContrast(panelText, panel) >= 3.0 -> panelText
-        ColorUtils.calculateLuminance(panel) > 0.179 -> Color.BLACK
-        else -> Color.WHITE
-    }
+    val fill = ColorUtils.compositeColors(selection, panel)
+    if (ColorUtils.calculateContrast(selectionText, fill) >= 4.5) return this
+
     val label = when {
-        ColorUtils.calculateContrast(selectionText, fill) >= 4.5 -> selectionText
+        ColorUtils.calculateContrast(text, fill) >= 4.5 -> text
         ColorUtils.calculateLuminance(fill) > 0.179 -> Color.BLACK
         else -> Color.WHITE
     }
-    return copy(selection = fill, selectionText = label)
+    return copy(selectionText = label)
 }
 
 /** Keeps the editor focused and lets touches outside the measured panel reach the editor or IME. */
@@ -188,8 +183,11 @@ internal class CursorInlineCandidatePopup(
         cornerRadius = dp(radius).toFloat()
     }
 
-    private fun ripple(pressedColor: Int, surfaceColor: Int) =
-        RippleDrawable(ColorStateList.valueOf(pressedColor), shape(surfaceColor, 8), null)
+    private fun ripple(pressedColor: Int, surfaceColor: Int, outlineColor: Int? = null): RippleDrawable {
+        val background = shape(surfaceColor, 8)
+        outlineColor?.let { background.setStroke(dp(1), it) }
+        return RippleDrawable(ColorStateList.valueOf(pressedColor), background, null)
+    }
 
     private fun segmentButton(context: Context, glyph: String, description: Int, click: () -> Unit) =
         TextView(context).apply {
@@ -231,7 +229,11 @@ internal class CursorInlineCandidatePopup(
                 isSelected = selected
                 paint.isFakeBoldText = selected
                 setTextColor(if (selected) colors.selectionText else colors.text)
-                background = ripple(colors.pressed, if (selected) colors.selection else colors.background)
+                background = ripple(
+                    pressedColor = colors.pressed,
+                    surfaceColor = if (selected) colors.selection else colors.background,
+                    outlineColor = colors.selectionText.takeIf { selected },
+                )
                 KeyboardFontApplicator.apply(this, KeyboardFontApplicator.processSnapshot)
             }
         }
