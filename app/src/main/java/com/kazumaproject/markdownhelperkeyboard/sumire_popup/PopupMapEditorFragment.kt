@@ -117,7 +117,7 @@ class PopupMapEditorFragment : Fragment() {
             item(button(label(R.string.popup_add)) { addPopup() },1.7f)
             item(button(label(R.string.popup_undo)) { model.undo();refresh() },1f)
         })
-        content.addView(canvas,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(228)))
+        content.addView(canvas,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(288)))
         status=text("").apply {
             visibility=View.GONE
             doAfterTextChanged {visibility=if(it.isNullOrEmpty()) View.GONE else View.VISIBLE}
@@ -404,10 +404,18 @@ class PopupMapEditorFragment : Fragment() {
     private fun addPopup() {
         if(model.trying) {model.trying=false;refresh()}
         val regionId=id()
-        for(y in listOf(-3.6f,-2.6f,-1.6f,-.6f,.6f)) for(x in listOf(-1.5f,-.4f,.7f)) {
-            val region=PopupRegion(regionId,PopupBounds.KEY.offset(x+.5f,y+.5f))
-            val updated=config.withMap(page.copy(regions=page.regions+region))
-            if(canvas.canPlace(updated,region.bounds)) {model.change(updated);model.selectedId=regionId;model.assigningMap=false;refresh();return}
+        for (row in -3..3) {
+            for (column in -1..1) {
+                val bounds = PopupBounds.KEY.offset(column.toFloat(), row.toFloat())
+                val updated = config.withMap(page.copy(regions = page.regions + PopupRegion(regionId, bounds)))
+                if (!canvas.canPlace(updated, bounds)) continue
+
+                model.change(updated)
+                model.selectedId = regionId
+                model.assigningMap = false
+                refresh()
+                return
+            }
         }
         status.text=label(R.string.popup_no_space)
     }
