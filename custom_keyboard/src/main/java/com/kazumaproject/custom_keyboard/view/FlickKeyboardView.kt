@@ -142,6 +142,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         fun onFlickActionLongPress(action: KeyAction)
         fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean)
         fun onLongPressActionCanceled(action: KeyAction) {}
+
+        /** Whether a custom key should commit its default action on release after a hold. */
+        fun usesDefaultActionAfterLongPress(action: KeyAction): Boolean = false
         fun onToggleText(keyIdentity: String, values: List<String>) {
             values.firstOrNull()?.let { onAction(KeyAction.Text(it), false) }
         }
@@ -2086,30 +2089,33 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
 
                             override fun onFlickLongPress(action: KeyAction) {
-                                if (action !is KeyAction.Text) {
-                                    doubleTapActionDispatcher.interrupt()
-                                    longPressOwnerKeyData = keyData
-                                    this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
-                                }
+                                if (action is KeyAction.Text) return
+                                doubleTapActionDispatcher.interrupt()
+                                if (usesDefaultActionAfterLongPress(action)) return
+                                longPressOwnerKeyData = keyData
+                                this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
                             }
 
                             override fun onFlickUpAfterLongPress(
                                 action: KeyAction,
                                 isFlick: Boolean
                             ) {
-                                if (action !is KeyAction.Text) {
-                                    doubleTapActionDispatcher.interrupt()
-                                    this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
-                                        action, isFlick = isFlick
-                                    )
+                                if (action is KeyAction.Text) return
+                                if (usesDefaultActionAfterLongPress(action)) {
+                                    dispatchNonTapAction(action, isFlick)
+                                    return
                                 }
+                                doubleTapActionDispatcher.interrupt()
+                                this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                    action, isFlick
+                                )
                             }
 
                             override fun onFlickLongPressCanceled(
                                 action: KeyAction,
                                 direction: FlickDirection
                             ) {
-                                if (action !is KeyAction.Text) {
+                                if (action !is KeyAction.Text && !usesDefaultActionAfterLongPress(action)) {
                                     this@FlickKeyboardView.listener?.onLongPressActionCanceled(
                                         action
                                     )
@@ -2640,23 +2646,26 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                                 override fun onLongPress() {
                                     doubleTapActionDispatcher.interrupt()
+                                    val action = currentAction()
+                                    if (usesDefaultActionAfterLongPress(action)) return
                                     longPressOwnerKeyData = keyData
-                                    this@FlickKeyboardView.listener?.onActionLongPress(
-                                        currentAction()
-                                    )
+                                    this@FlickKeyboardView.listener?.onActionLongPress(action)
                                 }
 
-                                override fun onUpAfterLongPress() {
+                                override fun onUpAfterLongPress(tapCanceled: Boolean) {
+                                    val action = currentAction()
+                                    if (usesDefaultActionAfterLongPress(action)) {
+                                        if (!tapCanceled) dispatchNonTapAction(action, isFlick = false)
+                                        return
+                                    }
                                     doubleTapActionDispatcher.interrupt()
-                                    this@FlickKeyboardView.listener?.onActionUpAfterLongPress(
-                                        currentAction()
-                                    )
+                                    this@FlickKeyboardView.listener?.onActionUpAfterLongPress(action)
                                 }
 
                                 override fun onLongPressCanceled() {
-                                    this@FlickKeyboardView.listener?.onLongPressActionCanceled(
-                                        currentAction()
-                                    )
+                                    val action = currentAction()
+                                    if (usesDefaultActionAfterLongPress(action)) return
+                                    this@FlickKeyboardView.listener?.onLongPressActionCanceled(action)
                                 }
                             }
                         )
@@ -2994,6 +3003,10 @@ class FlickKeyboardView @JvmOverloads constructor(
         cancelTextPreview()
         dispatchNonTapActionWithoutPreviewCancel(action, isFlick)
     }
+
+    private fun usesDefaultActionAfterLongPress(action: KeyAction): Boolean =
+        layoutOrigin == KeyboardLayoutOrigin.CUSTOM &&
+            listener?.usesDefaultActionAfterLongPress(action) == true
 
     private fun dispatchNonTapActionWithoutPreviewCancel(action: KeyAction, isFlick: Boolean) {
         doubleTapActionDispatcher.interrupt()

@@ -40,11 +40,23 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
         tapArea=PopupTapArea.resolve(inputOptions.tapSizeMode,sourceKeyWidth,sourceKeyHeight,
             FreeFlickPreferences.gestureConfig(context).flickThresholdPx)
     }
+    private val placementInset get() = 4f * resources.displayMetrics.density
+
     private fun updateGeometry() {
-        if(width<=0 || height<=0) return
-        keyWidth=minOf(width/3.65f,100*resources.displayMetrics.density,height/5.2f*sourceKeyWidth/sourceKeyHeight)
-        keyHeight=keyWidth*sourceKeyHeight/sourceKeyWidth
-        originX=width/2f;originY=height-keyHeight*1.6f
+        if (width <= 0 || height <= 0) return
+        val aspectRatio = sourceKeyWidth / sourceKeyHeight
+        val usableHeight = (height - 2 * placementInset).coerceAtLeast(1f)
+        // Fit three full-height rows beyond each tap edge, with clearance for resize handles.
+        val keyHeightsToEdge = 3.65f
+        keyWidth = minOf(
+            width / 3.65f,
+            100 * resources.displayMetrics.density,
+            usableHeight / (2 * keyHeightsToEdge) * aspectRatio
+        )
+        keyHeight = keyWidth / aspectRatio
+        originX = width / 2f
+        // When width limits the scale, keep the surplus height above the tap key.
+        originY = height - placementInset - keyHeightsToEdge * keyHeight
     }
     private val guide by lazy { PopupMapGuideView(context) }
     override fun applyPopupViewStyle(style: com.kazumaproject.core.data.popup.PopupViewStyle, highlightColor: Int?, borderColor: Int?) {
@@ -107,7 +119,7 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
     }
     private fun rect(b: PopupBounds) = RectF(originX+b.left*keyWidth,originY+b.top*keyHeight,originX+b.right*keyWidth,originY+b.bottom*keyHeight)
     private fun inViewport(b: PopupBounds): Boolean {
-        val r=rect(b); val margin=4*resources.displayMetrics.density
+        val r=rect(b); val margin=placementInset
         return r.left>=margin && r.top>=margin && r.right<=width-margin && r.bottom<=height-margin
     }
     fun canPlace(value: PopupKeyConfig, bounds: PopupBounds): Boolean = inViewport(bounds) && PopupMapValidator.conflicts(value).isEmpty()
@@ -230,14 +242,16 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
                     else map?.regions?.firstOrNull { it.contains(x,y,keyWidth,keyHeight) }
                 original=hit;beforeDrag=value
                 resizeHandle=if(handleIndex>=0) handles[handleIndex] else PopupBoundsSnapper.MOVE
-                val margin=4*resources.displayMetrics.density
+                val margin=placementInset
                 snapper=hit?.let { PopupBoundsSnapper(value,mapId,it.id,
                     PopupBounds((margin-originX)/keyWidth,(margin-originY)/keyHeight,
                         (width-margin-originX)/keyWidth,(height-margin-originY)/keyHeight),
                     keyWidth,keyHeight,resources.displayMetrics.density,resizeHandle) }
                 selectedId=hit?.id;tapSelected=hit==null;onSelect(selectedId)
                 editRequested=hit!=null || tapArea.contains(x,y,keyWidth,keyHeight)
-                parent.requestDisallowInterceptTouchEvent(true);invalidate();return true
+                // Allow scrolling from empty canvas space when the lower edge is offscreen.
+                if (editRequested) parent.requestDisallowInterceptTouchEvent(true)
+                invalidate();return true
             }
             MotionEvent.ACTION_MOVE -> {
                 val source=original ?: return true
