@@ -47,7 +47,7 @@
     <string name="popup_discard">Discard</string>
     <string name="popup_result">Output</string>
     <string name="popup_selection">Selection</string>
-    <string name="popup_try_hint">Start on the key and release on a character to type. Enter a control to switch maps. Above-key guides show all regions immediately; around-key popups reveal all on hold when long-press display is enabled.</string>
+    <string name="popup_try_hint">Start on the key and release on a character to type. Flick into a switch region to change maps. Above-key guides show all regions on touch. Around-key popups show the full next map as soon as you switch. Holding also reveals all regions when long-press popups are enabled.</string>
     <string name="popup_invalid_saved">Saved maps could not be loaded. Showing defaults; the stored data has not been replaced.</string>
     <string name="popup_delete_confirm">Delete this map?</string>
     <string name="popup_name_required">Enter a unique map name.</string>
@@ -68,12 +68,12 @@
     <string name="free_flick_presentation">Popup position</string>
     <string name="free_flick_around">Around the key</string>
     <string name="free_flick_above">Guide above the key</string>
-    <string name="free_flick_preview_hint">Try any key on the keyboard. Above-key guides show all regions immediately; around-key popups reveal all on hold when long-press display is enabled.</string>
+    <string name="free_flick_preview_hint">Try any key on the keyboard. Above-key guides show all regions on touch. Around-key popups show the full next map as soon as you switch. Holding also reveals all regions when long-press popups are enabled.</string>
     <string name="free_flick_template">Apply template</string>
     <string name="free_flick_template_12">12-key flick</string>
     <string name="free_flick_template_confirm">Replace all maps for key “%1$s” with standard 12-key flick. This affects input only after saving and can be undone.</string>
     <string name="free_flick_template_hint">Standard 12-key map. Add popup regions for text or map transitions.</string>
-    <string name="free_flick_try_nearest">Outside the regions, the nearest enabled popup is selected. Hold to show all popups when long-press popups are enabled. Options are in Free Flick settings.</string>
+    <string name="free_flick_try_nearest">Outside the regions, the nearest enabled popup is selected. Switching maps reveals all regions in the next map. Holding also reveals all regions when long-press popups are enabled. Options are in Free Flick settings.</string>
     <string name="two_step_popup_title">Two-step flick input</string>
     <string name="two_step_popup_summary">Set two-step popup size, text size, and position</string>
     <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>
