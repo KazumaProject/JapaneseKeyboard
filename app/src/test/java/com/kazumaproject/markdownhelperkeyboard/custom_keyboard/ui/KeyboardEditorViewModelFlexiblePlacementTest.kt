@@ -567,6 +567,38 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
+    fun twoStepKeyEdit_keepsNormalAndLongPressOutputsInLayout() {
+        val viewModel = viewModel()
+        viewModel.applyTemplate(singleKeyLayout("key_a", "key_a"))
+        val key = viewModel.uiState.value.layout.keys.single()
+        val normalOutputs = mapOf(
+            TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.TAP to "あ"),
+            TfbiFlickDirection.UP to mapOf(
+                TfbiFlickDirection.TAP to "あ",
+                TfbiFlickDirection.UP to "い",
+                TfbiFlickDirection.UP_RIGHT to "う"
+            )
+        )
+        val longPressOutputs = mapOf(
+            TfbiFlickDirection.UP to mapOf(TfbiFlickDirection.UP_RIGHT to "ぅ")
+        )
+
+        assertTrue(
+            viewModel.updateKeyAndMappings(
+                newKeyData = key.copy(keyType = KeyType.TWO_STEP_FLICK, isFlickable = true),
+                flickMap = emptyMap(),
+                twoStepMap = normalOutputs,
+                longPressFlickMap = emptyMap(),
+                twoStepLongPressMap = longPressOutputs
+            )
+        )
+
+        val editedLayout = viewModel.uiState.value.layout
+        assertEquals(normalOutputs, editedLayout.twoStepFlickKeyMaps[key.keyId])
+        assertEquals(longPressOutputs, editedLayout.twoStepLongPressKeyMaps[key.keyId])
+    }
+
+    @Test
     fun legacyLayout_keyResizeStillUsesRowSpanAndColSpanCells() {
         val vm = viewModel()
         val key = KeyData(
