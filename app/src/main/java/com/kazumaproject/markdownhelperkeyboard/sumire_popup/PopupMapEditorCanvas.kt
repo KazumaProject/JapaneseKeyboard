@@ -46,14 +46,17 @@ class PopupMapEditorCanvas(context: Context) : PopupMapView(context) {
         if (width <= 0 || height <= 0) return
         val aspectRatio = sourceKeyWidth / sourceKeyHeight
         val usableHeight = (height - 2 * placementInset).coerceAtLeast(1f)
-        val keyHeightsAbove = 3.6f
-        // Leave room for a full-height popup and clearance beneath it.
-        val keyHeightsBelow = 2.1f
-        keyWidth = minOf(width / 3.65f, 100 * resources.displayMetrics.density,
-            usableHeight / (keyHeightsAbove + keyHeightsBelow) * aspectRatio)
+        // Fit three full-height rows beyond each tap edge, with clearance for resize handles.
+        val keyHeightsToEdge = 3.65f
+        keyWidth = minOf(
+            width / 3.65f,
+            100 * resources.displayMetrics.density,
+            usableHeight / (2 * keyHeightsToEdge) * aspectRatio
+        )
         keyHeight = keyWidth / aspectRatio
         originX = width / 2f
-        originY = height - placementInset - keyHeightsBelow * keyHeight
+        // When width limits the scale, keep the surplus height above the tap key.
+        originY = height - placementInset - keyHeightsToEdge * keyHeight
     }
     private val guide by lazy { PopupMapGuideView(context) }
     override fun applyPopupViewStyle(style: com.kazumaproject.core.data.popup.PopupViewStyle, highlightColor: Int?, borderColor: Int?) {

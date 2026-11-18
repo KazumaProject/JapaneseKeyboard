@@ -30,19 +30,65 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 class PopupMapEditorPlacementTest {
-    @Test fun customKeyEditorCanDropAFullSizePopupBelowTap() = checkDrop(customKey = true)
-    @Test fun sumireEditorCanDropAFullSizePopupBelowTap() = checkDrop(customKey = false)
+    @Test fun customKeyEditorCanDropAFullSizePopupThreeRowsBelowTap() = checkDrop(customKey = true)
+    @Test fun sumireEditorCanDropAFullSizePopupThreeRowsBelowTap() = checkDrop(customKey = false)
+
+    @Test fun addPopupFillsThreeRowsAboveAndBelowTap() = withEditor(
+        customKey = false,
+        regions = emptyList(),
+    ) { editor ->
+        val add = button(editor.requireView(), R.string.popup_add)
+        val expected = (-3..3).flatMap { row ->
+            (-1..1).map { column -> PopupBounds.KEY.offset(column.toFloat(), row.toFloat()) }
+        }.filterNot { it == PopupBounds.KEY }.toSet()
+
+        repeat(expected.size) { add.performClick() }
+
+        assertEquals(expected, config(editor).maps.single().regions.map { it.bounds }.toSet())
+    }
 
     private fun checkDrop(customKey: Boolean) {
+        val side = PopupBounds.KEY.offset(-1.1f, 0f)
+        withEditor(customKey, listOf(PopupRegion("side", side))) { editor ->
+            val root = editor.requireView()
+            val canvas = descendants(root).filterIsInstance<PopupMapEditorCanvas>().single()
+            val offset = IntArray(2).also(canvas::getLocationInWindow)
+            val rootLocation = IntArray(2).also(root::getLocationInWindow)
+            val downTime = SystemClock.uptimeMillis()
+            fun touch(action: Int, x: Float, y: Float) {
+                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
+                    offset[0] - rootLocation[0] + canvas.originX + x * canvas.keyWidth,
+                    offset[1] - rootLocation[1] + canvas.originY + y * canvas.keyHeight, 0)
+                root.dispatchTouchEvent(event)
+                event.recycle()
+            }
+
+            touch(MotionEvent.ACTION_DOWN, -1.1f, 0f)
+            touch(MotionEvent.ACTION_MOVE, -1.1f, 3f)
+            touch(MotionEvent.ACTION_MOVE, 0f, 3f)
+            touch(MotionEvent.ACTION_UP, 0f, 3f)
+
+            val placed = config(editor).maps.single().regions.single().bounds
+            assertTrue("The popup must fit in the third row below the tap key", placed.top >= 2.5f - .0001f)
+            assertEquals(PopupBounds.KEY.left, placed.left, .0001f)
+            assertEquals(side.width, placed.width, .0001f)
+            assertEquals(side.height, placed.height, .0001f)
+            for (label in listOf(R.string.popup_add, R.string.popup_undo)) {
+                val control = button(root, label)
+                val buttonTop = IntArray(2).also(control::getLocationInWindow)[1]
+                assertTrue("${control.text} must be above the canvas", buttonTop + control.height <= offset[1])
+            }
+        }
+    }
+
+    private fun withEditor(customKey: Boolean, regions: List<PopupRegion>, check: (PopupMapEditorFragment) -> Unit) {
         val controller = Robolectric.buildActivity(FragmentActivity::class.java)
         controller.get().setTheme(com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar)
         controller.setup()
         try {
             val activity = controller.get()
             AppPreference.init(activity)
-            val side = PopupBounds.KEY.offset(-1.1f, 0f)
-            val config = PopupKeyConfig("は", "normal", listOf(PopupMap("normal", "Normal", "は",
-                listOf(PopupRegion("side", side)))))
+            val config = PopupKeyConfig("は", "normal", listOf(PopupMap("normal", "Normal", "は", regions)))
             val editor = if (customKey) {
                 val dialog = CustomFreeFlickEditorDialog.create(PopupKeyConfigCodec.encode(config))
                 dialog.showNow(activity.supportFragmentManager, "placement-editor")
@@ -61,38 +107,17 @@ class PopupMapEditorPlacementTest {
             fun exact(size: Int) = View.MeasureSpec.makeMeasureSpec(size, View.MeasureSpec.EXACTLY)
             root.measure(exact(360), exact(800))
             root.layout(0, 0, 360, 800)
-            val canvas = descendants(root).filterIsInstance<PopupMapEditorCanvas>().single()
-            val offset = IntArray(2).also(canvas::getLocationInWindow)
-            val rootLocation = IntArray(2).also(root::getLocationInWindow)
-            val downTime = SystemClock.uptimeMillis()
-            fun touch(action: Int, x: Float, y: Float) {
-                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
-                    offset[0] - rootLocation[0] + canvas.originX + x * canvas.keyWidth,
-                    offset[1] - rootLocation[1] + canvas.originY + y * canvas.keyHeight, 0)
-                root.dispatchTouchEvent(event)
-                event.recycle()
-            }
-
-            touch(MotionEvent.ACTION_DOWN, -1.1f, 0f)
-            touch(MotionEvent.ACTION_MOVE, -1.1f, 1.3f)
-            touch(MotionEvent.ACTION_MOVE, 0f, 1.3f)
-            touch(MotionEvent.ACTION_UP, 0f, 1.3f)
-
-            val placed = ViewModelProvider(editor)[PopupMapEditorViewModel::class.java]
-                .config!!.maps.single().regions.single().bounds
-            assertTrue("The popup must fit below the tap key", placed.top >= PopupBounds.KEY.bottom)
-            assertEquals(PopupBounds.KEY.left, placed.left, .0001f)
-            assertEquals(side.width, placed.width, .0001f)
-            assertEquals(side.height, placed.height, .0001f)
-            for (label in listOf(R.string.popup_add, R.string.popup_undo)) {
-                val button = descendants(root).filterIsInstance<MaterialButton>().single { it.text == activity.getString(label) }
-                val buttonTop = IntArray(2).also(button::getLocationInWindow)[1]
-                assertTrue("${button.text} must be above the canvas", buttonTop + button.height <= offset[1])
-            }
+            check(editor)
         } finally {
             controller.pause().stop().destroy()
         }
     }
+
+    private fun button(root: View, label: Int) = descendants(root).filterIsInstance<MaterialButton>()
+        .single { it.text == root.context.getString(label) }
+
+    private fun config(editor: PopupMapEditorFragment) =
+        requireNotNull(ViewModelProvider(editor)[PopupMapEditorViewModel::class.java].config)
 
     private fun descendants(view: View): Sequence<View> = sequence {
         yield(view)
