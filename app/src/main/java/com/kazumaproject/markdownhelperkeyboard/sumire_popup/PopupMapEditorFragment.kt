@@ -112,12 +112,12 @@ class PopupMapEditorFragment : Fragment() {
                 mapButton.text=(listOf(editingKeyLabel)+session.mapPath.mapNotNull { this@PopupMapEditorFragment.config.map(it)?.name }).joinToString(" › ")+" ▾"
             }
         }
-        content.addView(canvas,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(200)))
-        // These controls remain directly below the map, independent of the current selection.
+        // Keep the controls above the area where popups are dragged.
         content.addView(row().apply {
             item(button(label(R.string.popup_add)) { addPopup() },1.7f)
             item(button(label(R.string.popup_undo)) { model.undo();refresh() },1f)
         })
+        content.addView(canvas,LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(228)))
         status=text("").apply {
             visibility=View.GONE
             doAfterTextChanged {visibility=if(it.isNullOrEmpty()) View.GONE else View.VISIBLE}
