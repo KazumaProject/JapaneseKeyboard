@@ -37,19 +37,22 @@ class FreeFlickKeyMigrationTest {
                 db.execSQL("INSERT INTO long_press_flick_mappings VALUES (20, 'UP', 'd')")
                 db.execSQL("INSERT INTO two_step_long_press_mappings VALUES (20, 'LEFT', 'UP', 'e')")
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN popupMapConfigJson")
+                db.execSQL("ALTER TABLE key_definitions DROP COLUMN longPressAction")
                 db.execSQL("ALTER TABLE key_definitions ADD COLUMN hierarchicalFlickJson TEXT")
                 db.execSQL("UPDATE key_definitions SET keyType = 'HIERARCHICAL_FLICK', hierarchicalFlickJson = '{\"retired\":true}' WHERE keyId = 10")
                 db.execSQL("PRAGMA user_version = 50")
             } finally { initial.close() }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_50_51).allowMainThreadQueries().build()
+                .addMigrations(AppDatabase.MIGRATION_50_51, AppDatabase.MIGRATION_51_52)
+                .allowMainThreadQueries().build()
             try {
                 val db = migrated.openHelper.writableDatabase
-                assertEquals(51, db.version)
-                db.query("SELECT keyId, keyIdentifier, keyType, popupMapConfigJson FROM key_definitions ORDER BY keyId").use {
+                assertEquals(52, db.version)
+                db.query("SELECT keyId, keyIdentifier, keyType, popupMapConfigJson, longPressAction FROM key_definitions ORDER BY keyId").use {
                     assertTrue(it.moveToFirst()); assertEquals(10, it.getInt(0)); assertEquals("old", it.getString(1))
                     assertEquals("NORMAL", it.getString(2)); assertTrue(it.isNull(3))
                     assertTrue(it.moveToNext()); assertEquals(20, it.getInt(0)); assertEquals("TWO_STEP_FLICK", it.getString(2))
+                    assertTrue(it.isNull(4))
                 }
                 tables.forEach { table -> db.query("SELECT ownerKeyId FROM `$table`").use {
                     assertTrue("$table retained", it.moveToFirst()); assertEquals(20, it.getInt(0))

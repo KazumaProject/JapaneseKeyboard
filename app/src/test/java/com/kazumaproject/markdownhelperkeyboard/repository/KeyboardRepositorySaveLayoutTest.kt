@@ -11,6 +11,7 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.deletedKeySlot
 import com.kazumaproject.custom_keyboard.data.isDeletedKeySlot
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
@@ -57,6 +58,27 @@ class KeyboardRepositorySaveLayoutTest {
 
     private val dao: KeyboardLayoutDao = mock()
     private val repository = KeyboardRepository(dao)
+
+    @Test
+    fun longPressActionOnCharacterKeyIsSavedAndRestored(): Unit = runBlocking {
+        val original = fullLayout(1L, "stable-a", 1L, 1, "Saved")
+        whenever(dao.getFullLayoutOneShot(1L)).thenReturn(original)
+        val shortcut = KeyAction.SwitchToNextIme
+        val layout = simpleLayout()
+        val editedLayout = layout.copyWithKeys(listOf(layout.keys.single().copy(longPressAction = shortcut)))
+
+        repository.saveLayout(editedLayout, name = "Saved", id = 1L)
+
+        val keysCaptor = argumentCaptor<List<KeyDefinition>>()
+        verify(dao).updateFullKeyboardLayoutKeepingIdentity(
+            any(), keysCaptor.capture(), any(), any(), any(), any(), any(), any()
+        )
+        val saved = keysCaptor.firstValue.single()
+        assertEquals("SwitchToNextIme", saved.longPressAction)
+        val savedKey = KeyWithFlicks(saved, emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+        whenever(dao.getFullLayoutById(1L)).thenReturn(flowOf(original.copy(keysWithFlicks = listOf(savedKey))))
+        assertEquals(shortcut, repository.getFullLayout(1L).first().keys.single().longPressAction)
+    }
 
     // ---------------------------------------------------------
     // A. 既存レイアウト保存で stableId が変わらない

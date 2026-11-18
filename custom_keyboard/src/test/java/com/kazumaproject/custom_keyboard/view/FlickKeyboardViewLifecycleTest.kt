@@ -149,6 +149,72 @@ class FlickKeyboardViewLifecycleTest {
         }
     }
 
+    @Test fun assignedLongPressUsesConfiguredTimeoutAndConsumesRelease() {
+        val shortcut = KeyAction.MoveToCustomKeyboard("target")
+        for (type in listOf(KeyType.NORMAL, KeyType.CROSS_FLICK, KeyType.QWERTY)) {
+            val layout = actionLayout(type)
+            val keyData = layout.keys.single().copy(
+                isSpecialKey = type != KeyType.QWERTY,
+                longPressAction = shortcut
+            )
+            install(layout.copyWithKeys(listOf(keyData)), KeyboardLayoutOrigin.CUSTOM)
+            val key = keyboard.getChildAt(0)
+
+            touch(MotionEvent.ACTION_DOWN, key)
+            idle(99)
+            assertTrue(events.isEmpty())
+            idle(1)
+            assertEquals(listOf(shortcut), events)
+            idle(200)
+            touch(MotionEvent.ACTION_UP, key)
+            assertEquals(listOf(shortcut), events)
+            assertTrue(holds.isEmpty())
+
+            tap(0)
+            val tapAction = if (type == KeyType.QWERTY) KeyAction.Text(keyData.label) else KeyAction.Paste
+            assertEquals(listOf(shortcut, tapAction), events)
+        }
+    }
+
+    @Test fun movingBeforeTimeoutAndCancelingDoNotDispatchAssignedLongPress() {
+        val layout = actionLayout(KeyType.CROSS_FLICK)
+        val keyData = layout.keys.single().copy(
+            isSpecialKey = true,
+            longPressAction = KeyAction.MoveCustomKeyboardTab
+        )
+        val flicks = mapOf(
+            FlickDirection.TAP to FlickAction.Action(KeyAction.Paste),
+            FlickDirection.UP to FlickAction.Action(KeyAction.Copy)
+        )
+        install(
+            layout.copyWithKeys(listOf(keyData)).copy(flickKeyMaps = mapOf("paste" to listOf(flicks))),
+            KeyboardLayoutOrigin.CUSTOM
+        )
+        val key = keyboard.getChildAt(0)
+
+        touch(MotionEvent.ACTION_DOWN, key)
+        touch(MotionEvent.ACTION_MOVE, key, dy = -200f)
+        touch(MotionEvent.ACTION_UP, key, dy = -200f)
+        idle(150)
+        assertEquals(listOf(KeyAction.Copy), events)
+
+        touch(MotionEvent.ACTION_DOWN, key)
+        touch(MotionEvent.ACTION_MOVE, key, dy = -200f)
+        idle(150)
+        assertEquals(listOf(KeyAction.Copy), events)
+        touch(MotionEvent.ACTION_CANCEL, key)
+
+        touch(MotionEvent.ACTION_DOWN, key)
+        touch(MotionEvent.ACTION_CANCEL, key)
+        idle(150)
+        assertEquals(listOf(KeyAction.Copy), events)
+
+        touch(MotionEvent.ACTION_DOWN, key)
+        keyboard.visibility = View.GONE
+        idle(150)
+        assertEquals(listOf(KeyAction.Copy), events)
+    }
+
     @Test fun circularLongPressScopeIsRestoredAfterHideShow() {
         install(KeyboardDefaultLayouts.createFinalLayout(KeyboardInputMode.HIRAGANA,
             emptyMap(), "toggle", "sumire"))
@@ -192,7 +258,12 @@ class FlickKeyboardViewLifecycleTest {
     private fun actionLayout(type: KeyType) = KeyboardLayout(
         listOf(KeyData("paste", 0, 0, false, KeyAction.Paste, keyId = "paste", keyType = type)),
         mapOf("paste" to listOf(mapOf(FlickDirection.TAP to FlickAction.Action(KeyAction.Paste)))), 1, 1)
-    private fun install(layout: KeyboardLayout) { keyboard.setKeyboard(layout, origin = KeyboardLayoutOrigin.BUILT_IN); measure(); events.clear(); holds.clear() }
+    private fun install(layout: KeyboardLayout, origin: KeyboardLayoutOrigin = KeyboardLayoutOrigin.BUILT_IN) {
+        keyboard.setKeyboard(layout, origin = origin)
+        measure()
+        events.clear()
+        holds.clear()
+    }
     private fun measure() {
         keyboard.measure(View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY))
@@ -202,9 +273,9 @@ class FlickKeyboardViewLifecycleTest {
     private fun holdAllKeys() { repeat(keyboard.childCount) { hold(it); idle(400) } }
     private fun tap(index: Int) { val key = keyboard.getChildAt(index); touch(MotionEvent.ACTION_DOWN, key); touch(MotionEvent.ACTION_UP, key) }
     private fun hold(index: Int) { val key = keyboard.getChildAt(index); touch(MotionEvent.ACTION_DOWN, key); idle(150); touch(MotionEvent.ACTION_UP, key) }
-    private fun touch(action: Int, key: View) {
+    private fun touch(action: Int, key: View, dy: Float = 0f) {
         val now = SystemClock.uptimeMillis()
-        val event = MotionEvent.obtain(now, now, action, key.left + key.width / 2f, key.top + key.height / 2f, 0)
+        val event = MotionEvent.obtain(now, now, action, key.left + key.width / 2f, key.top + key.height / 2f + dy, 0)
         keyboard.onTouchEvent(event)
         event.recycle()
     }

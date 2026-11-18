@@ -84,7 +84,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         CustomZeroQueryEntry::class,
         TextMacro::class,
     ],
-    version = 51,
+    version = 52,
     exportSchema = false
 )
 @TypeConverters(
@@ -116,6 +116,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun textMacroDao(): TextMacroDao
 
     companion object {
+        val MIGRATION_51_52 = object : Migration(51, 52) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `longPressAction` TEXT")
+            }
+        }
+
         val MIGRATION_50_51 = object : Migration(50, 51) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Rebuild for SQLite versions before DROP COLUMN (Android 7+).

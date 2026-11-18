@@ -60,7 +60,9 @@ class RomajiBehaviorPersistenceTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "romaji-migration-${System.nanoTime()}.db"
         fun open() = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(AppDatabase.MIGRATION_47_48, AppDatabase.MIGRATION_48_49, AppDatabase.MIGRATION_49_50, AppDatabase.MIGRATION_50_51).allowMainThreadQueries().build()
+            .addMigrations(AppDatabase.MIGRATION_47_48, AppDatabase.MIGRATION_48_49,
+                AppDatabase.MIGRATION_49_50, AppDatabase.MIGRATION_50_51, AppDatabase.MIGRATION_51_52)
+            .allowMainThreadQueries().build()
         suspend fun withDatabase(block: suspend (AppDatabase) -> Unit) {
             val database = open()
             try { block(database) } finally { database.close() }
@@ -75,6 +77,7 @@ class RomajiBehaviorPersistenceTest {
                 db.execSQL("INSERT INTO romaji_maps VALUES (2, 'default', ?, 0, 0)", arrayOf(data))
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN qwertyConfigJson")
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN popupMapConfigJson")
+                db.execSQL("ALTER TABLE key_definitions DROP COLUMN longPressAction")
                 db.execSQL("PRAGMA user_version = 47")
             }
             withDatabase { database ->

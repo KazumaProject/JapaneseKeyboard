@@ -32,13 +32,15 @@ class QwertyKeyMigrationTest {
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN popupMapConfigJson")
                 db.execSQL("ALTER TABLE key_definitions ADD COLUMN hierarchicalFlickJson TEXT")
                 db.execSQL("ALTER TABLE key_definitions DROP COLUMN qwertyConfigJson")
+                db.execSQL("ALTER TABLE key_definitions DROP COLUMN longPressAction")
                 db.execSQL("PRAGMA user_version = 49")
             } finally { initial.close() }
             val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_49_50, AppDatabase.MIGRATION_50_51).allowMainThreadQueries().build()
+                .addMigrations(AppDatabase.MIGRATION_49_50, AppDatabase.MIGRATION_50_51,
+                    AppDatabase.MIGRATION_51_52).allowMainThreadQueries().build()
             try {
                 val db = migrated.openHelper.writableDatabase
-                assertEquals(51, db.version)
+                assertEquals(52, db.version)
                 db.query("SELECT name FROM keyboard_layouts WHERE layoutId = 1").use {
                     assertTrue(it.moveToFirst())
                     assertEquals("Original", it.getString(0))

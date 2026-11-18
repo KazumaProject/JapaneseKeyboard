@@ -434,7 +434,7 @@ class KeyboardLayoutJsonImporterTest {
     }
 
     @Test
-    fun exportImport_dropsDoubleTapConfigurationFromNormalCharacterKey() {
+    fun exportImport_keepsLongPressAndDropsDoubleTapOnNormalCharacterKey() {
         val fullLayout = FullKeyboardLayout(
             layout = CustomKeyboardLayout(
                 layoutId = 1,
@@ -455,6 +455,7 @@ class KeyboardLayoutJsonImporterTest {
                         isSpecialKey = false,
                         keyIdentifier = "a",
                         action = "Text:a",
+                        longPressAction = "MoveToCustomKeyboard:alternate",
                         doubleTapAction = "Copy",
                         doubleTapPolicy = "PROMOTE"
                     ),
@@ -480,6 +481,8 @@ class KeyboardLayoutJsonImporterTest {
         assertTrue(exportedKey["doubleTapPolicy"].isJsonNull)
         assertNull(importedKey.doubleTapAction)
         assertNull(importedKey.doubleTapPolicy)
+        assertEquals("MoveToCustomKeyboard:alternate", exportedKey["longPressAction"].asString)
+        assertEquals("MoveToCustomKeyboard:alternate", importedKey.longPressAction)
     }
 
     @Test
@@ -1298,6 +1301,7 @@ class KeyboardLayoutJsonImporterTest {
 
         assertEquals("DRAWABLE_RESOURCE_NAME", key.iconType)
         assertEquals("keyboard_24px", key.iconValue)
+        assertNull(key.longPressAction)
     }
 
     @Test

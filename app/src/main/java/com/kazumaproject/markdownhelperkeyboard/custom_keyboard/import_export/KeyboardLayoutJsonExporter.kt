@@ -124,7 +124,8 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
                 JsonParser.parseString(it)
             },
             qwerty = this.key.qwertyConfigJson?.let(JsonParser::parseString),
-            textInputBehavior = this.key.textInputBehavior
+            textInputBehavior = this.key.textInputBehavior,
+            longPressAction = this.key.longPressAction
         ),
         flicks = this.flicks.map {
             FlickMappingDto(
