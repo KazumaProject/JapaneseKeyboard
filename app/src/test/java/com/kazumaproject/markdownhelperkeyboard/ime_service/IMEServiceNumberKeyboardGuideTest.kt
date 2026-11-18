@@ -5,6 +5,7 @@ import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
@@ -17,6 +18,10 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.SplitKeyboardController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.SplitKeyboardSelection
+import com.kazumaproject.markdownhelperkeyboard.ime_service.split_keyboard.SplitSlot
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import kotlinx.coroutines.CoroutineScope
@@ -128,6 +133,29 @@ class IMEServiceNumberKeyboardGuideTest {
     }
 
     @Test
+    fun numberCustomLayoutHonorsGuidePreferenceChangesInBothSplitPanes() = runTest {
+        val secondary = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(floating.root.context))
+        val panes = mapOf(SplitSlot.MAIN to floating, SplitSlot.SUB to secondary)
+        ReflectionHelpers.setField(service, "splitController",
+            SplitKeyboardController(floating.root.context, floating.root, {}, {}, {}))
+        ReflectionHelpers.setField(service, "activeSplitSlot", SplitSlot.MAIN)
+
+        for ((slot, binding) in panes) {
+            val state = installNumberSplitInput(slot, binding)
+            renderNumberLayout(binding.customLayoutFloating, state)
+            assertNull(guides(binding.customLayoutFloating))
+        }
+
+        for (enabled in listOf(true, false)) {
+            AppPreference.flick_keymap_guide_layout = enabled
+            ReflectionHelpers.callInstanceMethod<Unit>(service, "syncRuntimeInputPreferences")
+            for ((slot, binding) in panes) {
+                assertEquals(slot.name, if (enabled) "い" else null, guides(binding.customLayoutFloating)?.left)
+            }
+        }
+    }
+
+    @Test
     fun builtInNumberLayoutClearsCustomGuidesAfterAssignmentIsRemoved() = runTest {
         ReflectionHelpers.setField(service, "customKeymapGuidePreference", true)
         for (view in views()) renderNumberLayout(view)
@@ -141,10 +169,35 @@ class IMEServiceNumberKeyboardGuideTest {
 
     private fun views() = listOf(main.customLayoutDefault, floating.customLayoutFloating)
 
-    private suspend fun renderNumberLayout(view: FlickKeyboardView) {
+    private suspend fun renderNumberLayout(view: FlickKeyboardView, splitState: Any? = null) {
         ReflectionHelpers.callInstanceMethod<Unit>(service, "setNumberLayoutTo",
             ClassParameter.from(FlickKeyboardView::class.java, view))
-        ReflectionHelpers.getField<Job?>(service, "numberKeyboardRenderJob")?.join()
+        val job = if (splitState == null) {
+            ReflectionHelpers.getField<Job?>(service, "numberKeyboardRenderJob")
+        } else {
+            ReflectionHelpers.getField<Job?>(splitState, "layoutJob")
+        }
+        job?.join()
+    }
+
+    private fun installNumberSplitInput(slot: SplitSlot, binding: FloatingKeyboardLayoutBinding): Any {
+        val type = Class.forName(IMEService::class.java.name + "\$SplitInputState")
+        val constructor = type.declaredConstructors.single {
+            it.parameterTypes.last().name.endsWith("DefaultConstructorMarker")
+        }.apply { isAccessible = true }
+        val args = constructor.parameterTypes.map<Class<*>, Any?> {
+            when (it) {
+                Boolean::class.javaPrimitiveType -> false
+                Int::class.javaPrimitiveType -> 0
+                else -> null
+            }
+        }.toTypedArray()
+        arrayOf(slot, SplitKeyboardSelection(), binding, SuggestionAdapter(),
+            TenKeyQWERTYMode.Number, InputMode.ModeNumber, false).copyInto(args)
+        args[args.lastIndex - 1] = -128 // Use the defaults after the first seven arguments.
+        return constructor.newInstance(*args).also { state ->
+            ReflectionHelpers.getField<MutableMap<SplitSlot, Any>>(service, "splitInputs")[slot] = state
+        }
     }
 
     private fun guides(view: FlickKeyboardView): AutoSizeButton.FlickGuideLabels? =
