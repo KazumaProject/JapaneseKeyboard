@@ -4562,7 +4562,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyView.setFlickSensitivityValue(sensitivity)
             qwertyView.setFlickThresholdShape(thresholdShape)
             qwertyView.setLongPressTimeout(longPressTimeout.toLong())
-            applyCurrentFlickGuidePreference(customLayoutDefault)
             customLayoutDefault.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
             customLayoutDefault.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         }
@@ -4581,10 +4580,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyViewFloating.setFlickSensitivityValue(sensitivity)
             qwertyViewFloating.setFlickThresholdShape(thresholdShape)
             qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
-            applyCurrentFlickGuidePreference(customLayoutFloating)
             customLayoutFloating.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
             customLayoutFloating.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         }
+        buildList {
+            mainLayoutBinding?.customLayoutDefault?.let(::add)
+            floatingKeyboardBinding?.customLayoutFloating?.let(::add)
+            splitInputs.values.forEach { add(it.binding.customLayoutFloating) }
+        }.distinct().forEach(::applyCurrentFlickGuidePreference)
         syncKeyPopupVisibility()
         applyIndependentMultiTouchPreference()
         syncCustomKeyboardHitTestPreference()
@@ -11376,10 +11379,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.let { syncCustomKeyboardTogglePresentation(it) }
     }
 
-    private fun applyCurrentFlickGuidePreference(
-        flickView: FlickKeyboardView,
-        mode: KeyboardInputMode = customKeyboardMode,
-        surface: FlickGuideSurface = when (qwertyMode.value) {
+    private fun applyCurrentFlickGuidePreference(flickView: FlickKeyboardView) {
+        val splitInput = splitInputForView(flickView)
+        val surface = when (splitInput?.presentedMode ?: qwertyMode.value) {
             TenKeyQWERTYMode.Sumire -> FlickGuideSurface.Sumire
             TenKeyQWERTYMode.Custom -> FlickGuideSurface.Custom
             TenKeyQWERTYMode.Number -> if (numberUsageCustomKeyboardLayoutOrNull() != null) {
@@ -11389,6 +11391,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             else -> FlickGuideSurface.Other
         }
+        applyFlickGuidePreference(flickView, splitInput?.customMode ?: customKeyboardMode, surface)
+    }
+
+    private fun applyFlickGuidePreference(
+        flickView: FlickKeyboardView,
+        mode: KeyboardInputMode,
+        surface: FlickGuideSurface
     ) {
         val config = resolveFlickGuideRuntimeConfig(
             surface = surface,
@@ -11417,7 +11426,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applySumireModeSizing(flickView, mode)
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
         flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
-        applyCurrentFlickGuidePreference(flickView, mode, FlickGuideSurface.Sumire)
+        applyFlickGuidePreference(flickView, mode, FlickGuideSurface.Sumire)
         flickView.setSumireSpecialKeyActionResolver(
             resolver = SumireSpecialKeyActionResolver(sumireSpecialKeyActionOverrides)::resolve,
             layoutType = layoutType,
@@ -11429,8 +11438,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
         flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
         val numberCustomLayout = numberUsageCustomKeyboardLayoutOrNull()
-        applyCurrentFlickGuidePreference(
+        applyFlickGuidePreference(
             flickView,
+            mode = KeyboardInputMode.SYMBOLS,
             surface = if (numberCustomLayout != null) FlickGuideSurface.Custom else FlickGuideSurface.Other
         )
         if (numberCustomLayout != null) {
