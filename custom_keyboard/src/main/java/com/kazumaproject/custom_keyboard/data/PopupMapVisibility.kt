@@ -23,6 +23,10 @@ class PopupMapVisibility(val settings: GestureSessionConfig, private val downX: 
         expanded=settings.showLongPressPopup
         return true
     }
-    fun regions(session: PopupMapSession): Set<String>? = if(above || expanded) null else setOfNotNull(session.selectedRegionId)
-    fun showsTap(session: PopupMapSession) = above || expanded || session.isTap
+    internal fun showsAllRegions(session: PopupMapSession) = above || expanded || session.canGoBack
+
+    fun regions(session: PopupMapSession): Set<String>? =
+        if (showsAllRegions(session)) null else setOfNotNull(session.selectedRegionId)
+
+    fun showsTap(session: PopupMapSession) = showsAllRegions(session) || session.isTap
 }

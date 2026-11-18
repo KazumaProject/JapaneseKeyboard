@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.PopupWindow
 import android.widget.TextView
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
@@ -17,6 +18,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.util.ReflectionHelpers
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[35])
@@ -86,6 +88,44 @@ class PopupMapTapSensitivityTest {
                 assertEquals("Popup Y must stay at the key center for press ($x,$y)",location[1]+50f,placement[1]+drawing.originY,.5f)
                 key.event(MotionEvent.ACTION_CANCEL,x,y)
             }
+        }
+    }
+    @Test fun aroundKeyPopupShowsTheDestinationMapOnAQuickSwitch() {
+        val start = PopupMap("start", "Start", "は", listOf(
+            PopupRegion("switch", PopupBounds(.5f, -.5f, 1.5f, .5f),
+                PopupAction(PopupActionType.SWITCH, targetMapId = "next"))
+        ))
+        val next = PopupMap("next", "Next", "ば", listOf(
+            PopupRegion("text", PopupBounds(-1.5f, -.5f, -.5f, .5f), PopupAction(text = "び")),
+            PopupRegion("back", PopupBounds(-.5f, -1.5f, .5f, -.5f), PopupAction(PopupActionType.BACK))
+        ))
+        verify(
+            PopupMapPresentation.AROUND_KEY,
+            config = PopupKeyConfig("は", start.id, listOf(start, next)),
+            nearestEnabled = false,
+            tapSizeMode = PopupTapSizeMode.KEY
+        ) { key, controller, output ->
+            key.event(MotionEvent.ACTION_DOWN, 100f, 50f)
+            val view = ReflectionHelpers.getField<PopupMapView>(controller, "content")
+            val popup = ReflectionHelpers.getField<PopupWindow>(controller, "popup")
+            assertEquals(emptySet<String>(), view.visibleRegionIds)
+
+            key.event(MotionEvent.ACTION_MOVE, 300f, 50f)
+            assertTrue(popup.isShowing)
+            assertEquals(next, view.map)
+            assertNull(view.selectedId)
+            assertNull("All destination regions should be shown before a long press", view.visibleRegionIds)
+            assertTrue(view.tapPopupVisible)
+
+            key.event(MotionEvent.ACTION_MOVE, 100f, -50f)
+            assertEquals(start, view.map)
+            assertEquals(emptySet<String>(), view.visibleRegionIds)
+
+            key.event(MotionEvent.ACTION_MOVE, 300f, 50f)
+            key.event(MotionEvent.ACTION_MOVE, -100f, 50f)
+            key.event(MotionEvent.ACTION_UP, -100f, 50f)
+            assertEquals(listOf("び"), output)
+            assertFalse(popup.isShowing)
         }
     }
     @Test fun directSelectionUsesDisplayedKeyRelativeRegionsAfterAnOffCenterPress() {

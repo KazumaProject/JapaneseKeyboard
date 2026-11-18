@@ -1,5 +1,10 @@
 package com.kazumaproject.custom_keyboard.view
 
+import com.kazumaproject.custom_keyboard.data.PopupActionType
+import com.kazumaproject.custom_keyboard.data.PopupMap
+import com.kazumaproject.custom_keyboard.data.distanceTo
+import kotlin.math.atan2
+import kotlin.math.roundToInt
 
 internal object FlickGuideLabelMapper {
     private val displayDirections = listOf(
@@ -37,9 +42,41 @@ internal object FlickGuideLabelMapper {
         return labelsFromDirections(displayDirections.associateWith { labelFor(it) })
     }
 
+    fun buildFreeFlickRootGuideLabels(map: PopupMap, maxCodePoints: Int): AutoSizeButton.FlickGuideLabels {
+        val tap = sanitizeGuideText(map.tapText, maxCodePoints).orEmpty()
+        val labels = mutableMapOf(TfbiFlickDirection.TAP to tap)
+        // The key has one guide slot per direction. Prefer the closest region in key-relative coordinates.
+        for (region in map.regions.sortedBy { it.distanceTo(0f, 0f, 1f, 1f) }) {
+            val action = region.action
+            if (action.type == PopupActionType.BACK ||
+                (action.type == PopupActionType.TEXT && action.text.isEmpty())
+            ) {
+                continue
+            }
+            val label = sanitizeGuideText(region.displayLabel(), maxCodePoints) ?: continue
+            val bounds = region.bounds
+            val direction = directionForOffset(
+                (bounds.left + bounds.right) / 2f,
+                (bounds.top + bounds.bottom) / 2f
+            )
+            labels.putIfAbsent(direction, label)
+        }
+        return labelsFromDirections(labels)
+    }
 
-
-
+    fun directionForOffset(x: Float, y: Float): TfbiFlickDirection {
+        val octant = (atan2(y, x) * 4 / Math.PI).roundToInt()
+        return when (octant.mod(8)) {
+            0 -> TfbiFlickDirection.RIGHT
+            1 -> TfbiFlickDirection.DOWN_RIGHT
+            2 -> TfbiFlickDirection.DOWN
+            3 -> TfbiFlickDirection.DOWN_LEFT
+            4 -> TfbiFlickDirection.LEFT
+            5 -> TfbiFlickDirection.UP_LEFT
+            6 -> TfbiFlickDirection.UP
+            else -> TfbiFlickDirection.UP_RIGHT
+        }
+    }
 
     private fun labelsFromDirections(
         labels: Map<TfbiFlickDirection, String>

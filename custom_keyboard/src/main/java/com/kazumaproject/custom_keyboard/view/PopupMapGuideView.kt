@@ -6,8 +6,6 @@ import android.graphics.RectF
 import com.kazumaproject.custom_keyboard.data.PopupBounds
 import com.kazumaproject.custom_keyboard.data.PopupKeyConfig
 import com.kazumaproject.custom_keyboard.data.labelBounds
-import kotlin.math.atan2
-import kotlin.math.roundToInt
 
 /** Free-layout labels projected into the existing compact two-step guide appearance. */
 class PopupMapGuideView(context: Context) : PopupMapView(context) {
@@ -27,17 +25,7 @@ class PopupMapGuideView(context: Context) : PopupMapView(context) {
     fun pointerDirection(): TfbiFlickDirection? {
         if(tapActive) return null
         val (x,y)=fingerPosition ?: return null
-        val octant=(atan2(y*sourceKeyHeight,x*sourceKeyWidth)*4/Math.PI).roundToInt()
-        return when((octant+8)%8) {
-            0 -> TfbiFlickDirection.RIGHT
-            1 -> TfbiFlickDirection.DOWN_RIGHT
-            2 -> TfbiFlickDirection.DOWN
-            3 -> TfbiFlickDirection.DOWN_LEFT
-            4 -> TfbiFlickDirection.LEFT
-            5 -> TfbiFlickDirection.UP_LEFT
-            6 -> TfbiFlickDirection.UP
-            else -> TfbiFlickDirection.UP_RIGHT
-        }
+        return FlickGuideLabelMapper.directionForOffset(x * sourceKeyWidth, y * sourceKeyHeight)
     }
     override fun onDraw(canvas: Canvas) {
         val value=config ?: return

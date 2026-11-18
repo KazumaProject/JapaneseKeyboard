@@ -47,7 +47,7 @@
     <string name="popup_discard">破棄</string>
     <string name="popup_result">入力結果</string>
     <string name="popup_selection">選択中</string>
-    <string name="popup_try_hint">元キーから動かし、文字で離すと入力。切替枠でマップ切替。上部表示は押した直後から全領域を表示します。周囲表示は長押し表示が有効な場合に長押しで全体を表示します。</string>
+    <string name="popup_try_hint">元キーから動かし、文字で指を離すと入力します。切替枠でマップを切り替えます。キー上部では押した直後から、キー周辺では切替先のマップで全候補を表示します。長押し表示が有効な場合は、長押しでも全候補を表示します。</string>
     <string name="popup_invalid_saved">保存された設定を読み込めないため初期配置を表示しています。保存済みデータは上書きしていません。</string>
     <string name="popup_delete_confirm">このマップを削除しますか？</string>
     <string name="popup_name_required">重複しないマップ名を入力してください。</string>
@@ -68,12 +68,12 @@
     <string name="free_flick_presentation">popupの表示位置</string>
     <string name="free_flick_around">キー周辺</string>
     <string name="free_flick_above">キー上部のガイド</string>
-    <string name="free_flick_preview_hint">キーボードの各キーを操作して試せます。上部表示は押した直後から全領域を表示します。周囲表示は長押し表示が有効な場合に長押しで全体を表示します。</string>
+    <string name="free_flick_preview_hint">キーボードの各キーを操作して試せます。キー上部では押した直後から、キー周辺では切替先のマップで全候補を表示します。長押し表示が有効な場合は、長押しでも全候補を表示します。</string>
     <string name="free_flick_template">テンプレートを適用</string>
     <string name="free_flick_template_12">12キーフリック</string>
     <string name="free_flick_template_confirm">「%1$s」キーのすべてのマップを、通常の12キーフリックに置き換えます。保存するまで実入力には反映されません。取り消すこともできます。</string>
     <string name="free_flick_template_hint">12キーと同じ通常マップです。枠を追加して文字やマップ切替を設定できます。</string>
-    <string name="free_flick_try_nearest">枠外では有効な最寄りのポップアップを選択。長押し表示が有効なら全体を表示します。変更はフリーフリック設定で行えます。</string>
+    <string name="free_flick_try_nearest">枠外では有効な最寄りのポップアップを選びます。切替先のマップでは全候補を表示します。長押し表示が有効な場合は、長押しでも全候補を表示します。変更はフリーフリック設定で行えます。</string>
     <string name="two_step_popup_title">2段フリック入力</string>
     <string name="two_step_popup_summary">2段フリック入力のpopupの大きさ、文字サイズ、表示位置を設定します</string>
     <string-array name="free_flick_presentation_entries"><item>@string/free_flick_around</item><item>@string/free_flick_above</item></string-array>
