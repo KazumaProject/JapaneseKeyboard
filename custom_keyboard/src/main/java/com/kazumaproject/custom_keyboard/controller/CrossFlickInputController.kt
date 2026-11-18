@@ -144,7 +144,7 @@ class CrossFlickInputController(
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
     private var isLongPressMode = false
-    private var isLongPressTriggered = false
+    private var longPressSelection: Pair<KeyAction, FlickDirection>? = null
 
     private var popupColorTheme: FlickPopupColorTheme? = null
     private var inputTextTransform: (String) -> String = { it }
@@ -196,10 +196,13 @@ class CrossFlickInputController(
 
     // コントローラを破棄する。ビューのデタッチやキーボードビューの再構築時に FlickKeyboardView から呼ばれる。
     fun cancel() {
+        longPressJob?.cancel()
+        longPressJob = null
+        controllerScope.cancel()
+        isLongPressMode = false
+        cancelLongPressAction()
         listener?.onCanceled()
         activeGestureConfig = null
-        longPressJob?.cancel()
-        controllerScope.cancel()
         restoreOriginalButtonText()
         dismissAllPopups(clearDirectionalCache = true)
     }
@@ -235,13 +238,14 @@ class CrossFlickInputController(
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                longPressJob?.cancel()
+                isLongPressMode = false
+                cancelLongPressAction()
                 val gestureConfig = gestureConfigSource.snapshot()
                 activeGestureConfig = gestureConfig
                 view.isPressed = true
                 view.drawableHotspotChanged(event.x, event.y)
 
-                isLongPressMode = false
-                isLongPressTriggered = false
                 anchorView = view
                 initialTouchPoint.set(event.rawX, event.rawY)
                 currentDirection = FlickDirection.TAP
@@ -256,10 +260,8 @@ class CrossFlickInputController(
                     showDirectionalPopup(FlickDirection.TAP)
                 }
 
-                longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
                     delay(gestureConfig.longPressTimeoutMillis)
-                    isLongPressTriggered = true
                     isLongPressMode = true
                     onLongPressTriggered()
                 }
@@ -312,12 +314,14 @@ class CrossFlickInputController(
                 longPressJob = null
 
                 if (event.action == MotionEvent.ACTION_UP) {
+                    longPressSelection = null
                     commitAction()
                 } else {
-                    notifyLongPressCanceledIfNeeded()
+                    cancelLongPressAction()
                     listener?.onCanceled()
                 }
 
+                isLongPressMode = false
                 restoreOriginalButtonText()
                 dismissAllPopups()
                 anchorView = null
@@ -345,7 +349,7 @@ class CrossFlickInputController(
                 } else {
                     dismissAllActionPopups()
                 }
-                notifyLongPressActionPreview()
+                updateLongPressAction()
             }
 
             InputMode.TEXT -> {
@@ -390,7 +394,7 @@ class CrossFlickInputController(
                 commitCrossFlickAction(
                     currentDirection = currentDirection,
                     flickActionMap = flickActionMap,
-                    isLongPressTriggered = isLongPressTriggered,
+                    isLongPressTriggered = isLongPressMode,
                     listener = listener
                 )
             }
@@ -410,18 +414,10 @@ class CrossFlickInputController(
         }
     }
 
-    private fun notifyLongPressCanceledIfNeeded() {
-        if (!isLongPressTriggered || inputMode != InputMode.ACTION) {
-            isLongPressTriggered = false
-            isLongPressMode = false
-            return
-        }
-
-        val action = resolveCrossFlickAction(currentDirection, flickActionMap)?.toKeyAction()
-            ?: KeyAction.Cancel
-        listener?.onFlickLongPressCanceled(action, currentDirection)
-        isLongPressTriggered = false
-        isLongPressMode = false
+    private fun cancelLongPressAction() {
+        val (action, direction) = longPressSelection ?: return
+        longPressSelection = null
+        listener?.onFlickLongPressCanceled(action, direction)
     }
 
     // 通常フリック中（長押し前）に方向が変わったときのポップアップ更新。ACTION_MOVE から呼ばれる。
@@ -442,7 +438,7 @@ class CrossFlickInputController(
         when (inputMode) {
             InputMode.ACTION -> {
                 highlightActionPopup(direction)
-                notifyLongPressActionPreview()
+                updateLongPressAction()
             }
 
             InputMode.TEXT -> {
@@ -456,10 +452,14 @@ class CrossFlickInputController(
         }
     }
 
-    // ACTION モードの長押し中、現在ハイライトされている方向のアクションを listener へプレビュー通知する。
-    private fun notifyLongPressActionPreview() {
-        resolveAction(currentDirection)?.let {
-            listener?.onFlickLongPress(it.toKeyAction(), currentDirection)
+    private fun updateLongPressAction() {
+        val action = resolveAction(currentDirection)?.toKeyAction()
+        if (action != longPressSelection?.first) {
+            cancelLongPressAction()
+        }
+        if (action != null && isLongPressMode) {
+            longPressSelection = action to currentDirection
+            listener?.onFlickLongPress(action, currentDirection)
         }
     }
 
