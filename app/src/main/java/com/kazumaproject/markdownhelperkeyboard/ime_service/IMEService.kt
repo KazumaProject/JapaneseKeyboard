@@ -11349,7 +11349,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         flickView.setFlickGuideTextSizeSp((flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat())
         if (isUserDefinedCustomLayout) {
-            applyCurrentFlickGuidePreference(flickView, surface = FlickGuideSurface.Custom)
+            applyFlickGuidePreference(
+                flickView,
+                mode = splitInputForView(flickView)?.customMode ?: customKeyboardMode,
+                surface = FlickGuideSurface.Custom
+            )
         }
         flickView.setKeyboard(
             if (isUserDefinedCustomLayout) KeyboardDefaultLayouts.applyDeleteKeyFlickSettings(
