@@ -158,7 +158,13 @@ class PopupMapInputController(
         val active = session ?: return
         val policy = visibility ?: return
         if(!policy.visible) {popup?.dismiss();guideHost?.dismiss();lastDrawing=null;lastPlacement=null;return}
-        val drawingState=listOf(active.currentMap.id,active.selectedRegionId,active.isTap,policy.expanded,inputOptions.presentation)
+        val drawingState = listOf(
+            active.currentMap.id,
+            active.selectedRegionId,
+            active.isTap,
+            policy.showsAllRegions(active),
+            inputOptions.presentation
+        )
         if(lastDrawing==drawingState && inputOptions.presentation==PopupMapPresentation.AROUND_KEY) return
         lastDrawing=drawingState
         val host = windowAnchor() ?: key
