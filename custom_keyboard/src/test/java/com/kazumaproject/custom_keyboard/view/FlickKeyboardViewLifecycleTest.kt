@@ -149,12 +149,12 @@ class FlickKeyboardViewLifecycleTest {
         }
     }
 
-    @Test fun assignedLongPressUsesConfiguredTimeoutAndConsumesRelease() {
+    @Test fun specialKeyLongPressUsesConfiguredTimeoutAndConsumesRelease() {
         val shortcut = KeyAction.MoveToCustomKeyboard("target")
-        for (type in listOf(KeyType.NORMAL, KeyType.CROSS_FLICK, KeyType.QWERTY)) {
+        for (type in listOf(KeyType.NORMAL, KeyType.CROSS_FLICK)) {
             val layout = actionLayout(type)
             val keyData = layout.keys.single().copy(
-                isSpecialKey = type != KeyType.QWERTY,
+                isSpecialKey = true,
                 longPressAction = shortcut
             )
             install(layout.copyWithKeys(listOf(keyData)), KeyboardLayoutOrigin.CUSTOM)
@@ -171,8 +171,35 @@ class FlickKeyboardViewLifecycleTest {
             assertTrue(holds.isEmpty())
 
             tap(0)
-            val tapAction = if (type == KeyType.QWERTY) KeyAction.Text(keyData.label) else KeyAction.Paste
-            assertEquals(listOf(shortcut, tapAction), events)
+            assertEquals(listOf(shortcut, KeyAction.Paste), events)
+        }
+    }
+
+    @Test fun normalKeysKeepTextOutputWithAnOldLongPressAction() {
+        for (type in listOf(KeyType.QWERTY, KeyType.PETAL_FLICK)) {
+            val keyData = KeyData(
+                label = "あ",
+                row = 0,
+                column = 0,
+                isFlickable = type == KeyType.PETAL_FLICK,
+                action = KeyAction.Text("あ"),
+                keyId = "character",
+                keyType = type,
+                longPressAction = KeyAction.MoveCustomKeyboardTab
+            )
+            val layout = KeyboardLayout(
+                keys = listOf(keyData),
+                flickKeyMaps = mapOf("character" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("あ")))),
+                columnCount = 1,
+                rowCount = 1,
+                longPressFlickKeyMaps = mapOf("character" to mapOf(FlickDirection.TAP to "ぁ"))
+            )
+            install(layout, KeyboardLayoutOrigin.CUSTOM)
+
+            hold(0)
+
+            val expectedOutput = if (type == KeyType.PETAL_FLICK) "ぁ" else "あ"
+            assertEquals(type.name, listOf(KeyAction.Text(expectedOutput)), events)
         }
     }
 

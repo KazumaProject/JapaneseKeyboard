@@ -204,16 +204,15 @@ class KeyboardRepositoryDeleteImpactTest {
     }
 
     @Test
-    fun getDeleteImpactForLayout_noReferences_returnsEmpty() = runBlocking {
+    fun getDeleteImpactForLayout_ignoresOldLongPressActionOnNormalKey() = runBlocking {
         val target = layout(layoutId = 13, stableId = "target-no-ref", name = "Target")
         val targetFull = FullKeyboardLayout(target, emptyList(), emptyList())
+        val textKey = keyWithTextAction(keyId = 230, keyIdentifier = "k1", label = "あ")
         val unrelated = FullKeyboardLayout(
             layout = layout(layoutId = 23, stableId = "stable-unrelated", name = "Unrelated"),
             keysWithFlicks = listOf(
-                keyWithTextAction(
-                    keyId = 230,
-                    keyIdentifier = "k1",
-                    label = "あ"
+                textKey.copy(
+                    key = textKey.key.copy(longPressAction = "MoveToCustomKeyboard:${target.stableId}")
                 )
             ),
             spacers = emptyList()
