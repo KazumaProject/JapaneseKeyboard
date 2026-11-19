@@ -779,6 +779,10 @@
     <string name="editor_cycle_target">挿入方向切替</string>
     <string name="normal_key">通常キー</string>
     <string name="special_key">特別なキー</string>
+    <string name="mixed_key">混在キー</string>
+    <string name="mixed_flick_unassigned">未設定</string>
+    <string name="mixed_flick_text">文字入力</string>
+    <string name="mixed_flick_action">特殊アクション</string>
     <string name="key_label">キーの表示ラベル</string>
     <string name="key_action">キーのアクション</string>
     <string name="double_tap_action">ダブルタップのアクション</string>

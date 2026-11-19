@@ -76,6 +76,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "ForceHalfWidthSpace" -> KeyAction.ForceHalfWidthSpace
         "ForceFullWidthSpace" -> KeyAction.ForceFullWidthSpace
         "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
+        "SwitchToKana" -> KeyAction.SwitchToKanaLayout
         "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
         "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
         "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
@@ -223,6 +224,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.ForceHalfWidthSpace -> "ForceHalfWidthSpace" to null
             KeyAction.ForceFullWidthSpace -> "ForceFullWidthSpace" to null
             KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard" to CircularFlickSlotActionMapper.EMOJI_KEYBOARD_LABEL
+            KeyAction.SwitchToKanaLayout -> "SwitchToKana" to null
             KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish" to null
             KeyAction.SwitchToNumberLayout -> "SwitchToNumber" to null
             KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol" to null
