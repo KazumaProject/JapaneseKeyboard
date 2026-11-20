@@ -27,6 +27,7 @@
                 android:id="@+id/key_type_chip_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                app:selectionRequired="true"
                 app:singleSelection="true">
 
                 <com.google.android.material.chip.Chip
@@ -42,6 +43,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/special_key" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_mixed"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:saveEnabled="false"
+                    android:text="@string/mixed_key" />
             </com.google.android.material.chip.ChipGroup>
 
             <!-- NEW: Special category selector -->
@@ -327,6 +336,23 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/mixed_key_label_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/key_label"
+                android:visibility="gone">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/mixed_key_label_edittext"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:saveEnabled="false" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/key_action_layout"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
@@ -545,6 +571,40 @@
                 tools:text="右フリック時の挙動"
                 tools:visibility="visible" />
 
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/mixed_flick_slot_type_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_mixed_unassigned"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:saveEnabled="false"
+                    android:text="@string/mixed_flick_unassigned" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_mixed_text"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:saveEnabled="false"
+                    android:text="@string/mixed_flick_text" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_mixed_action"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:saveEnabled="false"
+                    android:text="@string/mixed_flick_action" />
+            </com.google.android.material.chip.ChipGroup>
+
             <!-- 文字入力欄（ペタル・2段フリックのテキスト入力用） -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/text_char_input_layout"
@@ -579,6 +639,23 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/mixed_flick_target_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/custom_keyboard_target_hint"
+                android:visibility="gone">
+
+                <AutoCompleteTextView
+                    android:id="@+id/mixed_flick_target_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:saveEnabled="false" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout

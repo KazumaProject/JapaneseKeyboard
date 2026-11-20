@@ -1072,7 +1072,9 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun shouldTransformMainLabel(keyData: KeyData): Boolean {
         if (keyData.action is KeyAction.Text) return true
-        return !keyData.isSpecialKey && keyData.keyType != KeyType.NORMAL
+        return !keyData.isSpecialKey &&
+            keyData.keyType != KeyType.NORMAL &&
+            keyData.keyType != KeyType.MIXED_FLICK
     }
 
     /** Standard mode labels use the same text sizing as other special keys. */
@@ -1096,7 +1098,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             return keyData.qwertyConfig?.layer(keyCharacterCase)?.displayLabel ?: keyData.label
         }
         modeSwitchLabelForDisplay(keyData)?.let { return it }
-        val canonicalLabel = KeyIconResolver.resolvedLabelForRendering(keyData)
+        val canonicalLabel = KeyIconResolver.resolvedLabelForRendering(keyData, context)
         return if (shouldTransformMainLabel(keyData)) {
             transformInputTextForDisplay(canonicalLabel)
         } else {
@@ -2011,7 +2013,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            KeyType.CROSS_FLICK -> {
+            KeyType.CROSS_FLICK, KeyType.MIXED_FLICK -> {
+                val isMixedFlick = keyData.keyType == KeyType.MIXED_FLICK
                 val rawFlickActionMap =
                     keyData.keyId?.let { layout.flickKeyMaps[it] }?.firstOrNull()
                         ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
@@ -2043,6 +2046,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
 
                             override fun onPress(action: KeyAction, direction: FlickDirection) {
+                                if (isMixedFlick) {
+                                    if (action is KeyAction.Text) notifyTextPress(keyData, action.text)
+                                    else this@FlickKeyboardView.listener?.onPress(action)
+                                    return
+                                }
                                 when (
                                     val resolved = resolveSumireSpecialKeyOverride(
                                         keyData,
@@ -2085,6 +2093,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 isFlick: Boolean,
                                 direction: FlickDirection
                             ) {
+                                if (isMixedFlick) {
+                                    if (fallbackAction != null) dispatchCommittedKeyAction(keyData, fallbackAction, isFlick)
+                                    else cancelTextPreview(keyData)
+                                    return
+                                }
                                 dispatchSumireSpecialKeyRuntimeAction(
                                     keyData = keyData,
                                     flickDirection = direction,
@@ -2100,8 +2113,28 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
 
+                            override fun onTextSelectionChanged(text: String?, isFlick: Boolean) {
+                                if (!isMixedFlick) return
+                                val action = text?.takeIf(String::isNotEmpty)?.let { KeyAction.Text(it) }
+                                if (action != null && canPreviewText(keyData, action) &&
+                                    previewKeyData != keyData && !independentTextPreviews.containsKey(keyData)
+                                ) {
+                                    beginTextPreview(keyData, FlickTextSelection(action.text, isFlick))
+                                } else {
+                                    updateTextPreview(keyData, text, isFlick)
+                                }
+                            }
+
+                            override fun onCanceled() {
+                                if (isMixedFlick) cancelTextPreview(keyData)
+                            }
+
                             override fun onFlickLongPress(action: KeyAction) {
                                 if (action is KeyAction.Text) return
+                                if (isMixedFlick) {
+                                    if (action == KeyAction.DoNothing) return
+                                    cancelTextPreview(keyData)
+                                }
                                 doubleTapActionDispatcher.interrupt()
                                 if (usesDefaultActionAfterLongPress(action)) return
                                 longPressOwnerKeyData = keyData
@@ -2112,6 +2145,19 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 action: KeyAction,
                                 isFlick: Boolean
                             ) {
+                                if (isMixedFlick) {
+                                    when (action) {
+                                        is KeyAction.Text -> {
+                                            dispatchCommittedKeyAction(keyData, action, isFlick, isLongPress = true)
+                                            return
+                                        }
+                                        KeyAction.Cancel, KeyAction.DoNothing -> {
+                                            cancelTextPreview(keyData)
+                                            return
+                                        }
+                                        else -> Unit
+                                    }
+                                }
                                 if (action is KeyAction.Text) return
                                 if (usesDefaultActionAfterLongPress(action)) {
                                     dispatchNonTapAction(action, isFlick)
@@ -2127,7 +2173,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 action: KeyAction,
                                 direction: FlickDirection
                             ) {
-                                if (action !is KeyAction.Text && !usesDefaultActionAfterLongPress(action)) {
+                                if (action !is KeyAction.Text &&
+                                    (!isMixedFlick || action != KeyAction.DoNothing) &&
+                                    !usesDefaultActionAfterLongPress(action)
+                                ) {
                                     this@FlickKeyboardView.listener?.onLongPressActionCanceled(
                                         action
                                     )
@@ -2135,7 +2184,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        attach(keyView, displayFlickActionMap)
+                        attach(keyView, displayFlickActionMap, previewText = isMixedFlick)
                     }
 
                     when (themeMode) {
@@ -3039,13 +3088,16 @@ class FlickKeyboardView @JvmOverloads constructor(
         val action = KeyAction.Text(character)
         if (character.isNotEmpty()) listener?.onPress(action)
         if (character.isNotEmpty() && canPreviewText(keyData, action)) {
-            previewKeyData = keyData
-            val selection = FlickTextSelection(character, false)
-            if (independentMultiTouchForCurrentGesture) independentTextPreviews[keyData] = selection
-            flickTextPreviewEmitter.begin(selection)
+            beginTextPreview(keyData, FlickTextSelection(character, false))
         } else {
             cancelTextPreview()
         }
+    }
+
+    private fun beginTextPreview(keyData: KeyData, selection: FlickTextSelection) {
+        previewKeyData = keyData
+        if (independentMultiTouchForCurrentGesture) independentTextPreviews[keyData] = selection
+        flickTextPreviewEmitter.begin(selection)
     }
 
     private fun updateTextPreview(keyData: KeyData, character: String?, isFlick: Boolean) {

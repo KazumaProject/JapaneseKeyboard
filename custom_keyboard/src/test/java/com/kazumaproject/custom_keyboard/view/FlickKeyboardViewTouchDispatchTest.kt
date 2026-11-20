@@ -178,6 +178,85 @@ class FlickKeyboardViewTouchDispatchTest {
         assertTrue(listener.actions == listOf(KeyAction.Paste))
     }
 
+    @Test
+    fun mixedFlickCommitsTextAndActionsFromTheSameKey() {
+        val listener = RecordingKeyboardActionListener()
+        val keyboard = keyboardView(listener)
+        keyboard.setKeyboard(mixedFlickLayout())
+        layoutKeyboard(keyboard)
+
+        val key = keyboard.getChildAt(0) as AutoSizeButton
+        assertEquals("a", key.text.toString())
+        keyboard.setKeyCharacterCase(KeyCharacterCase.UPPERCASE)
+        assertEquals("A", key.text.toString())
+        val x = key.centerX()
+        val y = key.centerY()
+
+        fun touch(deltaX: Float, deltaY: Float, time: Long, release: Int = MotionEvent.ACTION_UP) {
+            keyboard.dispatchTouch(MotionEvent.ACTION_DOWN, x, y, time, time)
+            keyboard.dispatchTouch(MotionEvent.ACTION_MOVE, x + deltaX, y + deltaY, time, time + 10L)
+            keyboard.dispatchTouch(release, x + deltaX, y + deltaY, time, time + 20L)
+        }
+
+        touch(0f, 0f, 100L)
+        touch(-80f, 0f, 200L)
+        touch(80f, 0f, 300L)
+        touch(0f, -100f, 400L)
+        touch(0f, 100f, 500L) // Unassigned
+        touch(0f, -100f, 600L, MotionEvent.ACTION_CANCEL)
+
+        assertEquals(
+            listOf(KeyAction.Text("a"), KeyAction.Text("left"), KeyAction.MoveCursorRight, KeyAction.Delete),
+            listener.actions
+        )
+    }
+
+    @Test
+    fun holdingMixedTextCommitsItOnRelease() {
+        val listener = RecordingKeyboardActionListener()
+        val keyboard = keyboardView(listener)
+        keyboard.setLongPressTimeout(200L)
+        keyboard.setKeyboard(mixedFlickLayout())
+        layoutKeyboard(keyboard)
+        val key = keyboard.getChildAt(0)
+        val time = SystemClock.uptimeMillis()
+
+        keyboard.dispatchTouch(MotionEvent.ACTION_DOWN, key.centerX(), key.centerY(), time, time)
+        shadowOf(Looper.getMainLooper()).idleFor(210, TimeUnit.MILLISECONDS)
+        assertTrue(listener.actions.isEmpty())
+        assertTrue(listener.flickLongPresses.isEmpty())
+        keyboard.dispatchTouch(MotionEvent.ACTION_UP, key.centerX(), key.centerY(), time, time + 220L)
+
+        assertEquals(listOf(KeyAction.Text("a")), listener.actions)
+    }
+
+    private fun mixedFlickLayout(): KeyboardLayout {
+        val key = KeyData(
+            label = "",
+            row = 0,
+            column = 0,
+            isFlickable = true,
+            action = KeyAction.Text("a"),
+            keyId = "mixed",
+            keyType = KeyType.MIXED_FLICK
+        )
+        return KeyboardLayout(
+            keys = listOf(key),
+            flickKeyMaps = mapOf(
+                "mixed" to listOf(
+                    mapOf(
+                        FlickDirection.TAP to FlickAction.Input("a"),
+                        FlickDirection.UP_LEFT to FlickAction.Input("left"),
+                        FlickDirection.UP_RIGHT to FlickAction.Action(KeyAction.MoveCursorRight),
+                        FlickDirection.UP to FlickAction.Action(KeyAction.Delete)
+                    )
+                )
+            ),
+            columnCount = 1,
+            rowCount = 1
+        )
+    }
+
     private fun keyboardView(
         listener: FlickKeyboardView.OnKeyboardActionListener,
         context: Context = ApplicationProvider.getApplicationContext()

@@ -115,6 +115,7 @@ class CrossFlickInputController(
     private var activeGestureConfig: GestureSessionConfig? = null
 
     private var flickActionMap: Map<FlickDirection, FlickAction> = emptyMap()
+    private var previewsActionText = false
     private var actionDisplayTransform: (FlickAction) -> FlickAction = { it }
     private var textMap: Map<FlickDirection, String> = emptyMap()
     private var longPressTextMap: Map<FlickDirection, String> = emptyMap()
@@ -207,10 +208,10 @@ class CrossFlickInputController(
         dismissAllPopups(clearDirectionalCache = true)
     }
 
-    // ACTION モードでビューにアタッチする。CROSS_FLICK キー（アイコン付き特殊キー）向け。
     @SuppressLint("ClickableViewAccessibility")
-    fun attach(view: View, map: Map<FlickDirection, FlickAction>) {
+    fun attach(view: View, map: Map<FlickDirection, FlickAction>, previewText: Boolean = false) {
         inputMode = InputMode.ACTION
+        previewsActionText = previewText
         flickActionMap = map.mapValues { (_, action) -> action.withDisplayMetadata() }
         textMap = emptyMap()
         longPressTextMap = emptyMap()
@@ -302,6 +303,9 @@ class CrossFlickInputController(
                             resolveText(currentDirection, preferLongPress = isLongPressMode),
                             currentDirection != FlickDirection.TAP
                         )
+                    } else if (previewsActionText) {
+                        val text = (resolveAction(currentDirection) as? FlickAction.Input)?.char
+                        listener?.onTextSelectionChanged(text, currentDirection != FlickDirection.TAP)
                     }
                 }
                 updatePopupFingerFeedback(event.rawX, event.rawY)

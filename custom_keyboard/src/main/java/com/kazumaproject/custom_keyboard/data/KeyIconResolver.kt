@@ -22,8 +22,21 @@ object KeyIconResolver {
     fun hasIconOverride(keyData: KeyData): Boolean =
         keyData.icon?.isOverride() == true
 
-    fun resolvedLabelForRendering(keyData: KeyData): String =
-        if (suppressesDoNothingDefaultContent(keyData)) "" else keyData.label
+    fun resolvedLabelForRendering(keyData: KeyData, context: Context? = null): String {
+        if (suppressesDoNothingDefaultContent(keyData)) return ""
+        if (keyData.keyType != KeyType.MIXED_FLICK || keyData.label.isNotEmpty()) return keyData.label
+
+        return when (val action = keyData.action) {
+            is KeyAction.Text -> action.text
+            is KeyAction.InputText -> action.text
+            null -> ""
+            else -> context?.let {
+                KeyActionMapper.getDisplayActions(it).firstOrNull { option ->
+                    option.action::class == action::class
+                }?.displayName
+            } ?: KeyActionMapper.fromKeyAction(action).orEmpty()
+        }
+    }
 
     fun shouldTintIcon(icon: KeyIconRef?, fallbackResId: Int?): Boolean {
         return when (icon?.type) {

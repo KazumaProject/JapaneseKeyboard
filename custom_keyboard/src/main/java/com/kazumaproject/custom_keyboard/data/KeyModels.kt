@@ -641,7 +641,10 @@ enum class KeyType {
     FLICK_LONG_PRESS,
 
     /** Configurable key preview and a grid of long-press alternatives. */
-    QWERTY
+    QWERTY,
+
+    /** A tap and four flick directions that can each input text or run an action. */
+    MIXED_FLICK
 }
 
 enum class ShapeType {

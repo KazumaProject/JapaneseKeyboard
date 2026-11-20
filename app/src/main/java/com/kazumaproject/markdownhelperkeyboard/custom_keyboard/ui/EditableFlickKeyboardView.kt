@@ -608,7 +608,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         } else {
             AutoSizeButton(context).apply {
-                val label = KeyIconResolver.resolvedLabelForRendering(keyData)
+                val label = KeyIconResolver.resolvedLabelForRendering(keyData, context)
                 isFocusable = false; isClickable = true
                 isAllCaps = false
                 minimumHeight = 0
