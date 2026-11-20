@@ -7,6 +7,7 @@ import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.google.gson.JsonParser
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyWithFlicks
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.specialKeyLongPressAction
 
 /**
  * カスタムキーボードレイアウトを schemaVersion 付き object 形式の JSON に
@@ -125,7 +126,7 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
             },
             qwerty = this.key.qwertyConfigJson?.let(JsonParser::parseString),
             textInputBehavior = this.key.textInputBehavior,
-            longPressAction = this.key.longPressAction
+            longPressAction = this.key.specialKeyLongPressAction
         ),
         flicks = this.flicks.map {
             FlickMappingDto(

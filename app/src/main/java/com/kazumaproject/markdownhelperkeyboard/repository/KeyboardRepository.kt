@@ -26,6 +26,7 @@ import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.effectiveDoubleTapBinding
+import com.kazumaproject.custom_keyboard.data.effectiveLongPressAction
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.toKeyItem
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
@@ -40,6 +41,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFl
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.specialKeyLongPressAction
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toDbStrings
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toFlickAction
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
@@ -196,7 +198,11 @@ class KeyboardRepository @Inject constructor(
                 // replace existing rows.
                 val normalizedKeysWithFlicks = importable.keysWithFlicks.map { keyWithFlicks ->
                     keyWithFlicks.copy(
-                        key = keyWithFlicks.key.copy(keyId = 0, ownerLayoutId = 0),
+                        key = keyWithFlicks.key.copy(
+                            keyId = 0,
+                            ownerLayoutId = 0,
+                            longPressAction = keyWithFlicks.key.specialKeyLongPressAction
+                        ),
                         flicks = keyWithFlicks.flicks.map { it.copy(ownerKeyId = 0) },
                         circularFlicks = keyWithFlicks.circularFlicks.map { it.copy(ownerKeyId = 0) },
                         twoStepFlicks = keyWithFlicks.twoStepFlicks.map { it.copy(ownerKeyId = 0) },
@@ -593,7 +599,7 @@ class KeyboardRepository @Inject constructor(
                 val keyIdentifier = key.keyIdentifier
                 val keyLabel = key.label.takeIf { it.isNotBlank() }
 
-                for (storedAction in listOf(key.action, key.doubleTapAction, key.longPressAction)) {
+                for (storedAction in listOf(key.action, key.doubleTapAction, key.specialKeyLongPressAction)) {
                     val action = KeyActionMapper.toKeyAction(storedAction)
                     if (action is KeyAction.MoveToCustomKeyboard && action.stableId == targetStableId) {
                         references += MoveToCustomKeyboardReference(
@@ -680,7 +686,11 @@ class KeyboardRepository @Inject constructor(
         )
 
         val newKeys = originalLayout.keysWithFlicks.map { keyWithFlicks ->
-            keyWithFlicks.key.copy(keyId = 0, ownerLayoutId = 0)
+            keyWithFlicks.key.copy(
+                keyId = 0,
+                ownerLayoutId = 0,
+                longPressAction = keyWithFlicks.key.specialKeyLongPressAction
+            )
         }
 
         val newFlicksMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
@@ -908,7 +918,7 @@ class KeyboardRepository @Inject constructor(
 
             val iconRef = keyIconRefFromDb(dbKey.iconType, dbKey.iconValue)
             val specialKeyColorStyle = SpecialKeyColorStyle.fromDbValue(dbKey.specialKeyColorStyle)
-            val longPressAction = KeyActionMapper.toKeyAction(dbKey.longPressAction)
+            val longPressAction = KeyActionMapper.toKeyAction(dbKey.specialKeyLongPressAction)
             val doubleTapBinding = KeyActionMapper.toKeyAction(dbKey.doubleTapAction)
                 ?.takeIf { dbKey.isSpecialKey }
                 ?.let {
@@ -1237,7 +1247,7 @@ class KeyboardRepository @Inject constructor(
                         doubleTapBinding?.action
                     ),
                     doubleTapPolicy = doubleTapBinding?.policy?.serializedName,
-                    longPressAction = KeyActionMapper.fromKeyAction(keyData.longPressAction),
+                    longPressAction = KeyActionMapper.fromKeyAction(keyData.effectiveLongPressAction),
                     popupMapConfigJson = keyData.popupMapConfig?.takeIf { keyData.keyType == KeyType.FREE_FLICK }
                         ?.let(PopupKeyConfigCodec::encode),
                     qwertyConfigJson = keyData.qwertyConfig?.let(QwertyKeyConfigCodec::encode),
