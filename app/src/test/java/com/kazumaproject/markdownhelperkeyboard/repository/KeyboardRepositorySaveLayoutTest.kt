@@ -60,12 +60,19 @@ class KeyboardRepositorySaveLayoutTest {
     private val repository = KeyboardRepository(dao)
 
     @Test
-    fun longPressActionOnCharacterKeyIsSavedAndRestored(): Unit = runBlocking {
+    fun longPressActionIsSavedAndRestoredOnlyForSpecialKeys(): Unit = runBlocking {
         val original = fullLayout(1L, "stable-a", 1L, 1, "Saved")
         whenever(dao.getFullLayoutOneShot(1L)).thenReturn(original)
         val shortcut = KeyAction.SwitchToNextIme
         val layout = simpleLayout()
-        val editedLayout = layout.copyWithKeys(listOf(layout.keys.single().copy(longPressAction = shortcut)))
+        val characterKey = layout.keys.single().copy(longPressAction = shortcut)
+        val specialKey = characterKey.copy(
+            column = 1,
+            keyId = "special",
+            isSpecialKey = true,
+            action = KeyAction.Copy
+        )
+        val editedLayout = layout.copyWithKeys(listOf(characterKey, specialKey))
 
         repository.saveLayout(editedLayout, name = "Saved", id = 1L)
 
@@ -73,11 +80,20 @@ class KeyboardRepositorySaveLayoutTest {
         verify(dao).updateFullKeyboardLayoutKeepingIdentity(
             any(), keysCaptor.capture(), any(), any(), any(), any(), any(), any()
         )
-        val saved = keysCaptor.firstValue.single()
-        assertEquals("SwitchToNextIme", saved.longPressAction)
-        val savedKey = KeyWithFlicks(saved, emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
-        whenever(dao.getFullLayoutById(1L)).thenReturn(flowOf(original.copy(keysWithFlicks = listOf(savedKey))))
-        assertEquals(shortcut, repository.getFullLayout(1L).first().keys.single().longPressAction)
+        val saved = keysCaptor.firstValue
+        assertNull(saved.single { !it.isSpecialKey }.longPressAction)
+        assertEquals("SwitchToNextIme", saved.single { it.isSpecialKey }.longPressAction)
+
+        val storedKeys = saved.map { key ->
+            KeyWithFlicks(
+                key.copy(longPressAction = "SwitchToNextIme"),
+                emptyList(), emptyList(), emptyList(), emptyList(), emptyList()
+            )
+        }
+        whenever(dao.getFullLayoutById(1L)).thenReturn(flowOf(original.copy(keysWithFlicks = storedKeys)))
+        val restored = repository.getFullLayout(1L).first().keys
+        assertNull(restored.single { !it.isSpecialKey }.longPressAction)
+        assertEquals(shortcut, restored.single { it.isSpecialKey }.longPressAction)
     }
 
     // ---------------------------------------------------------

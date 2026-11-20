@@ -28,6 +28,9 @@ data class DoubleTapBinding(
 val KeyData.supportsDoubleTap: Boolean
     get() = isSpecialKey
 
+val KeyData.effectiveLongPressAction: KeyAction?
+    get() = longPressAction.takeIf { isSpecialKey }
+
 fun automaticDoubleTapPolicy(
     normalAction: KeyAction?,
     doubleTapAction: KeyAction

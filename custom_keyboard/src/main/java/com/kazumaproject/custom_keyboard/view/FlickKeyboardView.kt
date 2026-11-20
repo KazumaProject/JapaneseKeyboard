@@ -99,6 +99,7 @@ import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.dispatchResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.dispatchSumireSpecialKeyRuntimeAction
 import com.kazumaproject.custom_keyboard.data.effectiveDoubleTapBinding
+import com.kazumaproject.custom_keyboard.data.effectiveLongPressAction
 import com.kazumaproject.custom_keyboard.data.refreshSumireSpecialKeyTap
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
@@ -3355,7 +3356,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     ) {
         if (layoutOrigin != KeyboardLayoutOrigin.CUSTOM) return
         val keyData = keyInfos.firstOrNull { it.view === target.view }?.keyData ?: return
-        val action = keyData.longPressAction ?: return
+        val action = keyData.effectiveLongPressAction ?: return
         val config = gestureSessionConfigSource.snapshot()
         val task = Runnable {
             target.pendingLongPress = null

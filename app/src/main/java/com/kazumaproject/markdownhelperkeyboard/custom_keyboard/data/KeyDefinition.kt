@@ -50,3 +50,6 @@ data class KeyDefinition(
     val qwertyConfigJson: String? = null,
     val longPressAction: String? = null
 )
+
+internal val KeyDefinition.specialKeyLongPressAction: String?
+    get() = longPressAction.takeIf { isSpecialKey }

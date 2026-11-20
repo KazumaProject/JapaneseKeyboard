@@ -663,7 +663,8 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp">
+                android:layout_marginTop="24dp"
+                android:visibility="gone">
 
                 <AutoCompleteTextView
                     android:id="@+id/long_press_action_spinner"
