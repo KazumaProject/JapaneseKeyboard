@@ -32,11 +32,15 @@ object FreeFlickPreferences {
     }
     fun read(context: Context, scope: Scope = Scope.SUMIRE): PopupMapInputOptions {
         val preferences=PreferenceManager.getDefaultSharedPreferences(context)
+        val tapSize = when (scope) {
+            Scope.SUMIRE -> preferences.getString(TAP_SIZE, PopupTapSizeMode.FLICK_SENSITIVITY.preferenceValue)
+            Scope.CUSTOM -> preferences.getString(CUSTOM_TAP_SIZE, null)
+        }
         return PopupMapInputOptions(
             preferences.getBoolean(NEAREST,true),preferences.getBoolean(TEXT,true),
             preferences.getBoolean(SWITCH,false),preferences.getBoolean(BACK,false),
             PopupMapPresentation.fromPreference(preferences.getString(PRESENTATION,null)),
-            PopupTapSizeMode.fromPreference(preferences.getString(if (scope == Scope.CUSTOM) CUSTOM_TAP_SIZE else TAP_SIZE,null))
+            PopupTapSizeMode.fromPreference(tapSize)
         )
     }
 }
