@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="flick_popup_position_entries">
+        <item>@string/flick_popup_position_around_key</item>
+        <item>@string/flick_popup_position_above_key</item>
+    </string-array>
+    <string-array name="flick_popup_position_values" translatable="false">
+        <item>around_key</item>
+        <item>above_key</item>
+    </string-array>
+</resources>

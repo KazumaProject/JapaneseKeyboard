@@ -9,6 +9,7 @@ import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
 import android.view.ViewConfiguration
 import android.widget.Button
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.skin.AboveKeyFlickPopup
 import com.kazumaproject.core.domain.skin.KeyboardSkinId
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
@@ -105,6 +106,7 @@ class CrossFlickInputController(
     }
 
     var listener: CrossFlickListener? = null
+    internal var aboveKeyPopup: AboveKeyFlickPopup? = null
 
     private var popupOverlayHostProvider: (() -> View?)? = null
 
@@ -254,11 +256,15 @@ class CrossFlickInputController(
                 notifyPressAction()
 
                 if (inputMode == InputMode.TEXT && gestureConfig.showFlickPopup) {
-                    (anchorView as? Button)?.let { button ->
-                        originalKeyText = button.text
-                        button.text = ""
+                    if (aboveKeyPopup?.isEnabled == true) {
+                        showAboveKeyPopup(FlickDirection.TAP)
+                    } else {
+                        (view as? Button)?.let { button ->
+                            originalKeyText = button.text
+                            button.text = ""
+                        }
+                        showDirectionalPopup(FlickDirection.TAP)
                     }
-                    showDirectionalPopup(FlickDirection.TAP)
                 }
 
                 longPressJob = controllerScope.launch {
@@ -345,6 +351,7 @@ class CrossFlickInputController(
     // 長押しタイマーが満了したときに呼ばれる。モードに応じてポップアップ表示を切り替える。
     // ACTION: 全方向のアクションポップアップを展開。TEXT: TAP中のみグリッド表示に切り替え（フリック中は方向ポップアップを維持）。
     private fun onLongPressTriggered() {
+        aboveKeyPopup?.dismiss(anchorView)
         when (inputMode) {
             InputMode.ACTION -> {
                 if (currentGestureConfig().showLongPressPopup) {
@@ -433,8 +440,17 @@ class CrossFlickInputController(
                 showActionPopup(direction, highlighted = true)
             }
 
-            InputMode.TEXT -> showDirectionalPopup(direction)
+            InputMode.TEXT -> {
+                if (aboveKeyPopup?.isEnabled == true) showAboveKeyPopup(direction)
+                else showDirectionalPopup(direction)
+            }
         }
+    }
+
+    private fun showAboveKeyPopup(direction: FlickDirection) {
+        val anchor = anchorView ?: return
+        val text = resolveText(direction, preferLongPress = false)?.let(inputTextTransform)
+        aboveKeyPopup?.show(anchor, text, directionalPopupStyle)
     }
 
     // 長押しモード中に指が動いたときのハイライト更新。ACTION_MOVE から呼ばれる。
@@ -813,6 +829,7 @@ class CrossFlickInputController(
 
     // ACTION・TEXT 両モードのポップアップをすべて閉じる。
     fun dismissAllPopups(clearDirectionalCache: Boolean = false) {
+        aboveKeyPopup?.dismiss(anchorView)
         dismissAllActionPopups()
         dismissDirectionalPopups(clearCache = clearDirectionalCache)
         popupOverlay.dismissAll()

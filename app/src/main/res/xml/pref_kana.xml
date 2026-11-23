@@ -20,6 +20,15 @@
             android:key="tenkey_show_flick_popup_preference"
             android:title="@string/show_flick_key_popup_title" />
 
+        <ListPreference
+            android:defaultValue="around_key"
+            android:dependency="tenkey_show_flick_popup_preference"
+            android:entries="@array/flick_popup_position_entries"
+            android:entryValues="@array/flick_popup_position_values"
+            android:key="tenkey_flick_popup_position_preference"
+            android:title="@string/flick_popup_position_title"
+            app:useSimpleSummaryProvider="true" />
+
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="tenkey_show_long_press_popup_preference"

@@ -71,6 +71,7 @@ import com.kazumaproject.core.ui.font.KeyboardFontAware
 import com.kazumaproject.core.ui.font.KeyboardFontApplicator
 import com.kazumaproject.core.ui.font.KeyboardFontGlyphDrawable
 import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
+import com.kazumaproject.core.ui.skin.AboveKeyFlickPopup
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.databinding.KeyboardLayoutBinding
@@ -227,6 +228,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             },
             onCancel = { session, reason ->
                 withIndependentSession(session) {
+                    dismissAboveKeyFlickPopup()
                     resetLongPressAction()
                     releasePointerPopups(session.pointerId)
                 }
@@ -298,6 +300,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var showFlickPopup = true
     private var showLongPressPopup = true
     private var keyboardFontSnapshot = KeyboardFontSnapshot()
+    private val aboveKeyFlickPopup = AboveKeyFlickPopup(font = { keyboardFontSnapshot })
 
     override fun setKeyboardFont(snapshot: KeyboardFontSnapshot) {
         KeyboardFontApplicator.track(this)
@@ -825,10 +828,18 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         applyPopupKeyboardFont()
     }
 
-    fun setKeyPopupVisibility(showFlickPopup: Boolean, showLongPressPopup: Boolean) {
-        if (this.showFlickPopup == showFlickPopup && this.showLongPressPopup == showLongPressPopup) return
+    fun setKeyPopupVisibility(
+        showFlickPopup: Boolean,
+        showLongPressPopup: Boolean,
+        showFlickPopupAboveKey: Boolean = false,
+    ) {
+        val aboveKeyEnabled = showFlickPopup && showFlickPopupAboveKey
+        if (this.showFlickPopup == showFlickPopup && this.showLongPressPopup == showLongPressPopup &&
+            aboveKeyFlickPopup.isEnabled == aboveKeyEnabled
+        ) return
         this.showFlickPopup = showFlickPopup
         this.showLongPressPopup = showLongPressPopup
+        aboveKeyFlickPopup.isEnabled = aboveKeyEnabled
         cancelActiveTouch(KeyTouchCancelReason.PointerInterrupted)
     }
 
@@ -1580,6 +1591,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         } else {
             handleCurrentInputModeSwitch(currentInputMode.value)
         }
+        if (cursorMode) aboveKeyFlickPopup.dismissAll()
         this.isCursorMode = cursorMode
     }
 
@@ -1678,6 +1690,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     )
 
                     setKeyPressed()
+                    showAboveKeyFlickPopup(GestureType.Tap)
                     longPressJob = scope.launch {
                         delay(longPressTimeout)
                         if (pressedKey.key != Key.NotSelected) {
@@ -1690,6 +1703,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_UP -> {
+                    dismissAboveKeyFlickPopup()
                     resetLongPressAction(animateLabels = true)
                     if (isCursorMode) {
                         val viewToRelease: View? = when (pressedKey.key) {
@@ -1793,7 +1807,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     when (gestureType) {
                         GestureType.Null -> {}
                         GestureType.Down -> {}
-                        GestureType.Tap -> setTapInActionMove()
+                        GestureType.Tap -> {
+                            if (!isLongPressed) showAboveKeyFlickPopup(GestureType.Tap)
+                            setTapInActionMove()
+                        }
                         GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> setFlickInActionMove(
                             gestureType
                         )
@@ -1802,6 +1819,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_POINTER_DOWN -> {
+                    dismissAboveKeyFlickPopup()
                     if (isLongPressed) {
                         hideAllPopWindow()
                         if (!hasOtherLongPress()) Blur.removeBlurEffect(this)
@@ -1841,6 +1859,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             key = key, pointer = pointer, initialX = initialX, initialY = initialY
                         )
                         setKeyPressed()
+                        showAboveKeyFlickPopup(GestureType.Tap)
                         flickTextPreviewEmitter.begin(
                             resolveTextSelection(key, GestureType.Tap)
                         )
@@ -1859,6 +1878,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_POINTER_UP -> {
                     if (event.pointerCount == 2) {
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                            dismissAboveKeyFlickPopup()
                             resetLongPressAction()
                             if (isCursorMode) return true
                             val gestureType = getGestureType(
@@ -2057,6 +2077,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         skinGuide?.dismiss()
         clearLongPressPresentation()
         flickTextPreviewEmitter.cancel()
+        aboveKeyFlickPopup.dismissAll()
         pointerPopups.keys.toList().forEach(::releasePointerPopups)
         resetLongPressAction()
         resetAllKeys()
@@ -2622,6 +2643,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Called when a long‐press is detected; show all related popups **/
     private fun onLongPressed() {
+        dismissAboveKeyFlickPopup()
         if (!showLongPressPopup) return
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
@@ -2715,6 +2737,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         popupWindowCenter.hide()
     }
 
+    private fun showAboveKeyFlickPopup(gestureType: GestureType) {
+        if (!aboveKeyFlickPopup.isEnabled) return
+        val anchor = getButtonFromKey(pressedKey.key) as? View ?: return
+        val text = resolveTextSelection(pressedKey.key, gestureType).text
+        aboveKeyFlickPopup.show(anchor, text, popupViewStyle.copy(
+            backgroundColor = popupViewStyle.backgroundColor
+                ?: customSpecialKeyColor.takeIf { themeMode == "custom" },
+            textColor = popupViewStyle.textColor ?: popTextActive.currentTextColor
+        ))
+    }
+
+    private fun dismissAboveKeyFlickPopup() {
+        if (!aboveKeyFlickPopup.isEnabled) return
+        aboveKeyFlickPopup.dismiss(getButtonFromKey(pressedKey.key) as? View)
+    }
+
     /** Called during a “tap” gesture in an ongoing move event **/
     private fun setTapInActionMove() {
         if (skinGuide?.isShowing == true) {
@@ -2762,6 +2800,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Called during a “flick” gesture in an ongoing move event **/
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
+        if (!isLongPressed && aboveKeyFlickPopup.isEnabled) {
+            showAboveKeyFlickPopup(gestureType)
+            return
+        }
         val popupEnabled = if (isLongPressed) showLongPressPopup else showFlickPopup
         if (!popupEnabled) return
         if (skinGuide?.isShowing == true) {

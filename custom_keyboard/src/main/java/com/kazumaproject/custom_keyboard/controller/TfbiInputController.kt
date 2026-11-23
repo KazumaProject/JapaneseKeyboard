@@ -10,6 +10,7 @@ import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.skin.AboveKeyFlickPopup
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
@@ -82,6 +83,7 @@ class TfbiInputController(
     private var activeTfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     var listener: TfbiListener? = null
+    internal var aboveKeyPopup: AboveKeyFlickPopup? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
     private var longPressCharacterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
     private var attachedView: View? = null
@@ -386,11 +388,16 @@ class TfbiInputController(
         showPetals: Boolean
     ) {
         val config = currentGestureConfig()
+        if (showPetals) aboveKeyPopup?.dismiss(anchorView)
         if (showPetals && !config.showLongPressPopup) {
             guidePopupHost.dismiss()
             return
         }
         if (!showPetals && !config.showFlickPopup) return
+        if (!showPetals && aboveKeyPopup?.isEnabled == true) {
+            showAboveKeyPopup(anchorView, baseDirection, TfbiFlickDirection.TAP)
+            return
+        }
         if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
             showGuidePopup(anchorView, baseDirection, showPetals)
         } else {
@@ -483,8 +490,12 @@ class TfbiInputController(
     }
 
     private fun updateGuideSecondStage() {
-        if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
         val first = firstFlickDirection
+        if (!isLongPressModeActive && aboveKeyPopup?.isEnabled == true) {
+            attachedView?.let { showAboveKeyPopup(it, first, currentSecondFlickDirection) }
+            return
+        }
+        if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
         val currentText = characterFor(first, currentSecondFlickDirection)
             .ifEmpty { characterFor(first, TfbiFlickDirection.TAP) }
         val options = getEnabledSecondFlickDirections(first).associateWith { direction ->
@@ -499,6 +510,14 @@ class TfbiInputController(
             ),
             direction = currentSecondFlickDirection
         )
+    }
+
+    private fun showAboveKeyPopup(
+        view: View,
+        first: TfbiFlickDirection,
+        second: TfbiFlickDirection,
+    ) {
+        aboveKeyPopup?.show(view, inputTextTransform(characterFor(first, second)), popupStyle)
     }
 
     private fun guideOptionLabel(currentText: String, output: String): String {
@@ -527,6 +546,7 @@ class TfbiInputController(
 
     private fun resetState() {
         clearLongPressCallback(attachedView)
+        aboveKeyPopup?.dismiss(attachedView)
         popupWindow?.dismiss()
         guidePopupHost.dismiss()
         popupWindow = null

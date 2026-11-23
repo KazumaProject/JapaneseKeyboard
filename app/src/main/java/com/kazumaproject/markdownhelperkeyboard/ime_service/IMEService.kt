@@ -1046,8 +1046,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.SUMIRE_MODE_KEY_HIGHLIGHT_KEY,
         AppPreference.FLICK_EDITOR_PREVIEW_KEY,
         AppPreference.TENKEY_SHOW_FLICK_POPUP_KEY,
+        AppPreference.TENKEY_FLICK_POPUP_POSITION_KEY,
         AppPreference.TENKEY_SHOW_LONG_PRESS_POPUP_KEY,
         AppPreference.SUMIRE_SHOW_FLICK_POPUP_KEY,
+        AppPreference.SUMIRE_FLICK_POPUP_POSITION_KEY,
         AppPreference.SUMIRE_SHOW_LONG_PRESS_POPUP_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
@@ -4616,14 +4618,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyTenKeyPopupVisibility(view: TenKey) {
         view.setKeyPopupVisibility(
             showFlickPopup = appPreference.tenkey_show_flick_popup_preference,
-            showLongPressPopup = appPreference.tenkey_show_long_press_popup_preference
+            showLongPressPopup = appPreference.tenkey_show_long_press_popup_preference,
+            showFlickPopupAboveKey = appPreference.tenkeyFlickPopupAboveKey
         )
     }
 
     private fun applySumirePopupVisibility(view: FlickKeyboardView) {
         view.setKeyPopupVisibility(
             showFlickPopup = appPreference.sumire_show_flick_popup_preference,
-            showLongPressPopup = appPreference.sumire_show_long_press_popup_preference
+            showLongPressPopup = appPreference.sumire_show_long_press_popup_preference,
+            showFlickPopupAboveKey = appPreference.sumireFlickPopupAboveKey
         )
     }
 
