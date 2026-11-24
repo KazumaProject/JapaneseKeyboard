@@ -1,0 +1,10 @@
+# 日本語の変換経路
+
+`CandidateQueryModeResolver` が候補タブと選択状態からクエリモードを決め、`setSuggestionOnView` がエディタ世代を含むトークンを発行する。`queryKanaKanjiCore` が辞書の準備を待ち、`KanaKanjiConversionSession.query` が Prediction、Conversion、英数かな、タブ非表示の経路を振り分ける。 [モード選択](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/candidate/CandidateQueryPolicy.kt#L7) · [クエリ開始](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt#L29016) · [変換セッション](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/session/KanaKanjiConversionSession.kt#L95)
+
+1. `GraphBuilder.constructGraph` は LOUDS の共通接頭辞と設定で有効な辞書検索の結果をノードにする。分類辞書、ユーザー辞書、学習辞書、誤入力補正は設定により関与が変わる。共通接頭辞の前方状態を使う実装があり、入力が伸びたときに再利用できるかを条件付きで判定する。 [グラフ構築](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/graph/GraphBuilder.kt#L322) · [共通接頭辞](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/graph/GraphBuilder.kt#L874)
+2. `FindPath.backwardAStar` は接続コストとビーム幅で前向き DP を行う。後ろ向き A* で出力列を列挙し、候補数や N-gram 一致条件に応じて停止する。周期的なキャンセル確認がある。文節ありのモードは `backwardAStarWithBunsetsu` を使う。 [前向き DP と探索](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/path_algorithm/FindPath.kt#L1120) · [文節あり](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/path_algorithm/FindPath.kt#L1669)
+3. エンジンの候補に、ユーザーテンプレート、分類・学習辞書候補などを足し、除外語フィルター、重複の統合、日付候補と順位調整を適用する。マクロと同一表示の普通候補は区別されるため、候補文字列だけの比較では全仕様を確認できない。 [候補統合](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt#L28694) · [CandidateDisplayMerger](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/candidate/CandidateDisplayMerger.kt#L11)
+4. セッションの増分経路はキャンセルで未完の変更をロールバックし、完了済みグラフを保持できる。接続コスト・前方状態・文節単位の候補を変える改善は backend とクエリモード別に同値確認が必要。 [セッションのロールバック](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/session/KanaKanjiConversionSession.kt#L130)
+
+短い読みと長文、複数文節、未知語、英数字混在を分けて、辞書ロード、グラフ、DP/N-best、統合の順に観測する。既存の増分セッションの計測値と新規 End-to-End で得る遅延は測定区間が異なる。 [既存の性能スナップショット](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt#L29063)

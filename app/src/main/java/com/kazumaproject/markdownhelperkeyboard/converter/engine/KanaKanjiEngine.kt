@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
+
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.NBestCandidateCollector
 import android.content.Context
 import android.os.Build
@@ -903,17 +905,19 @@ class KanaKanjiEngine {
             )
         } else {
             val connectionMatrix = connectionMatrixSnapshot()
-            findPath.backwardAStar(
-                originalInput = input,
-                graph = graph,
-                length = input.length,
-                connectionMatrix = connectionMatrix.costTable,
-                n = n,
-                beamWidth = beamWidth,
-                cancellationCheck = { conversionContext.ensureActive() },
-                sessionState = incrementalSessionState?.pathState,
-                candidateSegmentCollector = candidateSegmentCollector,
-            )
+            traceDebugSection("Sumire T10 kana-kanji DP and N-best") {
+                findPath.backwardAStar(
+                    originalInput = input,
+                    graph = graph,
+                    length = input.length,
+                    connectionMatrix = connectionMatrix.costTable,
+                    n = n,
+                    beamWidth = beamWidth,
+                    cancellationCheck = { conversionContext.ensureActive() },
+                    sessionState = incrementalSessionState?.pathState,
+                    candidateSegmentCollector = candidateSegmentCollector,
+                )
+            }
         }
         nBestCandidateCollector?.collect(resultNBestFinalDeferred)
         conversionContext.ensureActive()

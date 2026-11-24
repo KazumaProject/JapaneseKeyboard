@@ -5,6 +5,8 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
+import com.kazumaproject.markdownhelperkeyboard.ime_service.traceKeyboardTouch
 import timber.log.Timber
 
 class InkTouchDispatchFrameLayout @JvmOverloads constructor(
@@ -57,9 +59,9 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
 
     var inputDispatchObserver: ((MotionEvent, Boolean) -> Unit)? = null
 
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean = traceKeyboardTouch(ev) {
         inputDispatchObserver?.invoke(ev, true)
-        return try { dispatchKeyboardTouchEvent(ev) } finally { inputDispatchObserver?.invoke(ev, false) }
+        try { dispatchKeyboardTouchEvent(ev) } finally { inputDispatchObserver?.invoke(ev, false) }
     }
 
     private fun dispatchKeyboardTouchEvent(ev: MotionEvent): Boolean {
@@ -93,8 +95,10 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
             return dispatchToFallbackTarget(target, ev)
         }
 
-        val target = fallbackTouchTargetProvider?.invoke()
-            ?.takeIf { it.isAttachedToWindow && it.isShown && it.width > 0 && it.height > 0 }
+        val target = traceDebugSection("Sumire T03 IME target resolution") {
+            fallbackTouchTargetProvider?.invoke()
+                ?.takeIf { it.isAttachedToWindow && it.isShown && it.width > 0 && it.height > 0 }
+        }
         target?.getLocationOnScreen(targetLocationOnScreen)
         val currentTargetScreenX = targetLocationOnScreen[0]
         val currentTargetScreenY = targetLocationOnScreen[1]

@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
+
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ENGLISH
@@ -543,18 +545,25 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                     Character.getType(char) == Character.NON_SPACING_MARK.toInt()
             }
         if (legacyInput == null && !usePhrases) return fallback
-        val data = ensureDictionariesLoaded()
+        val data = traceDebugSection("Sumire T09 English dictionary readiness") {
+            ensureDictionariesLoaded()
+        }
         val legacy = if (legacyInput != null) {
             // The Conversion tab uses the English setting for exact phrases while
             // leaving single-word completion to the prediction modes.
-            getCandidates(legacyInput, enableTypoCorrection, enablePrediction && prefixMode, data)
+            traceDebugSection("Sumire T10 English word candidates") {
+                getCandidates(legacyInput, enableTypoCorrection, enablePrediction && prefixMode, data)
+            }
         } else {
             fallback
         }
         if (!usePhrases) return legacy
         val phraseConverter = data.phraseConverter ?: return legacy
         val phraseLimit = 12
-        val phraseTexts = phraseConverter.convert(input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit)
+        val phrases = traceDebugSection("Sumire T10 English phrase candidates") {
+            phraseConverter.convert(input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit)
+        }
+        val phraseTexts = phrases
             .asSequence()
             .map { phrase ->
                 val text = resolveCandidateCase(input, phrase.text)
@@ -603,17 +612,19 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                 words.exact(lowerInput, forPrediction = true) + words.complete(lowerInput, null, limit)
             }
         } else null
-        val predictiveSearchReading = when {
-            !enablePrediction || rankedWords != null -> emptyList()
-            // The phrase converter starts completion at two letters. Match it
-            // on the bundled fallback path without loading grammar on the first tap.
-            plainWord && lowerInput.length == 1 && dictionary.wordCompletionBounds != null -> listOf(lowerInput)
-            else -> dictionary.readingTrie.predictiveSearch(
-                prefix = lowerInput,
-                succinctBitVector = dictionary.readingLbsIndex,
-                limit = limit,
-                singleWordOnly = singleWordOnly,
-            )
+        val predictiveSearchReading = traceDebugSection("Sumire T09 English prefix lookup") {
+            when {
+                !enablePrediction || rankedWords != null -> emptyList()
+                // The phrase converter starts completion at two letters. Match it
+                // on the bundled fallback path without loading grammar on the first tap.
+                plainWord && lowerInput.length == 1 && dictionary.wordCompletionBounds != null -> listOf(lowerInput)
+                else -> dictionary.readingTrie.predictiveSearch(
+                    prefix = lowerInput,
+                    succinctBitVector = dictionary.readingLbsIndex,
+                    limit = limit,
+                    singleWordOnly = singleWordOnly,
+                )
+            }
         }
 
         // ★ typo はフラグが true のときだけ
@@ -790,11 +801,12 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         }
 
         // 同一文字列は最小スコアのみ残す
-        val deduped = predictions
-            .groupBy { it.string }
-            .map { (_, list) -> list.minBy { it.score } }
-
-        return deduped.sortedBy { it.score }
+        return traceDebugSection("Sumire T11 English candidate ordering") {
+            predictions
+                .groupBy { it.string }
+                .map { (_, list) -> list.minBy { it.score } }
+                .sortedBy { it.score }
+        }
     }
 
     // The phrase converter handles multiword predictions. A legacy dictionary

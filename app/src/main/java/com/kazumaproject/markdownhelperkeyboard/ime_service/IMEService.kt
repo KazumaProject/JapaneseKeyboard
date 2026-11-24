@@ -1306,7 +1306,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
             if (!shouldApplyCandidateResult(insertString, token)) return@withContext
-            publishSuggestionCandidates(insertString, candidates, fullCandidates)
+            traceDebugSection("Sumire T12-T13 candidate publish and submit") {
+                publishSuggestionCandidates(insertString, candidates, fullCandidates)
+            }
         }
     }
 
@@ -2101,13 +2103,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // A native composing range establishes its start. The last caret can lag
             // a cursor move, so it must not establish the first write's position.
             val start = cursorNativeComposingRange?.first ?: cursorWrittenComposing?.start
-            val applied = currentInputConnection?.setComposingText(text, cursorPosition) ?: false
+            val applied = traceDebugSection("Sumire T06 setComposingText") {
+                currentInputConnection?.setComposingText(text, cursorPosition) ?: false
+            }
             if (applied) cursorWrittenComposing = text?.toString()?.takeIf { it.isNotEmpty() }
                 ?.let { CursorComposingExpectation(start, it) }
             applied
         },
         finishComposingText = {
-            val finished = currentInputConnection?.finishComposingText() ?: false
+            val finished = traceDebugSection("Sumire T06 finishComposingText") {
+                currentInputConnection?.finishComposingText() ?: false
+            }
             if (finished) cursorWrittenComposing = null
             finished
         },
@@ -12061,31 +12067,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleKeyPressFeedback(getKeySoundType(key))
                         }
 
-                        GestureType.Tap -> {
-                            handleTapAndFlick(
-                                key = key,
-                                char = char,
-                                insertString = insertString,
-                                sb = sb,
-                                isFlick = false,
-                                gestureType = gestureType,
-                                suggestions = suggestionList,
-                                mainView = mainView
-                            )
-                        }
-
-
                         else -> {
-                            handleTapAndFlick(
-                                key = key,
-                                char = char,
-                                insertString = insertString,
-                                sb = sb,
-                                isFlick = true,
-                                gestureType = gestureType,
-                                suggestions = suggestionList,
-                                mainView = mainView
-                            )
+                            traceDebugSection("Sumire T04 TenKey action") {
+                                handleTapAndFlick(
+                                    key = key,
+                                    char = char,
+                                    insertString = insertString,
+                                    sb = sb,
+                                    isFlick = gestureType != GestureType.Tap,
+                                    gestureType = gestureType,
+                                    suggestions = suggestionList,
+                                    mainView = mainView
+                                )
+                            }
                         }
                     }
                 }
@@ -16706,7 +16700,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
-                handleAction(action, isFlick, caseResolved = false)
+                traceDebugSection("Sumire T04 Sumire key action") {
+                    handleAction(action, isFlick, caseResolved = false)
+                }
             }
 
             private fun handleAction(action: KeyAction, isFlick: Boolean, caseResolved: Boolean) {
@@ -19567,6 +19563,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             var prevFlag: CandidateShowFlag? = null
             candidateRefreshRequests.collectLatest { request ->
+                if (BuildConfig.DEBUG && isInputPipelineTracing() && request.flag == CandidateShowFlag.Updating) {
+                    android.os.Trace.setCounter(
+                        "Sumire T08 refresh queue ns",
+                        System.nanoTime() - request.publishedAtNanos,
+                    )
+                    traceDebugSection("Sumire T08 collect ${request.sessionId}/${request.revision}") {}
+                }
                 deleteLongPressConversionGate.onCandidateRefreshStarted()
                 val currentFlag = request.flag
                 val insertString = request.input
@@ -19722,7 +19725,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setKeyboardHeightDefault(mainView)
                         }
                         try {
-                            setSuggestionOnView(insertString, mainView)
+                            if (BuildConfig.DEBUG && isInputPipelineTracing()) {
+                                val language = if (currentInputModeForSession == InputMode.ModeEnglish) "en" else "ja"
+                                traceDebugAsync({
+                                    "Sumire refresh $language ${request.sessionId}/${request.revision}"
+                                }) {
+                                    setSuggestionOnView(insertString, mainView)
+                                }
+                            } else {
+                                setSuggestionOnView(insertString, mainView)
+                            }
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
@@ -20167,7 +20179,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 refreshZenzFloatingCandidates()
                 if (string.isEmpty() && stringInTail.get().isEmpty()) composingGuide?.update(null)
                 try {
-                    measureDebugStage("IMEService.input.immediate") {
+                    measureDebugStage("Sumire T05 input.immediate") {
                         processInputString(string, mainView)
                     }
                 } catch (e: CancellationException) {
@@ -22221,7 +22233,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flag: CandidateShowFlag,
         input: String = inputString.value,
     ) {
-        candidateRefreshCoordinator.request(input = input, flag = flag)
+        val request = candidateRefreshCoordinator.request(input = input, flag = flag)
+        if (BuildConfig.DEBUG && isInputPipelineTracing() && flag == CandidateShowFlag.Updating) {
+            traceDebugSection("Sumire T07 refresh ${request.sessionId}/${request.revision}") {}
+        }
     }
 
     private fun restoreRawComposingTextAfterCandidateFailure(
@@ -25633,7 +25648,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
-                    handleQwertyKeyRelease(qwertyKey, tap, variations, GestureType.Tap)
+                    traceDebugSection("Sumire T04 QWERTY release") {
+                        handleQwertyKeyRelease(qwertyKey, tap, variations, GestureType.Tap)
+                    }
                 }
 
                 override fun onCursorFlickQWERTYKey(qwertyKey: QWERTYKey, gestureType: GestureType) {
@@ -28948,7 +28965,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidates: List<Candidate>,
         candidateSegmentsByString: Map<String, List<CandidateConversionSegment>> = emptyMap(),
     ): List<Candidate> {
-        val promotedCandidates = measureDebugStage("IMEService.exactInputPromotion") {
+        val promotedCandidates = measureDebugStage("Sumire T11 merged candidate ordering") {
             ExactInputCandidatePromotionPolicy.promote(
                 input = input,
                 candidates = DateCandidateComposer.compose(input, candidates, dateCandidateConfig),
@@ -29001,9 +29018,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mode: CandidateQueryMode,
         learnRepository: LearnRepository?,
     ): KanaKanjiQueryResult {
-        val engine = awaitKanaKanjiEngineOrNull()
+        val engine = traceDebugAsync({ "Sumire T09 kana-kanji dictionary readiness" }) {
+            awaitKanaKanjiEngineOrNull()?.also { awaitSystemUserDictionaryLoad() }
+        }
             ?: return KanaKanjiQueryResult(candidates = emptyList())
-        awaitSystemUserDictionaryLoad()
         val session = kanaKanjiConversionSession ?: KanaKanjiConversionSession(
             engine = engine,
             backend = conversionBackend,
@@ -32074,7 +32092,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
-        val deleted = connection.deleteSurroundingText(p0, p1)
+        val deleted = traceDebugSection("Sumire T06/T15 deleteSurroundingText") {
+            connection.deleteSurroundingText(p0, p1)
+        }
         if (deleted) {
             editorMutationRevision.advance()
             runOnMainThread { clearEnglishCorrection() }
@@ -32088,7 +32108,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val connection = currentInputConnection ?: return false
         flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
-        val deleted = connection.deleteSurroundingTextInCodePoints(p0, p1)
+        val deleted = traceDebugSection("Sumire T06/T15 deleteSurroundingTextInCodePoints") {
+            connection.deleteSurroundingTextInCodePoints(p0, p1)
+        }
         if (deleted) {
             editorMutationRevision.advance()
             runOnMainThread { clearEnglishCorrection() }
@@ -32149,7 +32171,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
-        val committed = connection.commitText(p0, p1)
+        val committed = traceDebugSection("Sumire T06/T15 commitText") {
+            connection.commitText(p0, p1)
+        }
         fever.committed(p0, committed, _keyboardSymbolViewState.value.isShown)
         if (committed) {
             clearGemmaFloating()
