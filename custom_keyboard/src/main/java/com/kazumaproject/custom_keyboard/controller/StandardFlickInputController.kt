@@ -13,6 +13,7 @@ import android.view.WindowManager
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.skin.AboveKeyFlickPopup
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
@@ -208,8 +209,14 @@ class StandardFlickInputController(
         return false
     }
 
+    internal var aboveKeyPopup: AboveKeyFlickPopup? = null
+
     private fun showPopup(direction: FlickDirection, refreshSkinGuide: Boolean = false) {
         val keyAnchor = anchorView ?: return
+        if (aboveKeyPopup?.isEnabled == true) {
+            aboveKeyPopup?.show(keyAnchor, characterMap[direction]?.let(inputTextTransform), popupStyle)
+            return
+        }
         val windowAnchor = popupWindowAnchorProvider?.invoke() ?: keyAnchor
         if (!isAnchorReady(keyAnchor, windowAnchor)) {
             dismissPopup()
@@ -283,6 +290,7 @@ class StandardFlickInputController(
     }.toMap()
 
     private fun dismissPopup(animateSkinRelease: Boolean = false) {
+        aboveKeyPopup?.dismiss(anchorView)
         if (popupWindow.isShowing) {
             popupWindow.dismiss()
         }

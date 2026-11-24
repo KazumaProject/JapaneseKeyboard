@@ -1407,6 +1407,9 @@
     <string name="done_text">完了</string>
     <string name="qwerty_button_size_preference_title">キーのサイズ</string>
     <string name="qwerty_button_size_preference_summary">キー、文字、特殊キーのアイコンサイズを変更します</string>
+    <string name="flick_popup_position_title">フリックポップアップの位置</string>
+    <string name="flick_popup_position_around_key">キーの周り</string>
+    <string name="flick_popup_position_above_key">キーの上</string>
     <string name="show_flick_key_popup_title">フリック時にポップアップを表示</string>
     <string name="show_long_press_key_popup_title">長押し時にポップアップを表示</string>
     <string name="tenkey_popup_view_style_preference_title">タップ・フリック PopupView のサイズ</string>

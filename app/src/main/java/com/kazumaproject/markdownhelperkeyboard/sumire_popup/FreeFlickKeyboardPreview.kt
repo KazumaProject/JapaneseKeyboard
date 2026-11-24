@@ -78,7 +78,11 @@ internal class FreeFlickKeyboardPreview(context: Context) : FrameLayout(context)
         keyboard.setFlickSensitivityValue(p.flick_sensitivity_preference ?: 100)
         keyboard.setFlickThresholdShape(com.kazumaproject.core.domain.flick.FlickThresholdShape.fromPreferenceValue(p.flick_threshold_shape_preference))
         keyboard.setLongPressTimeout((p.long_press_timeout_preference ?: 300).toLong())
-        keyboard.setKeyPopupVisibility(p.sumire_show_flick_popup_preference, p.sumire_show_long_press_popup_preference)
+        keyboard.setKeyPopupVisibility(
+            p.sumire_show_flick_popup_preference,
+            p.sumire_show_long_press_popup_preference,
+            p.sumireFlickPopupAboveKey
+        )
         fun style(scale: Int, size: Float) = PopupViewStyle(
             if (p.keyboardSkin == KeyboardSkinId.DEFAULT) scale else 100, size,
             p.key_popup_background_color.takeIf { p.key_popup_use_custom_color },

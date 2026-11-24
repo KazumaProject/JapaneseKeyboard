@@ -5,6 +5,8 @@ import android.content.Context
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.skin.AboveKeyFlickPopup
 import com.kazumaproject.core.ui.geometry.KeyboardGeometryMath
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
@@ -59,6 +61,10 @@ class CustomAngleFlickController(
     }
 
     var listener: FlickListener? = null
+    internal var aboveKeyPopup: AboveKeyFlickPopup? = null
+
+    private var popupStyle = PopupViewStyle(100, 28f)
+    private var inputTextTransform: (String) -> String = { it }
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
@@ -119,7 +125,8 @@ class CustomAngleFlickController(
         popupView.setShapeType(shape)
     }
 
-    fun applyPopupViewStyle(style: com.kazumaproject.core.data.popup.PopupViewStyle) {
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = style
         popupView.applyPopupViewStyle(style)
     }
 
@@ -138,6 +145,7 @@ class CustomAngleFlickController(
     }
 
     fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
         popupView.setInputTextTransform(transform)
     }
 
@@ -236,15 +244,19 @@ class CustomAngleFlickController(
                 }
                 popupView.updateFlickDirection(CircularFlickDirection.TAP)
 
-                if (gestureConfig.showFlickPopup) showPopup()
+                if (gestureConfig.showFlickPopup) {
+                    if (aboveKeyPopup?.isEnabled == true) showAboveKeyPopup(view, CircularFlickDirection.TAP)
+                    else showPopup()
+                }
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
                     delay(gestureConfig.longPressTimeoutMillis)
                     isLongPressModeActive = true
+                    aboveKeyPopup?.dismiss(view)
                     if (gestureConfig.showLongPressPopup) {
                         popupView.setFullUIMode(true)
-                        if (!gestureConfig.showFlickPopup) showPopup()
+                        if (!popupWindow.isShowing) showPopup()
                         popupView.invalidate()
                     } else {
                         popupWindow.dismiss()
@@ -285,6 +297,11 @@ class CustomAngleFlickController(
                 if (currentDirection != previousDirection) {
                     popupView.updateFlickDirection(currentDirection)
                     previousDirection = currentDirection
+                }
+                if (!isLongPressModeActive && activeGestureConfig?.showFlickPopup == true &&
+                    aboveKeyPopup?.isEnabled == true
+                ) {
+                    showAboveKeyPopup(view, currentDirection)
                 }
                 listener?.onSelectionChanged(
                     keyMaps.getOrNull(currentMapIndex)?.get(currentDirection),
@@ -339,6 +356,11 @@ class CustomAngleFlickController(
         return false
     }
 
+    private fun showAboveKeyPopup(view: View, direction: CircularFlickDirection) {
+        val action = keyMaps.getOrNull(currentMapIndex)?.get(direction) as? FlickAction.Input
+        aboveKeyPopup?.show(view, action?.char?.let(inputTextTransform), popupStyle)
+    }
+
     private fun showPopup() {
         val keyAnchor = anchorView ?: return
         val windowAnchor = popupWindowAnchorProvider?.invoke() ?: keyAnchor
@@ -376,6 +398,7 @@ class CustomAngleFlickController(
     }
 
     private fun hidePopup() {
+        aboveKeyPopup?.dismiss(anchorView)
         if (popupWindow.isShowing) popupWindow.dismiss()
         anchorView = null
     }

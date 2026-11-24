@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.skin.AboveKeyFlickPopup
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
@@ -53,6 +54,7 @@ class CenterGuideFlickInputController(
     }
 
     var listener: Listener? = null
+    internal var aboveKeyPopup: AboveKeyFlickPopup? = null
 
     private var attachedView: View? = null
     private var popupWindowAnchorProvider: (() -> View?)? = null
@@ -115,6 +117,7 @@ class CenterGuideFlickInputController(
         listener?.onCanceled()
         activeGestureConfig = null
         isTouchActive = false
+        aboveKeyPopup?.dismiss(attachedView)
         popupHost.dismiss()
         attachedView?.setOnTouchListener(null)
         attachedView = null
@@ -135,7 +138,8 @@ class CenterGuideFlickInputController(
                 val tapText = resolveText(TfbiFlickDirection.TAP)
                 listener?.onPress(tapText)
                 if (currentGestureConfig().showFlickPopup) {
-                    showGuide(view, deltaX = 0f, deltaY = 0f)
+                    if (aboveKeyPopup?.isEnabled == true) showAboveKeyPopup(view)
+                    else showGuide(view, deltaX = 0f, deltaY = 0f)
                 }
                 return true
             }
@@ -154,7 +158,13 @@ class CenterGuideFlickInputController(
                 val directionChanged = newDirection != currentDirection
                 currentDirection = newDirection
 
-                if (currentGestureConfig().showFlickPopup) updateGuide(view, deltaX, deltaY)
+                if (currentGestureConfig().showFlickPopup) {
+                    if (aboveKeyPopup?.isEnabled == true) {
+                        if (directionChanged) showAboveKeyPopup(view)
+                    } else {
+                        updateGuide(view, deltaX, deltaY)
+                    }
+                }
                 if (directionChanged) {
                     listener?.onSelectionChanged(
                         resolveText(newDirection).takeIf(String::isNotEmpty),
@@ -187,6 +197,10 @@ class CenterGuideFlickInputController(
             }
         }
         return false
+    }
+
+    private fun showAboveKeyPopup(view: View) {
+        aboveKeyPopup?.show(view, inputTextTransform(resolveText(currentDirection)), popupStyle)
     }
 
     private fun showGuide(view: View, deltaX: Float, deltaY: Float) {
@@ -249,6 +263,7 @@ class CenterGuideFlickInputController(
     private fun finishGesture() {
         isTouchActive = false
         activeGestureConfig = null
+        aboveKeyPopup?.dismiss(attachedView)
         popupHost.dismiss()
         currentDirection = TfbiFlickDirection.TAP
     }

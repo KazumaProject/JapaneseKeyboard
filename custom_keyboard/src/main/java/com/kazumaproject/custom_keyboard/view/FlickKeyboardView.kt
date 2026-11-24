@@ -47,6 +47,7 @@ import com.kazumaproject.core.ui.font.KeyboardFontSnapshot
 import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.ui.skin.AboveKeyFlickPopup
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
@@ -216,6 +217,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         dispatch = { action -> listener?.onAction(action, false) }
     )
 
+    private val aboveKeyFlickPopup = AboveKeyFlickPopup { keyboardFontSnapshot }
     private var showFlickPopup = true
     private var showLongPressPopup = true
     private var popupWindowAnchorProvider: (() -> View?)? = null
@@ -421,9 +423,16 @@ class FlickKeyboardView @JvmOverloads constructor(
         sumireSpecialKeyInputMode = null
     }
 
-    fun setKeyPopupVisibility(showFlickPopup: Boolean, showLongPressPopup: Boolean) {
+    fun setKeyPopupVisibility(
+        showFlickPopup: Boolean,
+        showLongPressPopup: Boolean,
+        showFlickPopupAboveKey: Boolean = false,
+    ) {
+        val aboveKeyEnabled = showFlickPopup && showFlickPopupAboveKey
+        if (aboveKeyFlickPopup.isEnabled != aboveKeyEnabled) cancelTrackedTouchState()
         this.showFlickPopup = showFlickPopup
         this.showLongPressPopup = showLongPressPopup
+        aboveKeyFlickPopup.isEnabled = aboveKeyEnabled
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -1784,6 +1793,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
         if (isUnsupported(keyData)) return null
         val layout = currentLayout ?: return null
+        val aboveKeyPreview = aboveKeyFlickPopup.takeIf {
+            layoutOrigin == KeyboardLayoutOrigin.BUILT_IN && !keyData.isSpecialKey
+        }
 
         keyData.popupMapConfig?.let { config ->
             if (flickGuideEnabled && keyView is AutoSizeButton) {
@@ -1845,6 +1857,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        aboveKeyPopup = aboveKeyPreview
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         val secondaryColor =
@@ -2320,6 +2333,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        aboveKeyPopup = aboveKeyPreview
                         setConcurrentSkinGuidesProvider { independentMultiTouchForCurrentGesture }
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
@@ -2433,6 +2447,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        aboveKeyPopup = aboveKeyPreview
                         setPopupOverlayHostProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyleSet(
@@ -2600,6 +2615,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        aboveKeyPopup = aboveKeyPreview
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
@@ -2752,6 +2768,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
+                        aboveKeyPopup = aboveKeyPreview
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setPopupPresentationMode(tfbiPopupPresentationMode)
                         setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
@@ -3297,6 +3314,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun cancelTrackedTouchState() {
+        aboveKeyFlickPopup.dismissAll()
         independentLastCoordinates.clear()
         independentTextPreviews.clear()
         cancelTextPreview()
