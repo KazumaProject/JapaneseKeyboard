@@ -171,12 +171,13 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
             ColorUtils.blendARGB(panelColor, Color.BLACK, 0.06f),
             Shader.TileMode.CLAMP
         )
-        borderPaint.color = ColorUtils.setAlphaComponent(popupTextColor, 105)
+        val outlined = popupStyle.skinId == KeyboardSkinId.E_INK
+        borderPaint.color = ColorUtils.setAlphaComponent(popupTextColor, if (outlined) 255 else 105)
         gridPaint.color = ColorUtils.setAlphaComponent(popupTextColor, 70)
         if (skin != null) { panelPaint.shader = null; panelPaint.color = skin.palette.key }
         canvas.drawRoundRect(panel, dp(4f), dp(4f), panelPaint)
         panelPaint.shader = null
-        if (skin == null) canvas.drawRoundRect(panel, dp(4f), dp(4f), borderPaint)
+        if (skin == null || outlined) canvas.drawRoundRect(panel, dp(4f), dp(4f), borderPaint)
 
         val cellWidth = panel.width() / 3f
         val cellHeight = panel.height() / 3f

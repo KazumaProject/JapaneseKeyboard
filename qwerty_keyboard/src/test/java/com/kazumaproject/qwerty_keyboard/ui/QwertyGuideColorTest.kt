@@ -23,6 +23,29 @@ import org.robolectric.annotation.Config
 class QwertyGuideColorTest {
     @Test
     fun feverColorsLetterAndNumberGuidesAndSwitchingSkinsRestoresTheirDefaultColor() {
+        val defaultColor = defaultGuideColor()
+        val feverColor = requireNotNull(KeyboardSkinRegistry.find(KeyboardSkinId.FEVER)).palette.text
+        assertRenderedGuideColors(
+            KeyboardSkinId.FEVER to feverColor,
+            KeyboardSkinId.CUPERTINO_LIGHT to defaultColor,
+            KeyboardSkinId.FEVER to feverColor,
+            KeyboardSkinId.DEFAULT to defaultColor,
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "night")
+    fun eInkKeepsGuidesBlackInDarkModeAndRestoresDefaultColorsWhenDeselected() {
+        assertRenderedGuideColors(
+            KeyboardSkinId.E_INK to Color.BLACK,
+            KeyboardSkinId.DEFAULT to defaultGuideColor(),
+        )
+    }
+
+    private fun defaultGuideColor() =
+        ContextCompat.getColor(RuntimeEnvironment.getApplication(), com.kazumaproject.core.R.color.keyboard_icon_color)
+
+    private fun assertRenderedGuideColors(vararg expectedColors: Pair<KeyboardSkinId, Int>) {
         val context = ContextThemeWrapper(
             RuntimeEnvironment.getApplication(),
             com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar
@@ -35,21 +58,14 @@ class QwertyGuideColorTest {
             setFlickUpDetectionEnabled(true)
             setFlickDownDetectionEnabled(true)
         }
-        val defaultColor = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
-        val feverColor = requireNotNull(KeyboardSkinRegistry.find(KeyboardSkinId.FEVER)).palette.text
         val letter = keyboard.findViewById<QWERTYButton>(R.id.key_a)
         val number = keyboard.findViewById<QWERTYButton>(R.id.key_1)
 
-        for ((skin, expectedColor) in listOf(
-            KeyboardSkinId.FEVER to feverColor,
-            KeyboardSkinId.CUPERTINO_LIGHT to defaultColor,
-            KeyboardSkinId.FEVER to feverColor,
-            KeyboardSkinId.DEFAULT to defaultColor
-        )) {
+        for ((skin, expectedColor) in expectedColors) {
             val palette = KeyboardSkinRegistry.find(skin)?.palette
             keyboard.applyKeyboardTheme(
                 themeMode = if (palette == null) "default" else "custom",
-                currentNightMode = Configuration.UI_MODE_NIGHT_NO,
+                currentNightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK,
                 isDynamicColorEnabled = false,
                 customBgColor = palette?.background ?: Color.WHITE,
                 customKeyColor = palette?.key ?: Color.WHITE,

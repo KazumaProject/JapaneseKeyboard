@@ -73,6 +73,7 @@ object KeyboardSkinRegistry {
         CupertinoSkin(KeyboardSkinId.CUPERTINO_DARK),
         CupertinoClassicSkin(),
         FeverSkin(),
+        EInkSkin(),
     ).associateBy { it.id }
 
     @JvmStatic fun find(id: KeyboardSkinId): KeyboardSkin? = skins[id]

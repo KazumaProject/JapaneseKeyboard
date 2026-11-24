@@ -23,6 +23,8 @@ object KeyboardThemeCatalog {
             R.string.keyboard_skin_classic_description),
         KeyboardThemeOption(KeyboardSkinId.FEVER, R.string.keyboard_skin_fever,
             R.string.keyboard_skin_fever_description),
+        KeyboardThemeOption(KeyboardSkinId.E_INK, R.string.keyboard_skin_e_ink,
+            R.string.keyboard_skin_e_ink_description),
     )
 
     fun find(id: KeyboardSkinId): KeyboardThemeOption = options.first { it.id == id }

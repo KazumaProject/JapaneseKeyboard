@@ -5657,7 +5657,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setupMainKeyboardTouchEffect(mainView: MainLayoutBinding) {
         val effectType = KeyboardTouchEffectType.normalize(keyboardTouchEffectTypePreference)
-        val mainSurfaceActive = isKeyboardFloatingMode != true
+        val mainSurfaceActive = isKeyboardFloatingMode != true && keyboardSkinId != KeyboardSkinId.E_INK
         val liquidInkEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isLiquidInk(effectType)
         val auroraInkEnabled =
@@ -5783,7 +5783,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView: FloatingKeyboardLayoutBinding
     ) {
         val effectType = KeyboardTouchEffectType.normalize(keyboardTouchEffectTypePreference)
-        val floatingSurfaceActive = isKeyboardFloatingMode == true
+        val floatingSurfaceActive = isKeyboardFloatingMode == true && keyboardSkinId != KeyboardSkinId.E_INK
         val liquidInkEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isLiquidInk(effectType)
         val auroraInkEnabled =
@@ -8431,7 +8431,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 button.background = chrome.expandButtonBackground(button.resources)
                 button.imageTintList = chrome.expandButtonTint()
                 button.clearColorFilter()
-            } else if (keyboardSkinId == KeyboardSkinId.FEVER && skin != null) {
+            } else if (skin != null && (skin.id == KeyboardSkinId.FEVER || skin.id == KeyboardSkinId.E_INK)) {
                 button.background = skin.keyDrawable(button.resources,
                     role = com.kazumaproject.core.ui.skin.SkinKeyRole.MODIFIER)
                 button.imageTintList = android.content.res.ColorStateList.valueOf(skin.palette.specialText)

@@ -257,7 +257,7 @@ class TfbiFlickPopupView(context: Context) : View(context), KeyboardFontAware {
         val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = density.coerceAtLeast(1f)
-            color = ColorUtils.setAlphaComponent(palette.text, 54)
+            color = ColorUtils.setAlphaComponent(palette.text, if (skinId == KeyboardSkinId.E_INK) 255 else 54)
         }
         canvas.drawPath(panelShape, outline)
 

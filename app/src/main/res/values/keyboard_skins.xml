@@ -5,6 +5,7 @@
     <string name="keyboard_skin_cupertino_light">Cupertino Light</string>
     <string name="keyboard_skin_cupertino_dark">Cupertino Dark</string>
     <string name="keyboard_skin_cupertino_classic">Cupertino Classic</string>
+    <string name="keyboard_skin_e_ink">E Ink</string>
     <string name="keyboard_skin_summary">Use the skin’s colors, keys, and popups. Your existing appearance settings are preserved and restored when you select Default.</string>
     <string name="keyboard_skin_choose">Choose a theme</string>
     <string name="keyboard_skin_selection_description">Tap a preview to apply a theme.</string>
@@ -13,5 +14,6 @@
     <string name="keyboard_skin_light_description">Bright keys on a soft gray background.</string>
     <string name="keyboard_skin_dark_description">Dark keys with clear, light lettering.</string>
     <string name="keyboard_skin_classic_description">Bevelled keys on a cool-toned background.</string>
+    <string name="keyboard_skin_e_ink_description">Black outlines and high-contrast keys for e-paper displays.</string>
     <string name="keyboard_skin_preview_note">Each preview applies the theme to your current keyboard layout.</string>
 </resources>
