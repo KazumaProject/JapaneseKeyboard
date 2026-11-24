@@ -8,3 +8,9 @@
 | 旧計測は suspend 区間にスレッド専用の Trace を使っていた | 計測の不整合要因。非同期 Trace で開始と終了を組にする。実際の入力遅延への影響は未計測。 | [CandidatePerfTrace](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/CandidatePerfTrace.kt#L81) |
 
 上の項目は調査対象。断続的な遅延の根本原因の確定には、異常サンプルの区間とその処理の照合が必要。
+
+## 実機で確認した一例
+
+Pixel 6 の「あさ」への更新で、候補要求公開から Collector 開始まで 19.459 ms。その間に Main は 17.662 ms 実行状態で、`Choreographer#doFrame` の中の View 計測に 15.004 ms を使っていた。同じ要求内の DP・N-best は 2.736 ms、候補公開後の差分コマンドは 11.596 ms。この試行では変換だけを短縮しても、Main の待ちと差分処理は残る。 [候補要求](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt#L22232) · [差分コマンド](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/adapters/SuggestionAdapter.kt#L863)
+
+この試行はエディタと IME が同一プロセスの計測ホストで採取した。View 計測の内訳を IME とエディタに分離できておらず、常用時の断続的な遅延の原因までは確定していない。 [計測値と範囲](benchmark-before.md)

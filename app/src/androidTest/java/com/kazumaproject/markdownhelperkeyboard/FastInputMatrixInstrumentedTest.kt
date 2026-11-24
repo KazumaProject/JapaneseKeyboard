@@ -137,14 +137,14 @@ class FastInputMatrixInstrumentedTest {
                                 val candidates = awaitPipelineCandidates { texts -> texts != previous }
                                 val candidatesObserved = SystemClock.elapsedRealtimeNanos()
                                 val candidate = checkNotNull(findVisibleNodeById("suggestion_item_text_view"))
-                                val expectedCommit = candidate.text.toString()
+                                val expectedCommit = candidate.text.toString().trim()
                                 val (_, commitUp) = injectPipelineTap(candidate.screenRect().center)
-                                val commitObserved = awaitPipelineCommit(scenario, expectedCommit)
+                                val (commitObserved, committedText) = awaitPipelineCommit(scenario, expectedCommit)
                                 val values = listOf(down, up, editorChangeNs.get(),
                                     editorFrameNs.get(), candidatesObserved, commitUp, commitObserved)
                                 values.joinToString("\t") + "\t" +
                                     JSONArray(candidates).toString() + "\t" +
-                                    JSONObject.quote(expectedCommit)
+                                    JSONObject.quote(committedText)
                             } finally {
                                 Trace.endAsyncSection(label, index)
                                 scenario.onActivity { activity ->
@@ -183,20 +183,24 @@ class FastInputMatrixInstrumentedTest {
         return downNs to upNs
     }
 
-    private fun awaitPipelineCommit(scenario: FastInputHostSession, expected: String): Long {
+    private fun awaitPipelineCommit(scenario: FastInputHostSession, expected: String): Pair<Long, String> {
         val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        var lastText = ""
+        var composingStart = -1
         do {
             var committedAtNs = 0L
             scenario.onActivity {
                 val text = it.editText.text
-                if (text.toString() == expected && BaseInputConnection.getComposingSpanStart(text) < 0) {
+                lastText = text.toString()
+                composingStart = BaseInputConnection.getComposingSpanStart(text)
+                if (lastText.trim() == expected && composingStart < 0) {
                     committedAtNs = SystemClock.elapsedRealtimeNanos()
                 }
             }
-            if (committedAtNs != 0L) return committedAtNs
+            if (committedAtNs != 0L) return committedAtNs to lastText
             SystemClock.sleep(PREVIEW_TEXT_POLL_MS)
         } while (SystemClock.uptimeMillis() < deadline)
-        throw AssertionError("The editor did not receive the selected candidate")
+        throw AssertionError("Selected [$expected], editor [$lastText], composingStart=$composingStart")
     }
 
     private data class PipelineCase(
