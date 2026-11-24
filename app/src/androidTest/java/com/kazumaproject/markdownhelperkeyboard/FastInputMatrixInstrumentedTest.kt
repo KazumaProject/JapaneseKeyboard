@@ -27,24 +27,31 @@ import android.view.InputDevice
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewTreeObserver
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.InputMethodManager
+import android.view.inspector.WindowInspector
+import android.widget.TextView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
+import androidx.recyclerview.widget.RecyclerView
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -81,11 +88,11 @@ class FastInputMatrixInstrumentedTest {
         runPhysicalDeviceSession("input-pipeline") { session ->
             val output = File(session.outputDirectory, "input-pipeline.tsv")
             val cases = listOf(
-                PipelineCase("ja", TestKeyboard.TENKEY, listOf("key_1"), "あ", "key_3", "あさ"),
-                PipelineCase("en", TestKeyboard.QWERTY, listOf("key_k", "key_e"), "ke", "key_y", "key"),
+                PipelineCase("ja", TestKeyboard.TENKEY, listOf("key_1"), "あ", "key_3", "あさ", "朝"),
+                PipelineCase("en", TestKeyboard.QWERTY, listOf("key_k", "key_e"), "ke", "key_y", "key", "key"),
             )
             output.printWriter().use { report ->
-                report.println("language\tsample\tdown_ns\tup_ns\teditor_change_ns\teditor_frame_submit_ns\tcandidates_observed_ns\tcommit_up_ns\tcommit_observed_ns\tvisible_candidates\tcommitted_text")
+                report.println("language\tsample\tdown_ns\tup_ns\teditor_change_ns\teditor_frame_submit_ns\tcandidates_observed_ns\tcommit_up_ns\tcommit_observed_ns\tordered_candidates\tcommitted_text")
                 for (case in cases) {
                     applyCasePreferences(session.preferences, previewTestCase(case.keyboard))
                     check(session.preferences.edit()
@@ -108,14 +115,16 @@ class FastInputMatrixInstrumentedTest {
                                 check(injectTap(awaitVisibleNodeBounds(key).center))
                             }
                             assertEquals(case.prefix, awaitEditorText(scenario) { it == case.prefix })
-                            val previous = awaitPipelineCandidates { texts ->
-                                texts.any { it.equals(case.prefix, ignoreCase = true) }
-                            }
+                            awaitPipelineCandidate(case.prefix)
                             val editorChangeNs = AtomicLong()
                             val editorFrameNs = AtomicLong()
+                            val candidateFrame = AtomicReference<PipelineCandidates>()
                             val finalKey = awaitVisibleNodeBounds(case.finalKey).center
                             val label = "Sumire benchmark ${case.language} $index"
                             var watcher: TextWatcher? = null
+                            var observer: ViewTreeObserver? = null
+                            var candidateDraw: ViewTreeObserver.OnPreDrawListener? = null
+                            lateinit var recycler: RecyclerView
                             Trace.beginAsyncSection(label, index)
                             val timestamps = try {
                                 scenario.onActivity { activity ->
@@ -130,25 +139,47 @@ class FastInputMatrixInstrumentedTest {
                                             }
                                         }
                                     }
+                                    recycler = checkNotNull(WindowInspector.getGlobalWindowViews()
+                                        .firstNotNullOfOrNull {
+                                            it.findViewById<RecyclerView>(R.id.suggestion_recycler_view)
+                                        })
+                                    val adapter = recycler.adapter as SuggestionAdapter
+                                    val previous = adapter.suggestions
+                                    val listener = ViewTreeObserver.OnPreDrawListener {
+                                        val current = adapter.suggestions
+                                        if (editorChangeNs.get() != 0L && current !== previous &&
+                                            candidateFrame.get() == null &&
+                                            current.firstOrNull()?.string?.trim() == case.candidate
+                                        ) {
+                                            if (pipelineCandidateView(recycler, case.candidate) != null) {
+                                                candidateFrame.set(PipelineCandidates(
+                                                    current.map { it.string },
+                                                    SystemClock.elapsedRealtimeNanos(),
+                                                ))
+                                            }
+                                        }
+                                        true
+                                    }
+                                    observer = recycler.viewTreeObserver.also { it.addOnPreDrawListener(listener) }
+                                    candidateDraw = listener
                                 }
                                 val (down, up) = injectPipelineTap(finalKey)
                                 assertEquals(case.reading, awaitEditorText(scenario) { it == case.reading })
                                 check(editorChangeNs.get() >= up) { "Editor change was not observed after UP" }
-                                val candidates = awaitPipelineCandidates { texts -> texts != previous }
-                                val candidatesObserved = SystemClock.elapsedRealtimeNanos()
-                                val candidate = checkNotNull(findVisibleNodeById("suggestion_item_text_view"))
-                                val expectedCommit = candidate.text.toString().trim()
-                                val (_, commitUp) = injectPipelineTap(candidate.screenRect().center)
-                                val (commitObserved, committedText) = awaitPipelineCommit(scenario, expectedCommit)
+                                val candidates = awaitPipelineCandidateFrame(candidateFrame, case.candidate)
+                                val target = awaitPipelineCommitTarget(scenario, recycler, case.candidate)
+                                val (_, commitUp) = injectPipelineTap(target)
+                                val (commitObserved, committedText) = awaitPipelineCommit(scenario, case.candidate)
                                 val values = listOf(down, up, editorChangeNs.get(),
-                                    editorFrameNs.get(), candidatesObserved, commitUp, commitObserved)
+                                    editorFrameNs.get(), candidates.observedNs, commitUp, commitObserved)
                                 values.joinToString("\t") + "\t" +
-                                    JSONArray(candidates).toString() + "\t" +
+                                    JSONArray(candidates.texts).toString() + "\t" +
                                     JSONObject.quote(committedText)
                             } finally {
                                 Trace.endAsyncSection(label, index)
                                 scenario.onActivity { activity ->
                                     watcher?.let(activity.editText::removeTextChangedListener)
+                                    candidateDraw?.let { observer?.takeIf { entry -> entry.isAlive }?.removeOnPreDrawListener(it) }
                                 }
                             }
                             if (index >= warmup) {
@@ -163,14 +194,62 @@ class FastInputMatrixInstrumentedTest {
         }
     }
 
-    private fun awaitPipelineCandidates(matches: (List<String>) -> Boolean): List<String> {
+    private fun awaitPipelineCandidate(expected: String) {
         val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
         do {
-            val texts = findCandidateState().texts
-            if (texts.isNotEmpty() && matches(texts)) return texts
+            if (findCandidateState().texts.any { it.equals(expected, ignoreCase = true) }) return
             SystemClock.sleep(PREVIEW_CANDIDATE_POLL_MS)
         } while (SystemClock.uptimeMillis() < deadline)
-        throw AssertionError("No matching candidates became visible")
+        throw AssertionError("Candidate [$expected] did not become visible")
+    }
+
+    private fun pipelineCandidateView(recycler: RecyclerView, expected: String): View? {
+        for (index in 0 until recycler.childCount) {
+            val child = recycler.getChildAt(index)
+            if (recycler.getChildAdapterPosition(child) == RecyclerView.NO_POSITION) continue
+            val text = child.findViewById<TextView>(R.id.suggestion_item_text_view) ?: continue
+            if (text.isShown && text.width > 0 && text.height > 0 && text.text.toString().trim() == expected) {
+                return child
+            }
+        }
+        return null
+    }
+
+    private fun awaitPipelineCommitTarget(
+        scenario: FastInputHostSession,
+        recycler: RecyclerView,
+        expected: String,
+    ): PointF {
+        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        var previous: PointF? = null
+        do {
+            var point: PointF? = null
+            scenario.onActivity {
+                if (!recycler.hasPendingAdapterUpdates() && !recycler.isAnimating) {
+                    pipelineCandidateView(recycler, expected)?.let { view ->
+                        val position = IntArray(2)
+                        view.getLocationOnScreen(position)
+                        point = PointF(position[0] + view.width / 2f, position[1] + view.height / 2f)
+                    }
+                }
+            }
+            point?.takeIf { it == previous }?.let { return it }
+            previous = point
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        } while (SystemClock.uptimeMillis() < deadline)
+        throw AssertionError("Candidate [$expected] did not settle before commit")
+    }
+
+    private fun awaitPipelineCandidateFrame(
+        frame: AtomicReference<PipelineCandidates>,
+        expected: String,
+    ): PipelineCandidates {
+        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        do {
+            frame.get()?.let { return it }
+            SystemClock.sleep(PREVIEW_CANDIDATE_POLL_MS)
+        } while (SystemClock.uptimeMillis() < deadline)
+        throw AssertionError("Candidate [$expected] did not reach pre-draw")
     }
 
     private fun injectPipelineTap(point: PointF): Pair<Long, Long> {
@@ -210,7 +289,10 @@ class FastInputMatrixInstrumentedTest {
         val prefix: String,
         val finalKey: String,
         val reading: String,
+        val candidate: String,
     )
+
+    private data class PipelineCandidates(val texts: List<String>, val observedNs: Long)
 
     @Test
     fun qwertyRomajiCapsLockOffResumesRomajiConversionOnPhysicalDevice() {

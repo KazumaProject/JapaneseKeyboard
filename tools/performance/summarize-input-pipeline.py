@@ -71,7 +71,7 @@ def compare(before, after):
         later = after[key]
         if any(
             json.loads(prior[column]) != json.loads(later[column])
-            for column in ("visible_candidates", "committed_text")
+            for column in ("ordered_candidates", "committed_text")
         ):
             differences.append(key)
     print("\n## P95 and P99 comparison\n")

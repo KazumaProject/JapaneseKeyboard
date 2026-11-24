@@ -1,7 +1,9 @@
 // Adapted from kotlin-kana-kanji-converter at dbbb97f (MIT). See the bundled English dictionary notices.
 package com.kazumaproject.markdownhelperkeyboard.converter.english.phrase
 
+import android.util.LruCache
 import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
+import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
 import java.util.PriorityQueue
 
 internal data class DictionaryCandidate(val reading: String, val surface: String, val cost: Int)
@@ -10,6 +12,10 @@ internal class EnglishPhraseDictionary(
     private val dictionary: CompactEnglishDictionary,
     val grammarRoles: GrammarRoles,
 ) {
+    private data class CompletionKey(val prefix: String, val limit: Int)
+
+    private val wordCompletions = LruCache<CompletionKey, List<DictionaryCandidate>>(32)
+
     fun prefixes(text: String): List<String> =
         dictionary.readingTrie.commonPrefixSearch(text, dictionary.readingLbsIndex)
 
@@ -48,6 +54,24 @@ internal class EnglishPhraseDictionary(
     }
 
     fun complete(prefix: String, surfacePrefix: String?, limit: Int): List<DictionaryCandidate> {
+        // Short prefixes recur on deletion, retyping, and completion after earlier words.
+        val key = if (surfacePrefix == null && prefix.length <= 12 && limit in 1..32) {
+            CompletionKey(prefix, limit)
+        } else {
+            null
+        }
+        val cached = key?.let(wordCompletions::get)
+        if (cached != null) {
+            return traceDebugSection("Sumire T09 English completion cache hit") { cached }
+        }
+        val candidates = traceDebugSection("Sumire T09 English completion search") {
+            searchCompletions(prefix, surfacePrefix, limit)
+        }
+        if (key != null && candidates.isNotEmpty()) wordCompletions.put(key, candidates)
+        return candidates
+    }
+
+    private fun searchCompletions(prefix: String, surfacePrefix: String?, limit: Int): List<DictionaryCandidate> {
         val best = PriorityQueue(completionOrder.reversed())
         val policy = EnglishCompletionPolicy(surfacePrefix ?: prefix, grammarRoles)
         val terms = dictionary.readingTrie.termsStartingWith(

@@ -351,6 +351,27 @@ class EnglishPhraseDictionaryInstrumentedTest {
     }
 
     @Test
+    fun repeatedWordCompletionsPreserveCandidatesCostsAndOrder() = withDictionary { _, _, reader ->
+        val data = checkNotNull(reader.loadBundledEnglishForEngine())
+        val grammar = checkNotNull(reader.loadBundledEnglishGrammar())
+        val words = EnglishPhraseDictionary(data, grammar)
+        val reference = EnglishPhraseDictionary(
+            data.copy(wordCompletionBounds = null),
+            grammar,
+        )
+        val prefixes = listOf("ke", "key", "keyb", "don", "auto", "an", "re", "zz")
+        for (prefix in prefixes) {
+            for (limit in listOf(4, 32)) {
+                val expected = reference.complete(prefix, null, limit)
+                assertEquals("$prefix limit=$limit", expected, words.complete(prefix, null, limit))
+                assertEquals("$prefix limit=$limit (repeated)", expected, words.complete(prefix, null, limit))
+            }
+        }
+        assertEquals(reference.complete("don", "don'", 32), words.complete("don", "don'", 32))
+        assertEquals(reference.complete("key", null, 32), words.complete("key", null, 32))
+    }
+
+    @Test
     fun sampledVocabularyPrefixesPreserveTypedWordBoundaries() = withDictionary { _, _, reader ->
         val data = checkNotNull(reader.loadBundledEnglishForEngine())
         val words = EnglishPhraseDictionary(data, checkNotNull(reader.loadBundledEnglishGrammar()))

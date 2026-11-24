@@ -38,9 +38,9 @@ Mozc の生成入力とコミット済み出力が比較元と一致する場合
 
 ## 実行と集計
 
-1. ネットワークを無効にしたテスト端末を起動し、画面をロック解除して縦向きにする。向きは計測用エディタを開いてから検証する。接続先が複数ある場合、`adb -s SERIAL` で対象を固定する。
+1. オフライン動作も検証する場合は、テスト端末のネットワークを無効にする。画面をロック解除して縦向きにし、向きは計測用エディタを開いてから検証する。接続先が複数ある場合、`adb -s SERIAL` で対象を固定する。
 2. 次のテストを実行する。既定のサンプル数は日英それぞれ 200 で、ウォームアップを 20 回行う。まず少数で経路を確認できる。TenKey の「あ」に「さ」を追加、QWERTY の `ke` に `y` を追加し、候補をタップして確定する。候補の一時表示、ライブ変換、学習、装飾エフェクトを除外した通常入力シナリオ。 [試験本体](../../app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/FastInputMatrixInstrumentedTest.kt#L74)
-3. 出力に含まれる `INPUT_PIPELINE_REPORT` のパスを `adb pull` で取得する。ファイルは言語ごとのサンプルを保持する。必須の文字変更・候補・確定は期限内に観測できなければテストを失敗させる。HW フレームのコールバックがなかったサンプルは 0 を記録し、集計では未取得として扱う。
+3. 出力に含まれる `INPUT_PIPELINE_REPORT` のパスを `adb pull` で取得する。ファイルは言語ごとのサンプルを保持する。候補はプライマリ一覧の pre-draw で対象の候補ビューと候補配列を同時に読み取る。確定用のタップは候補ビューの座標が安定してから送信する。必須の文字変更・候補・確定は期限内に観測できなければテストを失敗させる。HW フレームのコールバックがなかったサンプルは 0 を記録し、集計では未取得として扱う。
 
 ```bash
 adb shell am instrument -w -r \
@@ -50,7 +50,9 @@ adb shell am instrument -w -r \
 python3 tools/performance/summarize-input-pipeline.py before.tsv after.tsv
 ```
 
-サマリーは平均、nearest-rank の P50 / P95 / P99、最大を報告する。少数サンプルの P99 は上位のごく少数、100 未満では最大と一致することがある。同じ入力で観測できた候補配列の順序と確定結果を比較する。可視範囲外の候補や内部スコアはエンジンの回帰試験で別に比較する。
+サマリーは平均、nearest-rank の P50 / P95 / P99、最大を報告する。少数サンプルの P99 は上位のごく少数、100 未満では最大と一致することがある。同じ入力でプライマリ一覧に渡された候補文字列の順序と確定結果を比較する。内部スコアはエンジンの回帰試験で比較する。
+
+DOWN と UP はタップ送信直前の時刻。DOWN 起点には押下中の待ちと DOWN のイベント配信が含まれる。タップ後の処理を比較する場合は UP 起点を併記する。
 
 ## Perfetto の収集
 
@@ -74,9 +76,9 @@ adb pull /data/misc/perfetto-traces/sumire-input.pftrace
 | T07–T08 | `sessionId/revision` 付きの要求公開と Collector 開始。専用変換スレッドの待ち単独は未分離 |
 | T09–T11 | 辞書準備、英語の prefix・候補生成・順位、通常のかな漢字 DP/N-best、候補統合。かな漢字のグラフには既存のセッション計測を併用 |
 | T12–T13 | 候補の公開・submit とアダプターの Diff 処理 |
-| T14 | エディタフレームの提出、候補のアクセシビリティ観測、利用可能なら SurfaceFlinger の FrameTimeline |
+| T14 | エディタフレームの提出、候補ビューの pre-draw、利用可能なら SurfaceFlinger の FrameTimeline |
 | T16 | `dalvik` の GC と scheduler、Main thread の停止、プロセスのメモリ統計 |
 
-TSV は単調増加の `elapsedRealtimeNanos` を使う。T08 は同じプロセスでの `System.nanoTime` の差。時計の異なる絶対値を引き算しない。試行は `Sumire benchmark <lang> <sample>` の非同期スライスで識別する。タッチから各候補世代への厳密な 1 対 1 の ID は付いていないため、連続・マルチタッチ時に時間的な近さだけで帰属を決めない。 `registerFrameCommitCallback` は HW フレームの提出を知らせる。候補のアクセシビリティ観測や InputConnection の完了は描画完了として扱わない。 [計測コード](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/CandidatePerfTrace.kt#L34) · [Android ViewTreeObserver](https://developer.android.com/reference/android/view/ViewTreeObserver#registerFrameCommitCallback(java.lang.Runnable))
+TSV は単調増加の `elapsedRealtimeNanos` を使う。T08 は同じプロセスでの `System.nanoTime` の差。時計の異なる絶対値を引き算さない。試行は `Sumire benchmark <lang> <sample>` の非同期スライスで識別する。単発試行はテストの入力区間と各候補要求を照合できる。連続・マルチタッチ時の厳密な追跡にはタッチと候補世代の対応付けが必要。`registerFrameCommitCallback` は HW フレームの提出、候補の pre-draw は View の描画直前を知らせる。画面表示の時刻には SurfaceFlinger 側の情報が必要。 [計測コード](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/CandidatePerfTrace.kt#L34) · [Android ViewTreeObserver](https://developer.android.com/reference/android/view/ViewTreeObserver#registerFrameCommitCallback(java.lang.Runnable))
 
 長文、スペルミス、大小文字、複数文節、連続削除・再入力、高速フリック、起動・再表示、長時間、外部アプリ間切り替え、メモリ圧迫、省電力、リフレッシュレート差は条件別の追加測定。初期試験の結果をこれらの条件に拡張しない。
