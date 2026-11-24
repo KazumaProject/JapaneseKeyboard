@@ -50,18 +50,27 @@ class QWERTYButton @JvmOverloads constructor(
             invalidate()
         }
 
+    private val defaultGuideTextColor =
+        ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
+
     /**
      * ✅ STEP 2: 文字描画用のPaintオブジェクトを準備
      */
     private val topRightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color =
-            ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
+        color = defaultGuideTextColor
         textAlign = Paint.Align.RIGHT
         textSize = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP,
             guideTextSizeSp,
             context.resources.displayMetrics
         )
+    }
+
+    internal fun setGuideTextColor(color: Int?) {
+        val guideColor = color ?: defaultGuideTextColor
+        if (topRightPaint.color == guideColor) return
+        topRightPaint.color = guideColor
+        invalidate()
     }
 
     init {
