@@ -81,4 +81,6 @@ adb pull /data/misc/perfetto-traces/sumire-input.pftrace
 
 TSV は単調増加の `elapsedRealtimeNanos` を使う。T08 は同じプロセスでの `System.nanoTime` の差。時計の異なる絶対値を引き算さない。試行は `Sumire benchmark <lang> <sample>` の非同期スライスで識別する。単発試行はテストの入力区間と各候補要求を照合できる。連続・マルチタッチ時の厳密な追跡にはタッチと候補世代の対応付けが必要。`registerFrameCommitCallback` は HW フレームの提出、候補の pre-draw は View の描画直前を知らせる。画面表示の時刻には SurfaceFlinger 側の情報が必要。 [計測コード](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/CandidatePerfTrace.kt#L34) · [Android ViewTreeObserver](https://developer.android.com/reference/android/view/ViewTreeObserver#registerFrameCommitCallback(java.lang.Runnable))
 
+Perfetto のプロセス名がアプリ起動直後に `zygote64` と記録される場合、`Sumire T01 touch DOWN` のスレッドから `upid` を取得する。同じ `upid` で FrameTimeline と RSS を照合する。計測用エディタと IME は同じプロセスで動くため、プロセス全体の統計には両方が含まれる。
+
 長文、スペルミス、大小文字、複数文節、連続削除・再入力、高速フリック、起動・再表示、長時間、外部アプリ間切り替え、メモリ圧迫、省電力、リフレッシュレート差は条件別の追加測定。初期試験の結果をこれらの条件に拡張しない。

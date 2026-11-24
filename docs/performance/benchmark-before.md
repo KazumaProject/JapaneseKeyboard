@@ -2,12 +2,23 @@
 
 比較元は `dev f3bc31372` に性能計測用のトレースとテストを加えた状態。入力と候補の挙動に手を入れる前に測る。数値を取得した条件とサンプル数、失敗・未取得数をこのファイルに記録する。
 
-| 指標 | 状態 |
-|---|---|
-| T01〜T08 タッチ・入力・候補待ち | 未計測 |
-| 日本語・英語の候補 P50 / P95 / P99 / 最大 | 未計測 |
-| エディタ更新・確定・フレーム提出 | 未計測 |
-| デバイスの Jank、GC、メモリ | 未計測 |
+Pixel 6、Android 17（API 37）、Lite Standard Debug、縦向き。TenKey の「あ→あさ」と QWERTY の `ke → key` を日英それぞれ10回ウォームアップ後に100回測定した。集計時の Perfetto は停止。エディタの確定文字列は各回で「朝」「key」を確認した。端末の無線設定は維持し、アプリと計測用 APK の両方に `android.permission.INTERNET` がないことを `aapt dump permissions` で確認した。
+## 計測値
+
+| Language | Endpoint | n | Mean ms | P50 ms | P95 ms | P99 ms | Max ms |
+|---|---|---:|---:|---:|---:|---:|---:|
+| ja | DOWN → editor text change | 100 | 48.039 | 47.951 | 56.575 | 57.748 | 60.146 |
+| ja | UP → editor text change | 100 | 10.327 | 10.368 | 12.068 | 12.676 | 12.828 |
+| ja | DOWN → editor frame submission | 100 | 60.240 | 60.307 | 68.412 | 70.508 | 71.859 |
+| ja | DOWN → candidate observation | 100 | 112.662 | 110.405 | 136.079 | 152.858 | 160.277 |
+| ja | UP → candidate observation | 100 | 74.950 | 74.166 | 95.122 | 112.294 | 115.382 |
+| ja | Commit UP → committed text observation | 100 | 27.173 | 24.961 | 36.702 | 37.761 | 38.203 |
+| en | DOWN → editor text change | 100 | 57.461 | 56.904 | 66.934 | 67.460 | 70.109 |
+| en | UP → editor text change | 100 | 12.560 | 12.541 | 14.345 | 15.559 | 19.384 |
+| en | DOWN → editor frame submission | 100 | 64.412 | 64.454 | 74.070 | 74.469 | 76.191 |
+| en | DOWN → candidate observation | 100 | 103.049 | 102.925 | 125.142 | 134.886 | 136.377 |
+| en | UP → candidate observation | 100 | 58.148 | 57.313 | 77.113 | 82.564 | 83.765 |
+| en | Commit UP → committed text observation | 100 | 22.545 | 21.768 | 30.147 | 33.361 | 33.878 |
 
 ## Pixel 6 での経路確認
 
