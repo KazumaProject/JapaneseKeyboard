@@ -8,28 +8,37 @@
 
 ```bash
 performance_init=$(mktemp /tmp/sumire-perf-init.XXXXXX)
+performance_manifest=$(mktemp /tmp/sumire-perf-manifest.XXXXXX)
+sed -e 's/com.kazumaproject.markdownhelperkeyboard.settingsbackuptest/com.kazumaproject.inputperformance.lite.test.settingsbackuptest/' \
+    -e 's/com.kazumaproject.markdownhelperkeyboard.lite.localfonttest/com.kazumaproject.inputperformance.lite.test.localfonttest/' \
+    app/src/androidTest/AndroidManifest.xml > "$performance_manifest"
 cat > "$performance_init" <<'GRADLE'
 allprojects { project ->
     project.plugins.withId('com.android.application') {
         if (project.path == ':app') {
             project.androidComponents.finalizeDsl { android ->
                 android.defaultConfig.applicationId = 'com.kazumaproject.inputperformance'
+                android.sourceSets.androidTest.manifest.srcFile(
+                    project.providers.environmentVariable('SUMIRE_INPUT_PERF_MANIFEST').get()
+                )
             }
         }
     }
 }
 GRADLE
-./gradlew --offline -I "$performance_init" \
+SUMIRE_INPUT_PERF_MANIFEST="$performance_manifest" ./gradlew --offline -I "$performance_init" \
   :app:assembleLiteStandardDebug :app:assembleLiteStandardDebugAndroidTest
 adb install -r app/build/outputs/apk/liteStandard/debug/app-lite-standard-debug.apk
 adb install -r -t app/build/outputs/apk/androidTest/liteStandard/debug/app-lite-standard-debug-androidTest.apk
 ```
 
+検証用 test APK では未使用のテスト用コンテンツプロバイダーの authority も変更しておく。ほかの検証用 APK が既にインストールされている端末でも共存できる。
+
 Mozc の生成入力とコミット済み出力が比較元と一致する場合、調査用ビルドに `-x :app:generateMozcSegmenterData` を指定できる。この場合も整合性検査は実行する。辞書データを変更した比較では通常の生成を使う。 [ビルド時の検査](../../app/build.gradle#L1289)
 
 ## 実行と集計
 
-1. ネットワークを無効にしたテスト端末を起動し、画面をロック解除する。接続先が複数ある場合、`adb -s SERIAL` で対象を固定する。
+1. ネットワークを無効にしたテスト端末を起動し、画面をロック解除して縦向きにする。向きは計測用エディタを開いてから検証する。接続先が複数ある場合、`adb -s SERIAL` で対象を固定する。
 2. 次のテストを実行する。既定のサンプル数は日英それぞれ 200 で、ウォームアップを 20 回行う。まず少数で経路を確認できる。TenKey の「あ」に「さ」を追加、QWERTY の `ke` に `y` を追加し、候補をタップして確定する。候補の一時表示、ライブ変換、学習、装飾エフェクトを除外した通常入力シナリオ。 [試験本体](../../app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/FastInputMatrixInstrumentedTest.kt#L74)
 3. 出力に含まれる `INPUT_PIPELINE_REPORT` のパスを `adb pull` で取得する。ファイルは言語ごとのサンプルを保持する。必須の文字変更・候補・確定は期限内に観測できなければテストを失敗させる。HW フレームのコールバックがなかったサンプルは 0 を記録し、集計では未取得として扱う。
 

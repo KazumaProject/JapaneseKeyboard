@@ -33,3 +33,4 @@ data_sources {
   }
 }
 duration_ms: 300000
+write_into_file: true

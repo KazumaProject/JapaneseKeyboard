@@ -79,7 +79,6 @@ class FastInputMatrixInstrumentedTest {
         require(count > 0 && warmup >= 0)
 
         runPhysicalDeviceSession("input-pipeline") { session ->
-            rotateAndVerify(TestOrientation.PORTRAIT)
             val output = File(session.outputDirectory, "input-pipeline.tsv")
             val cases = listOf(
                 PipelineCase("ja", TestKeyboard.TENKEY, listOf("key_1"), "あ", "key_3", "あさ"),
@@ -96,6 +95,12 @@ class FastInputMatrixInstrumentedTest {
                         .putBoolean("qwerty_english_direct_input_preference", false)
                         .commit())
                     launchHost(session.context).use { scenario ->
+                        scenario.onActivity { host ->
+                            check(host.resources.configuration.orientation ==
+                                android.content.res.Configuration.ORIENTATION_PORTRAIT) {
+                                "Run the input benchmark with the editor in portrait orientation"
+                            }
+                        }
                         repeat(warmup + count) { index ->
                             restartInput(scenario)
                             check(awaitEditorText(scenario, String::isEmpty).isEmpty())
