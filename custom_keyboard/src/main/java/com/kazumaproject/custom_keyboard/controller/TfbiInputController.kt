@@ -270,17 +270,14 @@ class TfbiInputController(
                         popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY &&
                                 distanceFromInitial < CANCEL_THRESHOLD
                     )) {
-                if (isLongPressModeActive) {
-                    return
-                }
                 val fingerPosition = currentFingerPosition
-                resetState()
+                resetState(preserveLongPressMode = true)
                 currentFingerPosition = fingerPosition
-                showPopup(view, TfbiFlickDirection.TAP, false)
+                showPopup(view, TfbiFlickDirection.TAP, isLongPressModeActive)
                 listener?.onSelectionChanged(
                     TfbiFlickDirection.TAP,
                     TfbiFlickDirection.TAP,
-                    false
+                    isLongPressModeActive
                 )
                 return
             }
@@ -525,7 +522,7 @@ class TfbiInputController(
         return if (isLongPressModeActive && longPress.isNotEmpty()) longPress else normal
     }
 
-    private fun resetState() {
+    private fun resetState(preserveLongPressMode: Boolean = false) {
         clearLongPressCallback(attachedView)
         popupWindow?.dismiss()
         guidePopupHost.dismiss()
@@ -534,7 +531,7 @@ class TfbiInputController(
         flickState = FlickState.NEUTRAL
         firstFlickDirection = TfbiFlickDirection.TAP
         currentSecondFlickDirection = TfbiFlickDirection.TAP
-        isLongPressModeActive = false
+        if (!preserveLongPressMode) isLongPressModeActive = false
         currentFingerPosition = null
     }
 
