@@ -632,6 +632,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (this.keyboardSkinId != skinId) { clearAllPressed() }
         skinColorRestorer.beforeSkinChange(this.keyboardSkinId, skinId)
         this.keyboardSkinId = skinId
+        val guideTextColor = if (skinId == KeyboardSkinId.FEVER) {
+            KeyboardSkinRegistry.find(skinId)?.palette?.text
+        } else {
+            null
+        }
+        guideButtons.forEach { it.setGuideTextColor(guideTextColor) }
         this.themeMode = themeMode
         updateCapsLockUI(capsLockState.value)
 
@@ -1024,8 +1030,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun updateGuideTextSizes() {
-        val guideButtons = defaultQWERTYButtonsRoman.asList() + numberRowButtons.asList()
-        guideButtons.distinct().forEach { view ->
+        guideButtons.forEach { view ->
             view.guideTextSizeSp = symbolKeymapTextSizeSp
         }
     }
@@ -1555,6 +1560,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.key1, binding.key2, binding.key3, binding.key4, binding.key5,
             binding.key6, binding.key7, binding.key8, binding.key9, binding.key0
         )
+    }
+
+    private val guideButtons by lazy {
+        defaultQWERTYButtonsRoman.asList() + numberRowButtons.asList()
     }
 
     private fun attachDefaultKeyLabels() {
