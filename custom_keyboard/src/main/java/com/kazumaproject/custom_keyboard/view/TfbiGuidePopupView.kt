@@ -229,7 +229,11 @@ class TfbiGuidePopupView(context: Context) : View(context), KeyboardFontAware {
         val radius = dp(5f).coerceAtMost(minOf(panel.width(), panel.height()) * 0.08f)
 
         // A contrasting ring keeps the cursor visible over both labels and the active pill.
-        fingerMarkerOutlinePaint.color = readableForeground(popupBackgroundColor ?: defaultPanelColor)
+        fingerMarkerOutlinePaint.color = if (popupStyle.skinId == KeyboardSkinId.E_INK) {
+            activeTextColor
+        } else {
+            readableForeground(popupBackgroundColor ?: defaultPanelColor)
+        }
         fingerMarkerOutlinePaint.strokeWidth = dp(2f)
         canvas.drawCircle(x, y, radius + dp(2f), fingerMarkerOutlinePaint)
 
