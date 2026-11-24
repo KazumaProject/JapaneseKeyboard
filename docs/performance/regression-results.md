@@ -6,4 +6,6 @@ End-to-End 測定では、TenKey の「あさ」と QWERTY の `key` の編集�
 
 変更後の実機回帰テストは10件成功。英語の7件では、未インデックスの辞書と候補・コスト・順序を比較し、短い接頭辞、登録済みフレーズ、結合文、辞書・予測設定を検証した。キャッシュの回帰テストには、異なる件数上限、同じ接頭辞への再入力、アポストロフィを含む表記条件がある。IME の3件では、QWERTY の二指重複入力、TenKey の長押し削除、カーソル移動と確定を実機で検証した。 [英語候補の回帰テスト](../../app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/converter/EnglishPhraseDictionaryInstrumentedTest.kt#L330) · [IME の実機テスト](../../app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/FastInputMatrixInstrumentedTest.kt#L1189)
 
+縦向きの TenKey（ケース1）と英語 QWERTY（ケース49）で、連続入力マトリクスを各2ラウンド実施。候補が出る最初の入力と、候補表示中の入力を合わせて8フェーズで誤入力・注入失敗・セットアップエラーがなかった。通常とフローティングの IME で文節変換を操作する実機テストも成功。追加の3件を含めて実機回帰は計13件成功。 [連続入力マトリクス](../../app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/FastInputMatrixInstrumentedTest.kt#L2060) · [文節変換](../../app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/FastInputMatrixInstrumentedTest.kt#L519)
+
 2段フリック、学習・ユーザー辞書を有効にした実機入力、外部エディタ、省電力、リフレッシュレートを変えた試行は未検証。日本語の候補比較は「あさ」の繰り返し条件に限る。

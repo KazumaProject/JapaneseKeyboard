@@ -21,3 +21,5 @@ Pixel 6 の「あさ」への更新で、候補要求公開から Collector 開�
 同一端末の `ke → key` の Perfetto 4試行で、フレーズ生成は 46.951〜57.282 ms。直接の英語単語候補生成は 4.980〜6.150 ms、同処理の prefix lookup は 0.261〜0.888 ms、順位付けは 0.110〜0.148 ms だった。区間は一部入れ子であり、合計して候補遅延を算出できない。 [英語の候補生成](../../app/src/main/java/com/kazumaproject/markdownhelperkeyboard/converter/engine/EnglishEngine.kt#L546)
 
 別途、日常語、カタログ名、複数語の英語回帰3件の実行プロセスを simpleperf で採取した。ユーザー空間の CPU サンプル 3,416 件で `PhraseConverter.convert` がプロセス全体の 13.17%、`EnglishPhraseDictionary.complete` が 8.81%（いずれも子を含む）。このサンプルは辞書テストであり、`key` 単体における内訳や壁時計の割合は示せない。 [補完比較に使用した試験](../../app/src/androidTest/java/com/kazumaproject/markdownhelperkeyboard/converter/EnglishPhraseDictionaryInstrumentedTest.kt)
+
+変更後のトレースで最初の `key` の `EnglishPhraseDictionary.complete` の探索区間は33.143 ms。ウォームアップ後の `key` の補完は12回とも再利用された。フレーズ区間の P50 は変更前27.433 ms、変更後14.843 ms。短い接頭辞を繰り返した場合に観測できた改善で、初めて入力する接頭辞や日常入力での命中率は未計測。 [変更後のトレース比較](benchmark-after.md#perfetto-での比較)
