@@ -5,6 +5,7 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.PopupMapInputOptions
 import com.kazumaproject.custom_keyboard.data.PopupMapPresentation
+import com.kazumaproject.custom_keyboard.data.PopupTapSizeMode
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.*
 import org.junit.Before
@@ -20,13 +21,20 @@ class FreeFlickPreferencesTest {
     private val preferences=PreferenceManager.getDefaultSharedPreferences(context)
     @Before fun setup() {preferences.edit().clear().commit();AppPreference.init(context)}
     @Test fun defaultsAndIndependentValuesSurviveMasterOffAndBackup() {
-        assertEquals(PopupMapInputOptions(),FreeFlickPreferences.read(context))
+        assertEquals(
+            PopupMapInputOptions(tapSizeMode = PopupTapSizeMode.FLICK_SENSITIVITY),
+            FreeFlickPreferences.read(context)
+        )
+        assertEquals(PopupTapSizeMode.KEY, FreeFlickPreferences.read(context, FreeFlickPreferences.Scope.CUSTOM).tapSizeMode)
         preferences.edit().putBoolean(FreeFlickPreferences.NEAREST,false)
             .putBoolean(FreeFlickPreferences.TEXT,false).putBoolean(FreeFlickPreferences.SWITCH,true)
             .putBoolean(FreeFlickPreferences.BACK,true)
             .putString(FreeFlickPreferences.PRESENTATION,"guide_above_key").commit()
         val options=FreeFlickPreferences.read(context)
-        assertEquals(PopupMapInputOptions(false,false,true,true,PopupMapPresentation.GUIDE_ABOVE_KEY),options)
+        assertEquals(
+            PopupMapInputOptions(false, false, true, true, PopupMapPresentation.GUIDE_ABOVE_KEY, PopupTapSizeMode.FLICK_SENSITIVITY),
+            options
+        )
         val backup=AppPreference.exportAllToJson()
         preferences.edit().clear().commit();AppPreference.importAllFromJson(backup)
         assertEquals(options,FreeFlickPreferences.read(context))
@@ -57,14 +65,14 @@ class FreeFlickPreferencesTest {
         assertEquals(original,SumirePopupRepository(context).load("は"))
         val backup=AppPreference.exportAllToJson()
         preferences.edit().clear().commit();AppPreference.importAllFromJson(backup)
-        assertEquals(com.kazumaproject.custom_keyboard.data.PopupTapSizeMode.FLICK_SENSITIVITY,FreeFlickPreferences.read(context).tapSizeMode)
+        assertEquals(PopupTapSizeMode.FLICK_SENSITIVITY,FreeFlickPreferences.read(context).tapSizeMode)
         assertEquals(next,FreeFlickPreferences.tapArea(context,200f,100f))
         preferences.edit().putString(FreeFlickPreferences.TAP_SIZE,"invalid").commit()
         assertEquals(com.kazumaproject.custom_keyboard.data.PopupTapArea.KEY,FreeFlickPreferences.tapArea(context,200f,100f))
     }
     @Test fun tapSizeIsIndependentForEachKeyboardAndBothValuesSurviveBackup() {
-        val key = com.kazumaproject.custom_keyboard.data.PopupTapSizeMode.KEY
-        val sensitivity = com.kazumaproject.custom_keyboard.data.PopupTapSizeMode.FLICK_SENSITIVITY
+        val key = PopupTapSizeMode.KEY
+        val sensitivity = PopupTapSizeMode.FLICK_SENSITIVITY
         val custom = FreeFlickPreferences.Scope.CUSTOM
         preferences.edit().putString(FreeFlickPreferences.TAP_SIZE, sensitivity.preferenceValue).commit()
         assertEquals(sensitivity, FreeFlickPreferences.read(context).tapSizeMode)
