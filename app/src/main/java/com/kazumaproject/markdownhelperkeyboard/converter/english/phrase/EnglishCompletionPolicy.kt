@@ -9,7 +9,7 @@ internal class EnglishCompletionPolicy(
     private val prefixRoles by lazy(LazyThreadSafetyMode.NONE) {
         if (plainPrefix) grammarRoles.lookup(prefix, prefix) else emptySet()
     }
-    private val isOrdinaryWord by lazy(LazyThreadSafetyMode.NONE) { prefixRoles.any(::isOrdinaryWordRole) }
+    val isOrdinaryWord by lazy(LazyThreadSafetyMode.NONE) { prefixRoles.any(::isOrdinaryWordRole) }
 
     fun allowsWord(reading: String, surface: String, cost: Int): Boolean {
         if (!plainPrefix) return true

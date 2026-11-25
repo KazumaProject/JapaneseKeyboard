@@ -356,10 +356,13 @@ class EnglishPhraseDictionaryInstrumentedTest {
         val data = checkNotNull(reader.loadBundledEnglishForEngine())
         val grammar = checkNotNull(reader.loadBundledEnglishGrammar())
         for (dictionary in listOf(data, data.copy(wordCompletionBounds = null))) {
-            var checks = 0
-            assertThrows(CancellationException::class.java) {
-                EnglishPhraseDictionary(dictionary, grammar).complete("an", null, 32) {
-                    if (++checks == 2) throw CancellationException()
+            val words = EnglishPhraseDictionary(dictionary, grammar)
+            for (prefix in listOf("an", "ke")) {
+                var checks = 0
+                assertThrows(CancellationException::class.java) {
+                    words.complete(prefix, null, 32) {
+                        if (++checks == 2) throw CancellationException()
+                    }
                 }
             }
         }

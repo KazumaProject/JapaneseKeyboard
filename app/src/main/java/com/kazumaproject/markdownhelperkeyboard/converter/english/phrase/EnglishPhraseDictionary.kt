@@ -80,16 +80,27 @@ internal class EnglishPhraseDictionary(
         }
         val trie = dictionary.readingTrie
         val bounds = dictionary.wordCompletionBounds
-        if (bounds == null) {
+        fun cutoff() = if (best.size < limit) Int.MAX_VALUE else completionRank(best.element())
+        // With a restrictive completion policy, low raw costs can come from
+        // rejected names or spellings. Depth-first pruning avoids building a
+        // large frontier around those entries.
+        if (bounds == null || surfacePrefix != null || policy.isOrdinaryWord) {
             val terms = trie.termsStartingWith(
-                prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex, cancellationCheck = cancellationCheck,
+                prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
+                includeChild = bounds?.let { index ->
+                    { label ->
+                        val bound = index[label]
+                        bound != Int.MAX_VALUE && bound <= cutoff()
+                    }
+                },
+                cancellationCheck = cancellationCheck,
             )
             for ((key, term) in terms) collect(key, term)
         } else {
             // The completion policy only raises costs, so the raw bounds are still admissible.
             trie.visitCompletionsByBound(
                 prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex, bounds,
-                cutoff = { if (best.size < limit) Int.MAX_VALUE else completionRank(best.element()) },
+                cutoff = ::cutoff,
                 cancellationCheck = cancellationCheck,
                 visit = ::collect,
             )
