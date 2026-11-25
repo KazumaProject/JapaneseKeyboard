@@ -79,13 +79,16 @@ class FreeFlickKeyPickerAppearanceTest {
         picker.showSelection(SumirePopupDefaults.rows.keys.map(SumirePopupDefaults::create),"は")
         for(index in 0 until picker.keyboard.childCount) {
             val view=picker.keyboard.getChildAt(index)
-            if((view as? android.widget.TextView)?.text?.toString() !in SumirePopupDefaults.rows.keys) {
+            if(view.contentDescription?.toString() !in SumirePopupDefaults.rows.keys) {
                 assertEquals(1f,view.alpha,0f);view.performClick()
             }
         }
         assertTrue("Function keys must not choose an unrelated map",selected.isEmpty())
-        (0 until picker.keyboard.childCount).map(picker.keyboard::getChildAt).filterIsInstance<android.widget.TextView>()
-            .single {it.text.toString()==SumirePopupDefaults.PUNCTUATION_KEY}.performClick()
+        val punctuation = (0 until picker.keyboard.childCount).map(picker.keyboard::getChildAt)
+            .filterIsInstance<android.widget.TextView>()
+            .single { it.contentDescription == SumirePopupDefaults.PUNCTUATION_KEY }
+        assertEquals("、", punctuation.text.toString())
+        punctuation.performClick()
         assertEquals(listOf(SumirePopupDefaults.PUNCTUATION_KEY),selected)
     }
 

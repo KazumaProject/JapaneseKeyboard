@@ -127,7 +127,7 @@ class FreeFlickRefinementsDeviceTest {
         main {
             val keyboard=views().filterIsInstance<FreeFlickKeyPicker>().single().keyboard
             (0 until keyboard.childCount).map(keyboard::getChildAt).filterIsInstance<TextView>()
-                .single {it.text.toString()==SumirePopupDefaults.PUNCTUATION_KEY}.performClick()
+                .single {it.contentDescription == SumirePopupDefaults.PUNCTUATION_KEY}.performClick()
         }
         fun canvas()=views().filterIsInstance<PopupMapEditorCanvas>().single()
         await { canvas().config?.keyId==SumirePopupDefaults.PUNCTUATION_KEY }
@@ -171,7 +171,7 @@ class FreeFlickRefinementsDeviceTest {
                 }
                 error("IME key geometry did not settle")
             }
-            main {assertNotNull(keyboard()!!.let {view -> (0 until view.childCount).map(view::getChildAt).filterIsInstance<TextView>().singleOrNull {it.text.toString()==SumirePopupDefaults.PUNCTUATION_KEY}})}
+            main {assertNotNull(keyboard()!!.let {view -> (0 until view.childCount).map(view::getChildAt).filterIsInstance<TextView>().singleOrNull {it.contentDescription == SumirePopupDefaults.PUNCTUATION_KEY}})}
             for ((point,expected) in listOf((-1f to 0f) to "○",(-1.45f to -.45f) to "",(0f to -1f) to "△")) {
                 host.onActivity {it.restartEditorInput(true)};SystemClock.sleep(250)
                 val source=stableKey();val down=SystemClock.uptimeMillis()

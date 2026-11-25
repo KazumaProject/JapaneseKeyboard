@@ -1784,6 +1784,16 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun attachKeyBehavior(keyView: View, keyData: KeyData): Any? {
+        val popupConfig = keyData.popupMapConfig
+        if (flickGuideEnabled && keyView is AutoSizeButton && popupConfig != null && !isUnsupported(keyData)) {
+            popupConfig.map(popupConfig.startMapId)?.let { startMap ->
+                applyResolvedGuideLabels(
+                    keyView,
+                    keyData,
+                    FlickGuideLabelMapper.buildFreeFlickRootGuideLabels(startMap, flickGuideMaxCodePoints)
+                )
+            }
+        }
         keySelection?.let { select ->
             keyView.setOnTouchListener(null)
             keyView.setOnClickListener { if(keyData.label in selectableLabels) select(keyData.label) }
@@ -1797,16 +1807,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             layoutOrigin == KeyboardLayoutOrigin.BUILT_IN && !keyData.isSpecialKey
         }
 
-        keyData.popupMapConfig?.let { config ->
-            if (flickGuideEnabled && keyView is AutoSizeButton) {
-                config.map(config.startMapId)?.let { startMap ->
-                    applyResolvedGuideLabels(
-                        keyView,
-                        keyData,
-                        FlickGuideLabelMapper.buildFreeFlickRootGuideLabels(startMap, flickGuideMaxCodePoints)
-                    )
-                }
-            }
+        popupConfig?.let { config ->
             return com.kazumaproject.custom_keyboard.controller.PopupMapInputController(
                 config = config,
                 windowAnchor = { popupWindowAnchorProvider?.invoke() },
