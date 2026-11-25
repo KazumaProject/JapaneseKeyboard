@@ -13,18 +13,22 @@ internal class EnglishPhraseDictionary(
     fun prefixes(text: String): List<String> =
         dictionary.readingTrie.commonPrefixSearch(text, dictionary.readingLbsIndex)
 
-    fun hasCompletion(prefix: String): Boolean {
-        val terms = dictionary.readingTrie.termsStartingWith(prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex)
+    fun hasCompletion(prefix: String, cancellationCheck: () -> Unit): Boolean {
+        val terms = dictionary.readingTrie.termsStartingWith(
+            prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex, cancellationCheck = cancellationCheck,
+        )
         for ((key, _) in terms) {
             if (key.length > prefix.length && key.none(Char::isWhitespace)) return true
         }
         return false
     }
 
-    fun hasPhraseCompletion(input: String): Boolean {
+    fun hasPhraseCompletion(input: String, cancellationCheck: () -> Unit): Boolean {
         if (!phraseKey.matches(input)) return false
         for (prefix in dictionary.readingTrie.prefixesMatchingJoinedInput(input, dictionary.readingLbsIndex)) {
-            val terms = dictionary.readingTrie.termsStartingWith(prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex)
+            val terms = dictionary.readingTrie.termsStartingWith(
+                prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex, cancellationCheck = cancellationCheck,
+            )
             for ((reading, term) in terms) {
                 if (' ' !in reading || !phraseKey.matches(reading)) continue
                 var found = false
@@ -47,21 +51,16 @@ internal class EnglishPhraseDictionary(
         }
     }
 
-    fun complete(prefix: String, surfacePrefix: String?, limit: Int): List<DictionaryCandidate> {
+    fun complete(
+        prefix: String,
+        surfacePrefix: String?,
+        limit: Int,
+        cancellationCheck: () -> Unit = {},
+    ): List<DictionaryCandidate> {
         val best = PriorityQueue(completionOrder.reversed())
         val policy = EnglishCompletionPolicy(surfacePrefix ?: prefix, grammarRoles)
-        val terms = dictionary.readingTrie.termsStartingWith(
-            prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex,
-            dictionary.wordCompletionBounds?.let { bounds ->
-                { label ->
-                    val bound = bounds[label]
-                    // Completion adjustments only raise costs, so the raw bound still applies.
-                    bound != Int.MAX_VALUE && (best.size < limit || bound <= completionRank(best.element()))
-                }
-            },
-        )
-        for ((key, term) in terms) {
-            if (key == prefix || key.any { it !in 'a'..'z' && it !in '0'..'9' }) continue
+        fun collect(key: String, term: Int) {
+            if (key == prefix || key.any { it !in 'a'..'z' && it !in '0'..'9' }) return
             val maxCost = if (best.size == limit) best.element().cost else Int.MAX_VALUE
             dictionary.forEachCandidate(key, term, maxCost) { candidate ->
                 if (candidate.surface.none(Char::isWhitespace) &&
@@ -79,11 +78,32 @@ internal class EnglishPhraseDictionary(
                 }
             }
         }
+        val trie = dictionary.readingTrie
+        val bounds = dictionary.wordCompletionBounds
+        if (bounds == null) {
+            val terms = trie.termsStartingWith(
+                prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex, cancellationCheck = cancellationCheck,
+            )
+            for ((key, term) in terms) collect(key, term)
+        } else {
+            // The completion policy only raises costs, so the raw bounds are still admissible.
+            trie.visitCompletionsByBound(
+                prefix, dictionary.readingLbsIndex, dictionary.readingLeafIndex, bounds,
+                cutoff = { if (best.size < limit) Int.MAX_VALUE else completionRank(best.element()) },
+                cancellationCheck = cancellationCheck,
+                visit = ::collect,
+            )
+        }
         return best.sortedWith(completionOrder)
     }
 
     /** Finds only dictionary-backed multiword surfaces, including joined-input aliases. */
-    fun phrases(input: String, prefixMode: Boolean, limit: Int): List<DictionaryCandidate> {
+    fun phrases(
+        input: String,
+        prefixMode: Boolean,
+        limit: Int,
+        cancellationCheck: () -> Unit = {},
+    ): List<DictionaryCandidate> {
         val normalized = lookupKey(input).replace(whitespace, " ").trimStart()
         val prefix = if (prefixMode) normalized else normalized.trimEnd()
         if (prefix.length < 2 || !phraseKey.matches(prefix.trimEnd())) return emptyList()
@@ -109,6 +129,7 @@ internal class EnglishPhraseDictionary(
                         }
                     }
                 },
+                cancellationCheck = cancellationCheck,
             ) else {
                 val node = dictionary.readingTrie.getNodeIndex(readingPrefix, dictionary.readingLbsIndex)
                 if (node < 0 || !dictionary.readingTrie.isLeaf[node]) return

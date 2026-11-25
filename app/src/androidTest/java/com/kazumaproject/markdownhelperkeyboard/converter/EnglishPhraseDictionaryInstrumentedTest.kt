@@ -31,6 +31,7 @@ import java.io.ObjectInputStream
 import java.io.DataInputStream
 import java.nio.ByteBuffer
 import java.util.UUID
+import java.util.concurrent.CancellationException
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -347,6 +348,20 @@ class EnglishPhraseDictionaryInstrumentedTest {
         )
         for (text in inputs) for (prefix in listOf(false, true)) {
             assertEquals("$text prefix=$prefix", referenceConverter.convert(text, prefix, 12), indexedConverter.convert(text, prefix, 12))
+        }
+    }
+
+    @Test
+    fun wordCompletionCanCancelDuringDictionaryTraversal() = withDictionary { _, _, reader ->
+        val data = checkNotNull(reader.loadBundledEnglishForEngine())
+        val grammar = checkNotNull(reader.loadBundledEnglishGrammar())
+        for (dictionary in listOf(data, data.copy(wordCompletionBounds = null))) {
+            var checks = 0
+            assertThrows(CancellationException::class.java) {
+                EnglishPhraseDictionary(dictionary, grammar).complete("an", null, 32) {
+                    if (++checks == 2) throw CancellationException()
+                }
+            }
         }
     }
 

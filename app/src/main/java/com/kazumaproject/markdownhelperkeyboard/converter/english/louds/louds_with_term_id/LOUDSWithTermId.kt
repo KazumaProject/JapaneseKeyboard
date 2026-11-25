@@ -9,12 +9,14 @@ import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.EnglishCompletionBounds
 import com.kazumaproject.toBitSet
 import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import com.kazumaproject.markdownhelperkeyboard.converter.louds.loudsChildPosition
 import java.util.BitSet
+import java.util.PriorityQueue
 
 class LOUDSWithTermId {
 
@@ -123,6 +125,7 @@ class LOUDSWithTermId {
         lbs: SuccinctBitVector,
         leaves: SuccinctBitVector,
         includeChild: ((labelIndex: Int) -> Boolean)? = null,
+        cancellationCheck: (() -> Unit)? = null,
     ): Iterator<Pair<String, Int>> {
         var node = 0
         for (char in prefix) {
@@ -132,8 +135,61 @@ class LOUDSWithTermId {
         return com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
             LBS, lbs, labels.size, { index -> labels[index] },
             { position -> if (isLeaf[position]) getTermId(position, leaves) else -1 },
-            startNode = node, prefix = prefix, includeChild = includeChild,
+            startNode = node, prefix = prefix, includeChild = includeChild, cancellationCheck = cancellationCheck,
         )
+    }
+
+    private class CompletionBranch(
+        val position: Int,
+        val label: Int,
+        val parentReading: String,
+        val bound: Int,
+    )
+
+    /** Visits proper descendants in increasing order of their subtree lower bounds. */
+    internal fun visitCompletionsByBound(
+        prefix: String,
+        lbs: SuccinctBitVector,
+        leaves: SuccinctBitVector,
+        bounds: EnglishCompletionBounds,
+        cutoff: () -> Int,
+        cancellationCheck: () -> Unit,
+        visit: (reading: String, term: Int) -> Unit,
+    ) {
+        var node = 0
+        for (char in prefix) {
+            node = traverse(node, char, lbs)
+            if (node < 0) return
+        }
+
+        val pending = PriorityQueue(compareBy<CompletionBranch> { it.bound })
+        fun enqueueChildren(position: Int, rank: Int, reading: String) {
+            var child = loudsChildPosition(LBS, position, lbs.select0(rank))
+            if (child < 0) return
+            var label = lbs.rank1(child)
+            val threshold = cutoff()
+            while (label < labels.size && LBS[child]) {
+                val bound = bounds[label]
+                if (bound != Int.MAX_VALUE && bound <= threshold) {
+                    pending.add(CompletionBranch(child, label, reading, bound))
+                }
+                child++
+                label++
+            }
+        }
+
+        enqueueChildren(node, lbs.rank1(node), prefix)
+        var visited = 0
+        while (pending.isNotEmpty()) {
+            if ((visited++ and 63) == 0) cancellationCheck()
+            val branch = pending.remove()
+            // Equal cost and length still compete on the reading and surface.
+            if (branch.bound > cutoff()) break
+            val reading = branch.parentReading + labels[branch.label]
+            val term = getTermId(branch.position, leaves)
+            if (term >= 0) visit(reading, term)
+            enqueueChildren(branch.position, branch.label, reading)
+        }
     }
 
     /** Trie prefixes matching the typed characters with optional dictionary spaces. */

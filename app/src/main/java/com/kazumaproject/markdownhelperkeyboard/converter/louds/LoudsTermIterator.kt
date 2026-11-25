@@ -13,15 +13,18 @@ internal class LoudsTermIterator(
     startNode: Int = 0,
     prefix: String = "",
     private val includeChild: ((labelIndex: Int) -> Boolean)? = null,
+    private val cancellationCheck: (() -> Unit)? = null,
 ) : Iterator<Pair<String, Int>> {
     private data class Frame(val node: Int, var child: Int = -1, var visited: Boolean = false)
     private val stack = ArrayDeque<Frame>().apply { addLast(Frame(startNode)) }
     private val reading = StringBuilder(prefix)
     private var pending: Pair<String, Int>? = null
+    private var steps = 0
 
     override fun hasNext(): Boolean {
         if (pending != null) return true
         while (stack.isNotEmpty()) {
+            if (cancellationCheck != null && (steps++ and 63) == 0) cancellationCheck.invoke()
             val frame = stack.last()
             if (!frame.visited) {
                 frame.visited = true
