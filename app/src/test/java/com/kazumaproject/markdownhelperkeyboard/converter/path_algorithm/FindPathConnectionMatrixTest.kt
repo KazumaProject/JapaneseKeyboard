@@ -115,6 +115,32 @@ class FindPathConnectionMatrixTest {
         assertEquals(dictionaryOriginsForType(CANDIDATE_TYPE_LEARNED_DICTIONARY), result.candidates.single().dictionaryOrigins)
     }
 
+    @Test
+    fun backwardSearch_breaksCostTiesConsistentlyAtCandidateLimit() {
+        val words = listOf("郷", "京", "強", "教", "経")
+        for (order in listOf(words, words.reversed())) {
+            fun graph() = singleWordGraph().apply {
+                this[1] = (order.map { word ->
+                    createNode(tango = word, l = 1, r = 1, len = 1, sPos = 0)
+                        .copy(yomiUsed = "きょう")
+                } + createNode(tango = "今日", l = 1, r = 1, len = 1, sPos = 0)
+                    .copy(yomiUsed = "きょう", score = -100, adjustedScore = -100)).toMutableList()
+            }
+
+            val findPath = FindPath()
+            val costs = ShortArray(4)
+            val expected = listOf("今日" to -100, "京" to 0, "強" to 0)
+            val plain = findPath.backwardAStar(
+                graph = graph(), length = 1, connectionIds = costs, connectionMatrixSize = 2, n = 3,
+            )
+            val bunsetsu = findPath.backwardAStarWithBunsetsu(
+                graph = graph(), length = 1, connectionIds = costs, connectionMatrixSize = 2, n = 3,
+            )
+            assertEquals(expected, plain.map { it.string to it.score })
+            assertEquals(expected, bunsetsu.candidates.map { it.string to it.score })
+        }
+    }
+
     private fun singleWordGraph(
         leftId: Short = 1,
         rightId: Short = 1,
