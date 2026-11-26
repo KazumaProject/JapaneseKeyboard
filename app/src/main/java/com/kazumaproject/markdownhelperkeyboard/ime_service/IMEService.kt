@@ -3502,8 +3502,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) return
 
         englishDictionaryCacheJob = scope.launch {
-            // Finish the core dictionary load first so speculative I/O cannot hold its cache lock.
-            if (awaitKanaKanjiEngineOrNull() == null) return@launch
             try {
                 englishDictionaryCachePrepared = withContext(Dispatchers.IO) {
                     dictionaryBinaryReader.prepareBundledEnglishCache()
