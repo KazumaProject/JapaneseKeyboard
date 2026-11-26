@@ -7,7 +7,10 @@ import com.android.build.gradle.internal.tasks.ExtractNativeDebugMetadataTask
 
 buildscript {
     repositories { mavenCentral() }
-    dependencies { classpath 'org.tukaani:xz:1.12' }
+    dependencies {
+        classpath 'org.tukaani:xz:1.12'
+        classpath 'com.github.luben:zstd-jni:1.5.7-29'
+    }
 }
 
 plugins {
@@ -156,10 +159,10 @@ android {
     }
 
     androidResources {
-        // Debug assets remain directly mappable. Releases replace these six
-        // dictionaries with XZ streams and map their verified private copies.
+        // Debug assets remain directly mappable. Release assets are already compressed
+        // and mapped through verified private copies.
         noCompress += ['kdict', 'reading.compact', 'word.compact', 'token.compact',
-            'english.lookup.index', 'erol', 'xz']
+            'english.lookup.index', 'erol', 'xz', 'zst']
     }
 
     sourceSets {
@@ -223,6 +226,9 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     abstract DirectoryProperty getMergedAssets()
 
+    @Input
+    abstract Property<Boolean> getZstandardEnglish()
+
     @OutputDirectory
     abstract DirectoryProperty getPackagedAssets()
 
@@ -241,18 +247,22 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
         ['system/system.compact.kdict', 'english/reading.compact', 'english/word.compact',
             'english/token.compact', 'english/english.lookup.index', 'english/grammar/categories.erol'].each { path ->
             def source = new File(packagedAssets.get().asFile, path)
+            boolean zstandard = zstandardEnglish.get() && path.startsWith('english/')
             def digest = java.security.MessageDigest.getInstance('SHA-256')
             source.withInputStream { input ->
                 new java.security.DigestInputStream(input, digest).withCloseable { hashed ->
-                    new File(source.path + '.xz').withOutputStream { destination ->
-                        new org.tukaani.xz.XZOutputStream(destination,
-                            new org.tukaani.xz.LZMA2Options(6), org.tukaani.xz.XZ.CHECK_CRC64).withCloseable { compressed ->
-                            hashed.transferTo(compressed)
-                        }
+                    new File(source.path + (zstandard ? '.zst' : '.xz')).withOutputStream { destination ->
+                        def compressor = zstandard
+                            ? new com.github.luben.zstd.ZstdOutputStream(destination, 19).setWindowLog(22)
+                            : new org.tukaani.xz.XZOutputStream(destination,
+                                new org.tukaani.xz.LZMA2Options(6), org.tukaani.xz.XZ.CHECK_CRC64)
+                        compressor.withCloseable { hashed.transferTo(it) }
                     }
                 }
             }
-            records[path] = [size: source.length(), sha256: digest.digest().encodeHex().toString()]
+            def record = [size: source.length(), sha256: digest.digest().encodeHex().toString()]
+            if (zstandard) record.compression = 'zstd'
+            records[path] = record
             if (!source.delete()) throw new GradleException("Could not remove uncompressed dictionary: $path")
         }
         new File(packagedAssets.get().asFile, 'dictionary-assets.json').text =
@@ -300,7 +310,9 @@ androidComponents {
             }
             variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
             def compactAssets = tasks.register("package${variant.name.capitalize()}RuntimeDictionaryAssets",
-                PackageRuntimeDictionaryAssets)
+                PackageRuntimeDictionaryAssets) {
+                zstandardEnglish.set(variant.productFlavors.any { it.first == 'edition' && it.second == 'full' })
+            }
             variant.artifacts.use(compactAssets)
                 .wiredWithDirectories({ it.mergedAssets }, { it.packagedAssets })
                 .toTransform(SingleArtifact.ASSETS.INSTANCE)
@@ -1386,6 +1398,7 @@ dependencies {
     implementation project(':morse_keyboard')
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
+    fullImplementation 'com.github.luben:zstd-jni:1.5.7-29@aar'
     fullImplementation project(':zenz')
     fullImplementation project(':ai-runtime')
 

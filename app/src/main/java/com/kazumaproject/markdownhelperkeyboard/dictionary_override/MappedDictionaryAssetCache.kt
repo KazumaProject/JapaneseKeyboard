@@ -15,13 +15,22 @@ internal class MappedDictionaryAssetCache(
     manifest: String,
     private val openAsset: (String) -> InputStream,
 ) {
-    private data class Asset(val size: Long, val sha256: String)
+    private enum class Compression(val extension: String) {
+        XZ("xz"), ZSTANDARD("zst")
+    }
+
+    private data class Asset(val size: Long, val sha256: String, val compression: Compression)
 
     private val assets: Map<String, Asset> = JsonParser.parseString(manifest).asJsonObject.let { root ->
         require(root.get("version").asInt == 1) { "Unsupported dictionary asset manifest" }
         root.getAsJsonObject("assets").entrySet().associate { (path, value) ->
             val record = value.asJsonObject
-            val asset = Asset(record.get("size").asLong, record.get("sha256").asString)
+            val compression = when (val encoding = record.get("compression")?.asString) {
+                null, "xz" -> Compression.XZ
+                "zstd" -> Compression.ZSTANDARD
+                else -> error("Unsupported dictionary compression: $encoding")
+            }
+            val asset = Asset(record.get("size").asLong, record.get("sha256").asString, compression)
             require(asset.size in 1..MAX_ASSET_BYTES && asset.sha256.matches(Regex("[0-9a-f]{64}"))) {
                 "Invalid dictionary asset record: $path"
             }
@@ -77,9 +86,14 @@ internal class MappedDictionaryAssetCache(
         val asset = assets.getValue(path)
         val digest = MessageDigest.getInstance("SHA-256")
         var size = 0L
-        openAsset("$path.xz").use { raw ->
-            // The build uses an 8 MiB dictionary; bound decoder memory for damaged streams too.
-            XZInputStream(raw, 32 * 1024).use { input ->
+        val extension = asset.compression.extension
+        openAsset("$path.$extension").use { raw ->
+            val decoded = when (asset.compression) {
+                // The build uses an 8 MiB XZ dictionary. Also bound memory on damaged streams.
+                Compression.XZ -> XZInputStream(raw, 32 * 1024)
+                Compression.ZSTANDARD -> openZstandardDictionary(raw)
+            }
+            decoded.use { input ->
                 val buffer = ByteArray(64 * 1024)
                 while (true) {
                     val count = input.read(buffer)
