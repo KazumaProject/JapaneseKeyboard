@@ -30,6 +30,7 @@ fun interface EnglishCompletionBounds {
 /** Maps the bundled English dictionary arrays and precomputed lookup index. */
 internal object BundledEnglishDictionaryReader {
     private const val MAGIC = 0x4B454931 // KEI1
+    private const val LABEL_CHUNK_BYTES = 64 * 1024
 
     fun readIndex(
         descriptor: AssetFileDescriptor,
@@ -153,11 +154,21 @@ internal object BundledEnglishDictionaryReader {
             require(alphabet.size <= 256) { "Invalid English label alphabet" }
             if (alphabet.isEmpty()) return readCharArray()
             val size = readSizedCount(Byte.SIZE_BYTES)
-            return CharArray(size) {
-                val index = buffer.get().toInt() and 0xff
-                require(index < alphabet.size) { "Invalid English label index: $index" }
-                alphabet[index]
+            val labels = CharArray(size)
+            // Read mapped bytes in bulk while bounding the temporary buffer.
+            val chunk = ByteArray(minOf(size, LABEL_CHUNK_BYTES))
+            var offset = 0
+            while (offset < size) {
+                val count = minOf(chunk.size, size - offset)
+                buffer.get(chunk, 0, count)
+                for (i in 0 until count) {
+                    val index = chunk[i].toInt() and 0xff
+                    require(index < alphabet.size) { "Invalid English label index: $index" }
+                    labels[offset + i] = alphabet[index]
+                }
+                offset += count
             }
+            return labels
         }
 
         fun readShortArray(): ShortArray {

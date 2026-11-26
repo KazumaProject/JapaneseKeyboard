@@ -31,6 +31,24 @@ class BundledEnglishDictionaryReaderTest {
     }
 
     @Test
+    fun readingDecodesMultipleChunksAndLeavesTermIdsIntact() {
+        val labels = CharArray(2 * 64 * 1024 + 13) { ((it * 17) and 0xff).toChar() }
+        val source = fixture(0x4B455232, labels) {
+            writeInt(2)
+            writeInt(7)
+            writeInt(42)
+        }
+        val direct = ByteBuffer.allocateDirect(source.remaining()).apply {
+            put(source)
+            flip()
+        }.asReadOnlyBuffer()
+        val reading = BundledEnglishDictionaryReader.readReading(direct)
+        assertArrayEquals(labels, reading.labels)
+        assertArrayEquals(intArrayOf(7, 42), reading.termIdsSaved)
+        assertEquals(0, direct.position())
+    }
+
+    @Test
     fun largerAlphabetsAndEmptyLabelsUseRawCharacters() {
         for (labels in listOf(CharArray(257) { it.toChar() }, charArrayOf())) {
             assertArrayEquals(labels,
@@ -40,7 +58,7 @@ class BundledEnglishDictionaryReaderTest {
 
     @Test
     fun rejectsAnIndexOutsideTheAlphabet() {
-        val source = fixture(0x4B455732, charArrayOf('a'))
+        val source = fixture(0x4B455732, CharArray(64 * 1024 + 1) { 'a' })
         source.put(source.limit() - 1, 1.toByte())
         assertThrows(IllegalArgumentException::class.java) {
             BundledEnglishDictionaryReader.readWord(source)
