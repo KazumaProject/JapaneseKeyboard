@@ -155,6 +155,7 @@ class FindPath(
         var next: PathQueueElement? = null
         var outputPathId: Int = 0
         var sourceMask: Int = 0
+        var insertionOrder: Long = 0
 
         fun set(
             node: Node,
@@ -271,6 +272,7 @@ class FindPath(
 
     internal class PathPriorityQueue(initialCapacity: Int = 256) {
         private var elements = arrayOfNulls<PathQueueElement>(initialCapacity.coerceAtLeast(1))
+        private var nextInsertionOrder = 0L
         var size: Int = 0
             private set
 
@@ -279,9 +281,11 @@ class FindPath(
         fun clear() {
             for (index in 0 until size) elements[index] = null
             size = 0
+            nextInsertionOrder = 0L
         }
 
         fun add(element: PathQueueElement) {
+            element.insertionOrder = nextInsertionOrder++
             if (size == elements.size) elements = elements.copyOf(elements.size * 2)
             var index = size++
             while (index > 0) {
@@ -327,10 +331,11 @@ class FindPath(
             var comparison = first.priorityCost.compareTo(second.priorityCost)
             if (comparison == 0) comparison = first.node.sPos.compareTo(second.node.sPos)
             if (comparison == 0) comparison = first.node.len.compareTo(second.node.len)
-            if (comparison == 0) {
-                comparison = System.identityHashCode(first.node)
-                    .compareTo(System.identityHashCode(second.node))
+            if (comparison == 0 && first.node !== second.node) {
+                comparison = tiedNodeOrder.compare(first.node, second.node)
             }
+            // Paths through the same node can have different suffixes. Keep their enqueue order.
+            if (comparison == 0) comparison = first.insertionOrder.compareTo(second.insertionOrder)
             return comparison
         }
     }
@@ -1053,6 +1058,17 @@ class FindPath(
     }
 
     companion object {
+        // Only consulted after the search priority, position and length match.
+        private val tiedNodeOrder = compareBy<Node> { it.yomiUsed }
+            .thenBy { it.tango }
+            .thenBy { it.l }
+            .thenBy { it.r }
+            .thenBy { it.score }
+            .thenBy { it.candidateSource }
+            .thenBy { it.correctionMask }
+            .thenBy { it.mozcNodeType }
+            .thenBy { it.mozcAttributes }
+
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
         private val bosNodes: List<Node> = listOf(BOS)
         private const val MAX_BUNSETSU_SPLIT_PATTERNS = 4
@@ -2139,7 +2155,7 @@ class FindPath(
                 compareBy<Pair<Node, Int>> { it.second }
                     .thenBy { it.first.sPos }
                     .thenBy { it.first.len }
-                    .thenBy { System.identityHashCode(it.first) },
+                    .thenBy(tiedNodeOrder) { it.first },
             )
 
         graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
