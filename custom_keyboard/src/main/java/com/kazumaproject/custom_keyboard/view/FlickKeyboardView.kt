@@ -869,7 +869,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun addKeyItem(item: KeyItem) {
-        val keyData = item.keyData
+        val keyData = KeyIconResolver.withMixedFlickTapIcon(item.keyData, currentLayout)
         val index = childCount
         val keyView = createKeyView(keyData)
         keyView.layoutParams = createLayoutParams(item.placement, keyData)
@@ -1572,7 +1572,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 isFocusable = false
                 elevation = 0f
                 KeyIconResolver.setImage(this, keyData)
-                contentDescription = keyData.label
+                contentDescription = KeyIconResolver.resolvedLabelForRendering(keyData, context)
                 scaleType = android.widget.ImageView.ScaleType.MATRIX
 
                 applyImageButtonSizing(this, keyData)
@@ -2028,9 +2028,12 @@ class FlickKeyboardView @JvmOverloads constructor(
 
             KeyType.CROSS_FLICK, KeyType.MIXED_FLICK -> {
                 val isMixedFlick = keyData.keyType == KeyType.MIXED_FLICK
-                val rawFlickActionMap =
+                val rawFlickActionMap = if (isMixedFlick) {
+                    layout.flickKeyMaps[keyData.keyId ?: keyData.label]?.firstOrNull()
+                } else {
                     keyData.keyId?.let { layout.flickKeyMaps[it] }?.firstOrNull()
                         ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                }
                 // Sumire 特殊キーで keyId alias を引いた場合、layout 構築時の static な
                 // TAP entry が残っている可能性がある。dynamicStates の影響で
                 // keyData.action / label / drawableResId は updateDynamicKey で更新されるので、

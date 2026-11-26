@@ -363,14 +363,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             val mode = currentCellMode as? CellMode.SpecialFlick ?: return@setOnItemClickListener
             val option = specialFlickActionOptions.getOrNull(idx) ?: return@setOnItemClickListener
             if (isEditingMixedFlick()) {
-                val currentAction = (mixedFlickDraft?.slots?.get(mode.direction) as? MixedFlickSlot.Action)?.action
+                val currentSlot = selectedMixedActionSlot()
                 val action = resolveSpecialFlickSelectedAction(
                     selectedAction = option.action?.action,
-                    currentAction = currentAction,
+                    currentAction = currentSlot?.action,
                     selectedTargetStableId = null,
                     validTargetStableIds = validTargetStableIds()
                 )
-                setMixedFlickSlot(mode, MixedFlickSlot.Action(action))
+                setMixedFlickSlot(
+                    mode,
+                    currentSlot?.takeIf { it.action == action } ?: MixedFlickSlot.Action(action)
+                )
                 showMixedFlickSlot(mode)
                 return@setOnItemClickListener
             }
@@ -437,7 +440,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             val mode = currentCellMode as? CellMode.SpecialFlick ?: return@setOnItemClickListener
             val target = customKeyboardTargetOptions.getOrNull(position)
                 ?.takeIf { it.isValid } ?: return@setOnItemClickListener
-            setMixedFlickSlot(mode, MixedFlickSlot.Action(KeyAction.MoveToCustomKeyboard(target.stableId)))
+            val slot = selectedMixedActionSlot() ?: return@setOnItemClickListener
+            setMixedFlickSlot(mode, slot.copy(action = KeyAction.MoveToCustomKeyboard(target.stableId)))
             showMixedFlickSlot(mode)
         }
 
@@ -690,7 +694,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.qwertyKeyEditor.isVisible = false
         binding.keyLabelLayout.isVisible = false
         binding.flickGridEditorView.isVisible = true
-        updateIconOverrideVisibility()
 
         binding.mixedKeyLabelEdittext.setText(draft.label)
         binding.flickGridEditorView.setSpecialFlickContent(emptyList(), specialFlickDisplayActions)
@@ -733,6 +736,12 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 ?: getString(R.string.deleted_custom_keyboard_target)
         }
         binding.mixedFlickTargetSpinner.setText(targetLabel.orEmpty(), false)
+        updateIconOverrideVisibility()
+    }
+
+    private fun selectedMixedActionSlot(): MixedFlickSlot.Action? {
+        val mode = currentCellMode as? CellMode.SpecialFlick ?: return null
+        return mixedFlickDraft?.slots?.get(mode.direction) as? MixedFlickSlot.Action
     }
 
     private fun setMixedFlickSlot(mode: CellMode.SpecialFlick, slot: MixedFlickSlot) {
@@ -742,9 +751,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun updateMixedFlickCell(mode: CellMode.SpecialFlick, slot: MixedFlickSlot) {
-        val displayAction = (slot as? MixedFlickSlot.Action)?.action?.let(::displayActionForAction)
+        val actionSlot = slot as? MixedFlickSlot.Action
+        val displayAction = actionSlot?.action?.let(::displayActionForAction)
+        val overrideResId = KeyIconBuiltInDrawable.resolve(actionSlot?.iconResourceName)
         val label = (slot as? MixedFlickSlot.Text)?.output ?: displayAction?.displayName.orEmpty()
-        binding.flickGridEditorView.updateCellIcon(mode, displayAction?.iconResId, label)
+        binding.flickGridEditorView.updateCellIcon(
+            mode, overrideResId ?: displayAction?.iconResId, label
+        )
     }
 
     private fun handleSpecialCategoryUi() {
@@ -1854,8 +1867,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun updateIconOverrideVisibility() {
         val isSpecial = binding.keyTypeChipGroup.checkedChipId == R.id.chip_special
-        binding.keyIconOverrideGroup.isVisible = isSpecial
-        if (isSpecial) refreshIconPreview()
+        val isMixed = isEditingMixedFlick()
+        val isMixedAction = isMixed && selectedMixedActionSlot()?.action != null
+        binding.keyIconOverrideGroup.isVisible = isSpecial || isMixedAction
+        binding.keyIconOverrideTitle.setText(
+            if (isMixed) R.string.mixed_flick_action_icon else R.string.custom_key_icon_title
+        )
+        binding.buttonChooseImageIcon.isVisible = isSpecial
+        if (binding.keyIconOverrideGroup.isVisible) refreshIconPreview()
     }
 
     private fun updateSpecialKeyColorStyleVisibility(isSpecial: Boolean) {
@@ -1882,14 +1901,26 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
 
     private fun replaceSelectedIcon(newIcon: KeyIconRef?) {
-        selectedIconRef = newIcon
+        if (isEditingMixedFlick()) {
+            val mode = currentCellMode as? CellMode.SpecialFlick ?: return
+            val slot = selectedMixedActionSlot()?.takeIf { it.action != null } ?: return
+            setMixedFlickSlot(mode, slot.copy(iconResourceName = newIcon?.value))
+        } else {
+            selectedIconRef = newIcon
+        }
         refreshIconPreview()
         updateDoneButtonState()
     }
 
     private fun refreshIconPreview() {
-        val icon = selectedIconRef
-        val fallback = currentSpecialKeyActionFallbackIconResId()
+        val isMixed = isEditingMixedFlick()
+        val mixedSlot = selectedMixedActionSlot().takeIf { isMixed }
+        val icon = if (isMixed) mixedSlot?.icon else selectedIconRef
+        val fallback = if (isMixed) {
+            mixedSlot?.action?.let(KeyActionMapper::iconResIdForAction)
+        } else {
+            currentSpecialKeyActionFallbackIconResId()
+        }
         val previewKey = KeyData(
             label = "",
             row = 0,

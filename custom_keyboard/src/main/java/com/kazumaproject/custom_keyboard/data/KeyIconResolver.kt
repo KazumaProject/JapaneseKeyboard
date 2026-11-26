@@ -15,9 +15,22 @@ object KeyIconResolver {
     private val bitmapCache = object : LruCache<String, android.graphics.Bitmap>(32) {}
 
     fun hasIcon(keyData: KeyData): Boolean =
-        keyData.isSpecialKey &&
-                (keyData.icon?.isOverride() == true ||
-                        (keyData.drawableResId != null && !suppressesDoNothingDefaultContent(keyData)))
+        when {
+            keyData.keyType == KeyType.MIXED_FLICK -> hasIconOverride(keyData)
+            keyData.isSpecialKey -> hasIconOverride(keyData) ||
+                (keyData.drawableResId != null && !suppressesDoNothingDefaultContent(keyData))
+            else -> false
+        }
+
+    fun withMixedFlickTapIcon(keyData: KeyData, layout: KeyboardLayout?): KeyData {
+        if (keyData.keyType != KeyType.MIXED_FLICK) return keyData
+        val tap = layout?.flickKeyMaps?.get(keyData.keyId ?: keyData.label)
+            ?.firstOrNull()?.get(FlickDirection.TAP) as? FlickAction.Action
+        val icon = tap?.icon?.takeIf {
+            it.type == KeyIconType.DRAWABLE_RESOURCE_NAME && KeyIconBuiltInDrawable.isAllowed(it.value)
+        }
+        return if (icon != null) keyData.copy(icon = icon) else keyData
+    }
 
     fun hasIconOverride(keyData: KeyData): Boolean =
         keyData.icon?.isOverride() == true
