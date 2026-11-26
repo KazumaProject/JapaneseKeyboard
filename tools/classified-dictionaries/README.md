@@ -64,9 +64,9 @@ triples are supported; other external triples retain their own decoding.
 All 463 distributed assets remain byte-identical to the release. Tests cover the
 literal spellings and reject repairs for different external archive bytes.
 
-The standalone unigram asset now contains seven whole-input preferences, including
-`なにか` and `なら`. Instrumented tests cover all seven across modes and backends, and retain
-compound and corrected-input exclusions.
+The standalone unigram asset contains nine whole-input preferences, including
+`なのか` and `のみに`. Instrumented tests cover all nine across modes and backends,
+including `飲みに` as an alternative for `のみに` and unchanged compound rankings.
 
 ## Final token group boundaries
 
