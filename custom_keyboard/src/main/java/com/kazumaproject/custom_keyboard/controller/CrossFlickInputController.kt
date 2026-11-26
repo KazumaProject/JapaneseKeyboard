@@ -21,6 +21,8 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+import com.kazumaproject.custom_keyboard.data.KeyIconType
+import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
 import com.kazumaproject.custom_keyboard.view.DirectionalKeyPopupView
 import com.kazumaproject.custom_keyboard.view.CrossFlickPopupView
 import kotlinx.coroutines.CoroutineScope
@@ -554,16 +556,14 @@ class CrossFlickInputController(
         is FlickAction.Input -> this
         is FlickAction.Action -> {
             val displayAction = displayActionsByClass[action::class]
-            if (displayAction == null) {
+            val overrideResId = icon?.takeIf { it.type == KeyIconType.DRAWABLE_RESOURCE_NAME }
+                ?.let { KeyIconBuiltInDrawable.resolve(it.value) }
+            val resolvedLabel = label?.takeUnless { it.isBlank() } ?: displayAction?.displayName
+            val resolvedDrawableResId = overrideResId ?: drawableResId ?: displayAction?.iconResId
+            if (resolvedLabel == label && resolvedDrawableResId == drawableResId) {
                 this
             } else {
-                val resolvedLabel = label?.takeUnless { it.isBlank() } ?: displayAction.displayName
-                val resolvedDrawableResId = drawableResId ?: displayAction.iconResId
-                if (resolvedLabel == label && resolvedDrawableResId == drawableResId) {
-                    this
-                } else {
-                    copy(label = resolvedLabel, drawableResId = resolvedDrawableResId)
-                }
+                copy(label = resolvedLabel, drawableResId = resolvedDrawableResId)
             }
         }
     }
@@ -1047,7 +1047,8 @@ internal fun resolveCrossFlickAction(
 }
 
 internal fun isVisiblePopupAction(flickAction: FlickAction): Boolean {
-    return flickAction !is FlickAction.Action || flickAction.action != KeyAction.DoNothing
+    return flickAction !is FlickAction.Action ||
+        flickAction.action != KeyAction.DoNothing || flickAction.drawableResId != null
 }
 
 internal fun FlickDirection.directionCandidates(): List<FlickDirection> {

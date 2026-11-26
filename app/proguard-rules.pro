@@ -63,3 +63,9 @@
 
 # LiteRT-LM references kotlin-reflect helper APIs from code paths we do not use.
 -dontwarn kotlin.reflect.full.KClasses
+
+# zstd-jni looks up these decompression cursor fields by name.
+-keepclassmembers class com.github.luben.zstd.ZstdInputStreamNoFinalizer {
+    long srcPos;
+    long dstPos;
+}

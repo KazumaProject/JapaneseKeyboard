@@ -207,7 +207,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         previewInsertedItemId: String?,
         previewMovedItemIds: Set<String>
     ) {
-        val keyData = item.keyData
+        val keyData = KeyIconResolver.withMixedFlickTapIcon(item.keyData, currentLayout)
         val keyView: View = createKeyView(keyData, item.placement)
         val offsetUnits = if (editTargetMode == EditTargetMode.CUSTOM_KEYBOARD) 2 else 0
         keyView.layoutParams = createLayoutParams(
@@ -591,7 +591,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 elevation = 2f
                 KeyIconResolver.setImage(this, keyData)
-                contentDescription = keyData.label
+                contentDescription = KeyIconResolver.resolvedLabelForRendering(keyData, context)
 
                 val originalBg = ContextCompat.getDrawable(
                     context,

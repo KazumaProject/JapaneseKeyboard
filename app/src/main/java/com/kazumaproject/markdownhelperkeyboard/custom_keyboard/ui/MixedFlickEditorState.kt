@@ -7,6 +7,8 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyIconRef
+import com.kazumaproject.custom_keyboard.data.KeyIconType
 
 internal val specialFlickDirections = listOf(
     FlickDirection.TAP,
@@ -19,12 +21,18 @@ internal val specialFlickDirections = listOf(
 internal sealed interface MixedFlickSlot {
     data object Unassigned : MixedFlickSlot
     data class Text(val output: String = "") : MixedFlickSlot
-    data class Action(val action: KeyAction? = null) : MixedFlickSlot
+    data class Action(
+        val action: KeyAction? = null,
+        val iconResourceName: String? = null
+    ) : MixedFlickSlot {
+        val icon: KeyIconRef?
+            get() = iconResourceName?.let { KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, it) }
+    }
 
     fun toFlickAction(): FlickAction? = when (this) {
         Unassigned -> null
         is Text -> output.takeIf(String::isNotEmpty)?.let { FlickAction.Input(it) }
-        is Action -> action?.let { FlickAction.Action(it) }
+        is Action -> action?.let { FlickAction.Action(it, icon = icon) }
     }
 
     companion object {
@@ -33,7 +41,10 @@ internal sealed interface MixedFlickSlot {
             is FlickAction.Action -> when (val keyAction = action.action) {
                 is KeyAction.Text -> Text(keyAction.text)
                 is KeyAction.InputText -> Text(keyAction.text)
-                else -> Action(keyAction)
+                else -> Action(
+                    keyAction,
+                    action.icon?.takeIf { it.type == KeyIconType.DRAWABLE_RESOURCE_NAME }?.value
+                )
             }
             null -> Unassigned
         }
@@ -59,6 +70,7 @@ internal class MixedFlickEditorState(
                     is MixedFlickSlot.Text -> bundleOf("text" to slot.output)
                     is MixedFlickSlot.Action -> bundleOf(
                         "action" to KeyActionMapper.fromKeyAction(slot.action),
+                        "iconResourceName" to slot.iconResourceName,
                         "pendingTarget" to (slot.action == KeyAction.MoveToCustomKeyboard(""))
                     )
                 }
@@ -93,8 +105,14 @@ internal class MixedFlickEditorState(
                     when {
                         slot == null -> MixedFlickSlot.Unassigned
                         slot.containsKey("text") -> MixedFlickSlot.Text(slot.getString("text").orEmpty())
-                        slot.getBoolean("pendingTarget") -> MixedFlickSlot.Action(KeyAction.MoveToCustomKeyboard(""))
-                        else -> MixedFlickSlot.Action(KeyActionMapper.toKeyAction(slot.getString("action")))
+                        else -> MixedFlickSlot.Action(
+                            action = if (slot.getBoolean("pendingTarget")) {
+                                KeyAction.MoveToCustomKeyboard("")
+                            } else {
+                                KeyActionMapper.toKeyAction(slot.getString("action"))
+                            },
+                            iconResourceName = slot.getString("iconResourceName")
+                        )
                     }
                 }.toMutableMap(),
                 label = bundle.getString("label").orEmpty(),

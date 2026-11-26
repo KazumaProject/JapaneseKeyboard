@@ -762,10 +762,13 @@ class KeyboardRepository @Inject constructor(
             if (finalLabel != null) uuid to finalLabel else null
         }.toMap()
 
+        // Mixed keys can have an empty label even with a valid tap action.
+        val mixedKeyIds = dbLayout.keys.filter { it.keyType == KeyType.MIXED_FLICK }
+            .mapNotNull { it.keyId }.toSet()
         val newFlickKeyMaps = dbLayout.flickKeyMaps
             .mapNotNull { (uuid, flickActions) ->
-                val finalLabel = uuidToFinalLabelMap[uuid]
-                if (finalLabel != null) finalLabel to flickActions else null
+                val lookupKey = if (uuid in mixedKeyIds) uuid else uuidToFinalLabelMap[uuid]
+                lookupKey?.let { it to flickActions }
             }
             .toMap()
 

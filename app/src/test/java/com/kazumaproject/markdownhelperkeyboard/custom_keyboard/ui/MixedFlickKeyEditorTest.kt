@@ -14,6 +14,8 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyIconRef
+import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -34,12 +36,14 @@ class MixedFlickKeyEditorTest {
     @Test
     fun eachCellCanSwitchBetweenTextActionAndUnassigned() {
         val draft = MixedFlickEditorState.fromKey(blankKey, emptyMap())
-        val (_, binding) = editor(draft)
+        val (fragment, binding) = editor(draft)
         assertFalse(binding.buttonDone.isEnabled)
         assertFalse(binding.textCharInputLayout.isVisible)
+        assertFalse(binding.keyIconOverrideGroup.isVisible)
 
         binding.chipMixedText.performClick()
         assertTrue(binding.textCharInputLayout.isVisible)
+        assertFalse(binding.keyIconOverrideGroup.isVisible)
         binding.textCharEdittext.setText("かな")
         assertTrue(binding.buttonDone.isEnabled)
 
@@ -50,10 +54,22 @@ class MixedFlickKeyEditorTest {
         val deleteLabel = KeyActionMapper.getDisplayActions(binding.root.context)
             .first { it.action == KeyAction.Delete }.displayName
         binding.specialFlickMappingsRecyclerView.select(deleteLabel)
+        assertTrue(binding.keyIconOverrideGroup.isVisible)
+        assertEquals(MixedFlickSlot.Action(KeyAction.Delete), draft.slots[FlickDirection.UP])
+        val chosen = KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, "remove")
+        ReflectionHelpers.callInstanceMethod<Unit>(
+            fragment, "replaceSelectedIcon", ClassParameter.from(KeyIconRef::class.java, chosen)
+        )
+        val saved = Bundle()
+        fragment.onSaveInstanceState(saved)
+        val restored = MixedFlickEditorState.fromBundle(requireNotNull(saved.getBundle("mixedFlickDraft")))
+        assertEquals(MixedFlickSlot.Action(KeyAction.Delete, "remove"), restored.slots[FlickDirection.UP])
+        binding.buttonClearIconOverride.performClick()
         assertEquals(MixedFlickSlot.Action(KeyAction.Delete), draft.slots[FlickDirection.UP])
         assertEquals(MixedFlickSlot.Text("かな"), draft.slots[FlickDirection.TAP])
 
         binding.chipMixedUnassigned.performClick()
+        assertFalse(binding.keyIconOverrideGroup.isVisible)
         assertEquals(MixedFlickSlot.Unassigned, draft.slots[FlickDirection.UP])
         assertTrue(binding.buttonDone.isEnabled)
         binding.flickGridEditorView.onCellSelected?.invoke(CellMode.SpecialFlick(FlickDirection.TAP))

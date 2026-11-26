@@ -67,6 +67,7 @@ import android.os.VibratorManager
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.text.InputType
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
@@ -939,6 +940,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var systemUserDictionaryLoadJob: Job? = null
     private var kanaKanjiEngineLoadJob: Job? = null
     private var kanaKanjiEngineActivationJob: Job? = null
+    private var englishDictionaryCacheJob: Job? = null
+    private var englishDictionaryCachePrepared = false
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val localFontScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
@@ -3488,6 +3491,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         null
     }
 
+    private fun prepareEnglishDictionaryCache(editorInfo: EditorInfo?) {
+        if (BuildConfig.APP_EDITION != "full" || englishDictionaryCachePrepared ||
+            englishDictionaryCacheJob?.isActive == true || !predictionConfig.englishPredictionEnabled ||
+            qwertyMode.value != TenKeyQWERTYMode.TenKeyQWERTY || qwertyEnglishDirectInputPreference
+        ) return
+        val editor = editorInfo ?: return
+        if ((editor.inputType and InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT ||
+            getCurrentInputTypeForIME2(editor).isPassword()
+        ) return
+
+        englishDictionaryCacheJob = scope.launch {
+            try {
+                englishDictionaryCachePrepared = withContext(Dispatchers.IO) {
+                    dictionaryBinaryReader.prepareBundledEnglishCache()
+                }
+            } catch (error: IOException) {
+                Timber.d(error, "Bundled English cache preparation failed")
+            }
+        }
+    }
+
     private fun activateKanaKanjiEngineWhenReady(
         preferences: ImePreferencesSnapshot,
         inputSessionId: Long,
@@ -4393,6 +4417,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyCandidateAppearance()
         applySymbolKeyboardAppearance()
         resetKeyboard()
+        prepareEnglishDictionaryCache(attribute)
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
@@ -6927,6 +6952,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setMainSuggestionColumn(mainView)
         }
         updateIncognitoModeState(editorInfo)
+        prepareEnglishDictionaryCache(editorInfo)
         anchorActiveSuggestionStripStartIfLeadingContentExpected()
         if (hasPhysicalKeyboard) {
             floatingDockView.setText("あ")

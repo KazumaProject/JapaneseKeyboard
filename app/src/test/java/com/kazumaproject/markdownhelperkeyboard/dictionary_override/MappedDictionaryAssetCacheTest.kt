@@ -1,11 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.dictionary_override
 
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -90,6 +92,42 @@ class MappedDictionaryAssetCacheTest {
             assertEquals(1, opens.get())
             assertArrayEquals(bytes, results.first().readBytes())
         } finally {
+            executor.shutdownNow()
+        }
+    }
+
+    @Test fun englishCacheCanPublishWhileTheCoreDictionaryIsBeingPrepared() {
+        val corePath = "system/system.compact.kdict"
+        val coreBytes = byteArrayOf(1, 2, 3)
+        val metadata = JsonParser.parseString(manifest(bytes)).asJsonObject
+        metadata.getAsJsonObject("assets").add(corePath, JsonObject().apply {
+            addProperty("size", coreBytes.size)
+            addProperty("sha256", hash(coreBytes))
+        })
+        val coreCompressed = compress(coreBytes)
+        val englishCompressed = compress(bytes)
+        val coreStarted = CountDownLatch(1)
+        val finishCore = CountDownLatch(1)
+        val cache = MappedDictionaryAssetCache(temp.newFolder(), metadata.toString()) { name ->
+            if (name == "$corePath.xz") {
+                coreStarted.countDown()
+                check(finishCore.await(10, TimeUnit.SECONDS))
+                ByteArrayInputStream(coreCompressed)
+            } else {
+                check(name == "$path.xz")
+                ByteArrayInputStream(englishCompressed)
+            }
+        }
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val core = executor.submit<File> { cache.fileFor(corePath) }
+            assertTrue(coreStarted.await(5, TimeUnit.SECONDS))
+            val english = executor.submit<File> { cache.fileFor(path) }
+            assertArrayEquals(bytes, english.get(5, TimeUnit.SECONDS).readBytes())
+            finishCore.countDown()
+            assertArrayEquals(coreBytes, core.get(5, TimeUnit.SECONDS).readBytes())
+        } finally {
+            finishCore.countDown()
             executor.shutdownNow()
         }
     }

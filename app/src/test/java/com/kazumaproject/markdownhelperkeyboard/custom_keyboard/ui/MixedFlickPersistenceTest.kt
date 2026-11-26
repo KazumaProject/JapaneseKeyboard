@@ -7,6 +7,8 @@ import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyIconRef
+import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toFlickAction
@@ -28,6 +30,44 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class MixedFlickPersistenceTest {
     @Test
+    fun imePreservesMixedAssignmentsWithEmptyAndRepeatedLabels() = runBlocking<Unit> {
+        val database = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext<Context>(),
+            AppDatabase::class.java
+        ).allowMainThreadQueries().build()
+        try {
+            val repository = KeyboardRepository(database.keyboardLayoutDao())
+            val labels = listOf("", "", "Cursor", "Cursor")
+            val actions = listOf(
+                KeyAction.MoveCursorLeft, KeyAction.MoveCursorRight,
+                KeyAction.MoveCursorUp, KeyAction.MoveCursorDown
+            )
+            val keys = actions.mapIndexed { column, action ->
+                KeyData(
+                    label = labels[column], row = 0, column = column,
+                    isFlickable = true, action = action, keyId = "key-$column",
+                    keyType = KeyType.MIXED_FLICK
+                )
+            }
+            val maps = keys.associate { key ->
+                key.keyId!! to listOf(
+                    mapOf(
+                        FlickDirection.TAP to FlickAction.Action(requireNotNull(key.action)),
+                        FlickDirection.UP to FlickAction.Input(key.keyId!!)
+                    )
+                )
+            }
+            val id = repository.saveLayout(KeyboardLayout(keys, maps, keys.size, 1), "Cursor", null)
+            val reloaded = repository.getFullLayout(id).first()
+            val imeLayout = repository.convertLayout(reloaded)
+            assertEquals(maps, imeLayout.flickKeyMaps)
+            assertEquals(labels, imeLayout.keys.sortedBy { it.column }.map { it.label })
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
     fun mixedAssignmentsSurviveTheEditorRoomAndJsonBackup() = runBlocking<Unit> {
         val database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext<Context>(),
@@ -44,7 +84,10 @@ class MixedFlickPersistenceTest {
             val editorKey = editor.uiState.value.layout.keys.single()
             val assignments = mapOf(
                 FlickDirection.TAP to FlickAction.Input("かな"),
-                FlickDirection.UP to FlickAction.Action(KeyAction.Delete),
+                FlickDirection.UP to FlickAction.Action(
+                    KeyAction.Delete,
+                    icon = KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, "remove")
+                ),
                 FlickDirection.DOWN to FlickAction.Action(KeyAction.SwitchToKanaLayout),
                 FlickDirection.UP_RIGHT to FlickAction.Action(KeyAction.MoveToCustomKeyboard(target.stableId))
             )
@@ -60,6 +103,7 @@ class MixedFlickPersistenceTest {
             assertEquals(KeyType.MIXED_FLICK, reloadedKey.keyType)
             assertEquals(KeyAction.Text("かな"), reloadedKey.action)
             val map = reloaded.flickKeyMaps.getValue(reloadedKey.keyId!!).single()
+            assertEquals(map, repository.convertLayout(reloaded).flickKeyMaps.getValue(reloadedKey.keyId!!).single())
             val expectedSlots = assignments.mapValues { MixedFlickSlot.fromFlickAction(it.value) }
             assertEquals(expectedSlots, map.mapValues { MixedFlickSlot.fromFlickAction(it.value) })
 
