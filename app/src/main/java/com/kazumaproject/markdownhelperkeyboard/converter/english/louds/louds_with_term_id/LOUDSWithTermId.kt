@@ -8,6 +8,7 @@ import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.EnglishLoudsLabels
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
 import com.kazumaproject.toBitSet
 import java.io.IOException
@@ -20,7 +21,13 @@ class LOUDSWithTermId {
 
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
-    var labels: CharArray = charArrayOf()
+    private var labelStorage: EnglishLoudsLabels = EnglishLoudsLabels.Chars(charArrayOf())
+    internal val labelCount: Int get() = labelStorage.size
+    var labels: CharArray
+        get() = labelStorage.toCharArray()
+        set(value) {
+            labelStorage = EnglishLoudsLabels.Chars(value)
+        }
     val labelsTemp: MutableList<Char> = arrayListOf()
     var termIds: MutableList<Int> = arrayListOf()
     var termIdsSaved: IntArray = intArrayOf()
@@ -49,9 +56,16 @@ class LOUDSWithTermId {
         labels: CharArray,
         isLeaf: BitSet,
         termIdsList: IntArray,
+    ) : this(LBS, EnglishLoudsLabels.Chars(labels), isLeaf, termIdsList)
+
+    internal constructor(
+        LBS: BitSet,
+        labels: EnglishLoudsLabels,
+        isLeaf: BitSet,
+        termIdsList: IntArray,
     ) {
         this.LBS = LBS
-        this.labels = labels
+        labelStorage = labels
         this.isLeaf = isLeaf
         this.termIdsSaved = termIdsList
     }
@@ -66,12 +80,12 @@ class LOUDSWithTermId {
     fun getLetter(nodeIndex: Int): String {
         val list = mutableListOf<Char>()
         val firstNodeId = LBS.rank1(nodeIndex)
-        val firstChar = labels[firstNodeId]
+        val firstChar = labelStorage[firstNodeId]
         list.add(firstChar)
         var parentNodeIndex = LBS.select1(LBS.rank0(nodeIndex))
         while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1(parentNodeIndex)
-            val pair = labels[parentNodeId]
+            val pair = labelStorage[parentNodeId]
             list.add(pair)
             parentNodeIndex = LBS.select1(LBS.rank0(parentNodeIndex))
             if (parentNodeId == 0) return ""
@@ -84,7 +98,7 @@ class LOUDSWithTermId {
         var parentNodeIndex = LBS.select1(nodeId)
         while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1(parentNodeIndex)
-            val pair = labels[parentNodeId]
+            val pair = labelStorage[parentNodeId]
             list.add(pair)
             parentNodeIndex = LBS.select1(LBS.rank0(parentNodeIndex))
         }
@@ -114,7 +128,7 @@ class LOUDSWithTermId {
     /** Lazily walks terminal readings without expanding the complete dictionary. */
     fun termIterator(lbs: SuccinctBitVector, leaves: SuccinctBitVector): Iterator<Pair<String, Int>> =
         com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
-            LBS, lbs, labels.size, { index -> labels[index] },
+            LBS, lbs, labelCount, { index -> labelStorage[index] },
             { node -> if (isLeaf[node]) getTermId(node, leaves) else -1 },
         )
 
@@ -130,7 +144,7 @@ class LOUDSWithTermId {
             if (node < 0) return emptyList<Pair<String, Int>>().iterator()
         }
         return com.kazumaproject.markdownhelperkeyboard.converter.louds.LoudsTermIterator(
-            LBS, lbs, labels.size, { index -> labels[index] },
+            LBS, lbs, labelCount, { index -> labelStorage[index] },
             { position -> if (isLeaf[position]) getTermId(position, leaves) else -1 },
             startNode = node, prefix = prefix, includeChild = includeChild,
         )
@@ -259,7 +273,7 @@ class LOUDSWithTermId {
         var childPos = firstChildShortArray(pos, rank0Array, rank1Array)
         if (childPos < 0) return -1
         while (LBS[childPos]) {
-            if (c == labels[LBS.rank1CommonShort(childPos, rank1Array).toInt()]) {
+            if (c == labelStorage[LBS.rank1CommonShort(childPos, rank1Array).toInt()]) {
                 return childPos
             }
             childPos += 1
@@ -280,7 +294,7 @@ class LOUDSWithTermId {
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
         var childPos = firstChild(pos, rank0Array, rank1Array)
         while (childPos >= 0 && LBS[childPos]) {
-            if (c == labels[LBS.rank1Common(childPos, rank1Array)]) {
+            if (c == labelStorage[LBS.rank1Common(childPos, rank1Array)]) {
                 return childPos
             }
             childPos++
@@ -294,7 +308,7 @@ class LOUDSWithTermId {
         // Siblings occupy consecutive set bits and consecutive labels.
         var labelIndex = succinctBitVector.rank1(childPos)
         while (LBS[childPos]) {
-            if (c == labels[labelIndex]) {
+            if (c == labelStorage[labelIndex]) {
                 return childPos
             }
             childPos++
@@ -311,8 +325,8 @@ class LOUDSWithTermId {
             n = traverse(n, c, rank0Array, rank1Array)
             if (n < 0) break
             val index = LBS.rank1Common(n, rank1Array)
-            if (index >= labels.size) break
-            resultTemp.append(labels[index])
+            if (index >= labelCount) break
+            resultTemp.append(labelStorage[index])
             if (isLeaf[n]) {
                 result.add(resultTemp.toString())
             }
@@ -328,8 +342,8 @@ class LOUDSWithTermId {
             n = traverse(n, c, succinctBitVector)
             if (n < 0) break
             val index = succinctBitVector.rank1(n)
-            if (index >= labels.size) break
-            resultTemp.append(labels[index])
+            if (index >= labelCount) break
+            resultTemp.append(labelStorage[index])
             if (isLeaf[n]) {
                 result.add(resultTemp.toString())
             }
@@ -350,8 +364,8 @@ class LOUDSWithTermId {
         var childPos = firstChild(pos, rank0Array, rank1Array)
         while (childPos >= 0 && LBS[childPos]) {
             val index = LBS.rank1Common(childPos, rank1Array)
-            if (index >= labels.size) break
-            prefix.append(labels[index])
+            if (index >= labelCount) break
+            prefix.append(labelStorage[index])
             collectWords(childPos, prefix, rank0Array, rank1Array, result)
             prefix.deleteCharAt(prefix.length - 1)
             childPos++
@@ -371,8 +385,8 @@ class LOUDSWithTermId {
         var childPos = firstChildShortArray(pos, rank0Array, rank1Array)
         while (childPos >= 0 && LBS[childPos]) {
             val index = LBS.rank1CommonShort(childPos, rank1Array)
-            if (index >= labels.size) break
-            prefix.append(labels[index.toInt()])
+            if (index >= labelCount) break
+            prefix.append(labelStorage[index.toInt()])
             collectWords(childPos, prefix, rank0Array, rank1Array, result)
             prefix.deleteCharAt(prefix.length - 1)
             childPos++
@@ -391,8 +405,8 @@ class LOUDSWithTermId {
         var childPos = firstChild(pos, succinctBitVector)
         while (childPos >= 0 && LBS[childPos]) {
             val index = succinctBitVector.rank1(childPos)
-            if (index >= labels.size) break
-            prefix.append(labels[index])
+            if (index >= labelCount) break
+            prefix.append(labelStorage[index])
             collectWords(childPos, prefix, succinctBitVector, result)
             prefix.deleteCharAt(prefix.length - 1)
             childPos++
@@ -417,8 +431,8 @@ class LOUDSWithTermId {
             n = traverse(n, c, succinctBitVector)
             if (n < 0) return result
             val index = succinctBitVector.rank1(n)
-            if (index >= labels.size) return result
-            resultTemp.append(labels[index])
+            if (index >= labelCount) return result
+            resultTemp.append(labelStorage[index])
         }
 
         // collect words under node n, but stop at [limit]
@@ -451,9 +465,9 @@ class LOUDSWithTermId {
         var childPos = firstChild(pos, succinctBitVector)
         while (childPos >= 0 && LBS[childPos] && result.size < limit) {
             val idx = succinctBitVector.rank1(childPos)
-            if (idx >= labels.size) break
+            if (idx >= labelCount) break
 
-            val letter = labels[idx]
+            val letter = labelStorage[idx]
             if (!singleWordOnly || !letter.isWhitespace()) {
                 prefix.append(letter)
                 collectWords(childPos, prefix, succinctBitVector, result, limit, singleWordOnly)
@@ -472,8 +486,8 @@ class LOUDSWithTermId {
             n = traverse(n, c, rank0Array, rank1Array)
             if (n < 0) return result // No match found
             val index = LBS.rank1Common(n, rank1Array)
-            if (index >= labels.size) return result
-            resultTemp.append(labels[index])
+            if (index >= labelCount) return result
+            resultTemp.append(labelStorage[index])
         }
         // Collect all words starting from the last matched node
         collectWords(n, resultTemp, rank0Array, rank1Array, result)
@@ -488,8 +502,8 @@ class LOUDSWithTermId {
             n = traverse(n, c, succinctBitVector)
             if (n < 0) return result // No match found
             val index = succinctBitVector.rank1(n)
-            if (index >= labels.size) return result
-            resultTemp.append(labels[index])
+            if (index >= labelCount) return result
+            resultTemp.append(labelStorage[index])
         }
         // Collect all words starting from the last matched node
         collectWords(n, resultTemp, succinctBitVector, result)
@@ -508,8 +522,8 @@ class LOUDSWithTermId {
             n = traverseShortArray(n, c, rank0Array, rank1Array)
             if (n < 0) return result // No match found
             val index = LBS.rank1CommonShort(n, rank1Array)
-            if (index >= labels.size) return result
-            resultTemp.append(labels[index.toInt()])
+            if (index >= labelCount) return result
+            resultTemp.append(labelStorage[index.toInt()])
         }
         // Collect all words starting from the last matched node
         collectWords(n, resultTemp, rank0Array, rank1Array, result)
@@ -527,9 +541,9 @@ class LOUDSWithTermId {
         for (c in str) {
             n = traverseShortArray(n, c, rank0Array, rank1Array)
             val index = LBS.rank1CommonShort(n, rank1Array)
-            if (n < 0 || index >= labels.size) break
+            if (n < 0 || index >= labelCount) break
 
-            resultTemp.append(labels[index.toInt()])
+            resultTemp.append(labelStorage[index.toInt()])
             if (isLeaf[n]) {
                 result.add(resultTemp.toString())
             }
@@ -550,7 +564,7 @@ class LOUDSWithTermId {
 
         while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
-            val currentLabel = labels[charIndex]
+            val currentLabel = labelStorage[charIndex]
 
             if (currentChar == currentLabel) {
                 if (wordOffset + 1 == charCount) {
@@ -585,7 +599,7 @@ class LOUDSWithTermId {
 
         while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
-            val currentLabel = labels[charIndex]
+            val currentLabel = labelStorage[charIndex]
 
             if (currentChar == currentLabel) {
                 if (wordOffset + 1 == charCount) {
@@ -634,7 +648,7 @@ class LOUDSWithTermId {
 
         while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
-            val currentLabel = labels[charIndex.toInt()]
+            val currentLabel = labelStorage[charIndex.toInt()]
 
             if (currentChar == currentLabel) {
                 if (wordOffset + 1 == charCount) {
@@ -684,7 +698,7 @@ class LOUDSWithTermId {
                 println(e.stackTraceToString())
             }
         }
-        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsSaved)
+        return LOUDSWithTermId(LBS, labelStorage, isLeaf, termIdsSaved)
     }
 
     /**
@@ -736,7 +750,7 @@ class LOUDSWithTermId {
             var childPos = firstChild(currentNodeIndex, succinctBitVector)
             while (childPos >= 0 && LBS[childPos]) {
                 val labelNodeId = succinctBitVector.rank1(childPos)
-                if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
+                if (labelNodeId < labelCount && labelStorage[labelNodeId] == variant) {
 
                     searchRecursiveWithOmission(
                         originalStr,
