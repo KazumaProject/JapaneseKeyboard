@@ -39,28 +39,41 @@ class StandaloneUnigramInstrumentedTest {
         val full = SystemNgramAssetLoader.load(context)
         val ordinary = ordinary()
         val rows = StringBuilder()
+        val standaloneWords = listOf("しろ", "ごと", "したい", "はいる", "みた", "なにか", "なら", "なのか", "のみに")
+        val compounds = listOf(
+            "しろい", "しろくろ", "しろあり", "しごと", "ふくをきる", "きょうはいいてんきです",
+            "のみにいく", "かいいんのみに", "ばかなのかな",
+        )
         try {
             for (backend in ConversionBackend.entries) {
                 for (mode in listOf(CandidateQueryMode.NO_TAB_DEFAULT, CandidateQueryMode.PREDICTION, CandidateQueryMode.CONVERSION)) {
                     for (bunsetsu in listOf(false, true)) {
                         val session = KanaKanjiConversionSession(entry.kanaKanjiEngine(), backend)
                         for (n in listOf(1, 4, 10)) {
-                            for (word in listOf("しろ", "ごと", "したい", "はいる", "みた", "なにか", "なら")) {
+                            for (word in standaloneWords) {
                                 SystemNgramRuntime.install(full)
                                 val result = session.query(request(word, n, mode, bunsetsu))
                                 rows.appendLine("$backend\t$mode\t$bunsetsu\t$n\t$word\t${result.candidates.take(4)}")
                                 assertEquals("$backend $mode bunsetsu=$bunsetsu n=$n $word", word, result.candidates.first().string)
                                 assertTrue(result.candidates.first().standaloneUnigramMatched ||
                                     word in result.bunsetsuResult?.systemNgramMatchedCandidates.orEmpty())
+                                if (word == "のみに" && n == 10 && mode == CandidateQueryMode.CONVERSION) {
+                                    assertTrue("飲みに should remain available for $backend, bunsetsu=$bunsetsu",
+                                        result.candidates.any { it.string == "飲みに" })
+                                }
                             }
                         }
-                        for (input in listOf("しろい", "しろくろ", "しろあり", "しごと", "ふくをきる", "きょうはいいてんきです")) {
+                        for (input in compounds) {
                             SystemNgramRuntime.install(ordinary)
                             val expected = session.query(request(input, mode = mode, bunsetsu = bunsetsu))
                             SystemNgramRuntime.install(full)
                             val actual = session.query(request(input, mode = mode, bunsetsu = bunsetsu))
                             assertEquals("compound $backend $mode $bunsetsu $input", expected.candidates, actual.candidates)
                             assertEquals(expected.bunsetsuResult?.splitPatterns, actual.bunsetsuResult?.splitPatterns)
+                            if (input == "のみにいく" && mode == CandidateQueryMode.CONVERSION) {
+                                assertEquals("compound $backend bunsetsu=$bunsetsu", "飲みに行く",
+                                    actual.candidates.first().string)
+                            }
                         }
                         for (n in listOf(1, 4, 10)) {
                             for ((input, word, omission) in listOf(Triple("こと", "ごと", true), Triple("ひいる", "はいる", false))) {

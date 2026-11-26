@@ -1,7 +1,7 @@
 {
   "character": {
-    "count": 6858,
-    "digestSum": "fc4581d9765393f138a914cb69d2a44da8150b29088dd9262d665efc7053410a",
+    "count": 6862,
+    "digestSum": "f95d022a12a42a58ecfea85ecd3f6e2fb0083e656a02a1ca59318b9fc4cad114",
     "sample": {
       "reading": "あかざあかね",
       "surface": "赤座あかね"
@@ -16,24 +16,24 @@
     }
   },
   "place": {
-    "count": 45094,
-    "digestSum": "5720f1e2bba0d20eed0eacaa2567a6c17d84b187db030ad5228a8f0f9fb9433c",
+    "count": 45095,
+    "digestSum": "79202baae3c16ba170cba9a313fb3e1b99bb31faf14932ae7c5b52b8c891b731",
     "sample": {
       "reading": "かろけん",
       "surface": "カロ県"
     }
   },
   "address": {
-    "count": 152874,
-    "digestSum": "69ff599adcb461fbc8ddd32fc053e6b5b95e5182476ee81d5afcd5a56514f6d0",
+    "count": 152875,
+    "digestSum": "e73aa0ac770b83dbc02c00d649aea5d8a816593ce7c7b2aad91e247c5240bf46",
     "sample": {
       "reading": "すえつね",
       "surface": "末恒"
     }
   },
   "station": {
-    "count": 12760,
-    "digestSum": "cf4e38ccfad6bc14a8ac15c23740b609493d76b1027b849448ff910a2bb67964",
+    "count": 12761,
+    "digestSum": "8d5d7139afb3b4becd262e1d750d068941f7728b08ad1dd54f792cc7456ef203",
     "sample": {
       "reading": "あおえき",
       "surface": "阿保駅"
@@ -48,8 +48,8 @@
     }
   },
   "facility/religious/temple": {
-    "count": 4005,
-    "digestSum": "04d02b5ad3d6284d4b258df2e6ef7be00682ff79eae8c7fa95437b2c824ecbad",
+    "count": 4004,
+    "digestSum": "c2c52cb7635c8335ba415f4271a9fa5f28cfca880d4e25644f2e5008ac300003",
     "sample": {
       "reading": "うゆうじ",
       "surface": "烏尤寺"
@@ -168,19 +168,19 @@
     }
   },
   "facility/cultural/art_museum": {
-    "count": 381,
-    "digestSum": "d83ebc986b398d0d48c315e6015821ffa74f73af5ce302961787149fb0a442d8",
+    "count": 382,
+    "digestSum": "1a49bb3bdbb33224d9a74496769da3808502a8a13a7da52c5d9c3fc386c30e82",
     "sample": {
       "reading": "えろーら",
       "surface": "エローラ"
     }
   },
   "facility/cultural/library": {
-    "count": 750,
-    "digestSum": "be4cd3ba999ecbba87a1c4dc2e41db136d8c68d758e6dcbc8e346a17f10c5120",
+    "count": 753,
+    "digestSum": "a4f1a7cb21d16f067fa889ef3b63c9ddfe7dad58adba3018f1086531e86f5f31",
     "sample": {
-      "reading": "ほんぽーと",
-      "surface": "ほんぽーと"
+      "reading": "りょくいんぶんこ",
+      "surface": "緑陰文庫"
     }
   },
   "facility/cultural/memorial": {
@@ -192,11 +192,11 @@
     }
   },
   "facility/entertainment/theater": {
-    "count": 415,
-    "digestSum": "53b05e9e7f4c59240e7370f1361f2c5244fafaeea8d17000f8549b05324a89eb",
+    "count": 416,
+    "digestSum": "77dc11d315a90aee1053df86c02306887a76e4477300f50aa3d01581ff3acc32",
     "sample": {
-      "reading": "あぶあぶ",
-      "surface": "ABAB"
+      "reading": "むらくにざ",
+      "surface": "村国座"
     }
   },
   "facility/entertainment/cinema": {
@@ -232,8 +232,8 @@
     }
   },
   "facility/sports/gymnasium": {
-    "count": 450,
-    "digestSum": "0caaf70de0aac1398dfef072ec1fc58b73bed77e2ae902d2816aea5b9e9531e4",
+    "count": 451,
+    "digestSum": "5a6026e6cfa922005bb4f7107cbd8aef31cb70a908bafd4e0877414584805132",
     "sample": {
       "reading": "ときわざ",
       "surface": "ときわ座"
@@ -264,8 +264,8 @@
     }
   },
   "facility/commercial/shopping": {
-    "count": 1303,
-    "digestSum": "7d5f045abac378e6a9e53bf494e3d03176658020fd06fb64d510e33e36a5b39e",
+    "count": 1305,
+    "digestSum": "cda3124b05872e1750f3c36b9f334e9bdabe4d8c26195f66fbb088eb3e3adf08",
     "sample": {
       "reading": "きくのま",
       "surface": "菊の間"
@@ -416,8 +416,8 @@
     }
   },
   "facility/recreation/park_garden": {
-    "count": 1567,
-    "digestSum": "158e813c67e3ce1fe9f0d1370be30292f18b9e30f35e92c13d8fff5694b840b5",
+    "count": 1568,
+    "digestSum": "9ae3d150ec006787a9740ee115c8d5aef64ec34f7a5bdf9b41552c408ff9845b",
     "sample": {
       "reading": "えこすた",
       "surface": "エコスタ"
@@ -432,8 +432,8 @@
     }
   },
   "facility/recreation/outdoor_nature": {
-    "count": 236,
-    "digestSum": "5296e335aabd695cc7190e31231029e8dd20a549575f9d532147bb2c4a4fe271",
+    "count": 237,
+    "digestSum": "42a47f4fea6aad6c52328e0196290363b60ce1ba7c47a08306c79265392cecac",
     "sample": {
       "reading": "こうみぼう",
       "surface": "広味坊"
@@ -480,11 +480,11 @@
     }
   },
   "facility/residential/mixed_use_building": {
-    "count": 98,
-    "digestSum": "fdef80a05f6e6f8483e32dc0b1951ef9e890cf5df1fffd46691d3994d2847296",
+    "count": 103,
+    "digestSum": "404a8c845206d4aaa97549feec5c2e836fe462571b00d4beba8ce0c4458c4531",
     "sample": {
-      "reading": "くずだて",
-      "surface": "くず館"
+      "reading": "ここのわおおぶ",
+      "surface": "coconowa obu"
     }
   },
   "facility/military/base": {
@@ -520,11 +520,11 @@
     }
   },
   "organization": {
-    "count": 47525,
-    "digestSum": "7fa3ca53fdd96912966e37cb79f626ef2e13eef7e187f5556b4baced5bf7ce1a",
+    "count": 47555,
+    "digestSum": "8ecbbbdb8cdec8a63e9a0163338829ddc491bba15aeaaccda3c2ea15a8557fa4",
     "sample": {
-      "reading": "ねいばー",
-      "surface": "NAVER"
+      "reading": "にいだほんけ",
+      "surface": "仁井田本家"
     }
   },
   "lineage": {
@@ -536,16 +536,16 @@
     }
   },
   "product": {
-    "count": 10220,
-    "digestSum": "992fb6570be8ae6b4d03c837224dbedae1e1e29bedafc90e17869818e0050368",
+    "count": 10241,
+    "digestSum": "c5d516376663bb15148eeb71e63cfbeca6e563e3d4026377e93c58b26bd4e9ab",
     "sample": {
       "reading": "のるもなーる",
       "surface": "ノルモナール"
     }
   },
   "vehicle": {
-    "count": 2581,
-    "digestSum": "91de78c9e19513fe6ad0b4cf42e578c5c4161411cf8730fe1441fe4470d31b7f",
+    "count": 2584,
+    "digestSum": "f7b201202369bf7ec6f841abb4835319afcfe41890be7e555ff4e79103e0d919",
     "sample": {
       "reading": "あくせら",
       "surface": "AXELA"
@@ -648,8 +648,8 @@
     }
   },
   "term/general/neologisms_trends_youth_language": {
-    "count": 487,
-    "digestSum": "dd8dd097eac0f87feb21d8693e3ba5977a373d35284363c6b8ed47dcbe8ccc3f",
+    "count": 488,
+    "digestSum": "6a13b6036266b9646631894af8e0f15ff5ee905b2e26649dafdcd86d17fccc50",
     "sample": {
       "reading": "おれっこ",
       "surface": "オレっ娘"
@@ -664,24 +664,24 @@
     }
   },
   "term/specialist/information_communications": {
-    "count": 6095,
-    "digestSum": "f7e74bf6d72abad24857bf3f7ba0f9e61db8ed09ffd5962dbcd66ddcd484d49f",
+    "count": 6100,
+    "digestSum": "047f85b0bce34e966705692b0cd7ba2d8792c81e5d75196a3809a2f27ba32431",
     "sample": {
       "reading": "あいじつり",
       "surface": "I字吊り"
     }
   },
   "term/specialist/mathematics_physics": {
-    "count": 4174,
-    "digestSum": "0fbb5814261e5b2f5a84cca9cb7ad28e9d45b9e8ba91796df345b45cc9d7e2c4",
+    "count": 4177,
+    "digestSum": "34dd3b1235af7077324fc1a48351280e5b45b37b39e0f2a79b17ecd6d02705e1",
     "sample": {
       "reading": "あれふすう",
       "surface": "アレフ数"
     }
   },
   "term/specialist/chemistry_life_sciences": {
-    "count": 27577,
-    "digestSum": "2b85df7624e290099e73471efecf95b5de1c427f6819693986cfbab7f5dbfea6",
+    "count": 27583,
+    "digestSum": "0bc4cd0b814665c9d42659b83265a9ebf977d79ff0d25bee76b31da97c4ccd87",
     "sample": {
       "reading": "あかひめ",
       "surface": "赤姫"
@@ -696,24 +696,24 @@
     }
   },
   "term/specialist/earth_environment_resources": {
-    "count": 2118,
-    "digestSum": "49d8a49744254ef19a98abbcc2c45a22b2dd422dc3ccfa33bda72ebd8d29d4bf",
+    "count": 2120,
+    "digestSum": "1693c3fba1da76efb8a914a0cd7dbcfc95d71a4321279eea5f6ef157278e910e",
     "sample": {
       "reading": "あなはぜ",
       "surface": "孔鯊"
     }
   },
   "term/specialist/economics_management": {
-    "count": 5913,
-    "digestSum": "a17908a937bdf3c5ac6b2101d156f8ede9625c04c57504ebd6ce52d12e782c2d",
+    "count": 5918,
+    "digestSum": "a52e7f9f4fde2440d875312c6496b181a62b3f3f30b57ee1732873cdefa2a4a0",
     "sample": {
       "reading": "あいずごよう",
       "surface": "会津五葉"
     }
   },
   "term/specialist/law_politics": {
-    "count": 5726,
-    "digestSum": "8cf8c7df6a73d1194de8ec9bb62946a986360dd6a7cc697763609ca1f5e435f9",
+    "count": 5728,
+    "digestSum": "af0bc043ee0e7d3b2e3688cd6b492fe32780aa236e040b62901793825d04c0aa",
     "sample": {
       "reading": "ぎいんせき",
       "surface": "議院石"
@@ -752,32 +752,32 @@
     }
   },
   "work_manga": {
-    "count": 5095,
-    "digestSum": "7610ed9a3917530fdfa2629b02c96dd1fc326506f99e296186d8e4f1ec7961f9",
+    "count": 5097,
+    "digestSum": "4da7fd53a881162bfa67386e3ce6ca64f1f3fd07565cc5249f09a808e6459493",
     "sample": {
       "reading": "あきそら",
       "surface": "あきそら"
     }
   },
   "work_anime": {
-    "count": 1094,
-    "digestSum": "a2bf592ddc66c5114b54fa0d079f1df8c5a83c9bcce606923033661a9ecd633c",
+    "count": 1097,
+    "digestSum": "4c6e1b9ff5cf499e2351dace55a66635e33f001a3c66336b38ac0260208ad41c",
     "sample": {
-      "reading": "あいどるじへん",
-      "surface": "アイドル事変"
+      "reading": "ろびはち",
+      "surface": "RobiHachi"
     }
   },
   "media_demographic/audience/shonen": {
-    "count": 4127,
-    "digestSum": "9d0f509d0fb2957dd652513e7abfe940ae1d636a659c91aef8529751370ae4ea",
+    "count": 4129,
+    "digestSum": "896633135be27df0e7907e4c495a0bfe007fa9195e0ce16997dcf72c83e97d93",
     "sample": {
       "reading": "あかかげ",
       "surface": "赤影"
     }
   },
   "media_demographic/audience/seinen": {
-    "count": 1737,
-    "digestSum": "0c4bfb6287ef8cf0e6a7a2d8bf700f45fbcc2d31ee4ae2d0419d13129761ecf9",
+    "count": 1739,
+    "digestSum": "9ca5b3603ca2e6ef74d3fa4de83231e937b2da2847465d38447192d84fb6ddbc",
     "sample": {
       "reading": "あきそら",
       "surface": "あきそら"
@@ -800,11 +800,11 @@
     }
   },
   "media_demographic/audience/kids": {
-    "count": 549,
-    "digestSum": "401e399fc494003efb3fcd3b8ac18d100de84fa6a452e1d1f00fc97e59b87ed5",
+    "count": 551,
+    "digestSum": "bbbf6e5d43d17120cd53ce37531c970237d7857085579c20deb28aa7b5eb46f6",
     "sample": {
-      "reading": "てれくま",
-      "surface": "てれくま"
+      "reading": "じゅういっちゃん",
+      "surface": "じゅういっちゃん"
     }
   },
   "media_demographic/audience/mixed": {
@@ -816,11 +816,11 @@
     }
   },
   "media_demographic/audience/unspecified": {
-    "count": 5109,
-    "digestSum": "6078fad5c5b0b743d862c4582cddc0e2495d80e94fc38c48d87854174c73f0c3",
+    "count": 5112,
+    "digestSum": "e6847e206ab2e2010dfb890158b7e041ac70e7354b06991793eb3f4cbb0ed2ba",
     "sample": {
-      "reading": "あいばゆみ",
-      "surface": "相葉夕美"
+      "reading": "ろーぷれぐるぐる",
+      "surface": "ろーぷれぐるぐる"
     }
   },
   "media_demographic/resolution/source_unverified": {
@@ -856,19 +856,19 @@
     }
   },
   "work_game": {
-    "count": 3182,
-    "digestSum": "e60c2fb3c16fbc57ae1f6cfa4984e79b2d8aaa861f20e692011a319c6208d5d4",
+    "count": 3188,
+    "digestSum": "020699a06c06c96a44ac5fd16951da9c3729c12c3a6877d0a5fa9ba6fc37ed52",
     "sample": {
       "reading": "あじとつー",
       "surface": "AZITO2"
     }
   },
   "work_music": {
-    "count": 10355,
-    "digestSum": "ed9f4733278cee0bdec3caf8eb5d45ec2ee17bba27a410ba79cf24859c66a4ed",
+    "count": 10358,
+    "digestSum": "30c36bcee6671e609508efa236ae4b526a6c16ceceb4bbad1e3d1e45224860f5",
     "sample": {
-      "reading": "あいをくれ",
-      "surface": "アイヲクレ"
+      "reading": "いましか",
+      "surface": "いましか"
     }
   },
   "work_stage": {
