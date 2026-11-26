@@ -826,6 +826,7 @@
     <string name="mixed_key">Mixed Key</string>
     <string name="mixed_flick_unassigned">Unassigned</string>
     <string name="mixed_flick_text">Text Input</string>
+    <string name="mixed_flick_action_icon">Action icon</string>
     <string name="mixed_flick_action">Special Action</string>
     <string name="key_label">Label for Key Display</string>
     <string name="key_action">Action for Key</string>

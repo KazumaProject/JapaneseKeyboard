@@ -782,6 +782,7 @@
     <string name="mixed_key">混在キー</string>
     <string name="mixed_flick_unassigned">未設定</string>
     <string name="mixed_flick_text">文字入力</string>
+    <string name="mixed_flick_action_icon">アクションのアイコン</string>
     <string name="mixed_flick_action">特殊アクション</string>
     <string name="key_label">キーの表示ラベル</string>
     <string name="key_action">キーのアクション</string>
