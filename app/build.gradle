@@ -227,7 +227,7 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
     abstract DirectoryProperty getMergedAssets()
 
     @Input
-    abstract Property<Boolean> getZstandardEnglish()
+    abstract Property<Boolean> getUseZstandard()
 
     @OutputDirectory
     abstract DirectoryProperty getPackagedAssets()
@@ -247,7 +247,7 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
         ['system/system.compact.kdict', 'english/reading.compact', 'english/word.compact',
             'english/token.compact', 'english/english.lookup.index', 'english/grammar/categories.erol'].each { path ->
             def source = new File(packagedAssets.get().asFile, path)
-            boolean zstandard = zstandardEnglish.get() && path.startsWith('english/')
+            boolean zstandard = useZstandard.get()
             def digest = java.security.MessageDigest.getInstance('SHA-256')
             source.withInputStream { input ->
                 new java.security.DigestInputStream(input, digest).withCloseable { hashed ->
@@ -311,7 +311,7 @@ androidComponents {
             variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
             def compactAssets = tasks.register("package${variant.name.capitalize()}RuntimeDictionaryAssets",
                 PackageRuntimeDictionaryAssets) {
-                zstandardEnglish.set(variant.productFlavors.any { it.first == 'edition' && it.second == 'full' })
+                useZstandard.set(variant.productFlavors.any { it.first == 'edition' && it.second == 'full' })
             }
             variant.artifacts.use(compactAssets)
                 .wiredWithDirectories({ it.mergedAssets }, { it.packagedAssets })
