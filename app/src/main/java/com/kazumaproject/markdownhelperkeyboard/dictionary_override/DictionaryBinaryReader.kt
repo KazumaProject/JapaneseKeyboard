@@ -230,13 +230,13 @@ class DictionaryBinaryReader @Inject constructor(
         )
 
     private fun readBundledEnglishReading(): EnglishReadingTrie =
-        resolver.readBundledAssetBuffer("english/reading.compact", BundledEnglishDictionaryReader::readReading)
+        resolver.readBundledAssetBuffer(ENGLISH_READING_ASSET, BundledEnglishDictionaryReader::readReading)
 
     private fun readBundledEnglishWord(): EnglishWordTrie =
-        resolver.readBundledAssetBuffer("english/word.compact", BundledEnglishDictionaryReader::readWord)
+        resolver.readBundledAssetBuffer(ENGLISH_WORD_ASSET, BundledEnglishDictionaryReader::readWord)
 
     private fun readBundledEnglishToken(): EnglishTokenArray =
-        resolver.readBundledAssetBuffer("english/token.compact", BundledEnglishDictionaryReader::readToken)
+        resolver.readBundledAssetBuffer(ENGLISH_TOKEN_ASSET, BundledEnglishDictionaryReader::readToken)
 
     private fun readEnglishReading(input: InputStream): EnglishReadingTrie =
         openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_READING.name).use {
@@ -358,12 +358,18 @@ class DictionaryBinaryReader @Inject constructor(
         }
     }
 
+    internal fun prepareBundledEnglishCache(): Boolean {
+        if (resolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return false
+        resolver.prepareBundledAssetCache(ENGLISH_CACHE_ASSETS)
+        return true
+    }
+
     internal fun loadBundledEnglishForEngine(): CompactEnglishDictionary? =
         compactBundledEnglishDictionaryIfActive()
 
     internal fun loadBundledEnglishGrammar(): GrammarRoles? =
         runCatching {
-            resolver.readBundledAssetBuffer("english/grammar/categories.erol", RuntimeGrammarRoles::readBundled)
+            resolver.readBundledAssetBuffer(ENGLISH_GRAMMAR_ASSET, RuntimeGrammarRoles::readBundled)
         }.onFailure { error ->
             Timber.w(error, "Bundled English grammar is unavailable")
         }.getOrNull()
@@ -429,6 +435,14 @@ class DictionaryBinaryReader @Inject constructor(
             "connection/connection.compact.index"
         private const val COMPACT_SYSTEM_DICTIONARY_ASSET = "system/system.compact.kdict"
         private const val ENGLISH_LOOKUP_INDEX_ASSET = "english/english.lookup.index"
+        private const val ENGLISH_READING_ASSET = "english/reading.compact"
+        private const val ENGLISH_WORD_ASSET = "english/word.compact"
+        private const val ENGLISH_TOKEN_ASSET = "english/token.compact"
+        private const val ENGLISH_GRAMMAR_ASSET = "english/grammar/categories.erol"
+        private val ENGLISH_CACHE_ASSETS = listOf(
+            ENGLISH_LOOKUP_INDEX_ASSET, ENGLISH_READING_ASSET, ENGLISH_WORD_ASSET,
+            ENGLISH_TOKEN_ASSET, ENGLISH_GRAMMAR_ASSET,
+        )
         private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
         fun openZipAwareObject(input: InputStream, debugName: String): ObjectInputStream =

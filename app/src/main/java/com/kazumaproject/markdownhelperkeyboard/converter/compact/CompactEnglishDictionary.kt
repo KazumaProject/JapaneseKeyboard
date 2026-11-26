@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.compact
 
 import android.content.res.AssetFileDescriptor
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.EnglishLoudsLabels
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
@@ -61,8 +62,8 @@ internal object BundledEnglishDictionaryReader {
             readingLeafIndex = input.readSuccinctBitVector(reading.isLeaf),
             wordLbsIndex = input.readSuccinctBitVector(word.LBS),
             tokenIndex = input.readSuccinctBitVector(token.bitvector),
-            wordCompletionBounds = input.readBounds(reading.labels.size),
-            phraseCompletionBounds = input.readBounds(reading.labels.size),
+            wordCompletionBounds = input.readBounds(reading.labelCount),
+            phraseCompletionBounds = input.readBounds(reading.labelCount),
         )
         require(input.remaining == 0) {
             "English lookup index has ${input.remaining} trailing bytes"
@@ -148,16 +149,17 @@ internal object BundledEnglishDictionaryReader {
             return CharArray(size).also { take(size * Char.SIZE_BYTES).asCharBuffer().get(it) }
         }
 
-        fun readLabels(): CharArray {
+        fun readLabels(): EnglishLoudsLabels {
             val alphabet = readCharArray()
             require(alphabet.size <= 256) { "Invalid English label alphabet" }
-            if (alphabet.isEmpty()) return readCharArray()
-            val size = readSizedCount(Byte.SIZE_BYTES)
-            return CharArray(size) {
-                val index = buffer.get().toInt() and 0xff
+            if (alphabet.isEmpty()) return EnglishLoudsLabels.Chars(readCharArray())
+            // Keep the bundled alphabet indices rather than expanding each into a UTF-16 char.
+            val indices = readByteArray()
+            for (value in indices) {
+                val index = value.toInt() and 0xff
                 require(index < alphabet.size) { "Invalid English label index: $index" }
-                alphabet[index]
             }
+            return EnglishLoudsLabels.Indexed(indices, alphabet)
         }
 
         fun readShortArray(): ShortArray {
