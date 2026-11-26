@@ -2422,6 +2422,49 @@
       ]
     },
     {
+      "group": "com.github.luben",
+      "name": "zstd-jni",
+      "version": "1.5.7-29",
+      "configurations": [
+        "fullStandardReleaseRuntimeClasspath"
+      ],
+      "pomUrl": "https://repo.maven.apache.org/maven2/com/github/luben/zstd-jni/1.5.7-29/zstd-jni-1.5.7-29.pom",
+      "licenses": [
+        {
+          "name": "BSD 2-Clause License",
+          "url": "https://opensource.org/licenses/BSD-2-Clause"
+        }
+      ],
+      "evidence": [
+        {
+          "url": "https://repo.maven.apache.org/maven2/com/github/luben/zstd-jni/1.5.7-29/zstd-jni-1.5.7-29.pom",
+          "sha256": "e755be475299f9b0c248db924018a1cfbcf8a3852089a3bb0422c135d97ec066"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/luben/zstd-jni/v1.5.7-29/LICENSE",
+          "sha256": "289a6adada5726047b9e68bf607cc44fbbac953bbb4fd29f53ffe75b5cb3e7b1"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/luben/zstd-jni/v1.5.7-29/src/main/native/LICENSE",
+          "sha256": "2c1a7fa704df8f3a606f6fc010b8b5aaebf403f3aeec339a12048f1ba7331a0b"
+        }
+      ],
+      "sourceNotices": [
+        {
+          "title": "zstd-jni 1.5.7-29 LICENSE (BSD 2-Clause)",
+          "asset": "software-licenses/zstd-jni-1.5.7-29-bsd-2-clause.txt",
+          "sourceSet": "full",
+          "sha256": "289a6adada5726047b9e68bf607cc44fbbac953bbb4fd29f53ffe75b5cb3e7b1"
+        },
+        {
+          "title": "Zstandard native library LICENSE (BSD 3-Clause)",
+          "asset": "software-licenses/zstd-1.5.7-bsd-3-clause.txt",
+          "sourceSet": "full",
+          "sha256": "2c1a7fa704df8f3a606f6fc010b8b5aaebf403f3aeec339a12048f1ba7331a0b"
+        }
+      ]
+    },
+    {
       "group": "com.google.ai.edge.litertlm",
       "name": "litertlm-android",
       "version": "0.14.0",

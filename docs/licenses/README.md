@@ -35,7 +35,7 @@ MITは第三者の辞書・ライブラリ・モデルのライセンスを変�
 
 アプリの「ライセンスと出典」は、概要、辞書・データ、ライブラリ、Full版のAIモデル・ネイティブコードに分けて表示します。辞書の詳細では同梱版の該当する通知原文をオフラインで閲覧できます。追加語と対象層分類の出典は各カテゴリの詳細に、英単語辞書の生成元と文法データの入力原本は英単語辞書の詳細に掲載しています。
 
-ライブラリはFull Standard Releaseの139件、Lite Standard/F-Droid Releaseの137件の解決結果に対応します（BOM等のメタデータ依存を含む）。版別一覧とPOMの根拠は `app/src/main/assets/software-licenses/catalog.json` に保持しています。対象版のPOM照合に加え、取得できたAAR/JARとそのclasses.jarのLICENSE/NOTICE/COPYINGを原文のまま保存し、表示します。解決されたモジュールと縮小後APKの到達可能コードとの一対一対応を示すものではありません。
+ライブラリはFull Standard Releaseの140件、Lite Standard/F-Droid Releaseの137件の解決結果に対応します（BOM等のメタデータ依存を含む）。版別一覧とPOMの根拠は `app/src/main/assets/software-licenses/catalog.json` に保持しています。対象版のPOM照合に加え、取得できたAAR/JARとそのclasses.jarのLICENSE/NOTICE/COPYINGを原文のまま保存し、表示します。解決されたモジュールと縮小後APKの到達可能コードとの一対一対応を示すものではありません。
 
 コルーチンは対象版のPOMに基づくApache 2.0、Zenzモデルは固定版モデルカードのApache 2.0として表示します。根拠のない一律の著作権表示は付与しません。個別著作権表示を取得できない場合は、その範囲を詳細画面に明記します。ユーザーが追加するモデルの利用条件は提供元の資料によります。
 
