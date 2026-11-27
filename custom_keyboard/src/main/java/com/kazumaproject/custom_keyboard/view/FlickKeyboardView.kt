@@ -1018,9 +1018,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             KeyboardFontGlyphDrawable.setImageResource(button, icon, keyboardFontSnapshot)
         }
         applyImageButtonTint(button, info.keyData)
+        val label = KeyIconResolver.resolvedLabelForRendering(info.keyData, context)
         button.contentDescription = if (locked) context.getString(
-            com.kazumaproject.custom_keyboard.R.string.modifier_locked, info.keyData.label
-        ) else info.keyData.label
+            com.kazumaproject.custom_keyboard.R.string.modifier_locked, label
+        ) else label
         updateImageButtonMatrix(button, info.keyData)
     }
 
@@ -1088,7 +1089,9 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     /** Standard mode labels use the same text sizing as other special keys. */
     private fun modeSwitchLabelForDisplay(keyData: KeyData): String? {
-        if (!KeyIconResolver.hasIcon(keyData) || KeyIconResolver.hasIconOverride(keyData)) {
+        if (keyData.keyType == KeyType.MIXED_FLICK ||
+            !KeyIconResolver.hasIcon(keyData) || KeyIconResolver.hasIconOverride(keyData)
+        ) {
             return null
         }
         return when (keyData.drawableResId) {
@@ -1242,12 +1245,10 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun applyImageButtonTint(button: AppCompatImageButton, keyData: KeyData) {
-        if (
-            themeMode == "custom" &&
-            keyData.isSpecialKey &&
-            KeyIconResolver.shouldTintIcon(keyData)
-        ) {
-            button.setColorFilter(resolveKeyVisualPalette(keyData).textColor)
+        val usesThemeTextColor = keyData.keyType == KeyType.MIXED_FLICK ||
+            (themeMode == "custom" && keyData.isSpecialKey)
+        if (usesThemeTextColor && KeyIconResolver.shouldTintIcon(keyData)) {
+            button.setColorFilter(getGuideTextColor(keyData))
         } else {
             button.clearColorFilter()
         }

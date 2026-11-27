@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard.data
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -92,6 +93,64 @@ class KeyIconResolverTintTest {
         assertTrue(KeyIconResolver.hasIcon(keyData))
         assertTrue(KeyIconResolver.shouldTintIcon(keyData))
         assertEquals("Delete", KeyIconResolver.resolvedLabelForRendering(keyData))
+    }
+
+    @Test
+    fun unlabeledMixedCursorTapsRenderTheirDefaultIcons() {
+        val icons = mapOf(
+            KeyAction.MoveCursorUp to com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24,
+            KeyAction.MoveCursorDown to com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24,
+            KeyAction.MoveCursorLeft to com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
+            KeyAction.MoveCursorRight to com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+        )
+        for ((action, icon) in icons) {
+            val key = mixedKey(action)
+            val resolved = resolveMixedTap(key, FlickAction.Action(action))
+            assertEquals(icon, resolved.drawableResId)
+            assertTrue(KeyIconResolver.hasIcon(resolved))
+            assertTrue(KeyIconResolver.shouldTintIcon(resolved))
+        }
+    }
+
+    @Test
+    fun mixedTapPreservesCustomLabelAndExplicitIconPrecedence() {
+        val key = mixedKey(KeyAction.MoveCursorUp, label = "Up")
+        val icon = KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, "outline_arrow_left_alt_24")
+        val labeled = resolveMixedTap(key, FlickAction.Action(KeyAction.MoveCursorUp))
+        assertFalse(KeyIconResolver.hasIcon(labeled))
+        assertEquals("Up", KeyIconResolver.resolvedLabelForRendering(labeled))
+
+        val overridden = resolveMixedTap(key, FlickAction.Action(KeyAction.MoveCursorUp, icon = icon))
+        assertTrue(KeyIconResolver.hasIcon(overridden))
+        assertEquals(icon, overridden.icon)
+    }
+
+    @Test
+    fun mixedTextTapDoesNotUseTheCursorIconFromAnotherSlot() {
+        val key = mixedKey(KeyAction.Text("a"))
+        val resolved = resolveMixedTap(key, FlickAction.Input("a"))
+        assertFalse(KeyIconResolver.hasIcon(resolved))
+        assertEquals("a", KeyIconResolver.resolvedLabelForRendering(resolved))
+    }
+
+    @Test
+    fun mixedTapWithoutAnIconUsesItsActionLabel() {
+        val key = mixedKey(KeyAction.Home)
+        val resolved = resolveMixedTap(key, FlickAction.Action(KeyAction.Home))
+        assertNull(resolved.drawableResId)
+        assertFalse(KeyIconResolver.hasIcon(resolved))
+        assertEquals("Home", KeyIconResolver.resolvedLabelForRendering(resolved))
+    }
+
+    private fun mixedKey(action: KeyAction, label: String = "") = KeyData(
+        label = label, row = 0, column = 0, isFlickable = true,
+        action = action, keyId = "mixed", keyType = KeyType.MIXED_FLICK
+    )
+
+    private fun resolveMixedTap(key: KeyData, tap: FlickAction): KeyData {
+        val slots = mapOf(FlickDirection.TAP to tap, FlickDirection.UP to FlickAction.Action(KeyAction.MoveCursorUp))
+        val layout = KeyboardLayout(listOf(key), mapOf("mixed" to listOf(slots)), 1, 1)
+        return KeyIconResolver.withMixedFlickTapIcon(key, layout)
     }
 
     private fun specialKey(
