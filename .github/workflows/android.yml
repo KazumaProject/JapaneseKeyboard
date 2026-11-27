@@ -107,7 +107,7 @@ jobs:
             --stacktrace \
             --no-daemon \
             --max-workers=1
-          python3 tools/release/verify-lite-apk.py app/build/outputs/apk/liteStandard/release/*.apk
+          python3 tools/release/verify-lite-apk.py --compression gz app/build/outputs/apk/liteStandard/release/*.apk
 
       - name: Build and verify Play bundle native symbols
         env:

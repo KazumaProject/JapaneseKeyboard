@@ -3492,7 +3492,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun prepareEnglishDictionaryCache(editorInfo: EditorInfo?) {
-        if (BuildConfig.APP_EDITION != "full" || englishDictionaryCachePrepared ||
+        if (englishDictionaryCachePrepared ||
             englishDictionaryCacheJob?.isActive == true || !predictionConfig.englishPredictionEnabled ||
             qwertyMode.value != TenKeyQWERTYMode.TenKeyQWERTY || qwertyEnglishDirectInputPreference
         ) return
@@ -19905,6 +19905,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     TenKeyQWERTYMode.TenKeyQWERTY -> {
+                        prepareEnglishDictionaryCache(currentInputEditorInfo)
                         suggestionAdapter?.updateState(
                             TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
                         )

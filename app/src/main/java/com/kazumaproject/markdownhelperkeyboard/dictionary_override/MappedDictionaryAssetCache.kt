@@ -7,6 +7,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
+import java.util.zip.GZIPInputStream
 import org.tukaani.xz.XZInputStream
 
 /** Private, reproducible dictionary copies used by the existing memory-mapped readers. */
@@ -16,7 +17,7 @@ internal class MappedDictionaryAssetCache(
     private val openAsset: (String) -> InputStream,
 ) {
     private enum class Compression(val extension: String) {
-        XZ("xz"), ZSTANDARD("zst")
+        XZ("xz"), GZIP("gz"), ZSTANDARD("zst")
     }
 
     private data class Asset(val size: Long, val sha256: String, val compression: Compression)
@@ -27,6 +28,7 @@ internal class MappedDictionaryAssetCache(
             val record = value.asJsonObject
             val compression = when (val encoding = record.get("compression")?.asString) {
                 null, "xz" -> Compression.XZ
+                "gz" -> Compression.GZIP
                 "zstd" -> Compression.ZSTANDARD
                 else -> error("Unsupported dictionary compression: $encoding")
             }
@@ -99,6 +101,7 @@ internal class MappedDictionaryAssetCache(
             val decoded = when (asset.compression) {
                 // The build uses an 8 MiB XZ dictionary. Also bound memory on damaged streams.
                 Compression.XZ -> XZInputStream(raw, 32 * 1024)
+                Compression.GZIP -> GZIPInputStream(raw, 64 * 1024)
                 Compression.ZSTANDARD -> openZstandardDictionary(raw)
             }
             decoded.use { input ->

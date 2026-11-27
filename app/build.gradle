@@ -162,7 +162,7 @@ android {
         // Debug assets remain directly mappable. Release assets are already compressed
         // and mapped through verified private copies.
         noCompress += ['kdict', 'reading.compact', 'word.compact', 'token.compact',
-            'english.lookup.index', 'erol', 'xz', 'zst']
+            'english.lookup.index', 'erol', 'xz', 'gz', 'zst']
     }
 
     sourceSets {
@@ -227,7 +227,7 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
     abstract DirectoryProperty getMergedAssets()
 
     @Input
-    abstract Property<Boolean> getUseZstandard()
+    abstract Property<String> getCompression()
 
     @OutputDirectory
     abstract DirectoryProperty getPackagedAssets()
@@ -244,29 +244,41 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
             exclude('system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip')
         }
         def records = [:]
+        def encoding = compression.get()
+        def extension = encoding == 'zstd' ? 'zst' : encoding
         ['system/system.compact.kdict', 'english/reading.compact', 'english/word.compact',
             'english/token.compact', 'english/english.lookup.index', 'english/grammar/categories.erol'].each { path ->
             def source = new File(packagedAssets.get().asFile, path)
-            boolean zstandard = useZstandard.get()
             def digest = java.security.MessageDigest.getInstance('SHA-256')
             source.withInputStream { input ->
                 new java.security.DigestInputStream(input, digest).withCloseable { hashed ->
-                    new File(source.path + (zstandard ? '.zst' : '.xz')).withOutputStream { destination ->
-                        def compressor = zstandard
-                            ? new com.github.luben.zstd.ZstdOutputStream(destination, 19).setWindowLog(22)
-                            : new org.tukaani.xz.XZOutputStream(destination,
-                                new org.tukaani.xz.LZMA2Options(6), org.tukaani.xz.XZ.CHECK_CRC64)
-                        compressor.withCloseable { hashed.transferTo(it) }
+                    new File(source.path + '.' + extension).withOutputStream { destination ->
+                        PackageRuntimeDictionaryAssets.openCompressedOutput(destination, encoding)
+                            .withCloseable { hashed.transferTo(it) }
                     }
                 }
             }
             def record = [size: source.length(), sha256: digest.digest().encodeHex().toString()]
-            if (zstandard) record.compression = 'zstd'
+            if (encoding != 'xz') record.compression = encoding
             records[path] = record
             if (!source.delete()) throw new GradleException("Could not remove uncompressed dictionary: $path")
         }
         new File(packagedAssets.get().asFile, 'dictionary-assets.json').text =
             groovy.json.JsonOutput.toJson([version: 1, assets: records]) + '\n'
+    }
+
+    static OutputStream openCompressedOutput(OutputStream destination, String encoding) {
+        switch (encoding) {
+            case 'zstd':
+                return new com.github.luben.zstd.ZstdOutputStream(destination, 19).setWindowLog(22)
+            case 'gz':
+                return new java.util.zip.GZIPOutputStream(destination, 64 * 1024)
+            case 'xz':
+                return new org.tukaani.xz.XZOutputStream(destination,
+                    new org.tukaani.xz.LZMA2Options(6), org.tukaani.xz.XZ.CHECK_CRC64)
+            default:
+                throw new GradleException("Unsupported dictionary compression: $encoding")
+        }
     }
 }
 
@@ -309,9 +321,13 @@ androidComponents {
                 outputDirectory.set(layout.buildDirectory.dir("generated/dictionaryLicenses/${variant.name}/assets"))
             }
             variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
+            def flavors = variant.productFlavors.collectEntries { [(it.first): it.second] }
             def compactAssets = tasks.register("package${variant.name.capitalize()}RuntimeDictionaryAssets",
                 PackageRuntimeDictionaryAssets) {
-                useZstandard.set(variant.productFlavors.any { it.first == 'edition' && it.second == 'full' })
+                // A fresh Lite Standard install expands both the core and English
+                // dictionaries on the candidate path. Use Android's fast inflater.
+                compression.set(flavors.edition == 'full' ? 'zstd' :
+                    flavors.channel == 'fdroid' ? 'xz' : 'gz')
             }
             variant.artifacts.use(compactAssets)
                 .wiredWithDirectories({ it.mergedAssets }, { it.packagedAssets })

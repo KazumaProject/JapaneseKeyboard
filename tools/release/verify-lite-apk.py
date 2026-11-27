@@ -1,5 +1,6 @@
 """Check compressed runtime dictionaries in release Lite APKs."""
 import argparse
+import gzip
 import hashlib
 import json
 import lzma
@@ -20,9 +21,10 @@ LEGACY_ASSETS = (
     'system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip',
     'english/reading.dat.zip', 'english/word.dat', 'english/token.dat.zip',
 )
+DECODERS = {'xz': lzma.open, 'gz': gzip.open}
 
 
-def verify_apk(apk):
+def verify_apk(apk, compression='xz'):
     with zipfile.ZipFile(apk) as archive:
         manifest = json.loads(archive.read('assets/dictionary-assets.json'))
         if manifest['version'] != 1 or set(manifest['assets']) != set(MAPPED_ASSETS):
@@ -30,16 +32,18 @@ def verify_apk(apk):
         for asset, magic in MAPPED_ASSETS.items():
             if f'assets/{asset}' in archive.namelist():
                 raise ValueError(f'{apk}: duplicate uncompressed dictionary: {asset}')
-            name = f'assets/{asset}.xz'
+            record = manifest['assets'][asset]
+            if record.get('compression', 'xz') != compression:
+                raise ValueError(f'{apk}: unexpected dictionary compression: {asset}')
+            name = f'assets/{asset}.{compression}'
             info = archive.getinfo(name)
             if info.compress_type != zipfile.ZIP_STORED:
-                raise ValueError(f'{apk}: XZ dictionary is compressed again by ZIP: {name}')
-            record = manifest['assets'][asset]
+                raise ValueError(f'{apk}: dictionary is compressed again by ZIP: {name}')
             if not 0 < record['size'] <= 128 * 1024 * 1024:
                 raise ValueError(f'{apk}: invalid dictionary size: {asset}')
             size = 0
             digest = hashlib.sha256()
-            with archive.open(info) as raw, lzma.LZMAFile(raw) as stream:
+            with archive.open(info) as raw, DECODERS[compression](raw) as stream:
                 if (header := stream.read(4)) != magic:
                     raise ValueError(f'{apk}: unexpected dictionary format: {name}')
                 size += len(header)
@@ -66,10 +70,11 @@ def verify_apk(apk):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--compression', choices=DECODERS, default='xz')
     parser.add_argument('apks', type=Path, nargs='+')
     args = parser.parse_args()
     for apk in args.apks:
-        verify_apk(apk)
+        verify_apk(apk, args.compression)
 
 
 if __name__ == '__main__':

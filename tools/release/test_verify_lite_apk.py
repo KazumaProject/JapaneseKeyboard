@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import gzip
 import json
 import hashlib
 import lzma
@@ -15,15 +16,19 @@ spec.loader.exec_module(lite_apk)
 
 
 class LiteApkTest(unittest.TestCase):
-    def fixture(self, directory, *, compressed=None, extra=None, bad_header=None, missing=None, stored_stream=None, bad_digest=False):
+    def fixture(self, directory, *, compressed=None, extra=None, bad_header=None, missing=None, stored_stream=None, bad_digest=False, encoding='xz'):
         path = Path(directory) / 'app-lite.apk'
         manifest = {'version': 1, 'assets': {}}
         with zipfile.ZipFile(path, 'w') as archive:
             for name, magic in lite_apk.MAPPED_ASSETS.items():
                 data = b'OLD1' if name == bad_header else magic
-                manifest['assets'][name] = {'size': len(data), 'sha256': '0' * 64 if bad_digest else hashlib.sha256(data).hexdigest()}
+                record = {'size': len(data), 'sha256': '0' * 64 if bad_digest else hashlib.sha256(data).hexdigest()}
+                if encoding != 'xz':
+                    record['compression'] = encoding
+                manifest['assets'][name] = record
                 if name != missing:
-                    archive.writestr(f'assets/{name}.xz', lzma.compress(data),
+                    encode = gzip.compress if encoding == 'gz' else lzma.compress
+                    archive.writestr(f'assets/{name}.{encoding}', encode(data),
                                      compress_type=zipfile.ZIP_DEFLATED if name == compressed else zipfile.ZIP_STORED)
             archive.writestr('assets/dictionary-assets.json', json.dumps(manifest))
             for name in lite_apk.STREAMED_ASSETS:
@@ -36,6 +41,13 @@ class LiteApkTest(unittest.TestCase):
     def test_valid_packaging_passes(self):
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
             lite_apk.verify_apk(self.fixture(directory))
+
+    def test_gzip_requires_the_expected_release_format(self):
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
+            apk = self.fixture(directory, encoding='gz')
+            lite_apk.verify_apk(apk, 'gz')
+            with self.assertRaisesRegex(ValueError, 'unexpected dictionary compression'):
+                lite_apk.verify_apk(apk)
 
     def test_compressed_mapped_asset_fails(self):
         for name in lite_apk.MAPPED_ASSETS:

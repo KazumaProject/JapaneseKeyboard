@@ -11,6 +11,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.zip.GZIPOutputStream
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -30,6 +31,22 @@ class MappedDictionaryAssetCacheTest {
         assertArrayEquals(bytes, file.readBytes())
         assertEquals(hash(bytes), file.name)
         assertEquals(file, cache.fileFor(path))
+        assertEquals(1, opens.get())
+    }
+
+    @Test fun gzipCanPopulateAndReuseTheContentAddressedCache() {
+        val directory = temp.newFolder()
+        val compressed = ByteArrayOutputStream().also { output ->
+            GZIPOutputStream(output).use { it.write(bytes) }
+        }.toByteArray()
+        val opens = AtomicInteger()
+        val gzipCache = MappedDictionaryAssetCache(directory, manifest(bytes, compression = "gz")) { name ->
+            assertEquals("$path.gz", name)
+            opens.incrementAndGet()
+            ByteArrayInputStream(compressed)
+        }
+        assertArrayEquals(bytes, gzipCache.fileFor(path).readBytes())
+        assertEquals(cache(directory, bytes, opens).fileFor(path), gzipCache.fileFor(path))
         assertEquals(1, opens.get())
     }
 
@@ -141,13 +158,19 @@ class MappedDictionaryAssetCacheTest {
         }
     }
 
-    private fun manifest(data: ByteArray, digest: String = hash(data), size: Int = data.size): String =
+    private fun manifest(
+        data: ByteArray,
+        digest: String = hash(data),
+        size: Int = data.size,
+        compression: String? = null,
+    ): String =
         JsonObject().apply {
             addProperty("version", 1)
             add("assets", JsonObject().apply {
                 add(path, JsonObject().apply {
                     addProperty("size", size)
                     addProperty("sha256", digest)
+                    compression?.let { addProperty("compression", it) }
                 })
             })
         }.toString()
