@@ -1,9 +1,14 @@
 """Check compressed runtime dictionaries in release Lite APKs."""
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import lzma
 from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
 import zipfile
 
 
@@ -22,24 +27,56 @@ LEGACY_ASSETS = (
 )
 
 
-def verify_apk(apk):
+ZSTD_LIBRARY = re.compile(r'lib/[^/]+/libzstd-jni-[^/]+\.so')
+
+
+@contextmanager
+def open_dictionary(raw, compression):
+    if compression == 'xz':
+        with lzma.LZMAFile(raw, format=lzma.FORMAT_XZ) as stream:
+            yield stream
+        return
+
+    # Use a temporary compressed input so zstd can stream output without a feeder thread.
+    header = raw.read(4)
+    if header != b'\x28\xb5\x2f\xfd':
+        raise ValueError('invalid Zstandard dictionary frame')
+    with tempfile.TemporaryFile() as compressed:
+        compressed.write(header)
+        shutil.copyfileobj(raw, compressed)
+        compressed.seek(0)
+        with subprocess.Popen(['zstd', '-qdc', '-M4MiB'], stdin=compressed, stdout=subprocess.PIPE) as process:
+            with process.stdout as stream:
+                yield stream
+            if process.wait() != 0:
+                raise ValueError('invalid Zstandard dictionary stream')
+
+
+def verify_apk(apk, compression='xz'):
+    extension = 'zst' if compression == 'zstd' else 'xz'
+    other_extension = 'xz' if compression == 'zstd' else 'zst'
     with zipfile.ZipFile(apk) as archive:
         manifest = json.loads(archive.read('assets/dictionary-assets.json'))
         if manifest['version'] != 1 or set(manifest['assets']) != set(MAPPED_ASSETS):
             raise ValueError(f'{apk}: invalid dictionary asset manifest')
+        names = set(archive.namelist())
         for asset, magic in MAPPED_ASSETS.items():
-            if f'assets/{asset}' in archive.namelist():
+            if f'assets/{asset}' in names:
                 raise ValueError(f'{apk}: duplicate uncompressed dictionary: {asset}')
-            name = f'assets/{asset}.xz'
+            record = manifest['assets'][asset]
+            if record.get('compression', 'xz') != compression:
+                raise ValueError(f'{apk}: unexpected dictionary compression: {asset}')
+            if f'assets/{asset}.{other_extension}' in names:
+                raise ValueError(f'{apk}: duplicate compressed dictionary: {asset}')
+            name = f'assets/{asset}.{extension}'
             info = archive.getinfo(name)
             if info.compress_type != zipfile.ZIP_STORED:
-                raise ValueError(f'{apk}: XZ dictionary is compressed again by ZIP: {name}')
-            record = manifest['assets'][asset]
+                raise ValueError(f'{apk}: dictionary is compressed again by ZIP: {name}')
             if not 0 < record['size'] <= 128 * 1024 * 1024:
                 raise ValueError(f'{apk}: invalid dictionary size: {asset}')
             size = 0
             digest = hashlib.sha256()
-            with archive.open(info) as raw, lzma.LZMAFile(raw) as stream:
+            with archive.open(info) as raw, open_dictionary(raw, compression) as stream:
                 if (header := stream.read(4)) != magic:
                     raise ValueError(f'{apk}: unexpected dictionary format: {name}')
                 size += len(header)
@@ -56,20 +93,26 @@ def verify_apk(apk):
             if info.compress_type != zipfile.ZIP_DEFLATED:
                 raise ValueError(f'{apk}: streamed connection asset is not compressed: {asset}')
         for asset in LEGACY_ASSETS:
-            if f'assets/{asset}' in archive.namelist():
+            if f'assets/{asset}' in names:
                 raise ValueError(f'{apk}: duplicate legacy dictionary: {asset}')
-        for name in archive.namelist():
-            if name.startswith('lib/') or name.lower().endswith(('.gguf', '.tflite', '.litertlm')):
+        has_zstd = False
+        for name in sorted(names):
+            if compression == 'zstd' and ZSTD_LIBRARY.fullmatch(name):
+                has_zstd = True
+            elif name.startswith('lib/') or name.lower().endswith(('.gguf', '.tflite', '.litertlm')):
                 raise ValueError(f'{apk}: unexpected native library or AI model in Lite: {name}')
+        if compression == 'zstd' and not has_zstd:
+            raise ValueError(f'{apk}: missing Zstandard native library')
     print(f'{apk}: compressed runtime dictionary packaging verified; {apk.stat().st_size:,} bytes')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--compression', choices=('xz', 'zstd'), default='xz')
     parser.add_argument('apks', type=Path, nargs='+')
     args = parser.parse_args()
     for apk in args.apks:
-        verify_apk(apk)
+        verify_apk(apk, args.compression)
 
 
 if __name__ == '__main__':
