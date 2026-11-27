@@ -2940,7 +2940,8 @@
         }
       ],
       "variants": [
-        "fullStandardRelease"
+        "fullStandardRelease",
+        "liteStandardRelease"
       ],
       "notices": [
         {

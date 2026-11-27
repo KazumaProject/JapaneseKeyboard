@@ -311,7 +311,7 @@ androidComponents {
             variant.sources.assets.addGeneratedSourceDirectory(licenses) { it.outputDirectory }
             def compactAssets = tasks.register("package${variant.name.capitalize()}RuntimeDictionaryAssets",
                 PackageRuntimeDictionaryAssets) {
-                useZstandard.set(variant.productFlavors.any { it.first == 'edition' && it.second == 'full' })
+                useZstandard.set(variant.productFlavors.any { it.first == 'channel' && it.second == 'standard' })
             }
             variant.artifacts.use(compactAssets)
                 .wiredWithDirectories({ it.mergedAssets }, { it.packagedAssets })
@@ -1398,7 +1398,7 @@ dependencies {
     implementation project(':morse_keyboard')
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
-    fullImplementation 'com.github.luben:zstd-jni:1.5.7-29@aar'
+    standardImplementation 'com.github.luben:zstd-jni:1.5.7-29@aar'
     fullImplementation project(':zenz')
     fullImplementation project(':ai-runtime')
 

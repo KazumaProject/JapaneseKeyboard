@@ -92,6 +92,9 @@ jobs:
       - name: Verify dictionary distribution and notices
         run: python3 tools/classified-dictionaries/prepare.py --check
 
+      - name: Install dictionary verification tool
+        run: command -v zstd || sudo apt-get install -y zstd
+
       - name: Build Release Variants
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -107,7 +110,7 @@ jobs:
             --stacktrace \
             --no-daemon \
             --max-workers=1
-          python3 tools/release/verify-lite-apk.py app/build/outputs/apk/liteStandard/release/*.apk
+          python3 tools/release/verify-lite-apk.py --compression zstd app/build/outputs/apk/liteStandard/release/*.apk
 
       - name: Build and verify Play bundle native symbols
         env:
@@ -162,8 +165,10 @@ jobs:
       - name: Install Android API 37 and release build tools
         run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;29.0.14206865"
 
-      - name: Verify release source guard
-        run: python3 -m unittest discover -s tools/release
+      - name: Verify release source and packaging guards
+        run: |
+          command -v zstd || sudo apt-get install -y zstd
+          python3 -m unittest discover -s tools/release
 
       - name: Build unsigned F-Droid APK without restored caches
         env:
