@@ -101,7 +101,8 @@ class KeyIconResolverTintTest {
             KeyAction.MoveCursorUp to com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24,
             KeyAction.MoveCursorDown to com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24,
             KeyAction.MoveCursorLeft to com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
-            KeyAction.MoveCursorRight to com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            KeyAction.MoveCursorRight to com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
+            KeyAction.Home to com.kazumaproject.core.R.drawable.keyboard_home_24px
         )
         for ((action, icon) in icons) {
             val key = mixedKey(action)
@@ -115,7 +116,7 @@ class KeyIconResolverTintTest {
     @Test
     fun mixedTapPreservesCustomLabelAndExplicitIconPrecedence() {
         val key = mixedKey(KeyAction.MoveCursorUp, label = "Up")
-        val icon = KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, "outline_arrow_left_alt_24")
+        val icon = KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, "keyboard_home_24px")
         val labeled = resolveMixedTap(key, FlickAction.Action(KeyAction.MoveCursorUp))
         assertFalse(KeyIconResolver.hasIcon(labeled))
         assertEquals("Up", KeyIconResolver.resolvedLabelForRendering(labeled))
@@ -135,11 +136,11 @@ class KeyIconResolverTintTest {
 
     @Test
     fun mixedTapWithoutAnIconUsesItsActionLabel() {
-        val key = mixedKey(KeyAction.Home)
-        val resolved = resolveMixedTap(key, FlickAction.Action(KeyAction.Home))
+        val key = mixedKey(KeyAction.End)
+        val resolved = resolveMixedTap(key, FlickAction.Action(KeyAction.End))
         assertNull(resolved.drawableResId)
         assertFalse(KeyIconResolver.hasIcon(resolved))
-        assertEquals("Home", KeyIconResolver.resolvedLabelForRendering(resolved))
+        assertEquals("End", KeyIconResolver.resolvedLabelForRendering(resolved))
     }
 
     private fun mixedKey(action: KeyAction, label: String = "") = KeyData(

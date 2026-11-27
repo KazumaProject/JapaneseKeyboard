@@ -174,7 +174,11 @@ object KeyActionMapper {
             ),
             DisplayAction(KeyAction.Tab, context.getString(R.string.action_tab), com.kazumaproject.core.R.drawable.keyboard_tab_24px),
             DisplayAction(KeyAction.Escape, context.getString(R.string.action_escape)),
-            DisplayAction(KeyAction.Home, context.getString(R.string.action_home)),
+            DisplayAction(
+                KeyAction.Home,
+                context.getString(R.string.action_home),
+                iconResIdForAction(KeyAction.Home)
+            ),
             DisplayAction(KeyAction.End, context.getString(R.string.action_end)),
             DisplayAction(KeyAction.PageUp, context.getString(R.string.action_page_up)),
             DisplayAction(KeyAction.PageDown, context.getString(R.string.action_page_down)),
@@ -251,6 +255,7 @@ object KeyActionMapper {
             KeyAction.MoveCursorDown -> com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
             KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
             KeyAction.Tab -> com.kazumaproject.core.R.drawable.keyboard_tab_24px
+            KeyAction.Home -> com.kazumaproject.core.R.drawable.keyboard_home_24px
             KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
             KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
             KeyAction.UndoLastDelete -> com.kazumaproject.core.R.drawable.undo_24px
