@@ -29,6 +29,7 @@ object KeyIconBuiltInDrawable {
         BuiltInKeyIcon("caps_lock_outline", com.kazumaproject.core.R.drawable.caps_lock_outline),
         BuiltInKeyIcon("keyboard_24px", com.kazumaproject.core.R.drawable.keyboard_24px),
         BuiltInKeyIcon("keyboard_command_key_24px", com.kazumaproject.core.R.drawable.keyboard_command_key_24px),
+        BuiltInKeyIcon("keyboard_home_24px", com.kazumaproject.core.R.drawable.keyboard_home_24px),
         BuiltInKeyIcon("baseline_arrow_left_24", com.kazumaproject.core.R.drawable.baseline_arrow_left_24),
         BuiltInKeyIcon("baseline_arrow_right_24", com.kazumaproject.core.R.drawable.baseline_arrow_right_24),
         BuiltInKeyIcon("outline_arrow_left_alt_24", com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24),

@@ -15,21 +15,25 @@ object KeyIconResolver {
     private val bitmapCache = object : LruCache<String, android.graphics.Bitmap>(32) {}
 
     fun hasIcon(keyData: KeyData): Boolean =
-        when {
-            keyData.keyType == KeyType.MIXED_FLICK -> hasIconOverride(keyData)
-            keyData.isSpecialKey -> hasIconOverride(keyData) ||
-                (keyData.drawableResId != null && !suppressesDoNothingDefaultContent(keyData))
-            else -> false
-        }
+        (keyData.keyType == KeyType.MIXED_FLICK || keyData.isSpecialKey) &&
+            (hasIconOverride(keyData) ||
+                (keyData.drawableResId != null && !suppressesDoNothingDefaultContent(keyData)))
 
     fun withMixedFlickTapIcon(keyData: KeyData, layout: KeyboardLayout?): KeyData {
         if (keyData.keyType != KeyType.MIXED_FLICK) return keyData
         val tap = layout?.flickKeyMaps?.get(keyData.keyId ?: keyData.label)
-            ?.firstOrNull()?.get(FlickDirection.TAP) as? FlickAction.Action
-        val icon = tap?.icon?.takeIf {
+            ?.firstOrNull()?.get(FlickDirection.TAP)
+        val icon = (tap as? FlickAction.Action)?.icon?.takeIf {
             it.type == KeyIconType.DRAWABLE_RESOURCE_NAME && KeyIconBuiltInDrawable.isAllowed(it.value)
         }
-        return if (icon != null) keyData.copy(icon = icon) else keyData
+        val tapAction = when (tap) {
+            is FlickAction.Action -> tap.action
+            is FlickAction.Input -> null
+            null -> keyData.action
+        }
+        val defaultIcon = KeyActionMapper.iconResIdForAction(tapAction)
+            .takeIf { keyData.label.isEmpty() }
+        return keyData.copy(icon = icon ?: keyData.icon, drawableResId = defaultIcon)
     }
 
     fun hasIconOverride(keyData: KeyData): Boolean =
