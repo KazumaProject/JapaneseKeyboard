@@ -16,7 +16,6 @@ import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
-import androidx.hilt.navigation.fragment.hiltNavGraphViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -36,6 +35,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.Key
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.NudgeDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEditorBinding
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -44,7 +44,7 @@ import timber.log.Timber
 class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     EditableFlickKeyboardView.OnKeyEditListener {
 
-    private val viewModel: KeyboardEditorViewModel by hiltNavGraphViewModels(R.id.mobile_navigation)
+    private val viewModel by lazy { findNavController().keyboardEditorViewModel(requireActivity()) }
     private val args: KeyboardEditorFragmentArgs by navArgs()
 
     private var _binding: FragmentKeyboardEditorBinding? = null
@@ -73,11 +73,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
-                    android.R.id.home -> {
-                        requestExitEditor()
-                        true
-                    }
-
                     R.id.action_save -> {
                         viewModel.saveLayout()
                         true
@@ -94,28 +89,10 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    requestExitEditor()
+                    (requireActivity() as MainActivity).leaveKeyboardLayoutEditor()
                 }
             }
         )
-    }
-
-    private fun requestExitEditor() {
-        if (!viewModel.hasUnsavedChanges()) {
-            exitEditor()
-            return
-        }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.editor_unsaved_changes_title)
-            .setMessage(R.string.editor_unsaved_changes_message)
-            .setPositiveButton(R.string.editor_discard_changes) { _, _ -> exitEditor() }
-            .setNegativeButton(R.string.editor_continue_editing, null)
-            .show()
-    }
-
-    private fun exitEditor() {
-        findNavController().popBackStack()
-        viewModel.onCancelEditing()
     }
 
     private fun setupUIListeners() {

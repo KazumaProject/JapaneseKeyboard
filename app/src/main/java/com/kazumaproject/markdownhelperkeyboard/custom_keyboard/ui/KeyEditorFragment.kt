@@ -28,7 +28,6 @@ import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
-import androidx.hilt.navigation.fragment.hiltNavGraphViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -111,7 +110,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     @Inject
     lateinit var appPreference: AppPreference
 
-    private val viewModel: KeyboardEditorViewModel by hiltNavGraphViewModels(R.id.mobile_navigation)
+    private val viewModel by lazy { findNavController().keyboardEditorViewModel(requireActivity()) }
 
     private var _binding: FragmentKeyEditorBinding? = null
     private val binding get() = _binding!!
