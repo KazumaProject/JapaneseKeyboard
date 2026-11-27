@@ -152,10 +152,9 @@ class KeyboardEditorIssue934Test {
         viewModel.start(-1L)
         assertFalse(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
 
-        viewModel.onCancelEditing()
-        viewModel.start(-1L)
-
-        assertTrue(viewModel.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
+        val nextSession = viewModel()
+        nextSession.start(-1L)
+        assertTrue(nextSession.shouldShowDeletionWarning(KeyboardEditorDeletionTarget.BUTTON))
     }
 
     private fun viewModel(): KeyboardEditorViewModel =

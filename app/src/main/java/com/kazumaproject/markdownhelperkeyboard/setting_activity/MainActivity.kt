@@ -13,6 +13,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.Insets
 import androidx.core.view.MenuProvider
@@ -34,6 +35,8 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.keyboardEditorViewModel
 import com.kazumaproject.markdownhelperkeyboard.local_font.LocalFontRepository
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
@@ -62,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var mainNavController: NavController
     private var bottomNavigationView: BottomNavigationView? = null
+    private var keyboardEditorExitDialog: AlertDialog? = null
     private lateinit var navigationStore: SettingsNavigationStore
     private lateinit var navigationDrawer: SettingsNavigationDrawer
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -260,6 +264,7 @@ class MainActivity : AppCompatActivity() {
         setupSettingHomeSwitchMenu(navController)
         applySettingHomeModeFromPreference(navController)
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            keyboardEditorExitDialog?.dismiss()
             currentDestinationId = destination.id
             if (destination.id == R.id.navigation_setting ||
                 destination.id == R.id.settingMainFragment
@@ -330,12 +335,58 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         val navController = currentNavController()
+        if (navController.currentDestination?.id == R.id.keyboardEditorFragment) {
+            leaveKeyboardLayoutEditor()
+            return true
+        }
         val current = (supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main) as? androidx.navigation.fragment.NavHostFragment)?.childFragmentManager?.primaryNavigationFragment
         if (current is com.kazumaproject.markdownhelperkeyboard.sumire_popup.PopupMapEditorFragment) {
             current.leaveEditor()
             return true
         }
         return NavigationUI.navigateUp(navController, appBarConfiguration) || super.onSupportNavigateUp()
+    }
+
+    internal fun leaveKeyboardLayoutEditor() {
+        val navController = currentNavController()
+        if (navController.currentDestination?.id == R.id.keyboardEditorFragment) {
+            navigateAwayFromKeyboardEditor(navController) { true }
+        }
+    }
+
+    private fun navigateAwayFromKeyboardEditor(
+        navController: NavController,
+        navigate: () -> Boolean,
+    ): Boolean {
+        val source = navController.currentBackStackEntry ?: return navigate()
+        val needsConfirmation = when (source.destination.id) {
+            R.id.keyboardEditorFragment -> navController.keyboardEditorViewModel(this).hasUnsavedChanges()
+            // The key editor keeps pending changes locally until Done applies them to the layout.
+            R.id.keyEditorFragment -> true
+            else -> return navigate()
+        }
+
+        fun leave(): Boolean {
+            if (navController.currentBackStackEntry !== source) return false
+            // Remove the editor before NavigationUI saves the outgoing tab's back stack.
+            return navController.popBackStack(R.id.keyboardEditorFragment, inclusive = true) &&
+                navigate()
+        }
+
+        if (!needsConfirmation) return leave()
+        if (keyboardEditorExitDialog?.isShowing == true) return false
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.editor_unsaved_changes_title)
+            .setMessage(R.string.editor_unsaved_changes_message)
+            .setPositiveButton(R.string.editor_discard_changes) { _, _ -> leave() }
+            .setNegativeButton(R.string.editor_continue_editing, null)
+            .create()
+        keyboardEditorExitDialog = dialog
+        dialog.setOnDismissListener {
+            if (keyboardEditorExitDialog === dialog) keyboardEditorExitDialog = null
+        }
+        dialog.show()
+        return false
     }
 
     private fun updateSharedActionBarVisibility(destinationId: Int) {
@@ -356,12 +407,19 @@ class MainActivity : AppCompatActivity() {
     private fun handleSettingRequest(request: String?): Boolean {
         return when (request) {
             "setting_fragment_request" -> {
-                navigateToPreferredSettingHome(currentNavController())
+                val navController = currentNavController()
+                navigateAwayFromKeyboardEditor(navController) {
+                    navigateToPreferredSettingHome(navController)
+                }
                 true
             }
 
             "dictionary_fragment_request" -> {
-                currentNavController().navigate(R.id.navigation_learn_dictionary)
+                val navController = currentNavController()
+                navigateAwayFromKeyboardEditor(navController) {
+                    navController.navigate(R.id.navigation_learn_dictionary)
+                    true
+                }
                 true
             }
 
@@ -434,21 +492,28 @@ class MainActivity : AppCompatActivity() {
         navView: BottomNavigationView,
         navController: NavController,
     ) {
-        navView.setOnItemSelectedListener { item ->
-            if (item.itemId == R.id.navigation_setting) {
-                navigateToPreferredSettingHome(navController)
-                true
-            } else if (item.itemId == R.id.settingSearchFragment) {
-                navController.navigate(item.itemId, navigationArguments(item.itemId), NavOptions.Builder()
-                    .setLaunchSingleTop(true).setPopUpTo(navController.graph.findStartDestination().id, false).build())
-                true
-            } else {
-                NavigationUI.onNavDestinationSelected(item, navController)
+        fun selectDestination(item: MenuItem): Boolean {
+            return navigateAwayFromKeyboardEditor(navController) {
+                if (item.itemId == R.id.navigation_setting) {
+                    navigateToPreferredSettingHome(navController)
+                    true
+                } else if (item.itemId == R.id.settingSearchFragment) {
+                    navController.navigate(item.itemId, navigationArguments(item.itemId), NavOptions.Builder()
+                        .setLaunchSingleTop(true).setPopUpTo(navController.graph.findStartDestination().id, false).build())
+                    true
+                } else {
+                    NavigationUI.onNavDestinationSelected(item, navController)
+                }
             }
         }
+        navView.setOnItemSelectedListener(::selectDestination)
         navView.setOnItemReselectedListener { item ->
-            if (item.itemId == R.id.navigation_setting) {
-                navigateToPreferredSettingHome(navController)
+            val currentDestination = navController.currentDestination?.id
+            if (item.itemId == R.id.navigation_setting ||
+                currentDestination == R.id.keyboardEditorFragment ||
+                currentDestination == R.id.keyEditorFragment
+            ) {
+                selectDestination(item)
             }
         }
     }
@@ -465,9 +530,15 @@ class MainActivity : AppCompatActivity() {
         binding.settingsDrawerContent.layoutParams = binding.settingsDrawerContent.layoutParams.apply { this.width = width }
         navigationDrawer = SettingsNavigationDrawer(this, navigationStore) { item ->
             binding.settingsDrawerLayout.closeDrawer(GravityCompat.START)
-            if (item.key == "home") navigateToPreferredSettingHome(navController)
-            else navController.navigate(item.destination, navigationArguments(item.destination), NavOptions.Builder().setLaunchSingleTop(true)
-                .setPopUpTo(navController.graph.findStartDestination().id, false).build())
+            navigateAwayFromKeyboardEditor(navController) {
+                if (item.key == "home") {
+                    navigateToPreferredSettingHome(navController)
+                } else {
+                    navController.navigate(item.destination, navigationArguments(item.destination), NavOptions.Builder().setLaunchSingleTop(true)
+                        .setPopUpTo(navController.graph.findStartDestination().id, false).build())
+                    true
+                }
+            }
         }
         binding.settingsDrawerContent.addView(navigationDrawer)
         navigationDrawer.restoreState(restoredNavigationState)
@@ -524,6 +595,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        keyboardEditorExitDialog?.dismiss()
         if (::navigationStore.isInitialized) androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
             .unregisterOnSharedPreferenceChangeListener(navigationPreferencesListener)
         super.onDestroy()

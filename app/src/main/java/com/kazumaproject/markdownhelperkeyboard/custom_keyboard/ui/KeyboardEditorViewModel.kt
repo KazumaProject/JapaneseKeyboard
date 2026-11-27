@@ -243,13 +243,6 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
-    fun onCancelEditing() {
-        currentEditingId = null
-        initialContent = null
-        isButtonDeletionWarningSuppressed = false
-        _uiState.value = EditorUiState()
-    }
-
     fun hasUnsavedChanges(): Boolean {
         val baseline = initialContent ?: return false
         val state = _uiState.value
