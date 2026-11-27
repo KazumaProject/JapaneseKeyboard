@@ -23,13 +23,18 @@ class LiteApkTest(unittest.TestCase):
             for name, magic in lite_apk.MAPPED_ASSETS.items():
                 data = b'OLD1' if name == bad_header else magic
                 record = {'size': len(data), 'sha256': '0' * 64 if bad_digest else hashlib.sha256(data).hexdigest()}
+                stored = zipfile.ZIP_DEFLATED if name == compressed else zipfile.ZIP_STORED
+                if encoding == 'gz' and name.startswith('english/'):
+                    manifest.setdefault('mappedAssets', {})[name] = record
+                    if name != missing:
+                        archive.writestr(f'assets/{name}', data, compress_type=stored)
+                    continue
                 if encoding != 'xz':
                     record['compression'] = encoding
                 manifest['assets'][name] = record
                 if name != missing:
                     encode = gzip.compress if encoding == 'gz' else lzma.compress
-                    archive.writestr(f'assets/{name}.{encoding}', encode(data),
-                                     compress_type=zipfile.ZIP_DEFLATED if name == compressed else zipfile.ZIP_STORED)
+                    archive.writestr(f'assets/{name}.{encoding}', encode(data), compress_type=stored)
             archive.writestr('assets/dictionary-assets.json', json.dumps(manifest))
             for name in lite_apk.STREAMED_ASSETS:
                 archive.writestr(f'assets/{name}', b'connection data',
@@ -46,13 +51,21 @@ class LiteApkTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()):
             apk = self.fixture(directory, encoding='gz')
             lite_apk.verify_apk(apk, 'gz')
-            with self.assertRaisesRegex(ValueError, 'unexpected dictionary compression'):
+            with self.assertRaisesRegex(ValueError, 'invalid dictionary asset manifest'):
                 lite_apk.verify_apk(apk)
+
+    def test_directly_mapped_english_rejects_zip_compression_and_duplicate_streams(self):
+        name = 'english/reading.compact'
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, 'unexpectedly compressed by ZIP'):
+                lite_apk.verify_apk(self.fixture(directory, encoding='gz', compressed=name), 'gz')
+            with self.assertRaisesRegex(ValueError, 'unexpected compression for directly mapped dictionary'):
+                lite_apk.verify_apk(self.fixture(directory, encoding='gz', extra=f'assets/{name}.gz'), 'gz')
 
     def test_compressed_mapped_asset_fails(self):
         for name in lite_apk.MAPPED_ASSETS:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
-                with self.assertRaisesRegex(ValueError, 'compressed again'):
+                with self.assertRaisesRegex(ValueError, 'unexpectedly compressed by ZIP'):
                     lite_apk.verify_apk(self.fixture(directory, compressed=name))
 
     def test_missing_or_old_dictionary_fails(self):

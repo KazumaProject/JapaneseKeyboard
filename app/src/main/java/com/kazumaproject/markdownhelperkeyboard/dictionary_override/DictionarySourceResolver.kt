@@ -32,13 +32,6 @@ class DictionarySourceResolver @Inject constructor(
         }
     }
 
-    internal fun prepareBundledAssetCache(paths: List<String>) {
-        val cache = mappedDictionaryCache ?: return
-        for (path in paths) {
-            if (cache.contains(path)) cache.fileFor(path)
-        }
-    }
-
     internal fun <T> readBundledAssetBuffer(path: String, read: (ByteBuffer) -> T): T {
         val cache = mappedDictionaryCache
         if (cache != null && cache.contains(path)) {

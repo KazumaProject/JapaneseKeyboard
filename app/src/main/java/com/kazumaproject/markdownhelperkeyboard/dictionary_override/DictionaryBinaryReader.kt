@@ -61,6 +61,7 @@ class DictionaryBinaryReader @Inject constructor(
 
     @Volatile
     private var compactEnglishDictionaryLoadAttempted = false
+    private val compactEnglishDictionaryLock = Any()
 
     fun openZipAwareObjectInputStream(input: InputStream, debugName: String): ObjectInputStream =
         openZipAwareObject(input, debugName)
@@ -358,12 +359,6 @@ class DictionaryBinaryReader @Inject constructor(
         }
     }
 
-    internal fun prepareBundledEnglishCache(): Boolean {
-        if (resolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return false
-        resolver.prepareBundledAssetCache(ENGLISH_CACHE_ASSETS)
-        return true
-    }
-
     internal fun loadBundledEnglishForEngine(): CompactEnglishDictionary? =
         compactBundledEnglishDictionaryIfActive()
 
@@ -378,7 +373,7 @@ class DictionaryBinaryReader @Inject constructor(
         if (resolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return null
         compactEnglishDictionaryCache?.let { return it }
         if (compactEnglishDictionaryLoadAttempted) return null
-        return synchronized(this) {
+        return synchronized(compactEnglishDictionaryLock) {
             compactEnglishDictionaryCache?.let { return@synchronized it }
             if (compactEnglishDictionaryLoadAttempted) return@synchronized null
             val loaded = runCatching {
@@ -439,10 +434,6 @@ class DictionaryBinaryReader @Inject constructor(
         private const val ENGLISH_WORD_ASSET = "english/word.compact"
         private const val ENGLISH_TOKEN_ASSET = "english/token.compact"
         private const val ENGLISH_GRAMMAR_ASSET = "english/grammar/categories.erol"
-        private val ENGLISH_CACHE_ASSETS = listOf(
-            ENGLISH_LOOKUP_INDEX_ASSET, ENGLISH_READING_ASSET, ENGLISH_WORD_ASSET,
-            ENGLISH_TOKEN_ASSET, ENGLISH_GRAMMAR_ASSET,
-        )
         private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
         fun openZipAwareObject(input: InputStream, debugName: String): ObjectInputStream =

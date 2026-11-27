@@ -79,14 +79,20 @@ internal class PhraseConverter(
     }
 
     // The IME can give words extra slots so they don't displace registered phrases.
-    fun convert(text: String, prefixMode: Boolean, limit: Int, extraWordSlots: Int = 0): List<PhraseCandidate> {
+    fun convert(
+        text: String,
+        prefixMode: Boolean,
+        limit: Int,
+        extraWordSlots: Int = 0,
+        cancellationCheck: () -> Unit = {},
+    ): List<PhraseCandidate> {
         require(text.isNotBlank() && text.length <= MAX_INPUT) {
             "Text must contain between 1 and $MAX_INPUT UTF-16 code units and cannot be blank"
         }
         require(limit in 1..MAX_RESULTS) { "Limit must be in 1..$MAX_RESULTS" }
 
         val grammar = PhraseGrammar(dictionary.grammarRoles)
-        val registeredPhrases = dictionary.phrases(text, prefixMode, limit)
+        val registeredPhrases = dictionary.phrases(text, prefixMode, limit, cancellationCheck)
         val inputKey = lookupKey(text)
         val compactInput = inputKey.filterNot(Char::isWhitespace)
         fun isExactPhrase(candidate: DictionaryCandidate) = candidate.reading.replace(" ", "") == compactInput
@@ -98,12 +104,13 @@ internal class PhraseConverter(
         } else {
             registeredPhrases to emptyList()
         }
-        val edges = lattice(text, prefixMode, primaryPhrases)
+        val edges = lattice(text, prefixMode, primaryPhrases, cancellationCheck)
         val order = if (prefixMode) prefixOrder else exactOrder
         val paths = Array(text.length + 1) { mutableListOf<Path>() }
         val surfaces = arrayOfNulls<String>(text.length)
         paths[0].add(Path())
         for (offset in text.indices) {
+            cancellationCheck()
             val current = paths[offset]
             if (current.isEmpty()) continue
             for (segment in edges[offset]) {
@@ -204,6 +211,7 @@ internal class PhraseConverter(
         text: String,
         prefixMode: Boolean,
         registeredPhrases: List<DictionaryCandidate>,
+        cancellationCheck: () -> Unit,
     ): Array<MutableList<Segment>> {
         val edges = Array(text.length) { mutableListOf<Segment>() }
         val spans = inputWords.findAll(text).map { it.range }.toMutableList()
@@ -216,6 +224,7 @@ internal class PhraseConverter(
         fun lookup(reading: String) = exact.getOrPut(reading) { dictionary.exact(reading, forPrediction = prefixMode) }
         var previousEnd = 0
         for (span in spans) {
+            cancellationCheck()
             val start = span.first
             val end = span.last + 1
             if (previousEnd < start) edges[previousEnd] += literal(text, previousEnd, start)
@@ -224,7 +233,9 @@ internal class PhraseConverter(
             val reading = lookupKey(text.substring(start, end))
             val plain = latinWord.matches(reading)
             val complete = prefixMode && end == text.length
-            val directCompletions = if (complete) completions(reading, start, end, start) else emptyList()
+            val directCompletions = if (complete) {
+                completions(reading, start, end, start, cancellationCheck)
+            } else emptyList()
             edges[start] += literal(text, start, end, unknown = true)
 
             edges[start] += directCompletions
@@ -237,7 +248,7 @@ internal class PhraseConverter(
             } else {
                 val whole = lookup(reading)
                 val phrases = if (start == 0 && end == text.length) registeredPhrases
-                    else dictionary.phrases(reading, complete, completionLimit)
+                    else dictionary.phrases(reading, complete, completionLimit, cancellationCheck)
                 edges[start] += phrases.map { candidate ->
                     val compactReading = candidate.reading.replace(" ", "")
                     candidate.copy(reading = compactReading).segment(start, end, start,
@@ -247,8 +258,8 @@ internal class PhraseConverter(
                 // after other words. Only dictionary-backed aliases may add spaces
                 // inside it. Do not build speculative split paths and prune them later.
                 val protected = whole.isNotEmpty() || directCompletions.isNotEmpty() ||
-                    dictionary.hasCompletion(reading) || phrases.isNotEmpty() ||
-                    dictionary.hasPhraseCompletion(reading)
+                    dictionary.hasCompletion(reading, cancellationCheck) || phrases.isNotEmpty() ||
+                    dictionary.hasPhraseCompletion(reading, cancellationCheck)
                 if (protected) {
                     edges[start] += whole.map { it.segment(start, end, start) }
                     // Preserve the established space spelling of hyphenated
@@ -259,6 +270,7 @@ internal class PhraseConverter(
                 } else {
                     val reachable = BooleanArray(end - start).apply { this[0] = true }
                     for (offset in start until end) {
+                        cancellationCheck()
                         if (!reachable[offset - start]) continue
                         val remaining = reading.substring(offset - start)
                         for (prefix in dictionary.prefixes(remaining)) {
@@ -271,7 +283,8 @@ internal class PhraseConverter(
                             }
                         }
                         if (complete && offset > start) edges[offset] += completions(
-                            remaining, offset, end, start, splitDirectPrefix = directCompletions.isNotEmpty(),
+                            remaining, offset, end, start, cancellationCheck,
+                            splitDirectPrefix = directCompletions.isNotEmpty(),
                         )
                     }
                 }
@@ -290,14 +303,19 @@ internal class PhraseConverter(
     }
 
     private fun completions(
-        reading: String, start: Int, end: Int, wordStart: Int, splitDirectPrefix: Boolean = false,
+        reading: String,
+        start: Int,
+        end: Int,
+        wordStart: Int,
+        cancellationCheck: () -> Unit,
+        splitDirectPrefix: Boolean = false,
     ): List<Segment> {
         val key = reading.filterNot { it in prefixPunctuation }
         if (key.length < MIN_COMPLETION_PREFIX || !completionKey.matches(key)) return emptyList()
         val inferredBoundary = start != wordStart
         if (inferredBoundary && key.length < MIN_INFERRED_COMPLETION_PREFIX) return emptyList()
         val surfacePrefix = reading.takeIf { it != key }
-        return dictionary.complete(key, surfacePrefix, completionLimit).filter {
+        return dictionary.complete(key, surfacePrefix, completionLimit, cancellationCheck).filter {
             // Completing an explicitly typed word is different from guessing both a
             // boundary and a long replacement for a short suffix of a joined input.
             !inferredBoundary || it.reading.length - key.length <= MAX_INFERRED_COMPLETION_ADDITION

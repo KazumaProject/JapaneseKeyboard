@@ -1,5 +1,6 @@
 """Check compressed runtime dictionaries in release Lite APKs."""
 import argparse
+from contextlib import nullcontext
 import gzip
 import hashlib
 import json
@@ -26,24 +27,37 @@ DECODERS = {'xz': lzma.open, 'gz': gzip.open}
 
 def verify_apk(apk, compression='xz'):
     with zipfile.ZipFile(apk) as archive:
+        entries = set(archive.namelist())
         manifest = json.loads(archive.read('assets/dictionary-assets.json'))
-        if manifest['version'] != 1 or set(manifest['assets']) != set(MAPPED_ASSETS):
+        compressed = manifest['assets']
+        mapped = manifest.get('mappedAssets', {})
+        expected_mapped = {name for name in MAPPED_ASSETS if compression == 'gz' and name.startswith('english/')}
+        if (manifest['version'] != 1 or set(mapped) != expected_mapped or
+                set(compressed) != set(MAPPED_ASSETS) - expected_mapped):
             raise ValueError(f'{apk}: invalid dictionary asset manifest')
         for asset, magic in MAPPED_ASSETS.items():
-            if f'assets/{asset}' in archive.namelist():
-                raise ValueError(f'{apk}: duplicate uncompressed dictionary: {asset}')
-            record = manifest['assets'][asset]
-            if record.get('compression', 'xz') != compression:
-                raise ValueError(f'{apk}: unexpected dictionary compression: {asset}')
-            name = f'assets/{asset}.{compression}'
+            name = f'assets/{asset}'
+            decoder = None
+            if asset in mapped:
+                record = mapped[asset]
+                if 'compression' in record or any(f'{name}.{suffix}' in entries for suffix in ('xz', 'gz', 'zst')):
+                    raise ValueError(f'{apk}: unexpected compression for directly mapped dictionary: {asset}')
+            else:
+                if name in entries:
+                    raise ValueError(f'{apk}: duplicate uncompressed dictionary: {asset}')
+                record = compressed[asset]
+                if record.get('compression', 'xz') != compression:
+                    raise ValueError(f'{apk}: unexpected dictionary compression: {asset}')
+                name += f'.{compression}'
+                decoder = DECODERS[compression]
             info = archive.getinfo(name)
             if info.compress_type != zipfile.ZIP_STORED:
-                raise ValueError(f'{apk}: dictionary is compressed again by ZIP: {name}')
+                raise ValueError(f'{apk}: dictionary is unexpectedly compressed by ZIP: {name}')
             if not 0 < record['size'] <= 128 * 1024 * 1024:
                 raise ValueError(f'{apk}: invalid dictionary size: {asset}')
             size = 0
             digest = hashlib.sha256()
-            with archive.open(info) as raw, DECODERS[compression](raw) as stream:
+            with archive.open(info) as raw, (decoder(raw) if decoder else nullcontext(raw)) as stream:
                 if (header := stream.read(4)) != magic:
                     raise ValueError(f'{apk}: unexpected dictionary format: {name}')
                 size += len(header)
@@ -60,7 +74,7 @@ def verify_apk(apk, compression='xz'):
             if info.compress_type != zipfile.ZIP_DEFLATED:
                 raise ValueError(f'{apk}: streamed connection asset is not compressed: {asset}')
         for asset in LEGACY_ASSETS:
-            if f'assets/{asset}' in archive.namelist():
+            if f'assets/{asset}' in entries:
                 raise ValueError(f'{apk}: duplicate legacy dictionary: {asset}')
         for name in archive.namelist():
             if name.startswith('lib/') or name.lower().endswith(('.gguf', '.tflite', '.litertlm')):
@@ -70,7 +84,8 @@ def verify_apk(apk, compression='xz'):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--compression', choices=DECODERS, default='xz')
+    parser.add_argument('--compression', choices=DECODERS, default='xz',
+                        help='gz for the Lite Standard core with directly mapped English assets, xz for F-Droid')
     parser.add_argument('apks', type=Path, nargs='+')
     args = parser.parse_args()
     for apk in args.apks:

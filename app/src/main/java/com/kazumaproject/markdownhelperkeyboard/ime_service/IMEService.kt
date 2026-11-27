@@ -940,8 +940,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var systemUserDictionaryLoadJob: Job? = null
     private var kanaKanjiEngineLoadJob: Job? = null
     private var kanaKanjiEngineActivationJob: Job? = null
-    private var englishDictionaryCacheJob: Job? = null
-    private var englishDictionaryCachePrepared = false
+    @Volatile
+    private var englishDictionaryWarmupJob: Job? = null
+    private var englishDictionaryPrepared = false
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val localFontScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
@@ -3491,9 +3492,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         null
     }
 
-    private fun prepareEnglishDictionaryCache(editorInfo: EditorInfo?) {
-        if (englishDictionaryCachePrepared ||
-            englishDictionaryCacheJob?.isActive == true || !predictionConfig.englishPredictionEnabled ||
+    private fun prepareEnglishDictionary(editorInfo: EditorInfo?) {
+        if (englishDictionaryPrepared ||
+            englishDictionaryWarmupJob?.isActive == true || !predictionConfig.englishPredictionEnabled ||
             qwertyMode.value != TenKeyQWERTYMode.TenKeyQWERTY || qwertyEnglishDirectInputPreference
         ) return
         val editor = editorInfo ?: return
@@ -3501,13 +3502,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             getCurrentInputTypeForIME2(editor).isPassword()
         ) return
 
-        englishDictionaryCacheJob = scope.launch {
+        englishDictionaryWarmupJob = scope.launch {
             try {
-                englishDictionaryCachePrepared = withContext(Dispatchers.IO) {
-                    dictionaryBinaryReader.prepareBundledEnglishCache()
+                englishDictionaryPrepared = withContext(Dispatchers.IO) {
+                    englishEngine.prepareBundledPrediction(dictionaryBinaryReader)
                 }
             } catch (error: IOException) {
-                Timber.d(error, "Bundled English cache preparation failed")
+                Timber.d(error, "Bundled English dictionary preparation failed")
             }
         }
     }
@@ -4417,7 +4418,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyCandidateAppearance()
         applySymbolKeyboardAppearance()
         resetKeyboard()
-        prepareEnglishDictionaryCache(attribute)
+        prepareEnglishDictionary(attribute)
         refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
@@ -6952,7 +6953,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setMainSuggestionColumn(mainView)
         }
         updateIncognitoModeState(editorInfo)
-        prepareEnglishDictionaryCache(editorInfo)
+        prepareEnglishDictionary(editorInfo)
         anchorActiveSuggestionStripStartIfLeadingContentExpected()
         if (hasPhysicalKeyboard) {
             floatingDockView.setText("あ")
@@ -19905,7 +19906,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     TenKeyQWERTYMode.TenKeyQWERTY -> {
-                        prepareEnglishDictionaryCache(currentInputEditorInfo)
+                        prepareEnglishDictionary(currentInputEditorInfo)
                         suggestionAdapter?.updateState(
                             TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
                         )
@@ -29028,6 +29029,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mode: CandidateQueryMode,
         learnRepository: LearnRepository?,
     ): KanaKanjiQueryResult {
+        // Wait without tying up the conversion thread or keeping an obsolete prefix alive.
+        if (input.isAllEnglishLetters()) englishDictionaryWarmupJob?.join()
         val engine = awaitKanaKanjiEngineOrNull()
             ?: return KanaKanjiQueryResult(candidates = emptyList())
         awaitSystemUserDictionaryLoad()

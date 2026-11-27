@@ -244,27 +244,41 @@ abstract class PackageRuntimeDictionaryAssets extends DefaultTask {
             exclude('system/tango.dat.zip', 'system/yomi.dat.zip', 'system/token.dat.zip')
         }
         def records = [:]
+        def mappedRecords = [:]
         def encoding = compression.get()
         def extension = encoding == 'zstd' ? 'zst' : encoding
         ['system/system.compact.kdict', 'english/reading.compact', 'english/word.compact',
             'english/token.compact', 'english/english.lookup.index', 'english/grammar/categories.erol'].each { path ->
             def source = new File(packagedAssets.get().asFile, path)
+            // Play compresses the download. Keep these assets directly mappable
+            // in the installed Lite Standard APK so the first input needs no private copy.
+            boolean directlyMapped = encoding == 'gz' && path.startsWith('english/')
             def digest = java.security.MessageDigest.getInstance('SHA-256')
             source.withInputStream { input ->
                 new java.security.DigestInputStream(input, digest).withCloseable { hashed ->
-                    new File(source.path + '.' + extension).withOutputStream { destination ->
-                        PackageRuntimeDictionaryAssets.openCompressedOutput(destination, encoding)
-                            .withCloseable { hashed.transferTo(it) }
+                    if (directlyMapped) {
+                        hashed.transferTo(OutputStream.nullOutputStream())
+                    } else {
+                        new File(source.path + '.' + extension).withOutputStream { destination ->
+                            PackageRuntimeDictionaryAssets.openCompressedOutput(destination, encoding)
+                                .withCloseable { hashed.transferTo(it) }
+                        }
                     }
                 }
             }
             def record = [size: source.length(), sha256: digest.digest().encodeHex().toString()]
+            if (directlyMapped) {
+                mappedRecords[path] = record
+                return
+            }
             if (encoding != 'xz') record.compression = encoding
             records[path] = record
             if (!source.delete()) throw new GradleException("Could not remove uncompressed dictionary: $path")
         }
+        def manifest = [version: 1, assets: records]
+        if (!mappedRecords.isEmpty()) manifest.mappedAssets = mappedRecords
         new File(packagedAssets.get().asFile, 'dictionary-assets.json').text =
-            groovy.json.JsonOutput.toJson([version: 1, assets: records]) + '\n'
+            groovy.json.JsonOutput.toJson(manifest) + '\n'
     }
 
     static OutputStream openCompressedOutput(OutputStream destination, String encoding) {
@@ -324,8 +338,7 @@ androidComponents {
             def flavors = variant.productFlavors.collectEntries { [(it.first): it.second] }
             def compactAssets = tasks.register("package${variant.name.capitalize()}RuntimeDictionaryAssets",
                 PackageRuntimeDictionaryAssets) {
-                // A fresh Lite Standard install expands both the core and English
-                // dictionaries on the candidate path. Use Android's fast inflater.
+                // Lite Standard directly maps English assets and quickly inflates the core.
                 compression.set(flavors.edition == 'full' ? 'zstd' :
                     flavors.channel == 'fdroid' ? 'xz' : 'gz')
             }

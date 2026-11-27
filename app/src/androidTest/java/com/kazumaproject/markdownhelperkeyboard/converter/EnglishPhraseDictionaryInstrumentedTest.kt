@@ -25,6 +25,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOv
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.ObjectInputStream
@@ -348,6 +349,23 @@ class EnglishPhraseDictionaryInstrumentedTest {
         for (text in inputs) for (prefix in listOf(false, true)) {
             assertEquals("$text prefix=$prefix", referenceConverter.convert(text, prefix, 12), indexedConverter.convert(text, prefix, 12))
         }
+    }
+
+    @Test
+    fun cancelledEnglishSearchCanBeRetried() = withDictionary { _, _, reader ->
+        val engine = EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
+        assertTrue(engine.prepareBundledPrediction(reader))
+        val text = "thequickbrownfoxjumpsoverthelazydog"
+        val expected = engine.getConversionCandidates(text, text, false, true, true, emptyList())
+
+        var checkpoints = 0
+        assertThrows(CancellationException::class.java) {
+            engine.getConversionCandidates(text, text, false, true, true, emptyList()) {
+                if (++checkpoints == 5) throw CancellationException("Obsolete prefix")
+            }
+        }
+
+        assertEquals(expected, engine.getConversionCandidates(text, text, false, true, true, emptyList()))
     }
 
     @Test

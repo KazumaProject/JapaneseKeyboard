@@ -535,7 +535,9 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enablePrediction: Boolean,
         prefixMode: Boolean,
         fallback: List<Candidate>,
+        cancellationCheck: () -> Unit = {},
     ): List<Candidate> {
+        cancellationCheck()
         val usePhrases = enablePrediction && input.length in 2..255 &&
             input.any(Char::isLetter) && input.all { char ->
                 if (char.isLetter()) Character.UnicodeScript.of(char.code) == Character.UnicodeScript.LATIN
@@ -544,6 +546,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
             }
         if (legacyInput == null && !usePhrases) return fallback
         val data = ensureDictionariesLoaded()
+        cancellationCheck()
         val legacy = if (legacyInput != null) {
             // The Conversion tab uses the English setting for exact phrases while
             // leaving single-word completion to the prediction modes.
@@ -554,7 +557,10 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         if (!usePhrases) return legacy
         val phraseConverter = data.phraseConverter ?: return legacy
         val phraseLimit = 12
-        val phraseTexts = phraseConverter.convert(input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit)
+        val phraseTexts = phraseConverter.convert(
+            input, prefixMode, limit = phraseLimit, extraWordSlots = phraseLimit,
+            cancellationCheck = cancellationCheck,
+        )
             .asSequence()
             .map { phrase ->
                 val text = resolveCandidateCase(input, phrase.text)
@@ -831,6 +837,11 @@ class EnglishEngine : QwertyGlideCandidateProvider {
             val tmp = prev; prev = curr; curr = tmp
         }
         return prev[lb] <= maxEdits
+    }
+
+    internal fun prepareBundledPrediction(reader: DictionaryBinaryReader): Boolean {
+        if (reader.loadBundledEnglishForEngine() == null) return false
+        return ensureDictionariesLoaded().phraseConverter != null
     }
 
     private fun ensureDictionariesLoaded(): EnglishDictionaryData {
